@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Cadastrar Planos</title>
+<!-- JS -->
+<script src="/js/auth.js"></script>
+<script src="/js/init.js"></script>
+<script src="/js/painel.js"></script>
+
+<style>
+body { font-family: Arial, sans-serif; margin:0; background:#f4f6f9; padding:20px; }
+h2 { margin-bottom:20px; }
+
+table { width:100%; border-collapse:collapse; background:white; box-shadow:0 2px 5px rgba(0,0,0,0.1); margin-bottom:20px; }
+thead th { background:#6c757d; color:white; padding:10px; text-align:left; }
+td { padding:8px; border-bottom:1px solid #ddd; }
+tr:hover { background:#eef6ff; }
+
+input[type="text"] { padding:8px 12px; border-radius:6px; border:1px solid #ccc; width:250px; margin-right:10px; }
+button { padding:6px 12px; border:none; border-radius:6px; background:#28a745; color:white; cursor:pointer; margin-right:4px; }
+button:hover { background:#218838; }
+button.editar { background:#f39c12; }
+button.editar:hover { background:#d68910; }
+button.excluir { background:#e74c3c; }
+button.excluir:hover { background:#c0392b; }
+</style>
+
+</head>
+<body>
+
+<h2>Planos Cadastrados</h2>
+
+<!-- Tabela de planos -->
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Nome do Plano</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody id="tabelaPlanos">
+<tr><td colspan="3">Carregando...</td></tr>
+</tbody>
+</table>
+
+<!-- Formulário para adicionar novo plano -->
+<h2>Adicionar Novo Plano</h2>
+<input type="text" id="nomePlano" placeholder="Nome do plano">
+<button onclick="adicionarPlano()">➕ Adicionar</button>
+
+<script>
+// ==============================
+// CARREGAR PLANOS EXISTENTES
+// ==============================
+async function carregarPlanos() {
+    try {
+        const response = await fetch("/api/planos"); 
+        if(response.status === 401) { alert("Não autorizado"); return; }
+
+        const planos = await response.json();
+        const tbody = document.getElementById("tabelaPlanos");
+        tbody.innerHTML = "";
+
+        if(planos.length === 0){
+            tbody.innerHTML = '<tr><td colspan="3">Nenhum plano cadastrado</td></tr>';
+            return;
+        }
+
+        planos.forEach(plano => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${plano.id}</td>
+                <td>${plano.nome}</td>
+                <td>
+                    <button class="editar" onclick="editarPlano(${plano.id}, '${plano.nome}')">✏️ Editar</button>
+                    <button class="excluir" onclick="excluirPlano(${plano.id})">🗑️ Excluir</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+    } catch (err) {
+        console.error(err);
+        alert("Erro ao carregar planos: " + err.message);
+    }
+}
+
+// ==============================
+// ADICIONAR NOVO PLANO
+// ==============================
+async function adicionarPlano() {
+    const nome = document.getElementById("nomePlano").value.trim();
+    if(!nome){ alert("Digite o nome do plano"); return; }
+
+    try {
+        const response = await fetch("/api/planos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nome })
+        });
+        const data = await response.json();
+
+        if(data.success){
+            document.getElementById("nomePlano").value = "";
+            carregarPlanos();
+        } else {
+            alert("Erro ao adicionar plano: " + data.message);
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("Erro ao adicionar plano: " + err.message);
+    }
+}
+
+// ==============================
+// EDITAR PLANO
+// ==============================
+function editarPlano(id, nomeAtual) {
+    const novoNome = prompt("Editar nome do plano:", nomeAtual);
+    if(!novoNome || novoNome.trim() === "") return;
+
+    fetch(`/api/planos/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome: novoNome.trim() })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            carregarPlanos();
+        } else {
+            alert("Erro ao editar plano: " + data.message);
+        }
+    })
+    .catch(err => { console.error(err); alert("Erro ao editar plano"); });
+}
+
+// ==============================
+// EXCLUIR PLANO
+// ==============================
+function excluirPlano(id) {
+    if(!confirm("Tem certeza que deseja excluir este plano?")) return;
+
+    fetch(`/api/planos/${id}`, { method: "DELETE" })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            carregarPlanos();
+        } else {
+            alert("Erro ao excluir plano: " + data.message);
+        }
+    })
+    .catch(err => { console.error(err); alert("Erro ao excluir plano"); });
+}
+
+// ==============================
+// CARREGAR PLANOS AO ABRIR A PÁGINA
+// ==============================
+document.addEventListener("DOMContentLoaded", carregarPlanos);
+</script>
+
+</body>
+</html>

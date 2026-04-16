@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Agendamentos - SDOS</title>
+<script src="/js/init.js"></script>
+
+<style>
+body {
+    font-family: Arial;
+    margin: 0;
+    background: #f4f6f9;
+}
+
+/* HEADER */
+.topo {
+    background: #2c3e50;
+    color: white;
+    padding: 15px 20px;
+    font-size: 18px;
+}
+
+/* LAYOUT */
+.container {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+}
+
+/* FORM */
+.formulario {
+    width: 300px;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.08);
+}
+
+.campo { margin-bottom: 10px; }
+
+input, select, textarea {
+    width: 100%;
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    background: #27ae60;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+button:hover { background: #219150; }
+
+/* TABELA */
+.tabela {
+    flex: 1;
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.08);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    background: #ecf0f1;
+    padding: 10px;
+    text-align: left;
+    font-size: 13px;
+}
+
+td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+}
+
+/* BADGES */
+.badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    color: white;
+}
+
+.agendado { background: #f39c12; }
+.aberto { background: #3498db; }
+.andamento { background: #2ecc71; }
+
+/* TECNICOS */
+.badge-tecnico {
+    background: #2980b9;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 3px;
+    font-size: 11px;
+}
+
+/* AÇÕES */
+.acoes span {
+    cursor: pointer;
+    margin-right: 8px;
+    font-size: 16px;
+}
+
+.acoes span:hover {
+    opacity: 0.7;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topo">📅 Agendamentos de OS</div>
+
+<div class="container">
+
+<!-- FORM -->
+<div class="formulario">
+
+<input id="editId" type="hidden">
+
+<div class="campo"><input placeholder="Nome" id="nome"></div>
+<div class="campo"><input placeholder="Telefone" id="telefone"></div>
+<div class="campo"><input placeholder="Login" id="login"></div>
+<div class="campo"><input placeholder="ID Cliente" id="id_cliente"></div>
+
+<div class="campo"><select id="localidade"></select></div>
+<div class="campo"><select id="plano"></select></div>
+<div class="campo"><select id="servico"></select></div>
+
+<div class="campo"><select id="tecnico" multiple></select></div>
+
+<div class="campo"><input placeholder="Rua" id="rua"></div>
+<div class="campo"><input placeholder="Bairro" id="bairro"></div>
+<div class="campo"><input placeholder="Referência" id="referencia"></div>
+
+<div class="campo"><textarea placeholder="Descrição" id="descricao"></textarea></div>
+
+<div class="campo">
+<input id="agendamento" type="datetime-local">
+</div>
+
+<button onclick="salvar()">💾 Salvar</button>
+
+</div>
+
+<!-- TABELA -->
+<div class="tabela">
+
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Cliente</th>
+<th>Endereço</th>
+<th>Localidade</th>
+<th>Técnicos</th>
+<th>Plano</th>
+<th>Serviço</th>
+<th>Data</th>
+<th>Status</th>
+<th>Ações</th>
+</tr>
+</thead>
+
+<tbody id="lista"></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+<script>
+// ============================
+// VARIÁVEIS GLOBAIS
+// ============================
+let tecnicosMap = {};
+
+// ============================
+// SALVAR / EDITAR
+// ============================
+async function salvar() {
+    const id = editId.value;
+
+    const dados = {
+        nome: nome.value,
+        telefone: telefone.value,
+        login: login.value,
+        id_cliente: id_cliente.value,
+        localidade: localidade.value,
+        plano: plano.value,
+        tipo_servico: servico.value,
+        tecnico: Array.from(tecnico.selectedOptions).map(o => o.value),
+        rua: rua.value,
+        bairro: bairro.value,
+        referencia: referencia.value,
+        descricao: descricao.value,
+        agendamento: agendamento.value
+    };
+
+    if (id) {
+        await fetchAuth(`/api/ordens_servico/${id}`, {
+            method: "PUT",
+            body: JSON.stringify(dados)
+        });
+    } else {
+        await fetchAuth(`/api/ordens_servico`, {
+            method: "POST",
+            body: JSON.stringify(dados)
+        });
+    }
+
+    limpar();
+    carregar();
+}
+
+// ============================
+// LISTAR
+// ============================
+async function carregar() {
+
+    const data = await fetchAuth("/api/ordens_servico");
+
+    const listaFiltrada = data.filter(o => o.status === "agendado");
+
+    let html = "";
+
+    listaFiltrada.forEach(o => {
+
+        // converter IDs dos técnicos em nomes
+        let tecnicosHTML = "-";
+        try {
+            const arr = JSON.parse(o.tecnico || "[]");
+            tecnicosHTML = arr.map(id => `<span class="badge-tecnico">${tecnicosMap[id] || id}</span>`).join("");
+        } catch {}
+
+        html += `
+<tr>
+<td>${o.id}</td>
+<td>${o.nome}</td>
+<td>${o.rua || "-"}<br><small>${o.bairro || ""} ${o.referencia || ""}</small></td>
+<td>${o.localidade_nome || "-"}</td>
+<td>${tecnicosHTML}</td>
+<td>${o.plano_nome || "-"}</td>
+<td>${o.tipo_servico_nome || "-"}</td>
+<td>${o.agendamento ? new Date(o.agendamento).toLocaleString("pt-BR") : "-"}</td>
+<td><span class="badge agendado">Agendado</span></td>
+<td class="acoes">
+<span onclick="lancar(${o.id})">🚀</span>
+<span onclick="editar(${o.id})">✏️</span>
+<span onclick="excluir(${o.id})">🗑️</span>
+</td>
+</tr>`;
+    });
+
+    lista.innerHTML = html || "<tr><td colspan='10'>Nenhum agendamento</td></tr>";
+}
+
+// ============================
+// AÇÕES
+// ============================
+async function lancar(id) {
+    if (!confirm("Iniciar agora?")) return;
+
+    await fetchAuth(`/api/ordens_servico/${id}/lancar_agora`, { method: "POST" });
+    carregar();
+}
+
+async function editar(id) {
+    const os = await fetchAuth(`/api/ordens_servico/${id}`);
+    editId.value = os.id;
+
+    nome.value = os.nome;
+    telefone.value = os.telefone;
+    login.value = os.login;
+    id_cliente.value = os.id_cliente;
+    rua.value = os.rua;
+    bairro.value = os.bairro;
+    referencia.value = os.referencia;
+    agendamento.value = os.agendamento?.slice(0,16);
+
+    // selecionar técnicos
+    const arrTec = JSON.parse(os.tecnico || "[]");
+    Array.from(tecnico.options).forEach(opt => {
+        opt.selected = arrTec.includes(opt.value);
+    });
+
+    alert("Modo edição ativado");
+}
+
+async function excluir(id) {
+    if (!confirm("Excluir OS?")) return;
+    await fetchAuth(`/api/ordens_servico/${id}`, { method: "DELETE" });
+    carregar();
+}
+
+// ============================
+// AUX
+// ============================
+function limpar() {
+    editId.value = "";
+    document.querySelectorAll("input, textarea").forEach(i => i.value = "");
+    Array.from(tecnico.options).forEach(o => o.selected = false);
+}
+
+// ============================
+// SELECTS
+// ============================
+async function carregarSelect(url, id) {
+    const data = await fetchAuth(url);
+    let html = "<option value=''>Selecione</option>";
+    data.forEach(i => html += `<option value="${i.id}">${i.nome}</option>`);
+    document.getElementById(id).innerHTML = html;
+}
+
+async function carregarTecnicos() {
+    const data = await fetchAuth("/api/tecnicos");
+    let html = "";
+    data.forEach(t => {
+        html += `<option value="${t.id}">${t.nome}</option>`;
+        tecnicosMap[t.id] = t.nome; // criar mapa ID -> nome
+    });
+    tecnico.innerHTML = html;
+}
+
+// ============================
+// INIT
+// ============================
+carregar();
+carregarSelect("/api/localidades", "localidade");
+carregarSelect("/api/planos", "plano");
+carregarSelect("/api/tipos_servico", "servico");
+carregarTecnicos();
+
+</script>
+
+</body>
+</html>

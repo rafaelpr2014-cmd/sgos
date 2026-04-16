@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Teste Envio de Usuário</title>
+<script src="/js/init.js"></script>
+<style>
+body { font-family: Arial; padding: 20px; background: #f4f6f9; }
+label { display:block; margin-top:10px; font-weight:bold; }
+input, select, button { padding:8px; margin-top:5px; width:250px; }
+button { background:#3498db; color:white; border:none; border-radius:5px; cursor:pointer; }
+button:hover { background:#2980b9; }
+#resposta { margin-top:20px; white-space: pre-wrap; background:#fff; padding:10px; border-radius:5px; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
+</style>
+</head>
+<body>
+
+<h2>Teste Envio de Usuário</h2>
+
+<label>Usuário:</label>
+<input type="text" id="usuario" value="rafael">
+
+<label>Cargo:</label>
+<select id="cargo">
+  <option value="Administrador">Administrador</option>
+  <option value="Atendente">Atendente</option>
+  <option value="Suporte">Suporte</option>
+  <option value="Tecnicos">Técnicos</option>
+</select>
+
+<label>Telefone:</label>
+<input type="text" id="telefone" value="999999999">
+
+<label>Email:</label>
+<input type="email" id="email" value="teste@teste.com">
+
+<button onclick="enviarUsuario()">Enviar</button>
+
+<div id="resposta">Resposta aparecerá aqui...</div>
+
+<script>
+async function enviarUsuario() {
+    const usuarioInput = document.getElementById("usuario").value.trim();
+    const cargo = document.getElementById("cargo").value;
+    const telefone = document.getElementById("telefone").value.trim();
+    const email = document.getElementById("email").value.trim();
+
+    const usuarioLogado = JSON.parse(localStorage.getItem("usuario") || "{}");
+    if(!usuarioLogado || !usuarioLogado.id) {
+        alert("Nenhum usuário logado! Faça login primeiro.");
+        return;
+    }
+
+    const body = {
+        usuario: usuarioInput,
+        cargo,
+        telefone,
+        email,
+        empresa_id: usuarioLogado.empresa_id
+    };
+
+    document.getElementById("resposta").innerText = "Enviando...";
+
+    try {
+        const res = await fetchAuth("/api/usuarios", {
+            method: "POST",
+            body: JSON.stringify(body)
+        });
+        document.getElementById("resposta").innerText = JSON.stringify(res, null, 2);
+    } catch(err) {
+        document.getElementById("resposta").innerText = "Erro: " + err.message;
+    }
+}
+</script>
+
+</body>
+</html>

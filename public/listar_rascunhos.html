@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Rascunhos - SDOS</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    background:#f4f6f9;
+    margin:0;
+}
+
+/* TOPO */
+.topo{
+    padding:15px 20px;
+    display:flex;
+    align-items:center;
+    gap:20px;
+}
+
+.logo{
+    width:150px;
+    cursor:pointer;
+}
+
+/* CONTAINER */
+.container{
+    padding:20px;
+}
+
+/* TABELA */
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    border-radius:10px;
+    overflow:hidden;
+    font-size:15px;
+}
+
+th, td{
+    padding:12px;
+    border-bottom:1px solid #ddd;
+    text-align:left;
+}
+
+th{
+    background:#2c3e50;
+    color:white;
+}
+
+tr:hover{
+    background:#f9f9f9;
+}
+
+/* BOTÕES */
+button{
+    padding:6px 10px;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+    font-size:12px;
+    margin-right:5px;
+}
+
+.btn-editar{ background:#3498db; color:white; }
+.btn-agendar{ background:#f39c12; color:white; }
+.btn-lancar{ background:#2ecc71; color:white; }
+.btn-excluir{ background:#e74c3c; color:white; }
+
+button:hover{
+    opacity:0.9;
+}
+
+/* BADGES */
+.badge{
+    padding:4px 8px;
+    border-radius:6px;
+    font-size:12px;
+    font-weight:bold;
+    color:white;
+}
+
+.prioridade-baixa{ background:#2ecc71; }
+.prioridade-media{ background:#f39c12; }
+.prioridade-alta{ background:#e74c3c; }
+
+</style>
+</head>
+
+<body>
+
+<div class="topo">
+<a href="/painel.html">
+<img src="https://iili.io/qVJm05F.png" class="logo">
+</a>
+<h2>📋 Lista de Rascunhos</h2>
+</div>
+
+<div class="container">
+
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Cliente</th>
+<th>Localidade</th>
+<th>Plano</th>
+<th>Serviço</th>
+<th>👨‍🔧 Técnicos</th>
+<th>⚡ Prioridade</th>
+<th>Telefone</th>
+<th>📅 Agendamento</th>
+<th>Ações</th>
+</tr>
+</thead>
+
+<tbody id="tabelaRascunhos">
+<tr><td colspan="10">Carregando...</td></tr>
+</tbody>
+</table>
+
+</div>
+
+<script>
+
+// =========================
+// CARREGAR RASCUNHOS
+// =========================
+function carregarRascunhos(){
+
+    fetch("/api/listar_rascunhos")
+    .then(res => res.json())
+    .then(data => {
+
+        let html = ""
+
+        if(!data || data.length === 0){
+            html = `<tr><td colspan="10">Nenhum rascunho encontrado</td></tr>`
+        }else{
+
+            data.forEach(r => {
+
+                // 📅 DATA
+                let agendamento = "-"
+                if(r.agendamento){
+                    const dataObj = new Date(r.agendamento)
+                    if(!isNaN(dataObj)){
+                        agendamento = dataObj.toLocaleString("pt-BR", {
+                            dateStyle: "short",
+                            timeStyle: "short"
+                        })
+                    }
+                }
+
+                // 👨‍🔧 TÉCNICOS (CORRIGIDO)
+                let tecnicos = "-"
+
+                if(r.tecnicos){
+
+                    if(Array.isArray(r.tecnicos)){
+                        tecnicos = r.tecnicos.join(", ")
+
+                    } else if(typeof r.tecnicos === "string"){
+
+                        try{
+                            let parsed = JSON.parse(r.tecnicos)
+                            tecnicos = Array.isArray(parsed) ? parsed.join(", ") : parsed
+                        }catch{
+                            tecnicos = r.tecnicos
+                        }
+
+                    } else {
+                        tecnicos = String(r.tecnicos)
+                    }
+                }
+
+                // ⚡ PRIORIDADE
+                let prioridadeClass = ""
+                let prioridadeTexto = r.prioridade || "-"
+
+                if(r.prioridade === "baixa") prioridadeClass = "prioridade-baixa"
+                if(r.prioridade === "media") prioridadeClass = "prioridade-media"
+                if(r.prioridade === "alta") prioridadeClass = "prioridade-alta"
+
+                html += `
+<tr>
+<td>${r.id}</td>
+<td>${r.nome}</td>
+<td>${r.localidade || "-"}</td>
+<td>${r.plano || "-"}</td>
+<td>${r.tipo_servico || "-"}</td>
+<td>${tecnicos}</td>
+<td>${prioridadeTexto !== "-" ? `<span class="badge ${prioridadeClass}">${prioridadeTexto}</span>` : "-"}</td>
+<td>${r.telefone || "-"}</td>
+<td>${agendamento}</td>
+<td>
+<button class="btn-editar" onclick="editar(${r.id})">✏️</button>
+<button class="btn-agendar" onclick="agendar(${r.id})">📅</button>
+<button class="btn-lancar" onclick="lancar(${r.id})">🚀</button>
+<button class="btn-excluir" onclick="excluir(${r.id})">🗑️</button>
+</td>
+</tr>
+                `
+            })
+        }
+
+        document.getElementById("tabelaRascunhos").innerHTML = html
+
+    })
+    .catch(err => {
+        console.error(err)
+        document.getElementById("tabelaRascunhos").innerHTML =
+        `<tr><td colspan="10">Erro ao carregar</td></tr>`
+    })
+}
+
+// =========================
+// AÇÕES
+// =========================
+
+function editar(id){
+    alert("Editar ID: " + id)
+}
+
+function agendar(id){
+    fetch("/api/agendar",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ id })
+    })
+    .then(() => {
+        alert("Agendado!")
+        carregarRascunhos()
+    })
+}
+
+function lancar(id){
+    fetch("/api/lancar",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ id })
+    })
+    .then(() => {
+        alert("Lançado!")
+        carregarRascunhos()
+    })
+}
+
+// ✅ EXCLUIR (NOVO)
+function excluir(id){
+
+    if(!confirm("Deseja realmente excluir este rascunho?")) return
+
+    fetch("/api/excluir_rascunho",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ id })
+    })
+    .then(() => {
+        alert("Rascunho excluído!")
+        carregarRascunhos()
+    })
+    .catch(() => {
+        alert("Erro ao excluir")
+    })
+}
+
+// =========================
+// INIT
+// =========================
+carregarRascunhos()
+
+</script>
+
+</body>
+</html>

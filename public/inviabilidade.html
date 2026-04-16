@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Inviabilidades</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #0f172a;
+    color: #fff;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    margin-bottom: 20px;
+}
+
+.filtros {
+    margin-bottom: 20px;
+}
+
+input {
+    padding: 8px;
+    margin-right: 10px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #fff;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 10px;
+    border-bottom: 1px solid #334155;
+    text-align: left;
+}
+
+th {
+    background: #1e293b;
+}
+
+tr:hover {
+    background: #1e293b;
+}
+
+.btn {
+    padding: 5px 10px;
+    background: #22c55e;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+}
+
+.btn-danger {
+    background: #ef4444;
+}
+</style>
+</head>
+
+<body>
+
+<h1>❌ Painel de Inviabilidades</h1>
+
+<div class="filtros">
+    <input type="text" id="filtroCliente" placeholder="Cliente">
+    <input type="text" id="filtroCidade" placeholder="Cidade">
+    <input type="text" id="filtroTecnico" placeholder="Técnico">
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Cliente</th>
+            <th>Cidade</th>
+            <th>Tipo</th>
+            <th>Motivo</th>
+            <th>Observação</th>
+            <th>Técnico</th>
+            <th>Cadastrado por</th>
+            <th>Data</th>
+            <th>Anexo</th>
+        </tr>
+    </thead>
+    <tbody id="tabela"></tbody>
+</table>
+
+<script>
+// Mapeamento das cidades (ID -> Nome)
+// ⚠️ Atualize conforme suas localidades reais do banco
+const cidadesMap = {
+    1: "Itamari",
+    2: "Ilhéus",
+    3: "Salvador"
+};
+
+let dados = [];
+
+async function carregar() {
+    const res = await fetch("/api/inviabilidades");
+    dados = await res.json();
+    render();
+}
+
+function render() {
+    const cliente = document.getElementById("filtroCliente").value.toLowerCase();
+    const cidade = document.getElementById("filtroCidade").value.toLowerCase();
+    const tecnico = document.getElementById("filtroTecnico").value.toLowerCase();
+
+    const tabela = document.getElementById("tabela");
+    tabela.innerHTML = "";
+
+    dados
+    .filter(item =>
+        (!cliente || (item.cliente || "").toLowerCase().includes(cliente)) &&
+        (!cidade || (cidadesMap[item.localidade] || "").toLowerCase().includes(cidade)) &&
+        (!tecnico || (item.tecnico || "").toLowerCase().includes(tecnico))
+    )
+    .forEach(item => {
+    tabela.innerHTML += `
+        <tr>
+            <td>${item.id}</td>
+            <td>${item.nome || "-"}</td>
+            <td>${item.localidade || "-"}</td>
+            <td>${item.tipo_servico.nome || "-"}</td>
+            <td>${item.motivo || "-"}</td>
+            <td>${item.observacao || "-"}</td>
+            <td>${item.tecnico || "-"}</td>
+            <td>${item.finalizado_por || "-"}</td>
+            <td>${item.criado_em ? new Date(item.criado_em).toLocaleString() : "-"}</td>
+            <td>
+                ${item.anexo 
+                    ? `<a class="btn" href="${item.anexo}" target="_blank">Ver</a>` 
+                    : "-"
+                }
+            </td>
+        </tr>
+    `;
+});
+}
+
+// filtros em tempo real
+document.querySelectorAll("input").forEach(input => {
+    input.addEventListener("input", render);
+});
+
+carregar();
+</script>
+
+</body>
+</html>

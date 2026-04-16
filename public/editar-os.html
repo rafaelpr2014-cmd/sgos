@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Editar OS - SDOS</title>
+
+<script src="/js/auth.js"></script>
+
+<style>
+body {
+    font-family: Arial;
+    background:#f4f6f9;
+    padding:30px;
+}
+.container {
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    max-width:600px;
+    margin:auto;
+    box-shadow:0 2px 5px rgba(0,0,0,0.1);
+}
+h2 { margin-bottom:20px; }
+
+label { font-weight:bold; }
+input, select {
+    width:100%;
+    padding:8px;
+    margin-bottom:10px;
+    border-radius:6px;
+    border:1px solid #ccc;
+}
+
+button {
+    background:#3498db;
+    color:white;
+    border:none;
+    padding:12px;
+    width:100%;
+    border-radius:6px;
+    cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h2>Editar Atendimento</h2>
+
+<label>Cliente</label>
+<input type="text" id="nome">
+
+<label>Telefone</label>
+<input type="text" id="telefone">
+
+<label>Endereço</label>
+<input type="text" id="rua">
+
+<label>Bairro</label>
+<input type="text" id="bairro">
+
+<label>Referência</label>
+<input type="text" id="referencia">
+
+<label>Status</label>
+<select id="status">
+    <option value="aberto">Aberto</option>
+    <option value="em_andamento">Em andamento</option>
+    <option value="cliente_ausente">Cliente ausente</option>
+    <option value="concluido">Concluído</option>
+</select>
+
+<button onclick="salvar()">💾 Salvar Alterações</button>
+</div>
+
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+const id = urlParams.get("id");
+
+// 🔹 Carregar dados
+async function carregar() {
+    const res = await fetch(`/api/ordens_servico/${id}`);
+    const os = await res.json();
+
+    document.getElementById("nome").value = os.nome || "";
+    document.getElementById("telefone").value = os.telefone || "";
+    document.getElementById("rua").value = os.rua || "";
+    document.getElementById("bairro").value = os.bairro || "";
+    document.getElementById("referencia").value = os.referencia || "";
+    document.getElementById("status").value = os.status || "aberto";
+}
+
+// 🔹 Salvar
+async function salvar() {
+    const dados = {
+        nome: nome.value,
+        telefone: telefone.value,
+        rua: rua.value,
+        bairro: bairro.value,
+        referencia: referencia.value,
+        status: status.value
+    };
+
+    const res = await fetch(`/api/ordens_servico/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados)
+    });
+
+    if (res.ok) {
+        alert("Salvo com sucesso!");
+        window.location.href = "painel.html";
+    } else {
+        alert("Erro ao salvar");
+    }
+}
+
+carregar();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Usuários - SDOS</title>
+
+<script src="/js/init.js"></script>
+
+<style>
+body{ font-family: Arial; background:#f4f6f9; margin:0; }
+.container{ padding:20px; }
+.top-bar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; }
+.card{ background:white; padding:20px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1); margin-bottom:20px; }
+input, select{ padding:10px; margin:5px; border-radius:6px; border:1px solid #ccc; width:180px; }
+select[multiple]{ height:100px; }
+button{ padding:8px 12px; border:none; border-radius:6px; background:#3498db; color:white; cursor:pointer; }
+button:hover{ background:#2980b9; }
+.btn-warning{ background:#f39c12; }
+.btn-danger{ background:#e74c3c; }
+.table{ width:100%; border-collapse: collapse; }
+th, td{ padding:10px; border-bottom:1px solid #ddd; }
+th{ background:#2c3e50; color:white; }
+.status-ativo{ color:green; font-weight:bold; }
+.status-inativo{ color:red; font-weight:bold; }
+.label{ font-weight:bold; display:block; margin-top:10px; }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="top-bar">
+<h2>Gestão de Usuários</h2>
+<div id="usuarioLogado"></div>
+</div>
+
+<div class="card">
+<h3>Cadastrar / Editar Usuário</h3>
+
+<input type="hidden" id="idUsuario">
+<input type="text" id="usuario" placeholder="Usuário">
+<input type="password" id="senha" placeholder="Senha">
+<input type="text" id="telefone" placeholder="Telefone">
+<input type="email" id="email" placeholder="Email">
+
+<select id="cargo">
+<option value="Administrador">Administrador</option>
+<option value="Atendente">Atendente</option>
+<option value="Suporte">Suporte</option>
+<option value="Tecnicos">Técnicos</option>
+</select>
+
+<div id="divLocalidades" style="display:none;">
+    <span class="label">Localidades:</span>
+    <select id="localidades" multiple style="width:380px;"></select>
+</div>
+
+<div id="divTecnicos" style="display:none;">
+    <span class="label">Técnicos:</span>
+    <select id="tecnicos" multiple style="width:380px;"></select>
+</div>
+
+<br>
+
+<button id="btnSalvar" onclick="salvarUsuario()" disabled>Salvar</button>
+<button class="btn-warning" onclick="limparFormulario()">Limpar</button>
+
+</div>
+
+<div class="card">
+<h3>Lista de Usuários</h3>
+
+<input type="text" id="busca" placeholder="Buscar..." onkeyup="filtrarUsuarios()">
+
+<table class="table">
+<thead>
+<tr>
+<th>ID</th>
+<th>Usuário</th>
+<th>Cargo</th>
+<th>Telefone</th>
+<th>Email</th>
+<th>Status</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody id="tabelaUsuarios"></tbody>
+</table>
+
+</div>
+
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+let usuariosCache = [];
+let usuarioLogado = null;
+const btnSalvar = document.getElementById("btnSalvar");
+
+// =====================
+// BUSCA DADOS DO USUÁRIO LOGADO
+fetchAuth("/api/me")
+.then(user => {
+    document.getElementById("usuarioLogado").innerText = `👤 ${user.usuario} (${user.cargo})`;
+    usuarioLogado = user;
+
+    btnSalvar.disabled = false;
+    carregarOpcoesExtras();
+    carregarUsuarios();
+})
+.catch(err => {
+    console.error("Erro ao obter usuário logado:", err);
+    alert("Não foi possível obter dados do usuário logado.");
+});
+
+// =====================
+// MOSTRA SELECTS EXTRAS
+document.getElementById("cargo").addEventListener("change", function(){
+    const val = this.value.toLowerCase();
+
+    if(val === "atendente"){
+        document.getElementById("divLocalidades").style.display = "block";
+        document.getElementById("divTecnicos").style.display = "block";
+    } else if(val === "tecnicos"){
+        document.getElementById("divLocalidades").style.display = "none";
+        document.getElementById("divTecnicos").style.display = "block";
+    } else {
+        document.getElementById("divLocalidades").style.display = "none";
+        document.getElementById("divTecnicos").style.display = "none";
+    }
+
+    Array.from(document.getElementById("localidades").options).forEach(o => o.selected = false);
+    Array.from(document.getElementById("tecnicos").options).forEach(o => o.selected = false);
+});
+
+// =====================
+// CARREGA LOCALIDADES E TÉCNICOS
+function carregarOpcoesExtras(){
+    fetchAuth("/api/localidades")
+    .then(data => {
+        const select = document.getElementById("localidades");
+        select.innerHTML = "";
+        data.forEach(loc => {
+            const opt = document.createElement("option");
+            opt.value = loc.id;
+            opt.text = loc.nome;
+            select.appendChild(opt);
+        });
+    });
+
+    fetchAuth("/api/tecnicos")
+    .then(data => {
+        const select = document.getElementById("tecnicos");
+        select.innerHTML = "";
+        data.forEach(t => {
+            const opt = document.createElement("option");
+            opt.value = t.id;
+            opt.text = t.nome;
+            select.appendChild(opt);
+        });
+    });
+}
+
+// =====================
+// CARREGA USUÁRIOS
+function carregarUsuarios(){
+    fetchAuth("/api/usuarios")
+    .then(data => {
+        usuariosCache = data;
+        renderUsuarios(data);
+    })
+    .catch(err => console.error("Erro carregar usuários:", err));
+}
+
+// =====================
+// RENDERIZA USUÁRIOS
+function renderUsuarios(data){
+    const tabela = document.getElementById("tabelaUsuarios");
+    tabela.innerHTML = "";
+    if(!data || data.length === 0){
+        tabela.innerHTML = `<tr><td colspan="7">Nenhum usuário encontrado</td></tr>`;
+        return;
+    }
+
+    const cargoLogado = usuarioLogado?.cargo?.toLowerCase();
+
+    data.forEach(u => {
+        const status = u.ativo ? "Ativo" : "Inativo";
+        const classe = u.ativo ? "status-ativo" : "status-inativo";
+
+        let acoes = "";
+        if(cargoLogado === "administrador") {
+            acoes = `
+                <button onclick='editarUsuario(${JSON.stringify(u)})'>✏️</button>
+                <button class="btn-warning" onclick="resetarSenha(${u.id})">🔑</button>
+                <button onclick="toggleUsuario(${u.id})">🔄</button>
+                <button class="btn-danger" onclick="excluirUsuario(${u.id})">❌</button>`;
+        }
+
+        tabela.innerHTML += `
+        <tr>
+            <td>${u.id}</td>
+            <td>${u.usuario}</td>
+            <td>${u.cargo}</td>
+            <td>${u.telefone || "-"}</td>
+            <td>${u.email || "-"}</td>
+            <td class="${classe}">${status}</td>
+            <td>${acoes}</td>
+        </tr>`;
+    });
+}
+
+// =====================
+// FILTRO
+window.filtrarUsuarios = function(){
+    const termo = document.getElementById("busca").value.toLowerCase();
+    const filtrado = usuariosCache.filter(u => 
+        u.usuario.toLowerCase().includes(termo) ||
+        (u.email || "").toLowerCase().includes(termo)
+    );
+    renderUsuarios(filtrado);
+}
+
+// =====================
+// SALVAR USUÁRIO
+window.salvarUsuario = function() {
+    const id = document.getElementById("idUsuario").value;
+    const usuario = document.getElementById("usuario").value.trim();
+    const senha = document.getElementById("senha").value;
+    const cargo = document.getElementById("cargo").value;
+    const telefone = document.getElementById("telefone").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const localidades = Array.from(document.getElementById("localidades").selectedOptions).map(o => o.value);
+    const tecnicos = Array.from(document.getElementById("tecnicos").selectedOptions).map(o => o.value);
+
+    if (!usuario) return alert("O campo usuário é obrigatório.");
+    if (!id && !senha) return alert("A senha é obrigatória ao criar um novo usuário.");
+
+    const url = id ? "/api/usuarios/" + id : "/api/usuarios";
+    const metodo = id ? "PUT" : "POST";
+
+    const body = { 
+        usuario, 
+        cargo, 
+        telefone, 
+        email, 
+        localidades, 
+        tecnicos
+    };
+    if (senha) body.senha = senha;
+
+    fetchAuth(url, { method: metodo, body: JSON.stringify(body) })
+    .then(() => {
+        alert("Usuário salvo com sucesso!");
+        limparFormulario();
+        carregarUsuarios();
+    })
+    .catch(err => {
+        console.error("Erro ao salvar usuário:", err);
+        alert("Erro ao salvar usuário: " + (err.message || "Verifique o console"));
+    });
+};
+
+// =====================
+// OUTRAS FUNÇÕES
+window.editarUsuario = function(u){
+    document.getElementById("idUsuario").value = u.id;
+    document.getElementById("usuario").value = u.usuario;
+    document.getElementById("telefone").value = u.telefone || "";
+    document.getElementById("email").value = u.email || "";
+    document.getElementById("cargo").value = u.cargo;
+
+    const val = u.cargo.toLowerCase();
+    if(val === "atendente"){
+        document.getElementById("divLocalidades").style.display = "block";
+        document.getElementById("divTecnicos").style.display = "block";
+    } else if(val === "tecnicos"){
+        document.getElementById("divLocalidades").style.display = "none";
+        document.getElementById("divTecnicos").style.display = "block";
+    } else {
+        document.getElementById("divLocalidades").style.display = "none";
+        document.getElementById("divTecnicos").style.display = "none";
+    }
+
+    // seleciona localidades e técnicos vinculados
+    if(u.localidades){
+        const selectLoc = document.getElementById("localidades");
+        Array.from(selectLoc.options).forEach(opt => {
+            opt.selected = u.localidades.includes(opt.value);
+        });
+    }
+
+    if(u.tecnicos){
+        const selectTec = document.getElementById("tecnicos");
+        Array.from(selectTec.options).forEach(opt => {
+            opt.selected = u.tecnicos.includes(opt.value);
+        });
+    }
+}
+
+window.resetarSenha = function(id){
+    const nova = prompt("Nova senha:");
+    if(!nova) return;
+    fetchAuth("/api/usuarios/resetar-senha/"+id,{
+        method:"POST",
+        body: JSON.stringify({senha:nova})
+    }).then(()=> alert("Senha alterada"));
+}
+
+window.toggleUsuario = function(id){
+    fetchAuth("/api/usuarios/toggle/"+id,{ method:"POST" }).then(()=> carregarUsuarios());
+}
+
+window.excluirUsuario = function(id){
+    if(!confirm("Deseja realmente excluir este usuário?")) return;
+    fetchAuth("/api/usuarios/"+id, { method:"DELETE" })
+        .then(() => carregarUsuarios())
+        .catch(err => console.error("Erro ao excluir:", err));
+}
+
+window.limparFormulario = function(){
+    document.getElementById("idUsuario").value = "";
+    document.getElementById("usuario").value = "";
+    document.getElementById("senha").value = "";
+    document.getElementById("telefone").value = "";
+    document.getElementById("email").value = "";
+    document.getElementById("cargo").value = "Atendente";
+    document.getElementById("divLocalidades").style.display = "none";
+    document.getElementById("divTecnicos").style.display = "none";
+
+    const locSelect = document.getElementById("localidades");
+    const tecSelect = document.getElementById("tecnicos");
+    Array.from(locSelect.options).forEach(opt => opt.selected = false);
+    Array.from(tecSelect.options).forEach(opt => opt.selected = false);
+}
+
+});
+</script>
+
+</body>
+</html>

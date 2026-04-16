@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Logs de Acesso - SDOS</title>
+<style>
+body { font-family: Arial; padding: 20px; background: #f4f4f4; }
+h1 { color: #333; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+th { background: #eee; }
+.down { color: green; font-weight: bold; }
+.logout { color: red; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>Logs de Acesso</h1>
+<table>
+<thead>
+<tr>
+  <th>ID</th>
+  <th>Usuário</th>
+  <th>IP de Origem</th>
+  <th>Login</th>
+  <th>Logout</th>
+</tr>
+</thead>
+<tbody id="logBody">
+<tr><td colspan="5">Carregando...</td></tr>
+</tbody>
+
+<script>
+async function carregarLogs() {
+  try {
+    const res = await fetch("/api/logs");
+    const logs = await res.json();
+    const tbody = document.getElementById("logBody");
+    tbody.innerHTML = "";
+
+    if (logs.length === 0) {
+      tbody.innerHTML = "<tr><td colspan='5'>Nenhum log encontrado</td></tr>";
+      return;
+    }
+
+    logs.forEach(log => {
+      const tr = document.createElement("tr");
+      const ip = log.ip_origem === "::1" ? "127.0.0.1" : log.ip_origem;
+      let logoutText = "<span class='down'>Ativo</span>";
+      if (log.logout) {
+        // Se logout automático (mais de 20min sem ping)
+        const diffSegundos = (new Date(log.logout) - new Date(log.login)) / 1000;
+        const isAuto = diffSegundos > 1200; // 20 min
+        logoutText = `<span class='logout'>${new Date(log.logout).toLocaleString()}${isAuto ? " (auto)" : ""}</span>`;
+      }
+      tr.innerHTML = `
+        <td>${log.id}</td>
+        <td>${log.usuario}</td>
+        <td>${ip}</td>
+        <td>${new Date(log.login).toLocaleString()}</td>
+        <td>${logoutText}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+  } catch (err) {
+    console.error("Erro ao carregar logs:", err);
+  }
+}
+
+// Atualiza a cada 5 segundos
+carregarLogs();
+setInterval(carregarLogs, 5000);
+</script>
+</body>
+</html>

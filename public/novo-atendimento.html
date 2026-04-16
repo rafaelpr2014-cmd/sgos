@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Novo Atendimento - SGOS</title>
+
+<style>
+body{
+    font-family: Arial;
+    margin:30px;
+}
+label{
+    font-weight:bold;
+}
+input,select{
+    margin-bottom:10px;
+    padding:6px;
+    width:260px;
+}
+button{
+    padding:10px 20px;
+    background:#4CAF50;
+    border:none;
+    color:white;
+    cursor:pointer;
+    border-radius:5px;
+}
+button:hover{
+    background:#45a049;
+}
+.campo{
+    margin-bottom:15px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🚀 Novo Atendimento</h2>
+
+<div class="campo"><label>Nome</label><br><input id="nome" type="text"></div>
+<div class="campo"><label>Telefone</label><br><input id="telefone" type="text"></div>
+<div class="campo"><label>Localidade</label><br><select id="localidade"></select></div>
+<div class="campo"><label>Rua</label><br><input id="rua" type="text"></div>
+<div class="campo"><label>Bairro</label><br><input id="bairro" type="text"></div>
+<div class="campo"><label>Referência</label><br><input id="referencia" type="text"></div>
+<div class="campo"><label>Plano</label><br><select id="plano"></select></div>
+<div class="campo"><label>Tipo de Serviço</label><br><select id="tipo_servico"></select></div>
+<div class="campo"><label>ID Cliente</label><br><input id="id_cliente" type="text"></div>
+<div class="campo"><label>Login</label><br><input id="login" type="text"></div>
+<div class="campo"><label>Técnicos</label><br><select id="tecnico" multiple></select></div>
+<div class="campo"><label>Agendamento</label><br><input id="agendamento" type="datetime-local"></div>
+
+<button id="btnSalvar">Salvar Atendimento</button>
+
+<script src="/js/auth.js"></script>
+
+<script>
+// ===============================
+const urlParams = new URLSearchParams(window.location.search);
+const osId = urlParams.get("id");
+
+// ===============================
+async function apiFetch(url, options = {}) {
+    const usuario = JSON.parse(localStorage.getItem("usuario"));
+
+    if (!usuario || !usuario.id) {
+        alert("Sessão expirada.");
+        window.location.href = "/login.html";
+        return;
+    }
+
+    const res = await fetch(url, {
+        ...options,
+        headers: {
+            "Content-Type": "application/json",
+            "x-usuario-id": usuario.id
+        }
+    });
+
+    if (!res.ok) {
+        const text = await res.text();
+        console.error("Erro API:", text);
+        throw new Error(text);
+    }
+
+    return res.json();
+}
+
+// ===============================
+async function carregarSelects() {
+
+    const carregar = async (url, elementId) => {
+        try {
+            const data = await apiFetch(url);
+            const sel = document.getElementById(elementId);
+
+            sel.innerHTML = "<option value=''>Selecione</option>";
+
+            data.forEach(item => {
+                sel.innerHTML += `<option value="${item.id}">${item.nome}</option>`;
+            });
+
+        } catch (e) {
+            console.error(`Erro ${elementId}:`, e);
+        }
+    };
+
+    await carregar("/api/ordens_servico/localidades", "localidade");
+    await carregar("/api/planos", "plano");
+    await carregar("/api/tipos_servico", "tipo_servico");
+
+    // Técnicos (multi select)
+    try {
+        const tecnicos = await apiFetch("/api/ordens_servico/tecnicos");
+        const sel = document.getElementById("tecnico");
+
+        sel.innerHTML = "";
+        tecnicos.forEach(t => {
+            sel.innerHTML += `<option value="${t.id}">${t.nome}</option>`;
+        });
+
+    } catch (e) {
+        console.error("Erro técnicos:", e);
+    }
+}
+
+// ===============================
+function formatarDataLocal(dataISO) {
+    if (!dataISO) return "";
+    const d = new Date(dataISO);
+    return d.toISOString().slice(0,16);
+}
+
+// ===============================
+async function carregarAtendimento() {
+    if (!osId) return;
+
+    try {
+        const lista = await apiFetch("/api/ordens_servico");
+        const os = lista.find(o => o.id == osId);
+
+        if (!os) return alert("OS não encontrada");
+
+        document.getElementById("nome").value = os.nome || "";
+        document.getElementById("telefone").value = os.telefone || "";
+        document.getElementById("login").value = os.login || "";
+        document.getElementById("id_cliente").value = os.id_cliente || "";
+        document.getElementById("rua").value = os.rua || "";
+        document.getElementById("bairro").value = os.bairro || "";
+        document.getElementById("referencia").value = os.referencia || "";
+        document.getElementById("agendamento").value = formatarDataLocal(os.agendamento);
+        document.getElementById("localidade").value = os.localidade || "";
+        document.getElementById("plano").value = os.plano || "";
+        document.getElementById("tipo_servico").value = os.tipo_servico || "";
+
+        let tecnicosOS = [];
+        try {
+            tecnicosOS = JSON.parse(os.tecnico || "[]");
+        } catch {
+            tecnicosOS = [os.tecnico];
+        }
+
+        setTimeout(() => {
+            Array.from(document.getElementById("tecnico").options).forEach(opt => {
+                opt.selected = tecnicosOS.includes(Number(opt.value));
+            });
+        }, 200);
+
+        document.getElementById("btnSalvar").innerText = "Salvar Alterações";
+
+    } catch (err) {
+        console.error("Erro carregar OS:", err);
+    }
+}
+
+// ===============================
+async function salvarAtendimento() {
+
+    const dados = {
+        nome: nome.value.trim(),
+        telefone: telefone.value.trim(),
+        login: login.value.trim(),
+        id_cliente: id_cliente.value.trim(),
+        localidade: Number(localidade.value),
+        plano: Number(plano.value),
+        tipo_servico: Number(tipo_servico.value),
+        tecnico: Array.from(tecnico.selectedOptions).map(o => Number(o.value)),
+        rua: rua.value.trim(),
+        bairro: bairro.value.trim(),
+        referencia: referencia.value.trim(),
+        agendamento: agendamento.value || null
+    };
+
+    if (!dados.nome || !dados.telefone || !dados.localidade || !dados.tipo_servico) {
+        alert("Preencha os campos obrigatórios!");
+        return;
+    }
+
+    try {
+        let url = "/api/ordens_servico";
+        let method = "POST";
+
+        if (osId) {
+            url = `/api/ordens_servico/${osId}`;
+            method = "PUT";
+        }
+
+        await apiFetch(url, {
+            method,
+            body: JSON.stringify(dados)
+        });
+
+        alert(osId ? "✅ OS atualizada!" : "✅ Atendimento criado!");
+        window.location.href = "/painel.html";
+
+    } catch (err) {
+        console.error(err);
+        alert("Erro ao salvar:\n" + err.message);
+    }
+}
+
+// ===============================
+window.addEventListener("DOMContentLoaded", async () => {
+    await carregarSelects();
+    await carregarAtendimento();
+    btnSalvar.addEventListener("click", salvarAtendimento);
+});
+</script>
+
+</body>
+</html>

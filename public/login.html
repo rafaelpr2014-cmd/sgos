@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Login - SDOS</title>
+
+<style>
+body {
+ font-family: Arial, sans-serif;
+ background: #2c3e50;
+ display: flex;
+ justify-content: center;
+ align-items: center;
+ height: 100vh;
+ margin: 0;
+}
+.box {
+ background: white;
+ padding: 30px;
+ border-radius: 12px;
+ width: 320px;
+ text-align: center;
+ box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+}
+.logo {
+ width: 220px;
+ margin-bottom: 20px;
+}
+input {
+ width: 100%;
+ padding: 10px;
+ margin: 10px 0;
+ border-radius: 6px;
+ border: 1px solid #ccc;
+ box-sizing: border-box;
+ font-size: 14px;
+}
+button {
+ width: 100%;
+ padding: 10px;
+ background: #3498db;
+ color: white;
+ border: none;
+ border-radius: 6px;
+ cursor: pointer;
+ font-size: 16px;
+ margin-top: 10px;
+}
+button:hover { background: #2980b9; }
+#erro { color: red; margin-top: 10px; font-size: 14px; }
+</style>
+</head>
+
+<body>
+<div class="box">
+  <img src="https://iili.io/Bu63bP1.png" class="logo">
+
+  <input type="text" id="usuario" placeholder="Usuário">
+  <input type="password" id="senha" placeholder="Senha">
+
+  <button onclick="login()">Entrar</button>
+  <p id="erro"></p>
+</div>
+
+<script>
+console.log("🔥 LOGIN PAGE CARREGADA");
+
+// 🔹 Evita loop: só redireciona se já tiver usuário válido
+const usuarioSalvo = JSON.parse(localStorage.getItem("usuario") || "{}");
+if (usuarioSalvo?.id && usuarioSalvo?.log_id) {
+    console.log("🔁 Usuário já logado, redirecionando...");
+    window.location.href = "painel.html";
+}
+
+// 🔹 LOGIN
+async function login() {
+  const usuarioInput = document.getElementById("usuario").value.trim();
+  const senha = document.getElementById("senha").value.trim();
+  const erroEl = document.getElementById("erro");
+
+  erroEl.innerText = "";
+
+  console.log("📤 Tentando login:", usuarioInput);
+
+  if (!usuarioInput || !senha) {
+    erroEl.innerText = "Preencha usuário e senha";
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({usuario: usuarioInput, senha})
+    });
+
+    console.log("📥 STATUS:", res.status);
+
+    const data = await res.json();
+    console.log("📥 RESPONSE:", data);
+
+    if (res.ok && data.ok && data.usuario && data.log_id) {
+
+      const userData = {
+        id: data.usuario.id,
+        nome: data.usuario.nome,
+        cargo: data.usuario.cargo,
+        empresa_id: data.usuario.empresa_id,
+        log_id: data.log_id
+      };
+
+      console.log("💾 Salvando:", userData);
+
+      localStorage.setItem("usuario", JSON.stringify(userData));
+
+      console.log("➡️ Indo pro painel...");
+      window.location.href = "painel.html";
+
+    } else {
+      console.error("❌ ERRO LOGIN:", data.erro);
+      erroEl.innerText = data.erro || "Erro ao logar";
+    }
+
+  } catch (err) {
+    console.error("💥 ERRO FETCH:", err);
+    erroEl.innerText = "Erro no servidor";
+  }
+}
+
+// 🔹 ENTER
+document.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") login();
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Viabilidade</title>
+
+<style>
+body { font-family: Arial; background: #0f172a; color: #fff; margin: 0; padding: 20px; }
+.card { background: #1e293b; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+input, textarea { width: 100%; padding: 10px; border-radius: 6px; border: none; margin-top: 10px; background: #020617; color: #fff; }
+button { margin-top: 10px; padding: 10px; border-radius: 6px; border: none; cursor: pointer; }
+.btn-salvar { background: #22c55e; color: #fff; }
+</style>
+</head>
+
+<body>
+
+<div class="card">
+<h2>Nova Viabilidade</h2>
+
+<input id="nome" placeholder="Nome">
+<input id="endereco" placeholder="Endereço">
+<input id="telefone" placeholder="Telefone">
+<input type="file" id="arquivo">
+
+<button class="btn-salvar" onclick="salvar()">Salvar</button>
+</div>
+
+<iframe src="listar_viabilidade.html" style="width:100%; height:600px; border:none;"></iframe>
+
+<script>
+let viabilidade_id = null;
+
+// Cabeçalhos de autenticação
+function getAuthHeaders() {
+    const usuario = JSON.parse(localStorage.getItem("usuario")) || {};
+    return {
+        "x-usuario-id": usuario.id,
+        "x-usuario-nome": usuario.usuario,
+        "x-usuario-cargo": usuario.cargo
+    };
+}
+
+// 🔹 Salvar + Upload
+async function salvar() {
+    const dados = {
+        nome: nome.value,
+        endereco: endereco.value,
+        telefone: telefone.value,
+    };
+
+    const arquivo = document.getElementById("arquivo").files[0];
+
+    try {
+        // 1️⃣ Salvar viabilidade
+        const res = await fetch("/api/viabilidade", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+            body: JSON.stringify(dados)
+        });
+
+        if (!res.ok) { const err = await res.json(); alert("Erro ao salvar: " + (err.erro || res.status)); return; }
+        const json = await res.json();
+        viabilidade_id = json.id;
+
+        // 2️⃣ Enviar arquivo (se houver)
+        if (arquivo) {
+            const formData = new FormData();
+            formData.append("arquivo", arquivo);
+            formData.append("viabilidade_id", viabilidade_id);
+
+            const upRes = await fetch("/api/upload_viabilidade", {
+                method: "POST",
+                headers: getAuthHeaders(),
+                body: formData
+            });
+
+            if (!upRes.ok) { const err = await upRes.json(); alert("Erro ao enviar anexo: " + (err.erro || upRes.status)); return; }
+        }
+
+        // 3️⃣ Limpar campos
+        nome.value = endereco.value = telefone.value = "";
+        document.getElementById("arquivo").value = "";
+
+        // 4️⃣ Recarregar iframe
+        document.querySelector("iframe").contentWindow.location.reload();
+
+        alert("Viabilidade salva com sucesso!");
+    } catch(e) {
+        alert("Erro na comunicação com o servidor!");
+        console.error(e);
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Cronograma</title>
+
+<script src="/js/auth.js"></script>
+<script src="/js/init.js"></script>
+
+<style>
+body {
+    font-family: Arial;
+    background: #0f172a;
+    color: #fff;
+    margin: 0;
+    padding: 20px;
+}
+
+.topo {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+button {
+    background: #22c55e;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #000;
+    font-weight: bold;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #111827;
+}
+
+th {
+    background: #1f2937;
+    padding: 12px;
+    text-align: left;
+}
+
+td {
+    padding: 10px;
+    border-top: 1px solid #1f2937;
+}
+
+input, select {
+    width: 100%;
+    background: #1e293b;
+    border: 1px solid #374151;
+    padding: 8px;
+    color: #fff;
+    border-radius: 6px;
+}
+
+select[multiple] {
+    height: 100px;
+}
+
+.salvar { background: #22c55e; }
+.excluir { background: #ef4444; color: #fff; }
+
+/* MODAL MELHORADO */
+.modal {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: #111827;
+    padding: 30px;
+    border-radius: 12px;
+    width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.modal-content h3 {
+    margin: 0;
+    text-align: center;
+}
+
+.modal-content label {
+    font-size: 13px;
+    color: #9ca3af;
+}
+
+.modal-content button {
+    margin-top: 10px;
+    padding: 12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topo">
+    <button onclick="abrirModal()">+ Novo Agendamento</button>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Equipe</th>
+<th>Serviço</th>
+<th>Cidade</th>
+<th>Período</th>
+<th>Agendado para</th>
+<th>Criado</th>
+<th>Adicionado or</th>
+<th>Ações</th>
+</tr>
+</thead>
+
+<tbody id="tabela"></tbody>
+</table>
+
+<!-- MODAL -->
+<div class="modal" id="modal">
+<div class="modal-content">
+
+<h3>Novo Agendamento</h3>
+
+<label>Data</label>
+<input type="date" id="data">
+
+<label>Equipe (máx 4)</label>
+<select multiple id="equipeModal"></select>
+
+<label>Tipo de Serviço</label>
+<input type="text" id="tipo">
+
+<label>Cidade</label>
+<select id="cidadeModal"></select>
+
+<label>Período</label>
+<select id="periodo">
+<option value="manha">Manhã</option>
+<option value="tarde">Tarde</option>
+<option value="noite">Noite</option>
+</select>
+
+<button onclick="salvarNovo()">Salvar Agendamento</button>
+
+</div>
+</div>
+
+<script>
+let tecnicos = [];
+let localidades = [];
+
+// DATA COMPLETA
+function formatarDataCompleta(data) {
+
+    const d = new Date(data + "T00:00:00");
+
+    const dias = [
+        'DOMINGO','SEGUNDA-FEIRA','TERÇA-FEIRA',
+        'QUARTA-FEIRA','QUINTA-FEIRA','SEXTA-FEIRA','SÁBADO'
+    ];
+
+    const dia = String(d.getDate()).padStart(2,'0');
+    const mes = String(d.getMonth()+1).padStart(2,'0');
+    const ano = d.getFullYear();
+
+    return `${dias[d.getDay()]} ${dia}/${mes}/${ano}`;
+}
+
+// BASE
+async function carregarBase() {
+    tecnicos = await fetchAuth('/api/tecnicos');
+    localidades = await fetchAuth('/api/localidades');
+}
+
+// SELECTS
+function montarTecnicos(sel=[]) {
+    return tecnicos.map(t => {
+        const s = sel.includes(t.nome) ? 'selected' : '';
+        return `<option ${s}>${t.nome}</option>`;
+    }).join('');
+}
+
+function montarCidades(val='') {
+    return localidades.map(l => {
+        const s = Number(val) === Number(l.id) ? 'selected' : '';
+        return `<option value="${l.id}" ${s}>${l.nome}</option>`;
+    }).join('');
+}
+
+// TABELA
+async function carregar() {
+    await carregarBase();
+
+    const dados = await fetchAuth('/api/cronograma');
+    const tabela = document.getElementById('tabela');
+    tabela.innerHTML = '';
+
+    dados.forEach(item => {
+
+        const equipe = item.equipe ? JSON.parse(item.equipe) : [];
+
+        tabela.innerHTML += `
+        <tr>
+
+        <td>
+            <div id="view-e-${item.id}">${equipe.join(', ')}</div>
+            <div id="edit-e-${item.id}" style="display:none;">
+                <select multiple id="equipe-${item.id}">
+                    ${montarTecnicos(equipe)}
+                </select>
+            </div>
+        </td>
+
+        <td>
+            <div id="view-t-${item.id}">${item.tipo_servico}</div>
+            <input id="edit-t-${item.id}" value="${item.tipo_servico}" style="display:none;">
+        </td>
+
+
+        <td>
+            <div id="view-c-${item.id}">${item.cidade_nome || ''}</div>
+            <select id="edit-c-${item.id}" style="display:none;">
+                ${montarCidades(item.cidade_id)}
+            </select>
+        </td>
+
+        <td>
+            <div id="view-p-${item.id}">${item.periodo}</div>
+            <select id="edit-p-${item.id}" style="display:none;">
+                <option value="manha">Manhã</option>
+                <option value="tarde">Tarde</option>
+                <option value="noite">Noite</option>
+            </select>
+        </td>
+
+        <td>
+            <div id="view-d-${item.id}">${formatarDataCompleta(item.data)}</div>
+            <input type="date" id="edit-d-${item.id}" value="${item.data}" style="display:none;">
+        </td>
+
+        <td>${item.criado_em ? new Date(item.criado_em).toLocaleString() : ''}</td>
+        <td>${item.adicionado_por || ''}</td>
+
+        <td>
+            <button onclick="editar(${item.id})">Editar</button>
+            <button id="save-${item.id}" class="salvar" style="display:none;" onclick="salvar(${item.id})">Salvar</button>
+            <button class="excluir" onclick="excluir(${item.id})">Excluir</button>
+        </td>
+
+        </tr>
+        `;
+    });
+}
+
+// EDITAR
+function editar(id) {
+    ['e','t','p','c','d'].forEach(f => {
+        document.getElementById(`view-${f}-${id}`).style.display = 'none';
+        document.getElementById(`edit-${f}-${id}`).style.display = 'block';
+    });
+
+    document.getElementById(`save-${id}`).style.display = 'inline';
+}
+
+// SALVAR
+async function salvar(id) {
+
+    const equipe = Array.from(document.getElementById(`equipe-${id}`).selectedOptions).map(o => o.value);
+
+    if (equipe.length > 4) {
+        alert("Máximo 4 técnicos");
+        return;
+    }
+
+    const body = {
+        equipe,
+        tipo_servico: document.getElementById(`edit-t-${id}`).value,
+        periodo: document.getElementById(`edit-p-${id}`).value,
+        cidade_id: document.getElementById(`edit-c-${id}`).value,
+        data: document.getElementById(`edit-d-${id}`).value
+    };
+
+    await fetchAuth(`/api/cronograma/${id}`, {
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+    });
+
+    carregar();
+}
+
+// EXCLUIR
+async function excluir(id) {
+    if(!confirm('Excluir?')) return;
+
+    await fetchAuth(`/api/cronograma/${id}`, { method:'DELETE' });
+    carregar();
+}
+
+// MODAL
+async function abrirModal() {
+    await carregarBase();
+
+    document.getElementById('modal').style.display = 'flex';
+    document.getElementById('equipeModal').innerHTML = montarTecnicos();
+    document.getElementById('cidadeModal').innerHTML = montarCidades();
+}
+
+// NOVO
+async function salvarNovo() {
+
+    const equipe = Array.from(document.getElementById('equipeModal').selectedOptions).map(o => o.value);
+
+    if (equipe.length > 4) {
+        alert("Máximo 4 técnicos");
+        return;
+    }
+
+    const body = {
+        data: document.getElementById('data').value,
+        equipe,
+        tipo_servico: document.getElementById('tipo').value,
+        cidade_id: document.getElementById('cidadeModal').value,
+        periodo: document.getElementById('periodo').value
+    };
+
+    await fetchAuth('/api/cronograma', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+    });
+
+    document.getElementById('modal').style.display = 'none';
+    carregar();
+}
+
+carregar();
+</script>
+
+</body>
+</html>

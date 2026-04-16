@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SGOS - Técnico</string>
+    <string name="title_activity_main">SGOS - Técnico</string>
+    <string name="package_name">com.sgos.tecnico</string>
+    <string name="custom_url_scheme">com.sgos.tecnico</string>
+</resources>
