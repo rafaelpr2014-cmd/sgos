@@ -1,0 +1,1813 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>SGOS - Integrações ERP</title>
+
+<link rel="icon" type="image/png" href="/img/favicon.png">
+
+<script src="/js/auth.js" defer></script>
+<script src="/js/init.js" defer></script>
+
+<style>
+:root{
+    --azul:#2563eb;
+    --azul-hover:#1d4ed8;
+    --texto:#0f172a;
+    --muted:#64748b;
+    --borda:#e5e7eb;
+    --fundo:#f5f7fb;
+    --verde:#16a34a;
+    --laranja:#f59e0b;
+    --vermelho:#ef4444;
+}
+
+*{ box-sizing:border-box; }
+
+body{
+    margin:0;
+    font-family:Arial, Helvetica, sans-serif;
+    background:var(--fundo);
+    color:var(--texto);
+}
+
+/* ===============================
+   SIDEBAR
+================================ */
+.sidebar{
+    position:fixed;
+    left:0;
+    top:0;
+    width:230px;
+    height:100vh;
+    background:linear-gradient(180deg,#081a31,#061426);
+    color:white;
+    padding:12px 18px 18px;
+    display:flex;
+    flex-direction:column;
+    z-index:20;
+}
+
+.sidebar-logo{
+    display:flex;
+    justify-content:flex-start;
+    align-items:center;
+    padding-left:0px;
+    margin-top:0;
+    margin-bottom:14px;
+}
+
+.sidebar-logo img{
+    width:190px;
+    height:auto;
+    display:block;
+}
+
+.menu-titulo{
+    margin:14px 10px 6px;
+    font-size:12px;
+    color:#94a3b8;
+    text-transform:uppercase;
+    letter-spacing:.2px;
+}
+
+.sidebar a{
+    color:#dbeafe;
+    text-decoration:none;
+    padding:11px 13px;
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    font-size:14px;
+    margin-bottom:2px;
+    transition:.2s;
+}
+
+.sidebar a:hover,
+.sidebar a.ativo{
+    background:var(--azul);
+    color:white;
+}
+
+.menu-icon{
+    width:18px;
+    height:18px;
+    min-width:18px;
+    stroke:currentColor;
+    fill:none;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.sidebar-footer{
+    margin-top:auto;
+}
+
+.btn-recolher{
+    width:100%;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.1);
+    color:#e5efff;
+    padding:13px;
+    border-radius:10px;
+    cursor:pointer;
+    text-align:left;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:14px;
+}
+
+.sidebar.recolhida{
+    width:82px;
+    padding:16px 12px;
+    align-items:center;
+}
+
+.sidebar.recolhida .sidebar-logo{
+    justify-content:center;
+    padding-left:0;
+}
+
+.sidebar.recolhida .sidebar-logo img{
+    width:48px;
+}
+
+.sidebar.recolhida .menu-titulo{
+    display:none;
+}
+
+.sidebar.recolhida a{
+    justify-content:center;
+    padding:13px;
+    width:52px;
+}
+
+.sidebar.recolhida a span,
+.sidebar.recolhida .btn-recolher span{
+    display:none;
+}
+
+.sidebar.recolhida .btn-recolher{
+    justify-content:center;
+    width:52px;
+    padding:13px;
+}
+
+.sidebar.recolhida + .main{
+    margin-left:82px;
+}
+
+/* ===============================
+   MAIN / HEADER
+================================ */
+.main{
+    margin-left:230px;
+    min-height:100vh;
+    transition:.25s ease;
+}
+
+.header{
+    height:92px;
+    background:white;
+    border-bottom:1px solid var(--borda);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 34px;
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+
+.header-left{
+    display:flex;
+    align-items:center;
+    gap:22px;
+}
+
+.header-logo img{
+    height:60px;
+    max-width:190px;
+    object-fit:contain;
+}
+
+.divisor{
+    height:34px;
+    width:1px;
+    background:var(--borda);
+}
+
+.header-title{
+    font-weight:800;
+    font-size:18px;
+}
+
+.header-actions{
+    display:flex;
+    align-items:center;
+    gap:18px;
+}
+
+.busca-wrap{
+    position:relative;
+}
+
+.busca-icone{
+    position:absolute;
+    left:13px;
+    top:50%;
+    transform:translateY(-50%);
+    color:#334155;
+    width:18px;
+    height:18px;
+}
+
+.input-busca-menu{
+    width:280px;
+    padding:12px 14px 12px 40px;
+    border:1px solid var(--borda);
+    border-radius:12px;
+    outline:none;
+    font-size:14px;
+    background:#fff;
+}
+
+.usuario-dropdown{
+    position:relative;
+}
+
+.usuario-btn{
+    border:none;
+    background:transparent;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    cursor:pointer;
+    padding:0;
+}
+
+.avatar{
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    background:#e2e8f0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+}
+
+.avatar svg{
+    width:28px;
+    height:28px;
+    fill:#cbd5e1;
+}
+
+.usuario-info{
+    text-align:left;
+}
+
+.usuario-info strong{
+    font-size:13px;
+    display:block;
+    color:#0f172a;
+}
+
+.usuario-info small{
+    font-size:11px;
+    color:#64748b;
+}
+
+.seta{
+    width:18px;
+    height:18px;
+    color:#1e3a8a;
+    transition:.2s;
+}
+
+.usuario-dropdown.aberto .seta{
+    transform:rotate(180deg);
+}
+
+.usuario-menu{
+    display:none;
+    position:absolute;
+    right:0;
+    top:58px;
+    width:260px;
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(15,23,42,0.16);
+    padding:14px;
+    z-index:9999;
+}
+
+.usuario-menu.ativo{ display:block; }
+
+.usuario-menu-titulo{
+    font-size:12px;
+    font-weight:800;
+    color:#64748b;
+    margin-bottom:10px;
+    text-transform:uppercase;
+}
+
+#usuariosOnline{
+    font-size:13px;
+    color:#0f172a;
+    line-height:1.8;
+    max-height:180px;
+    overflow:auto;
+}
+
+.usuario-menu hr{
+    border:none;
+    border-top:1px solid var(--borda);
+    margin:12px 0;
+}
+
+.usuario-menu a{
+    display:block;
+    color:#ef4444;
+    text-decoration:none;
+    font-weight:800;
+    font-size:14px;
+}
+
+/* ===============================
+   CONTENT
+================================ */
+.content{
+    padding:28px 18px 38px;
+}
+
+.top-actions{
+    display:grid;
+    grid-template-columns:260px repeat(3,1fr);
+    gap:18px;
+    margin-bottom:20px;
+}
+
+.action-card{
+    height:118px;
+    border:none;
+    border-radius:14px;
+    background:linear-gradient(135deg,#2563eb,#1263ff);
+    color:white;
+    font-family:Arial, Helvetica, sans-serif;
+    font-weight:bold;
+    font-size:15px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:0 22px;
+    cursor:pointer;
+    box-shadow:0 10px 22px rgba(37,99,235,0.22);
+}
+
+.action-card span{
+    width:36px;
+    height:36px;
+    border-radius:10px;
+    background:white;
+    color:var(--azul);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.action-card svg{
+    width:21px;
+    height:21px;
+    stroke:currentColor;
+    fill:none;
+    stroke-width:2.1;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.card-indicador{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    padding:22px;
+    min-height:118px;
+    box-shadow:0 8px 22px rgba(15,23,42,0.05);
+    display:flex;
+    align-items:center;
+    gap:18px;
+}
+
+.icon-box{
+    width:58px;
+    height:58px;
+    border-radius:20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.icon-box svg{
+    width:31px;
+    height:31px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:2;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.icon-blue{ background:#dbeafe; color:#2563eb; }
+.icon-orange{ background:#ffedd5; color:#f59e0b; }
+.icon-green{ background:#dcfce7; color:#16a34a; }
+.icon-red{ background:#fee2e2; color:#ef4444; }
+
+.card-info small{
+    font-size:13px;
+    font-weight:800;
+    color:#0f172a;
+}
+
+.card-info strong{
+    display:block;
+    font-size:32px;
+    margin:6px 0;
+    color:#0f172a;
+    line-height:1;
+}
+
+.card-info span{
+    font-size:13px;
+    color:#64748b;
+}
+
+.layout-grid{
+    display:grid;
+    grid-template-columns:390px 1fr;
+    gap:18px;
+    align-items:start;
+}
+
+.card{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    padding:22px;
+    margin-bottom:18px;
+    box-shadow:0 8px 20px rgba(15,23,42,0.04);
+}
+
+.card-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    margin-bottom:18px;
+}
+
+.titulo-card{
+    font-size:18px;
+    font-weight:800;
+}
+
+.sub-card{
+    color:var(--muted);
+    font-size:13px;
+    margin-top:4px;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:14px;
+}
+
+.campo{
+    display:flex;
+    flex-direction:column;
+}
+
+.campo label,
+.label{
+    font-size:13px;
+    font-weight:800;
+    color:#334155;
+    margin-bottom:6px;
+}
+
+input,
+select,
+textarea{
+    padding:11px 12px;
+    border:1px solid var(--borda);
+    border-radius:10px;
+    outline:none;
+    font-size:14px;
+    width:100%;
+    background:#fff;
+    color:#0f172a;
+}
+
+textarea{
+    min-height:110px;
+    resize:vertical;
+}
+
+input[readonly],
+select:disabled{
+    background:#f8fafc;
+    color:#64748b;
+}
+
+.form-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:16px;
+}
+
+button{
+    border:none;
+    padding:10px 14px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+.btn-primary{
+    background:var(--azul);
+    color:white;
+}
+
+.btn-primary:hover{ background:var(--azul-hover); }
+
+.btn-warning{
+    background:#f59e0b;
+    color:white;
+}
+
+.btn-danger{
+    background:#ef4444;
+    color:white;
+}
+
+.btn-success{
+    background:#16a34a;
+    color:white;
+}
+
+.btn-light{
+    background:#e2e8f0;
+    color:#0f172a;
+}
+
+.btn-icon{
+    width:34px;
+    height:34px;
+    padding:0;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:9px;
+    margin-right:6px;
+}
+
+.table-wrap{
+    width:100%;
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:920px;
+}
+
+th{
+    background:#f8fafc;
+    color:#0f172a;
+    padding:14px 12px;
+    text-align:left;
+    font-size:12px;
+    border-bottom:1px solid var(--borda);
+    white-space:nowrap;
+}
+
+td{
+    padding:13px 12px;
+    border-bottom:1px solid var(--borda);
+    font-size:13px;
+    color:#1e293b;
+    white-space:nowrap;
+}
+
+td small{ color:var(--muted); }
+tr:hover{ background:#f8fbff; }
+
+.status-pill{
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:800;
+    display:inline-block;
+}
+
+.status-ativo{
+    background:#dcfce7;
+    color:#15803d;
+}
+
+.status-inativo{
+    background:#fee2e2;
+    color:#dc2626;
+}
+
+.status-alerta{
+    background:#ffedd5;
+    color:#c2410c;
+}
+
+.security-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+}
+
+.security-item{
+    background:#f8fafc;
+    border:1px solid var(--borda);
+    border-radius:12px;
+    padding:12px;
+}
+
+.security-item small{
+    display:block;
+    color:#64748b;
+    font-size:11px;
+    font-weight:800;
+    text-transform:uppercase;
+    margin-bottom:5px;
+}
+
+.security-item strong{
+    font-size:13px;
+    color:#0f172a;
+}
+
+.check-list{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+}
+
+.check-item{
+    padding:10px;
+    border-radius:10px;
+    font-size:13px;
+    font-weight:800;
+}
+
+.check-ok{
+    background:#dcfce7;
+    color:#166534;
+}
+
+.check-block{
+    background:#fee2e2;
+    color:#991b1b;
+}
+
+.resultado-json{
+    background:#111827;
+    color:#e5e7eb;
+    padding:15px;
+    border-radius:12px;
+    overflow:auto;
+    max-height:330px;
+    font-size:12px;
+    line-height:1.5;
+}
+
+.alert-box{
+    display:none;
+    margin-top:14px;
+    padding:12px 14px;
+    border-radius:12px;
+    font-size:13px;
+    font-weight:800;
+}
+
+.alert-ok{
+    display:block;
+    background:#dcfce7;
+    color:#166534;
+}
+
+.alert-erro{
+    display:block;
+    background:#fee2e2;
+    color:#991b1b;
+}
+
+.alert-info{
+    display:block;
+    background:#dbeafe;
+    color:#1d4ed8;
+}
+
+.footer{
+    display:flex;
+    justify-content:space-between;
+    padding:20px 34px;
+    color:#475569;
+    font-size:12px;
+    border-top:1px solid var(--borda);
+}
+
+@media(max-width:1300px){
+    .top-actions{
+        grid-template-columns:1fr 1fr;
+    }
+    .layout-grid{
+        grid-template-columns:1fr;
+    }
+}
+
+@media(max-width:900px){
+    .sidebar{ display:none; }
+    .main{ margin-left:0; }
+    .header{
+        flex-direction:column;
+        height:auto;
+        align-items:flex-start;
+        gap:15px;
+        padding:20px;
+    }
+    .header-actions{
+        width:100%;
+        justify-content:space-between;
+        flex-wrap:wrap;
+    }
+    .busca-wrap,
+    .input-busca-menu{ width:100%; }
+    .content{ padding:20px; }
+    .top-actions{ grid-template-columns:1fr; }
+    .security-grid,
+    .check-list{ grid-template-columns:1fr; }
+}
+</style>
+</head>
+
+<body>
+
+<aside class="sidebar">
+
+    <div class="sidebar-logo">
+        <img
+            id="logoSidebar"
+            src="https://iili.io/CujQzXa.png"
+            data-logo-aberta="https://iili.io/CujQzXa.png"
+            data-logo-fechada="https://iili.io/CuwvauR.png"
+            alt="SGOS"
+        >
+    </div>
+
+    <a href="painel.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg>
+        <span>Painel Inicial</span>
+    </a>
+
+    <div class="menu-titulo">Operação</div>
+
+    <a href="agendamentos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+        <span>Agendamentos</span>
+    </a>
+
+    <a href="relatorios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg>
+        <span>Relatórios</span>
+    </a>
+
+    <a href="escala.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 14h6"/></svg>
+        <span>Escala</span>
+    </a>
+
+    <a href="cronograma.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg>
+        <span>Cronograma</span>
+    </a>
+
+    <a href="viabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+        <span>Viabilidades</span>
+    </a>
+
+    <a href="inviabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+        <span>Inviabilidades</span>
+    </a>
+
+    <div class="menu-titulo">Cadastros</div>
+
+    <a href="planos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        <span>Planos</span>
+    </a>
+
+    <a href="localidades.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span>Localidades</span>
+    </a>
+
+    <a href="tecnicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Técnicos</span>
+    </a>
+
+    <a href="tipos_servicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.5 2.5-3-3z"/></svg>
+        <span>Tipos de Serviços</span>
+    </a>
+
+    <div class="menu-titulo">Configurações</div>
+
+    <a href="usuarios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Usuários</span>
+    </a>
+
+    <a href="integracoes.html" class="ativo">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 12h8"/><path d="M6 8h.01M18 8h.01"/><rect x="3" y="4" width="18" height="8" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></svg>
+        <span>Integrações ERP</span>
+    </a>
+
+    <a href="logs_acesso.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        <span>Logs do Sistema</span>
+    </a>
+
+    <a href="logs_acoes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <span>Log de Ações</span>
+    </a>
+
+    <a href="historico-os.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/><path d="M12 8v5l3 2"/></svg>
+        <span>Histórico de OS</span>
+    </a>
+
+    <div class="sidebar-footer">
+        <button class="btn-recolher" onclick="toggleSidebar()" type="button">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M2 12h20"/></svg>
+            <span>Recolher menu</span>
+        </button>
+    </div>
+
+</aside>
+
+<main class="main">
+
+    <header class="header">
+        <div class="header-left">
+            <div class="header-logo">
+                <img id="logoEmpresa" src="/img/logo-default.png" alt="Logo Empresa">
+            </div>
+
+            <div class="divisor"></div>
+
+            <div class="header-title">Integrações ERP</div>
+        </div>
+
+        <div class="header-actions">
+            <div class="busca-wrap">
+                <svg class="busca-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                <input type="text" id="busca" placeholder="Buscar log ou integração..." class="input-busca-menu" onkeyup="filtrarLogs()">
+            </div>
+
+            <div class="usuario-dropdown" id="usuarioDropdown">
+                <button class="usuario-btn" onclick="toggleUserDropdown()" type="button">
+                    <div class="avatar">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22c1.6-5 14.4-5 16 0"/></svg>
+                    </div>
+
+                    <div class="usuario-info">
+                        <strong id="userEmpresa">Carregando...</strong>
+                        <small id="empresaLogada">Empresa</small>
+                    </div>
+
+                    <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+
+                <div class="usuario-menu" id="usuarioMenuDropdown">
+                    <div class="usuario-menu-titulo">Usuários online</div>
+                    <div id="usuariosOnline">Carregando...</div>
+                    <hr>
+                    <a href="#" onclick="logout()">Sair</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="content">
+
+        <div class="top-actions">
+            <button class="action-card" onclick="limparFormulario()">
+                <span>
+                    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                </span>
+                Nova Integração
+            </button>
+
+            <div class="card-indicador">
+                <div class="icon-box icon-blue">
+                    <svg viewBox="0 0 24 24"><path d="M8 12h8"/><path d="M6 8h.01M18 8h.01"/><rect x="3" y="4" width="18" height="8" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></svg>
+                </div>
+                <div class="card-info">
+                    <small>Integrações</small>
+                    <strong id="cardTotalIntegracoes">0</strong>
+                    <span>ERPs configurados</span>
+                </div>
+            </div>
+
+            <div class="card-indicador">
+                <div class="icon-box icon-green">
+                    <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                </div>
+                <div class="card-info">
+                    <small>Ativas</small>
+                    <strong id="cardIntegracoesAtivas">0</strong>
+                    <span>Modo somente leitura</span>
+                </div>
+            </div>
+
+            <div class="card-indicador">
+                <div class="icon-box icon-orange">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M5 8h14"/><path d="M7 16h10"/></svg>
+                </div>
+                <div class="card-info">
+                    <small>Último Teste</small>
+                    <strong id="cardUltimoTeste" style="font-size:22px;">-</strong>
+                    <span>Status da conexão</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="layout-grid">
+
+            <div>
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="titulo-card">Configurar ERP</div>
+                            <div class="sub-card">Dados da integração ficam isolados por empresa logada.</div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <input type="hidden" id="idIntegracao">
+
+                        <div class="campo">
+                            <label>ERP</label>
+                            <select id="tipo_erp">
+                                <option value="mikweb">MikWeb</option>
+                                <option value="ixc" disabled>IXC - Em breve</option>
+                                <option value="sgp">SGP</option>
+                                <option value="hubsoft" disabled>HubSoft - Em breve</option>
+                                <option value="mksolutions" disabled>MK Solutions - Em breve</option>
+                            </select>
+                        </div>
+
+                        <div class="campo">
+                            <label>Nome da integração</label>
+                            <input type="text" id="nome" value="MikWeb Produção" placeholder="Ex: MikWeb Produção">
+                        </div>
+
+                        <div class="campo">
+                            <label>URL Base da API</label>
+                            <input type="text" id="base_url" placeholder="https://api.mikweb.com.br/v1/admin">
+                        </div>
+
+                        <div class="campo" id="campoApp" style="display:none;">
+                            <label>APP</label>
+                            <input type="text" id="app" placeholder="APP da integração SGP">
+                        </div>
+
+                        <div class="campo">
+                            <label>Token</label>
+                            <input type="password" id="token" placeholder="Cole aqui o token">
+                        </div>
+
+                        <div class="campo">
+                            <label>Conectividade</label>
+                            <select id="ativoIntegracao">
+                                <option value="0">Salvar desabilitada</option>
+                                <option value="1">Salvar e habilitar esta integração</option>
+                            </select>
+                        </div>
+
+                        <div class="campo">
+                            <label>Modo</label>
+                            <input type="text" value="Somente leitura" readonly>
+                        </div>
+
+                        <div class="campo">
+                            <label>Observação de segurança</label>
+                            <textarea id="observacao" readonly>O SGOS usará esta integração apenas para consultas GET. Nenhuma alteração será enviada para o ERP.</textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn-primary" onclick="salvarIntegracao()">Salvar</button>
+                        <button class="btn-success" onclick="testarConexao()">Testar Conexão</button>
+                        <button class="btn-warning" onclick="limparFormulario()">Limpar</button>
+                    </div>
+
+                    <div id="statusBox" class="alert-box"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="titulo-card">Segurança</div>
+                            <div class="sub-card">Validações aplicadas nesta integração.</div>
+                        </div>
+                    </div>
+
+                    <div class="security-grid">
+                        <div class="security-item">
+                            <small>Empresa Logada</small>
+                            <strong id="segEmpresa">Carregando...</strong>
+                        </div>
+                        <div class="security-item">
+                            <small>Empresa ID</small>
+                            <strong id="segEmpresaId">-</strong>
+                        </div>
+                        <div class="security-item">
+                            <small>Modo</small>
+                            <strong>Somente leitura</strong>
+                        </div>
+                        <div class="security-item">
+                            <small>Token</small>
+                            <strong>Protegido / Não exibido</strong>
+                        </div>
+                        <div class="security-item">
+                            <small>Métodos ERP</small>
+                            <strong>Apenas GET</strong>
+                        </div>
+                        <div class="security-item">
+                            <small>Isolamento</small>
+                            <strong>Por empresa_id</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="titulo-card">Status da Integração</div>
+                            <div class="sub-card">Resumo operacional da conexão com o ERP.</div>
+                        </div>
+                        <span id="statusIntegracao" class="status-pill status-inativo">Não configurado</span>
+                    </div>
+
+                    <div class="security-grid">
+                        <div class="security-item">
+                            <small>ERP</small>
+                            <strong id="statusErp">MikWeb</strong>
+                        </div>
+                        <div class="security-item">
+                            <small>Última consulta</small>
+                            <strong id="statusUltimaConsulta">-</strong>
+                        </div>
+                        <div class="security-item">
+                            <small>Tempo de resposta</small>
+                            <strong id="statusTempoResposta">-</strong>
+                        </div>
+                        <div class="security-item">
+                            <small>Consultas hoje</small>
+                            <strong id="statusConsultasHoje">0</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="titulo-card">Permissões de Consulta</div>
+                            <div class="sub-card">Recursos que o SGOS poderá ler quando disponíveis na API.</div>
+                        </div>
+                    </div>
+
+                    <div class="check-list">
+                        <div class="check-item check-ok">✔ Clientes</div>
+                        <div class="check-item check-ok">✔ Contratos</div>
+                        <div class="check-item check-ok">✔ Endereços</div>
+                        <div class="check-item check-ok">✔ Telefones</div>
+                        <div class="check-item check-ok">✔ Planos</div>
+                        <div class="check-item check-ok">✔ PPPoE</div>
+                        <div class="check-item check-ok">✔ Coordenadas</div>
+                        <div class="check-item check-ok">✔ Status online/offline</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="titulo-card">Ações Bloqueadas</div>
+                            <div class="sub-card">O SGOS não executa alterações no ERP.</div>
+                        </div>
+                    </div>
+
+                    <div class="check-list">
+                        <div class="check-item check-block">✖ Alterar cliente</div>
+                        <div class="check-item check-block">✖ Excluir cliente</div>
+                        <div class="check-item check-block">✖ Alterar contrato</div>
+                        <div class="check-item check-block">✖ Financeiro</div>
+                        <div class="check-item check-block">✖ Gerar OS no ERP</div>
+                        <div class="check-item check-block">✖ Alterar PPPoE</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="titulo-card">Buscar Cliente / Contrato</div>
+                            <div class="sub-card">Consulta de teste em modo somente leitura.</div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="campo">
+                            <label>Termo, nome, ID ou contrato</label>
+                            <input type="text" id="termoBusca" placeholder="Digite para consultar no ERP selecionado">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn-primary" onclick="buscarClientes()">Buscar</button>
+                    </div>
+
+                    <pre id="resultadoJson" class="resultado-json">Resultado da consulta aparecerá aqui...</pre>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="titulo-card">Integrações Cadastradas</div>
+                            <div class="sub-card">Habilite qual ERP será usado nas buscas do SGOS.</div>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ERP</th>
+                                    <th>Nome</th>
+                                    <th>Status</th>
+                                    <th>Último teste</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaIntegracoes">
+                                <tr><td colspan="5">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="titulo-card">Histórico de Integração</div>
+                            <div class="sub-card">Logs locais do SGOS por empresa logada.</div>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>ERP</th>
+                                    <th>Ação</th>
+                                    <th>Endpoint</th>
+                                    <th>Status</th>
+                                    <th>Mensagem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaLogs"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </section>
+
+    <footer class="footer">
+        <span>SGOS - Sistema de Gestão de Ordens de Serviço</span>
+        <span>Versão 1.0.0</span>
+    </footer>
+
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+let logsCache = [];
+let usuarioLogado = null;
+let integracoesCache = [];
+
+function getERPSelecionado(){
+    return document.getElementById("tipo_erp")?.value || "mikweb";
+}
+
+function getNomeERP(tipo){
+    const nomes = {
+        mikweb: "MikWeb",
+        sgp: "SGP",
+        ixc: "IXC",
+        hubsoft: "HubSoft",
+        mksolutions: "MK Solutions"
+    };
+
+    return nomes[tipo] || String(tipo || "").toUpperCase();
+}
+
+function atualizarCamposERP(){
+    const tipo = getERPSelecionado();
+    const campoApp = document.getElementById("campoApp");
+    const app = document.getElementById("app");
+    const baseUrl = document.getElementById("base_url");
+    const token = document.getElementById("token");
+    const nome = document.getElementById("nome");
+    const termoBusca = document.getElementById("termoBusca");
+
+    if(campoApp){
+        campoApp.style.display = tipo === "sgp" ? "flex" : "none";
+    }
+
+    if(app && tipo !== "sgp"){
+        app.value = "";
+    }
+
+    if(tipo === "sgp"){
+        if(nome && (!nome.value || nome.value.includes("MikWeb"))) nome.value = "SGP Produção";
+        if(baseUrl) baseUrl.placeholder = "https://seusgp.com.br";
+        if(token) token.placeholder = "Token do SGP";
+        if(app) app.placeholder = "APP do SGP";
+        if(termoBusca) termoBusca.placeholder = "Digite contrato, login, CPF/CNPJ ou telefone";
+    }else{
+        if(nome && (!nome.value || nome.value.includes("SGP"))) nome.value = "MikWeb Produção";
+        if(baseUrl) baseUrl.placeholder = "https://api.mikweb.com.br/v1/admin";
+        if(token) token.placeholder = "Token da MikWeb";
+        if(termoBusca) termoBusca.placeholder = "Digite nome, ID, login ou contrato";
+    }
+}
+
+// =====================
+// SIDEBAR
+// =====================
+window.toggleSidebar = function(){
+    const sidebar = document.querySelector(".sidebar");
+    const logo = document.getElementById("logoSidebar");
+
+    if(!sidebar || !logo) return;
+
+    sidebar.classList.toggle("recolhida");
+
+    if(sidebar.classList.contains("recolhida")){
+        logo.src = logo.dataset.logoFechada;
+        localStorage.setItem("sidebar_recolhida", "1");
+    }else{
+        logo.src = logo.dataset.logoAberta;
+        localStorage.setItem("sidebar_recolhida", "0");
+    }
+};
+
+const sidebar = document.querySelector(".sidebar");
+const logo = document.getElementById("logoSidebar");
+
+if(
+    sidebar &&
+    logo &&
+    localStorage.getItem("sidebar_recolhida") === "1"
+){
+    sidebar.classList.add("recolhida");
+    logo.src = logo.dataset.logoFechada;
+}
+
+// =====================
+// USUÁRIO DROPDOWN
+// =====================
+window.toggleUserDropdown = function(){
+    const menu = document.getElementById("usuarioMenuDropdown");
+    const box = document.getElementById("usuarioDropdown");
+
+    if(menu) menu.classList.toggle("ativo");
+    if(box) box.classList.toggle("aberto");
+};
+
+document.addEventListener("click", function(e){
+    const box = document.getElementById("usuarioDropdown");
+    const menu = document.getElementById("usuarioMenuDropdown");
+
+    if(!box || !menu) return;
+
+    if(!box.contains(e.target)){
+        menu.classList.remove("ativo");
+        box.classList.remove("aberto");
+    }
+});
+
+async function carregarUsuariosOnline() {
+    try {
+        const res = await fetch("/api/logs");
+        const logs = await res.json();
+
+        const online = logs
+            .filter(l => !l.logout)
+            .map(l => l.usuario);
+
+        const listaUnica = [...new Set(online)];
+        const container = document.getElementById("usuariosOnline");
+
+        if (!container) return;
+
+        if (listaUnica.length === 0) {
+            container.innerHTML = "Nenhum usuário online";
+        } else {
+            container.innerHTML = listaUnica
+                .map(u => `🟢 ${u}`)
+                .join("<br>");
+        }
+    } catch (err) {
+        console.error("Erro ao carregar usuários online:", err);
+        const container = document.getElementById("usuariosOnline");
+        if (container) container.innerText = "Online indisponível";
+    }
+}
+
+window.logout = function() {
+    const logId = localStorage.getItem("log_id");
+
+    if (logId) {
+        fetch("/api/logout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ log_id: logId })
+        }).catch(console.error);
+    }
+
+    sessionStorage.clear();
+    localStorage.clear();
+    window.location.href = "login.html";
+};
+
+// =====================
+// STATUS / HELPERS
+// =====================
+function mostrarStatus(tipo, texto){
+    const box = document.getElementById("statusBox");
+    box.className = "alert-box alert-" + tipo;
+    box.innerText = texto;
+}
+
+function formatarDataBR(data){
+    if(!data) return "-";
+    try{
+        return new Date(data).toLocaleString("pt-BR");
+    }catch(e){
+        return data;
+    }
+}
+
+function mascararToken(token){
+    if(!token) return "";
+    if(token.length <= 8) return "********";
+    return token.substring(0, 4) + "********" + token.substring(token.length - 4);
+}
+
+// =====================
+// USUÁRIO LOGADO
+// =====================
+fetchAuth("/api/me")
+.then(user => {
+    const nomeUsuario = user.usuario || "Administrador";
+    const empresa = user.empresa_nome || "Empresa";
+
+    document.getElementById("userEmpresa").innerText = nomeUsuario;
+    document.getElementById("empresaLogada").innerText = empresa;
+    document.getElementById("segEmpresa").innerText = empresa;
+    document.getElementById("segEmpresaId").innerText = user.empresa_id || "-";
+
+    const logoEl = document.getElementById("logoEmpresa");
+    if(logoEl){
+        const logo = user.empresa_logo;
+        logoEl.src = logo
+            ? (logo.startsWith("/") ? logo : "/" + logo)
+            : "/img/logo-default.png";
+    }
+
+    usuarioLogado = user;
+
+    (async () => {
+        await carregarERPAtivo();
+        await carregarIntegracaoAtual();
+        await carregarStatusIntegracoes();
+        await carregarLogsIntegracao();
+        carregarUsuariosOnline();
+    })();
+})
+.catch(err => {
+    console.error("Erro ao obter usuário logado:", err);
+    mostrarStatus("erro", "Não foi possível obter dados do usuário logado.");
+});
+
+
+async function carregarERPAtivo(){
+    try{
+        const status = await fetchAuth("/api/integracoes/status");
+
+        const ativo = status.atual || null;
+
+        if(ativo && ativo.tipo_erp){
+            document.getElementById("tipo_erp").value = ativo.tipo_erp;
+            atualizarCamposERP();
+
+            document.getElementById("cardTotalIntegracoes").innerText = status.integracoes || 0;
+            document.getElementById("cardIntegracoesAtivas").innerText = status.ativas || 0;
+
+            const tabela = document.getElementById("tabelaIntegracoes");
+            if(tabela && Array.isArray(status.lista)){
+                renderIntegracoes(status.lista);
+            }
+        }else{
+            atualizarCamposERP();
+        }
+
+        return ativo;
+
+    }catch(err){
+        console.error("Erro ao carregar ERP ativo:", err);
+        atualizarCamposERP();
+        return null;
+    }
+}
+
+// =====================
+// INTEGRAÇÃO
+// =====================
+async function carregarIntegracaoAtual() {
+    try {
+        const config = await fetchAuth(`/api/integracoes/${getERPSelecionado()}/configuracao`);
+
+        console.log("CONFIG RECEBIDA NA TELA:", config);
+
+        const configurado = config.configurado === true;
+        const ativo = Number(config.ativo) === 1 || config.ativo === true;
+        const conectado = String(config.status || "").toLowerCase() === "conectado";
+
+        // CARDS SUPERIORES
+        document.getElementById("cardTotalIntegracoes").innerText =
+            configurado ? "1" : "0";
+
+        document.getElementById("cardIntegracoesAtivas").innerText =
+            configurado && ativo ? "1" : "0";
+
+        document.getElementById("cardUltimoTeste").innerText =
+            conectado ? "Sucesso" : (config.status || "-");
+
+        // STATUS DA INTEGRAÇÃO
+        document.getElementById("statusErp").innerText = getNomeERP(config.tipo_erp || getERPSelecionado());
+
+        document.getElementById("statusUltimaConsulta").innerText =
+            config.ultimo_teste_em
+                ? formatarDataBR(config.ultimo_teste_em)
+                : "-";
+
+        document.getElementById("statusTempoResposta").innerText =
+            config.ultimo_tempo_ms
+                ? config.ultimo_tempo_ms + " ms"
+                : "-";
+
+        document.getElementById("statusConsultasHoje").innerText =
+            config.consultas_hoje || "0";
+
+        const badge = document.getElementById("statusIntegracao");
+
+        if (badge) {
+            if (conectado) {
+                badge.innerText = "Conectado";
+                badge.className = "status-pill status-ativo";
+            } else if (configurado) {
+                badge.innerText = "Configurado";
+                badge.className = "status-pill status-alerta";
+            } else {
+                badge.innerText = "Não configurado";
+                badge.className = "status-pill status-inativo";
+            }
+        }
+
+        // FORMULÁRIO
+        if (configurado) {
+            document.getElementById("idIntegracao").value = config.id || "";
+            document.getElementById("tipo_erp").value = config.tipo_erp || getERPSelecionado();
+            atualizarCamposERP();
+            document.getElementById("nome").value = config.nome || (getERPSelecionado() === "sgp" ? "SGP Produção" : "MikWeb Produção");
+            document.getElementById("base_url").value = config.base_url || "";
+            if(document.getElementById("app")) document.getElementById("app").value = config.app || "";
+            if(document.getElementById("ativoIntegracao")) document.getElementById("ativoIntegracao").value = config.ativo ? "1" : "0";
+            document.getElementById("token").value = "";
+        }
+
+    } catch (err) {
+        console.error("Erro ao carregar configuração:", err);
+    }
+}
+
+function atualizarCards(total, ativas, ultimoTeste){
+    document.getElementById("cardTotalIntegracoes").innerText = total;
+    document.getElementById("cardIntegracoesAtivas").innerText = ativas;
+    document.getElementById("cardUltimoTeste").innerText = ultimoTeste || "-";
+}
+
+window.salvarIntegracao = async function(){
+    try{
+        const tipo = getERPSelecionado();
+
+        const body = {
+            nome: document.getElementById("nome").value.trim(),
+            base_url: document.getElementById("base_url").value.trim(),
+            token: document.getElementById("token").value.trim(),
+            app: document.getElementById("app")?.value.trim() || "",
+            ativo: document.getElementById("ativoIntegracao")?.value === "1"
+        };
+
+        if(!body.base_url) return mostrarStatus("erro", "Informe a URL Base da API.");
+        if(tipo === "sgp" && !body.app) return mostrarStatus("erro", "Informe o APP do SGP.");
+        if(!body.token) return mostrarStatus("erro", "Informe o token.");
+
+        const res = await fetchAuth(`/api/integracoes/${getERPSelecionado()}/configurar`, {
+            method:"POST",
+            body: JSON.stringify(body)
+        });
+
+        mostrarStatus("ok", res.mensagem || "Integração salva com sucesso.");
+        carregarIntegracaoAtual();
+        carregarStatusIntegracoes();
+        carregarLogsIntegracao();
+
+    }catch(err){
+        console.error(err);
+        mostrarStatus("erro", err.erro || err.message || "Erro ao salvar integração.");
+    }
+};
+
+window.testarConexao = async function(){
+    try{
+        const res = await fetchAuth(`/api/integracoes/${getERPSelecionado()}/testar`);
+
+        mostrarStatus("ok", res.mensagem || "Conexão realizada com sucesso.");
+
+        document.getElementById("resultadoJson").textContent =
+            JSON.stringify(res.retorno || res, null, 2);
+
+        await carregarIntegracaoAtual();
+        await carregarLogsIntegracao();
+
+    }catch(err){
+        console.error(err);
+
+        mostrarStatus("erro", err.erro || err.message || "Erro ao testar conexão.");
+
+        document.getElementById("statusIntegracao").className = "status-pill status-inativo";
+        document.getElementById("statusIntegracao").innerText = "Falha";
+        document.getElementById("cardUltimoTeste").innerText = "Falha";
+        document.getElementById("resultadoJson").textContent = JSON.stringify(err, null, 2);
+    }
+};
+
+window.buscarClientes = async function(){
+    try{
+        const termo = document.getElementById("termoBusca").value.trim();
+
+        if(!termo) return mostrarStatus("info", "Digite um termo, nome, ID ou contrato para buscar.");
+
+        const inicio = performance.now();
+        const res = await fetchAuth(`/api/integracoes/${getERPSelecionado()}/clientes?termo=` + encodeURIComponent(termo));
+        const fim = performance.now();
+
+        document.getElementById("resultadoJson").textContent = JSON.stringify(res, null, 2);
+        document.getElementById("statusUltimaConsulta").innerText = new Date().toLocaleString("pt-BR");
+        document.getElementById("statusTempoResposta").innerText = Math.round(fim - inicio) + " ms";
+
+        mostrarStatus("ok", "Consulta realizada em modo somente leitura.");
+        carregarLogsIntegracao();
+
+    }catch(err){
+        console.error(err);
+        document.getElementById("resultadoJson").textContent = JSON.stringify(err, null, 2);
+        mostrarStatus("erro", err.erro || err.message || "Erro ao buscar cliente.");
+    }
+};
+
+window.limparFormulario = function(){
+    document.getElementById("idIntegracao").value = "";
+    document.getElementById("tipo_erp").value = "mikweb";
+    document.getElementById("nome").value = "MikWeb Produção";
+    document.getElementById("base_url").value = "";
+    if(document.getElementById("app")) document.getElementById("app").value = "";
+    if(document.getElementById("ativoIntegracao")) document.getElementById("ativoIntegracao").value = "0";
+    document.getElementById("token").value = "";
+    atualizarCamposERP();
+    document.getElementById("termoBusca").value = "";
+    document.getElementById("resultadoJson").textContent = "Resultado da consulta aparecerá aqui...";
+    document.getElementById("statusBox").className = "alert-box";
+    document.getElementById("statusBox").innerText = "";
+};
+
+// =====================
+// STATUS DAS INTEGRAÇÕES
+// =====================
+async function carregarStatusIntegracoes(){
+    try{
+        const status = await fetchAuth("/api/integracoes/status");
+        integracoesCache = status.lista || [];
+        document.getElementById("cardTotalIntegracoes").innerText = status.integracoes || 0;
+        document.getElementById("cardIntegracoesAtivas").innerText = status.ativas || 0;
+        renderIntegracoes(integracoesCache);
+    }catch(err){
+        console.error("Erro ao carregar status das integrações:", err);
+        renderIntegracoes([]);
+    }
+}
+
+function renderIntegracoes(lista){
+    const tabela = document.getElementById("tabelaIntegracoes");
+    if(!tabela) return;
+
+    if(!lista.length){
+        tabela.innerHTML = `<tr><td colspan="5">Nenhuma integração cadastrada</td></tr>`;
+        return;
+    }
+
+    tabela.innerHTML = lista.map(i => {
+        const ativo = i.ativo === true || i.ativo === 1;
+        const classe = ativo ? "status-ativo" : "status-inativo";
+        const texto = ativo ? "Habilitada" : "Desabilitada";
+        return `
+            <tr>
+                <td><strong>${getNomeERP(i.tipo_erp)}</strong></td>
+                <td>${i.nome || "-"}</td>
+                <td><span class="status-pill ${classe}">${texto}</span></td>
+                <td>${i.ultimo_teste_em ? formatarDataBR(i.ultimo_teste_em) : "-"}</td>
+                <td>
+                    ${ativo
+                        ? `<button class="btn-danger btn-icon" title="Desabilitar" onclick="desativarERP('${i.tipo_erp}')">⛔</button>`
+                        : `<button class="btn-success btn-icon" title="Habilitar" onclick="ativarERP('${i.tipo_erp}')">✅</button>`}
+                    <button class="btn-light btn-icon" title="Carregar" onclick="carregarERPFormulario('${i.tipo_erp}')">✏️</button>
+                </td>
+            </tr>`;
+    }).join("");
+}
+
+window.ativarERP = async function(tipo){
+    try{
+        const res = await fetchAuth(`/api/integracoes/${tipo}/ativar`, { method:"POST" });
+        mostrarStatus("ok", res.mensagem || "Integração habilitada.");
+        document.getElementById("tipo_erp").value = tipo;
+        atualizarCamposERP();
+        await carregarIntegracaoAtual();
+        await carregarStatusIntegracoes();
+    }catch(err){
+        console.error(err);
+        mostrarStatus("erro", err.erro || "Erro ao habilitar integração.");
+    }
+};
+
+window.desativarERP = async function(tipo){
+    try{
+        const res = await fetchAuth(`/api/integracoes/${tipo}/desativar`, { method:"POST" });
+        mostrarStatus("ok", res.mensagem || "Integração desabilitada.");
+        await carregarIntegracaoAtual();
+        await carregarStatusIntegracoes();
+    }catch(err){
+        console.error(err);
+        mostrarStatus("erro", err.erro || "Erro ao desabilitar integração.");
+    }
+};
+
+window.carregarERPFormulario = async function(tipo){
+    document.getElementById("tipo_erp").value = tipo;
+    atualizarCamposERP();
+    await carregarIntegracaoAtual();
+};
+
+// =====================
+// LOGS
+// =====================
+async function carregarLogsIntegracao(){
+    try{
+        const logs = await fetchAuth("/api/integracoes/logs");
+        logsCache = Array.isArray(logs) ? logs : (logs.logs || []);
+        renderLogs(logsCache);
+
+        const hoje = new Date().toISOString().slice(0,10);
+        const consultasHoje = logsCache.filter(l => {
+            const d = l.criado_em ? new Date(l.criado_em).toISOString().slice(0,10) : "";
+            return d === hoje;
+        }).length;
+
+        document.getElementById("statusConsultasHoje").innerText = consultasHoje;
+
+    }catch(err){
+        console.warn("Rota de logs ainda não disponível.", err);
+        logsCache = [];
+        renderLogs([]);
+    }
+}
+
+function renderLogs(data){
+    const tabela = document.getElementById("tabelaLogs");
+    tabela.innerHTML = "";
+
+    if(!data || data.length === 0){
+        tabela.innerHTML = `<tr><td colspan="6">Nenhum log encontrado</td></tr>`;
+        return;
+    }
+
+    data.forEach(l => {
+        const classe = String(l.status || "").toLowerCase().includes("sucesso")
+            ? "status-ativo"
+            : "status-inativo";
+
+        tabela.innerHTML += `
+        <tr>
+            <td>${formatarDataBR(l.criado_em)}</td>
+            <td><strong>${l.tipo_erp || "-"}</strong></td>
+            <td>${l.acao || "-"}</td>
+            <td>${l.endpoint || "-"}</td>
+            <td><span class="status-pill ${classe}">${l.status || "-"}</span></td>
+            <td>${l.mensagem || "-"}</td>
+        </tr>`;
+    });
+}
+
+window.filtrarLogs = function(){
+    const termo = document.getElementById("busca").value.toLowerCase();
+
+    const filtrados = logsCache.filter(l =>
+        String(l.tipo_erp || "").toLowerCase().includes(termo) ||
+        String(l.acao || "").toLowerCase().includes(termo) ||
+        String(l.endpoint || "").toLowerCase().includes(termo) ||
+        String(l.status || "").toLowerCase().includes(termo) ||
+        String(l.mensagem || "").toLowerCase().includes(termo)
+    );
+
+    renderLogs(filtrados);
+};
+
+const selectERP = document.getElementById("tipo_erp");
+if(selectERP){
+    selectERP.addEventListener("change", async () => {
+        atualizarCamposERP();
+        await carregarIntegracaoAtual();
+    });
+}
+
+atualizarCamposERP();
+
+// =====================
+// PING ONLINE
+// =====================
+setInterval(async () => {
+    const logId = localStorage.getItem("log_id");
+
+    if (logId) {
+        await fetch("/api/ping", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ log_id: logId })
+        }).catch(console.error);
+    }
+
+    carregarUsuariosOnline();
+}, 300000);
+
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>SGOS - Logs de Acesso</title>
+
+<link rel="icon" type="image/png" href="/img/favicon.png">
+
+<script src="/js/auth.js" defer></script>
+<script src="/js/init.js" defer></script>
+
+<style>
+:root{
+    --azul:#2563eb;
+    --texto:#0f172a;
+    --muted:#64748b;
+    --borda:#e5e7eb;
+    --fundo:#f5f7fb;
+    --verde:#16a34a;
+    --laranja:#f59e0b;
+    --vermelho:#ef4444;
+}
+
+*{ box-sizing:border-box; }
+
+body{
+    margin:0;
+    font-family:Arial, Helvetica, sans-serif;
+    background:var(--fundo);
+    color:var(--texto);
+}
+
+/* SIDEBAR */
+.sidebar{
+    position:fixed;
+    left:0;
+    top:0;
+    width:230px;
+    height:100vh;
+    background:linear-gradient(180deg,#081a31,#061426);
+    color:white;
+    padding:12px 18px 18px;
+    display:flex;
+    flex-direction:column;
+    z-index:20;
+}
+
+.sidebar-logo{
+    display:flex;
+    justify-content:flex-start;
+    align-items:center;
+    padding-left:0px;
+    margin-top:0;
+    margin-bottom:14px;
+}
+
+.sidebar-logo img{
+    width:190px;
+    height:auto;
+    display:block;
+}
+
+.menu-titulo{
+    margin:14px 10px 6px;
+    font-size:12px;
+    color:#94a3b8;
+    text-transform:uppercase;
+}
+
+.sidebar a{
+    color:#dbeafe;
+    text-decoration:none;
+    padding:11px 13px;
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    font-size:14px;
+    margin-bottom:2px;
+    transition:.2s;
+}
+
+.sidebar a:hover,
+.sidebar a.ativo{
+    background:var(--azul);
+    color:white;
+}
+
+.menu-icon{
+    width:18px;
+    height:18px;
+    min-width:18px;
+    stroke:currentColor;
+    fill:none;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.sidebar-footer{ margin-top:auto; }
+
+.btn-recolher{
+    width:100%;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.1);
+    color:#e5efff;
+    padding:13px;
+    border-radius:10px;
+    cursor:pointer;
+    text-align:left;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:14px;
+}
+
+.sidebar.recolhida{
+    width:82px;
+    padding:16px 12px;
+    align-items:center;
+}
+
+.sidebar.recolhida .sidebar-logo{
+    justify-content:center;
+    padding-left:0;
+}
+
+.sidebar.recolhida .sidebar-logo img{ width:48px; }
+.sidebar.recolhida .menu-titulo{ display:none; }
+
+.sidebar.recolhida a{
+    justify-content:center;
+    padding:13px;
+    width:52px;
+}
+
+.sidebar.recolhida a span,
+.sidebar.recolhida .btn-recolher span{
+    display:none;
+}
+
+.sidebar.recolhida .btn-recolher{
+    justify-content:center;
+    width:52px;
+    padding:13px;
+}
+
+.sidebar.recolhida + .main{
+    margin-left:82px;
+}
+
+/* MAIN */
+.main{
+    margin-left:230px;
+    min-height:100vh;
+    transition:.25s ease;
+}
+
+.header{
+    height:92px;
+    background:white;
+    border-bottom:1px solid var(--borda);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 34px;
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+
+.header-left{
+    display:flex;
+    align-items:center;
+    gap:22px;
+}
+
+.header-logo img{
+    height:60px;
+    max-width:190px;
+    object-fit:contain;
+}
+
+.divisor{
+    height:34px;
+    width:1px;
+    background:var(--borda);
+}
+
+.header-title{
+    font-weight:800;
+    font-size:18px;
+}
+
+.header-actions{
+    display:flex;
+    align-items:center;
+    gap:18px;
+}
+
+.busca-wrap{
+    position:relative;
+}
+
+.busca-icone{
+    position:absolute;
+    left:13px;
+    top:50%;
+    transform:translateY(-50%);
+    color:#334155;
+    width:18px;
+    height:18px;
+}
+
+.input-busca-menu{
+    width:280px;
+    padding:12px 14px 12px 40px;
+    border:1px solid var(--borda);
+    border-radius:12px;
+    outline:none;
+    font-size:14px;
+    background:#fff;
+}
+
+.usuario-dropdown{ position:relative; }
+
+.usuario-btn{
+    border:none;
+    background:transparent;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    cursor:pointer;
+    padding:0;
+}
+
+.avatar{
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    background:#e2e8f0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+}
+
+.avatar svg{
+    width:28px;
+    height:28px;
+    fill:#cbd5e1;
+}
+
+.usuario-info{text-align:left;}
+
+.usuario-info strong{
+    font-size:13px;
+    display:block;
+    color:#0f172a;
+}
+
+.usuario-info small{
+    font-size:11px;
+    color:#64748b;
+}
+
+.seta{
+    width:18px;
+    height:18px;
+    color:#1e3a8a;
+    transition:.2s;
+}
+
+.usuario-dropdown.aberto .seta{
+    transform:rotate(180deg);
+}
+
+.usuario-menu{
+    display:none;
+    position:absolute;
+    right:0;
+    top:58px;
+    width:260px;
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(15,23,42,0.16);
+    padding:14px;
+    z-index:9999;
+}
+
+.usuario-menu.ativo{ display:block; }
+
+.usuario-menu-titulo{
+    font-size:12px;
+    font-weight:800;
+    color:#64748b;
+    margin-bottom:10px;
+    text-transform:uppercase;
+}
+
+#usuariosOnline{
+    font-size:13px;
+    color:#0f172a;
+    line-height:1.8;
+    max-height:180px;
+    overflow:auto;
+}
+
+.usuario-menu hr{
+    border:none;
+    border-top:1px solid var(--borda);
+    margin:12px 0;
+}
+
+.usuario-menu a{
+    display:block;
+    color:#ef4444;
+    text-decoration:none;
+    font-weight:800;
+    font-size:14px;
+}
+
+/* CONTENT */
+.content{
+    padding:28px 18px 38px;
+}
+
+.top-actions{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:18px;
+    margin-bottom:20px;
+}
+
+.card-indicador{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    padding:22px;
+    min-height:118px;
+    box-shadow:0 8px 22px rgba(15,23,42,0.05);
+    display:flex;
+    align-items:center;
+    gap:18px;
+}
+
+.icon-box{
+    width:58px;
+    height:58px;
+    border-radius:20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.icon-box svg{
+    width:31px;
+    height:31px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:2;
+}
+
+.icon-blue{ background:#dbeafe; color:#2563eb; }
+.icon-green{ background:#dcfce7; color:#16a34a; }
+.icon-orange{ background:#ffedd5; color:#f59e0b; }
+.icon-red{ background:#fee2e2; color:#ef4444; }
+
+.card-info small{
+    font-size:13px;
+    font-weight:800;
+}
+
+.card-info strong{
+    display:block;
+    font-size:32px;
+    margin:6px 0;
+    color:#0f172a;
+    line-height:1;
+}
+
+.card-info span{
+    font-size:13px;
+    color:#64748b;
+}
+
+.card{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    padding:22px;
+    margin-bottom:18px;
+    box-shadow:0 8px 20px rgba(15,23,42,0.04);
+}
+
+.card-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    margin-bottom:18px;
+}
+
+.titulo-card{
+    font-size:18px;
+    font-weight:800;
+}
+
+.sub-card{
+    font-size:13px;
+    color:var(--muted);
+}
+
+.table-wrap{
+    width:100%;
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:920px;
+}
+
+th{
+    background:#f8fafc;
+    color:#0f172a;
+    padding:14px 12px;
+    text-align:left;
+    font-size:12px;
+    border-bottom:1px solid var(--borda);
+    white-space:nowrap;
+}
+
+td{
+    padding:13px 12px;
+    border-bottom:1px solid var(--borda);
+    font-size:13px;
+    color:#1e293b;
+    white-space:nowrap;
+}
+
+tr:hover{ background:#f8fbff; }
+
+.loading{
+    text-align:center;
+    padding:22px;
+    color:#64748b;
+}
+
+.ip,
+.porta{
+    font-family:monospace;
+}
+
+.status-online{
+    background:#dcfce7;
+    color:#15803d;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:800;
+    display:inline-block;
+}
+
+.status-offline{
+    color:#dc2626;
+    font-weight:800;
+}
+
+.badge-auto{
+    background:#fee2e2;
+    color:#dc2626;
+    padding:5px 8px;
+    border-radius:999px;
+    font-size:11px;
+    font-weight:800;
+    margin-left:6px;
+}
+
+.badge-online{
+    background:#dcfce7;
+    color:#15803d;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:800;
+    display:inline-block;
+}
+
+.footer{
+    display:flex;
+    justify-content:space-between;
+    padding:20px 34px;
+    color:#475569;
+    font-size:12px;
+    border-top:1px solid var(--borda);
+}
+
+@media(max-width:1300px){
+    .top-actions{ grid-template-columns:1fr 1fr; }
+}
+
+@media(max-width:900px){
+    .sidebar{ display:none; }
+    .main{ margin-left:0; }
+
+    .header{
+        flex-direction:column;
+        height:auto;
+        align-items:flex-start;
+        gap:15px;
+        padding:20px;
+    }
+
+    .header-actions{
+        width:100%;
+        justify-content:space-between;
+        flex-wrap:wrap;
+    }
+
+    .busca-wrap,
+    .input-busca-menu{ width:100%; }
+
+    .content{ padding:20px; }
+    .top-actions{ grid-template-columns:1fr; }
+}
+</style>
+</head>
+
+<body>
+
+<aside class="sidebar">
+
+    <div class="sidebar-logo">
+        <img
+            id="logoSidebar"
+            src="https://iili.io/CujQzXa.png"
+            data-logo-aberta="https://iili.io/CujQzXa.png"
+            data-logo-fechada="https://iili.io/CuwvauR.png"
+            alt="SGOS"
+        >
+    </div>
+
+    <a href="painel.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg>
+        <span>Painel Inicial</span>
+    </a>
+
+    <div class="menu-titulo">Operação</div>
+
+    <a href="agendamentos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+        <span>Agendamentos</span>
+    </a>
+
+    <a href="relatorios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg>
+        <span>Relatórios</span>
+    </a>
+
+<a href="escala.html" class=>
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 14h6"/></svg>
+        <span>Escala</span>
+    </a>
+
+    <a href="cronograma.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg>
+        <span>Cronograma</span>
+    </a>
+
+    <a href="viabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+        <span>Viabilidades</span>
+    </a>
+
+    <a href="inviabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+        <span>Inviabilidades</span>
+    </a>
+
+    <div class="menu-titulo">Cadastros</div>
+
+    <a href="planos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        <span>Planos</span>
+    </a>
+
+    <a href="localidades.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span>Localidades</span>
+    </a>
+
+    <a href="tecnicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Técnicos</span>
+    </a>
+
+    <a href="tipos_servicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.5 2.5-3-3z"/></svg>
+        <span>Tipos de Serviços</span>
+    </a>
+
+    <div class="menu-titulo">Configurações</div>
+
+    <a href="usuarios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Usuários</span>
+    </a>
+
+    <a href="logs_acesso.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        <span>Logs do Sistema</span>
+    </a>
+
+    <a href="logs_acoes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <span>Log de Ações</span>
+    </a>
+
+    <a href="historico-os.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/><path d="M12 8v5l3 2"/></svg>
+        <span>Histórico de OS</span>
+    </a>
+
+    <div class="sidebar-footer">
+        <button class="btn-recolher" onclick="toggleSidebar()" type="button">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M2 12h20"/></svg>
+            <span>Recolher menu</span>
+        </button>
+    </div>
+
+
+</aside>
+
+<main class="main">
+
+<header class="header">
+    <div class="header-left">
+        <div class="header-logo">
+            <img id="logoEmpresa" src="/img/logo-default.png" alt="Logo Empresa">
+        </div>
+
+        <div class="divisor"></div>
+
+        <div class="header-title">Logs de Acesso</div>
+    </div>
+
+    <div class="header-actions">
+        <div class="busca-wrap">
+            <svg class="busca-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input type="text" id="campoBusca" placeholder="Buscar usuário, IP ou porta..." class="input-busca-menu" onkeyup="filtrarLogs()">
+        </div>
+
+        <div class="usuario-dropdown" id="usuarioDropdown">
+            <button class="usuario-btn" onclick="toggleUserDropdown()" type="button">
+                <div class="avatar">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22c1.6-5 14.4-5 16 0"/></svg>
+                </div>
+
+                <div class="usuario-info">
+                    <strong id="userEmpresa">Carregando...</strong>
+                    <small id="empresaLogada">Empresa</small>
+                </div>
+
+                <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+
+            <div class="usuario-menu" id="usuarioMenuDropdown">
+                <div class="usuario-menu-titulo">Usuários online</div>
+                <div id="usuariosOnline">Carregando...</div>
+                <hr>
+                <a href="#" onclick="logout()">Sair</a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<section class="content">
+
+    <div class="top-actions">
+
+        <div class="card-indicador">
+            <div class="icon-box icon-blue">
+                <svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+            </div>
+            <div class="card-info">
+                <small>Total</small>
+                <strong id="cardTotal">0</strong>
+                <span>Registros encontrados</span>
+            </div>
+        </div>
+
+        <div class="card-indicador">
+            <div class="icon-box icon-green">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+            </div>
+            <div class="card-info">
+                <small>Online</small>
+                <strong id="cardOnline">0</strong>
+                <span>Sessões ativas</span>
+            </div>
+        </div>
+
+        <div class="card-indicador">
+            <div class="icon-box icon-red">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+            </div>
+            <div class="card-info">
+                <small>Offline</small>
+                <strong id="cardOffline">0</strong>
+                <span>Sessões encerradas</span>
+            </div>
+        </div>
+
+        <div class="card-indicador">
+            <div class="icon-box icon-orange">
+                <svg viewBox="0 0 24 24"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="9"/></svg>
+            </div>
+            <div class="card-info">
+                <small>Atualização</small>
+                <strong>5s</strong>
+                <span>Atualização automática</span>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="titulo-card">Histórico de Acessos</div>
+                <div class="sub-card">IP público, porta de origem, login e logout dos usuários</div>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Usuário</th>
+                        <th>IP Público</th>
+                        <th>Porta</th>
+                        <th>Login</th>
+                        <th>Status / Logout</th>
+                    </tr>
+                </thead>
+
+                <tbody id="logBody">
+                    <tr>
+                        <td colspan="5" class="loading">Carregando logs...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</section>
+
+<footer class="footer">
+    <span>SGOS - Sistema de Gestão de Ordens de Serviço</span>
+    <span>Versão 1.0.0</span>
+</footer>
+
+</main>
+
+<script>
+let logsGlobais = [];
+
+function toggleSidebar(){
+    const sidebar = document.querySelector(".sidebar");
+    const logo = document.getElementById("logoSidebar");
+
+    if(!sidebar || !logo) return;
+
+    sidebar.classList.toggle("recolhida");
+
+    if(sidebar.classList.contains("recolhida")){
+        logo.src = logo.dataset.logoFechada;
+        localStorage.setItem("sidebar_recolhida", "1");
+    }else{
+        logo.src = logo.dataset.logoAberta;
+        localStorage.setItem("sidebar_recolhida", "0");
+    }
+}
+
+function toggleUserDropdown(){
+    const menu = document.getElementById("usuarioMenuDropdown");
+    const box = document.getElementById("usuarioDropdown");
+
+    if(menu) menu.classList.toggle("ativo");
+    if(box) box.classList.toggle("aberto");
+}
+
+document.addEventListener("click", function(e){
+    const box = document.getElementById("usuarioDropdown");
+    const menu = document.getElementById("usuarioMenuDropdown");
+
+    if(!box || !menu) return;
+
+    if(!box.contains(e.target)){
+        menu.classList.remove("ativo");
+        box.classList.remove("aberto");
+    }
+});
+
+async function carregarUsuario(){
+    try{
+        const userLocal = JSON.parse(localStorage.getItem("usuario") || "{}");
+
+        if(!userLocal?.id){
+            window.location.href = "login.html";
+            return;
+        }
+
+        const res = await fetch("/api/me", {
+            headers:{ "x-usuario-id": userLocal.id }
+        });
+
+        const data = await res.json();
+
+        if(data?.usuario){
+            document.getElementById("userEmpresa").innerText = data.usuario;
+
+            document.getElementById("empresaLogada").innerText =
+                data.empresa_nome ||
+                userLocal.empresa_nome ||
+                "Empresa";
+
+            const logoEl = document.getElementById("logoEmpresa");
+
+            const logoFinal = data.empresa_logo
+                ? (data.empresa_logo.startsWith("/") ? data.empresa_logo : "/" + data.empresa_logo)
+                : "/img/logo-default.png";
+
+            if(logoEl) logoEl.src = logoFinal;
+        }
+
+    }catch(err){
+        console.error("Erro ao carregar usuário:", err);
+        document.getElementById("userEmpresa").innerText = "Administrador";
+    }
+}
+
+async function carregarUsuariosOnline(){
+    try{
+        const res = await fetch("/api/logs");
+        const logs = await res.json();
+
+        const online = logs
+            .filter(l => !l.logout)
+            .map(l => l.usuario);
+
+        const listaUnica = [...new Set(online)];
+        const container = document.getElementById("usuariosOnline");
+
+        if(!container) return;
+
+        container.innerHTML = listaUnica.length
+            ? listaUnica.map(u => `🟢 ${u}`).join("<br>")
+            : "Nenhum usuário online";
+
+    }catch(err){
+        console.error("Erro ao carregar usuários online:", err);
+        const container = document.getElementById("usuariosOnline");
+        if(container) container.innerText = "Online indisponível";
+    }
+}
+
+function logout(){
+    const logId = localStorage.getItem("log_id");
+
+    if(logId){
+        fetch("/api/logout", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({ log_id:logId })
+        }).catch(console.error);
+    }
+
+    sessionStorage.clear();
+    localStorage.clear();
+    window.location.href = "login.html";
+}
+
+function formatarIP(ip){
+    if(!ip) return "DESCONHECIDO";
+
+    if(ip.includes("::ffff:")){
+        ip = ip.replace("::ffff:", "");
+    }
+
+    if(ip === "::1"){
+        ip = "127.0.0.1";
+    }
+
+    return ip;
+}
+
+function formatarData(data){
+    if(!data) return "-";
+    return new Date(data).toLocaleString("pt-BR");
+}
+
+function atualizarCardsLogs(lista){
+    const total = lista.length || 0;
+    const online = lista.filter(l => !l.logout).length;
+    const offline = lista.filter(l => l.logout).length;
+
+    document.getElementById("cardTotal").innerText = total;
+    document.getElementById("cardOnline").innerText = online;
+    document.getElementById("cardOffline").innerText = offline;
+}
+
+function renderizarLogs(logs){
+    const tbody = document.getElementById("logBody");
+
+    tbody.innerHTML = "";
+
+    atualizarCardsLogs(logs || []);
+
+    if(!logs || !logs.length){
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="loading">Nenhum log encontrado</td>
+            </tr>
+        `;
+        return;
+    }
+
+    logs.forEach(log => {
+        const tr = document.createElement("tr");
+
+        const ip = formatarIP(log.ip_origem);
+        const porta = log.porta_origem || "-";
+
+        let statusHTML = `
+            <span class="badge-online">ATIVO</span>
+        `;
+
+        if(log.logout){
+            const diffSegundos =
+                (new Date(log.logout) - new Date(log.login)) / 1000;
+
+            const isAuto = diffSegundos > 1200;
+
+            statusHTML = `
+                <span class="status-offline">
+                    ${formatarData(log.logout)}
+                </span>
+
+                ${isAuto ? '<span class="badge-auto">AUTO</span>' : ''}
+            `;
+        }
+
+        tr.innerHTML = `
+            <td><strong>${log.usuario || "-"}</strong></td>
+            <td class="ip">${ip}</td>
+            <td class="porta">${porta}</td>
+            <td>${formatarData(log.login)}</td>
+            <td>${statusHTML}</td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+}
+
+function filtrarLogs(){
+    const termo = document.getElementById("campoBusca").value.toLowerCase();
+
+    const filtrados = logsGlobais.filter(log => {
+        const ip = formatarIP(log.ip_origem).toLowerCase();
+        const porta = String(log.porta_origem || "").toLowerCase();
+        const usuario = String(log.usuario || "").toLowerCase();
+
+        return (
+            usuario.includes(termo) ||
+            ip.includes(termo) ||
+            porta.includes(termo)
+        );
+    });
+
+    renderizarLogs(filtrados);
+}
+
+async function carregarLogs(){
+    try{
+        const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+
+        const res = await fetch("/api/logs", {
+            headers:{
+                "x-empresa-id": usuario.empresa_id
+            }
+        });
+
+        logsGlobais = await res.json();
+
+        filtrarLogs();
+
+    }catch(err){
+        console.error("Erro ao carregar logs:", err);
+
+        document.getElementById("logBody").innerHTML = `
+            <tr>
+                <td colspan="5" class="loading">Erro ao carregar logs</td>
+            </tr>
+        `;
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const sidebar = document.querySelector(".sidebar");
+    const logo = document.getElementById("logoSidebar");
+
+    if(
+        sidebar &&
+        logo &&
+        localStorage.getItem("sidebar_recolhida") === "1"
+    ){
+        sidebar.classList.add("recolhida");
+        logo.src = logo.dataset.logoFechada;
+    }
+
+    carregarUsuario();
+    carregarUsuariosOnline();
+    carregarLogs();
+});
+
+setInterval(() => {
+    carregarLogs();
+    carregarUsuariosOnline();
+}, 5000);
+</script>
+
+</body>
+</html>

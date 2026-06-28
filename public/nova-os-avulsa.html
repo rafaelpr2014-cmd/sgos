@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>SGOS - Nova OS Avulsa</title>
+<link rel="icon" type="image/png" href="/img/favicon.png">
+
+<script src="/js/auth.js"></script>
+<script src="/js/init.js"></script>
+<script src="/js/nova-os-avulsa-autocomplete-e-edicao.js"></script>
+
+<style>
+:root{
+    --azul:#2563eb;
+    --azul-hover:#1d4ed8;
+    --texto:#0f172a;
+    --muted:#64748b;
+    --borda:#e5e7eb;
+    --fundo:#f5f7fb;
+    --verde:#16a34a;
+    --laranja:#f59e0b;
+    --vermelho:#ef4444;
+}
+
+*{ box-sizing:border-box; }
+
+body{
+    margin:0;
+    font-family:Arial, Helvetica, sans-serif;
+    background:var(--fundo);
+    color:var(--texto);
+}
+
+/* ===============================
+   SIDEBAR
+================================ */
+.sidebar{
+    position:fixed;
+    left:0;
+    top:0;
+    width:230px;
+    height:100vh;
+    background:linear-gradient(180deg,#081a31,#061426);
+    color:white;
+    padding:12px 18px 18px;
+    display:flex;
+    flex-direction:column;
+    z-index:20;
+}
+
+.sidebar-logo{
+    display:flex;
+    justify-content:flex-start;
+    align-items:center;
+    padding-left:0px;
+    margin-top:0;
+    margin-bottom:14px;
+}
+
+.sidebar-logo img{
+    width:190px;
+    height:auto;
+    display:block;
+}
+
+.menu-titulo{
+    margin:14px 10px 6px;
+    font-size:12px;
+    color:#94a3b8;
+    text-transform:uppercase;
+    letter-spacing:.2px;
+}
+
+.sidebar a{
+    color:#dbeafe;
+    text-decoration:none;
+    padding:11px 13px;
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    font-size:14px;
+    margin-bottom:2px;
+    transition:.2s;
+    white-space:nowrap;
+}
+
+.sidebar a:hover,
+.sidebar a.ativo{
+    background:var(--azul);
+    color:white;
+}
+
+.menu-icon{
+    width:18px;
+    height:18px;
+    min-width:18px;
+    stroke:currentColor;
+    fill:none;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.sidebar-footer{
+    margin-top:auto;
+}
+
+.btn-recolher{
+    width:100%;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.1);
+    color:#e5efff;
+    padding:13px;
+    border-radius:10px;
+    cursor:pointer;
+    text-align:left;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:14px;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+.sidebar.recolhida{
+    width:82px;
+    padding:14px 12px 18px;
+    align-items:center;
+}
+
+.sidebar.recolhida .sidebar-logo{
+    justify-content:center;
+    padding-left:0;
+}
+
+.sidebar.recolhida .sidebar-logo img{
+    width:48px;
+}
+
+.sidebar.recolhida .menu-titulo{
+    display:none;
+}
+
+.sidebar.recolhida a{
+    justify-content:center;
+    padding:13px;
+    width:52px;
+}
+
+.sidebar.recolhida a span,
+.sidebar.recolhida .btn-recolher span{
+    display:none;
+}
+
+.sidebar.recolhida .btn-recolher{
+    justify-content:center;
+    width:52px;
+    padding:13px;
+}
+
+/* ===============================
+   ÁREA PRINCIPAL
+================================ */
+.main{
+    margin-left:230px;
+    min-height:100vh;
+    transition:.25s ease;
+}
+
+.sidebar.recolhida + .main{
+    margin-left:82px;
+}
+
+/* ===============================
+   HEADER
+================================ */
+.header{
+    height:92px;
+    background:white;
+    border-bottom:1px solid var(--borda);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 34px;
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+
+.header-left{
+    display:flex;
+    align-items:center;
+    gap:22px;
+}
+
+.header-logo img{
+    height:40px;
+    max-width:180px;
+    object-fit:contain;
+}
+
+.divisor{
+    height:34px;
+    width:1px;
+    background:var(--borda);
+}
+
+.header-title{
+    font-weight:800;
+    font-size:18px;
+}
+
+.header-subtitle{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:3px;
+}
+
+.header-actions{
+    display:flex;
+    align-items:center;
+    gap:22px;
+}
+
+.usuario-dropdown{
+    position:relative;
+}
+
+.usuario-btn{
+    border:none;
+    background:transparent;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    cursor:pointer;
+    padding:0;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+.avatar{
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    background:#e2e8f0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+}
+
+.avatar svg{
+    width:28px;
+    height:28px;
+    fill:#cbd5e1;
+}
+
+.usuario-info{
+    text-align:left;
+}
+
+.usuario-info strong{
+    font-size:13px;
+    display:block;
+    color:#0f172a;
+}
+
+.usuario-info small{
+    font-size:11px;
+    color:#64748b;
+}
+
+.seta{
+    width:18px;
+    height:18px;
+    color:#1e3a8a;
+    transition:.2s;
+}
+
+.usuario-dropdown.aberto .seta{
+    transform:rotate(180deg);
+}
+
+.usuario-menu{
+    display:none;
+    position:absolute;
+    right:0;
+    top:58px;
+    width:260px;
+    background:white;
+    border:1px solid #e5e7eb;
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(15,23,42,0.16);
+    padding:14px;
+    z-index:9999;
+}
+
+.usuario-menu.ativo{
+    display:block;
+}
+
+.usuario-menu-titulo{
+    font-size:12px;
+    font-weight:800;
+    color:#64748b;
+    margin-bottom:10px;
+    text-transform:uppercase;
+}
+
+#usuariosOnline{
+    font-size:13px;
+    color:#0f172a;
+    line-height:1.8;
+    max-height:180px;
+    overflow:auto;
+}
+
+.usuario-menu hr{
+    border:none;
+    border-top:1px solid #e5e7eb;
+    margin:12px 0;
+}
+
+.usuario-menu a{
+    display:block;
+    color:#ef4444;
+    text-decoration:none;
+    font-weight:800;
+    font-size:14px;
+}
+
+/* ===============================
+   CONTEÚDO
+================================ */
+.content{
+    padding:28px 18px 38px;
+}
+
+.page-card{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:16px;
+    box-shadow:0 8px 20px rgba(15,23,42,0.04);
+    padding:24px;
+}
+
+.page-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:22px;
+    padding-bottom:18px;
+    border-bottom:1px solid #f1f5f9;
+}
+
+.page-title h2{
+    margin:0;
+    font-size:22px;
+    color:#0f172a;
+    font-weight:800;
+}
+
+.page-title p{
+    margin:5px 0 0;
+    color:#64748b;
+    font-size:13px;
+}
+
+.title-icon{
+    width:48px;
+    height:48px;
+    border-radius:15px;
+    background:#dbeafe;
+    color:#2563eb;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.title-icon svg{
+    width:27px;
+    height:27px;
+    stroke:currentColor;
+    fill:none;
+    stroke-width:2;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:18px;
+}
+
+.campo{
+    display:flex;
+    flex-direction:column;
+}
+
+label{
+    font-weight:800;
+    margin-bottom:7px;
+    color:#334155;
+    font-size:13px;
+}
+
+input,
+select,
+textarea{
+    padding:12px 13px;
+    border-radius:10px;
+    border:1px solid var(--borda);
+    font-size:14px;
+    width:100%;
+    box-sizing:border-box;
+    outline:none;
+    font-family:Arial, Helvetica, sans-serif;
+    color:#0f172a;
+    background:#fff;
+}
+
+input:focus,
+select:focus,
+textarea:focus{
+    border-color:#93c5fd;
+    box-shadow:0 0 0 3px rgba(37,99,235,0.10);
+}
+
+select[multiple]{
+    min-height:115px;
+}
+
+textarea{
+    min-height:180px;
+    resize:vertical;
+}
+
+.full{
+    grid-column:1 / -1;
+}
+
+.section-label{
+    grid-column:1 / -1;
+    margin-top:8px;
+    padding-top:16px;
+    border-top:1px solid #f1f5f9;
+    font-weight:800;
+    color:#0f172a;
+    font-size:15px;
+}
+
+#areaPaste{
+    margin-top:10px;
+    border:2px dashed #cbd5e1;
+    border-radius:12px;
+    padding:24px;
+    text-align:center;
+    background:#f8fafc;
+    color:#64748b;
+    font-size:14px;
+}
+
+#areaPaste strong{
+    color:#0f172a;
+}
+
+#previewAnexo img,
+#previewAnexo video{
+    margin-top:15px;
+    max-width:350px;
+    border-radius:12px;
+    box-shadow:0 8px 20px rgba(15,23,42,0.08);
+}
+
+.botoes{
+    margin-top:25px;
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+    padding-top:18px;
+    border-top:1px solid #f1f5f9;
+}
+
+button{
+    border:none;
+    padding:12px 18px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+    color:white;
+    font-family:Arial, Helvetica, sans-serif;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+}
+
+.btn-salvar{
+    background:#16a34a;
+}
+
+.btn-limpar{
+    background:#2563eb;
+}
+
+.btn-voltar{
+    background:#64748b;
+}
+
+button:hover{
+    opacity:.92;
+}
+
+.footer{
+    display:flex;
+    justify-content:space-between;
+    padding:20px 34px;
+    color:#475569;
+    font-size:12px;
+    border-top:1px solid var(--borda);
+}
+
+@media(max-width:900px){
+    .sidebar{
+        display:none;
+    }
+
+    .main{
+        margin-left:0;
+    }
+
+    .header{
+        flex-direction:column;
+        height:auto;
+        align-items:flex-start;
+        gap:15px;
+        padding:20px;
+    }
+
+    .header-actions{
+        width:100%;
+        justify-content:space-between;
+        flex-wrap:wrap;
+    }
+
+    .content{
+        padding:20px;
+    }
+
+    .grid{
+        grid-template-columns:1fr;
+    }
+
+    .full,
+    .section-label{
+        grid-column:1;
+    }
+
+    .botoes{
+        justify-content:flex-start;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<aside class="sidebar">
+
+    <div class="sidebar-logo">
+        <img 
+            id="logoSidebar"
+            src="https://iili.io/CujQzXa.png"
+            data-logo-aberta="https://iili.io/CujQzXa.png"
+            data-logo-fechada="https://iili.io/CuwvauR.png"
+            alt="SGOS"
+        >
+    </div>
+
+    <a href="painel.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg>
+        <span>Painel Inicial</span>
+    </a>
+
+    <div class="menu-titulo">Operação</div>
+
+    <a href="agendamentos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+        <span>Agendamentos</span>
+    </a>
+
+    <a href="nova-os-avulsa.html" class="ativo">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M5 7h14v12H5z"/><path d="M8 7V5h8v2"/><path d="M9 13l2 2 4-4"/></svg>
+        <span>OS Avulsa</span>
+    </a>
+
+    <a href="relatorios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg>
+        <span>Relatórios</span>
+    </a>
+
+    <a href="escala.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 14h6"/></svg>
+        <span>Escala</span>
+    </a>
+
+    <a href="cronograma.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg>
+        <span>Cronograma</span>
+    </a>
+
+    <a href="viabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+        <span>Viabilidades</span>
+    </a>
+
+    <a href="inviabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+        <span>Inviabilidades</span>
+    </a>
+
+    <div class="menu-titulo">Cadastros</div>
+
+    <a href="planos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        <span>Planos</span>
+    </a>
+
+    <a href="localidades.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span>Localidades</span>
+    </a>
+
+    <a href="tecnicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Técnicos</span>
+    </a>
+
+    <a href="tipos_servicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.5 2.5-3-3z"/></svg>
+        <span>Tipos de Serviços</span>
+    </a>
+
+    <div class="menu-titulo">Configurações</div>
+
+    <a href="usuarios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Usuários</span>
+    </a>
+
+    <a href="logs_acesso.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        <span>Logs do Sistema</span>
+    </a>
+
+    <a href="logs_acoes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <span>Log de Ações</span>
+    </a>
+
+    <a href="historico-os.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/><path d="M12 8v5l3 2"/></svg>
+        <span>Histórico de OS</span>
+    </a>
+
+    <div class="sidebar-footer">
+        <button class="btn-recolher" onclick="toggleSidebar()" type="button">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M2 12h20"/></svg>
+            <span>Recolher menu</span>
+        </button>
+    </div>
+
+</aside>
+
+<main class="main">
+
+    <header class="header">
+        <div class="header-left">
+            <div class="header-logo">
+                <img id="logoEmpresa" src="/img/logo-default.png" alt="Logo Empresa">
+            </div>
+
+            <div class="divisor"></div>
+
+            <div>
+                <div class="header-title">Nova OS Avulsa</div>
+                <div class="header-subtitle">Cadastro de ordem avulsa em texto livre</div>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <div class="usuario-dropdown" id="usuarioDropdown">
+                <button class="usuario-btn" onclick="toggleUserDropdown()" type="button">
+                    <div class="avatar">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22c1.6-5 14.4-5 16 0"/></svg>
+                    </div>
+
+                    <div class="usuario-info">
+                        <strong id="userEmpresa">Carregando...</strong>
+                        <small id="empresaLogada">Empresa</small>
+                    </div>
+
+                    <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+
+                <div class="usuario-menu" id="usuarioMenuDropdown">
+                    <div class="usuario-menu-titulo">Usuários online</div>
+                    <div id="usuariosOnline">Carregando...</div>
+
+                    <hr>
+
+                    <a href="#" onclick="logout()">Sair</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="content">
+
+        <div class="page-card">
+
+            <div class="page-title">
+                <div>
+                    <h2>Nova OS Avulsa</h2>
+                    <p>Preencha localidade, técnicos, tipo de serviço, endereço, descrição, anexo e status.</p>
+                </div>
+
+                <div class="title-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                </div>
+            </div>
+
+            <div class="grid">
+
+                <div class="section-label">Dados da OS Avulsa</div>
+
+                <div class="campo">
+                    <label>Localidade</label>
+                    <input id="localidade" type="text" placeholder="Ex: REGIÃO DO SURUIN">
+                </div>
+
+                <div class="campo">
+                    <label>Técnicos</label>
+                    <select id="tecnico" multiple></select>
+                </div>
+
+                <div class="campo">
+                    <label>Tipo de Serviço</label>
+                    <input id="tipo_servico" type="text" placeholder="Ex: REPARO/FIBRA (ROMPIDA)">
+                </div>
+
+                <div class="campo">
+                    <label>Endereço</label>
+                    <input id="endereco" type="text" placeholder="Ex: Rua Principal, nº 120, Centro">
+                </div>
+
+                <div class="campo">
+                    <label>Status</label>
+                    <select id="status">
+                        <option value="em_aberto" selected>Em aberto</option>
+                        <option value="em_andamento">Em andamento</option>
+                        <option value="concluido">Concluído</option>
+                    </select>
+                </div>
+
+                <div class="campo full">
+                    <label>Descrição</label>
+                    <textarea id="descricao" placeholder="Ex: CLIENTES: DISON, BAR DO RAMON, KAIO"></textarea>
+                </div>
+
+                <div class="section-label">Anexo</div>
+
+                <div class="campo full">
+                    <label>Anexo</label>
+
+                    <input id="anexo" type="file" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx">
+
+                    <div id="areaPaste">
+                        <strong>Cole uma imagem com CTRL + V aqui</strong>
+                        <br><br>
+                        ou selecione manualmente acima
+                    </div>
+
+                    <div id="previewAnexo"></div>
+                </div>
+
+            </div>
+
+            <div class="botoes">
+                <button id="btnSalvar" class="btn-salvar" type="button">
+                    Salvar OS Avulsa
+                </button>
+
+                <button id="btnLimpar" class="btn-limpar" type="button">
+                    Limpar
+                </button>
+
+                <button class="btn-voltar" onclick="window.location.href='/painel.html'" type="button">
+                    Voltar
+                </button>
+            </div>
+
+        </div>
+
+    </section>
+
+    <footer class="footer">
+        <span>SGOS - Sistema de Gestão de Ordens de Serviço</span>
+        <span>Versão 1.0.0</span>
+    </footer>
+
+</main>
+
+<script>
+function toggleSidebar(){
+    const sidebar = document.querySelector(".sidebar");
+    const logo = document.getElementById("logoSidebar");
+
+    if(!sidebar || !logo) return;
+
+    sidebar.classList.toggle("recolhida");
+
+    if(sidebar.classList.contains("recolhida")){
+        logo.src = logo.dataset.logoFechada;
+        localStorage.setItem("sidebar_recolhida", "1");
+    }else{
+        logo.src = logo.dataset.logoAberta;
+        localStorage.setItem("sidebar_recolhida", "0");
+    }
+}
+
+function aplicarEstadoSidebar(){
+    const sidebar = document.querySelector(".sidebar");
+    const logo = document.getElementById("logoSidebar");
+
+    if(
+        sidebar &&
+        logo &&
+        localStorage.getItem("sidebar_recolhida") === "1"
+    ){
+        sidebar.classList.add("recolhida");
+        logo.src = logo.dataset.logoFechada;
+    }
+}
+
+function toggleUserDropdown(){
+    const menu = document.getElementById("usuarioMenuDropdown");
+    const box = document.getElementById("usuarioDropdown");
+
+    if(menu) menu.classList.toggle("ativo");
+    if(box) box.classList.toggle("aberto");
+}
+
+document.addEventListener("click", function(e){
+    const box = document.getElementById("usuarioDropdown");
+    const menu = document.getElementById("usuarioMenuDropdown");
+
+    if(!box || !menu) return;
+
+    if(!box.contains(e.target)){
+        menu.classList.remove("ativo");
+        box.classList.remove("aberto");
+    }
+});
+
+async function carregarUsuarioTopo() {
+    try {
+        const userLocal = JSON.parse(localStorage.getItem("usuario") || "{}");
+
+        if (!userLocal?.id) {
+            window.location.href = "login.html";
+            return;
+        }
+
+        const userEmpresaEl = document.getElementById("userEmpresa");
+        const empresaLogadaEl = document.getElementById("empresaLogada");
+
+        const res = await fetch("/api/me", {
+            headers: {
+                "x-usuario-id": userLocal.id
+            }
+        });
+
+        const data = await res.json();
+
+        if (data?.usuario) {
+            if(userEmpresaEl) userEmpresaEl.innerText = data.usuario;
+
+            if(empresaLogadaEl){
+                empresaLogadaEl.innerText =
+                    data.empresa_nome ||
+                    userLocal.empresa_nome ||
+                    "Empresa";
+            }
+
+            const logo = data.empresa_logo;
+            const logoEl = document.getElementById("logoEmpresa");
+
+            const logoFinal = logo
+                ? (logo.startsWith("/") ? logo : "/" + logo)
+                : "/img/logo-default.png";
+
+            if (logoEl) logoEl.src = logoFinal;
+
+        } else {
+            if(userEmpresaEl) userEmpresaEl.innerText = "Administrador";
+        }
+
+    } catch (err) {
+        console.error("Erro ao carregar usuário:", err);
+        const userEmpresaEl = document.getElementById("userEmpresa");
+        if(userEmpresaEl) userEmpresaEl.innerText = "Administrador";
+    }
+}
+
+async function carregarUsuariosOnline() {
+    try {
+        const res = await fetch("/api/logs");
+        const logs = await res.json();
+
+        const online = logs
+            .filter(l => !l.logout)
+            .map(l => l.usuario);
+
+        const listaUnica = [...new Set(online)];
+        const container = document.getElementById("usuariosOnline");
+
+        if (!container) return;
+
+        if (listaUnica.length === 0) {
+            container.innerHTML = "Nenhum usuário online";
+        } else {
+            container.innerHTML = listaUnica
+                .map(u => `🟢 ${u}`)
+                .join("<br>");
+        }
+
+    } catch (err) {
+        console.error("Erro ao carregar usuários online:", err);
+        const container = document.getElementById("usuariosOnline");
+        if (container) container.innerText = "Online indisponível";
+    }
+}
+
+function logout() {
+    const logId = localStorage.getItem("log_id");
+
+    if (logId) {
+        fetch("/api/logout", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                log_id: logId
+            })
+        }).catch(console.error);
+    }
+
+    sessionStorage.clear();
+    localStorage.clear();
+    window.location.href = "login.html";
+}
+
+let anexoArquivo = null;
+const osAvulsaId = new URLSearchParams(window.location.search).get("id");
+
+async function apiFetch(url, options = {}) {
+
+    const usuario =
+        JSON.parse(
+            localStorage.getItem(
+                "usuario"
+            )
+        );
+
+    if (!usuario || !usuario.id) {
+
+        alert("Sessão expirada.");
+
+        window.location.href =
+            "/login.html";
+
+        return;
+    }
+
+    const headers = {
+        "x-usuario-id": usuario.id
+    };
+
+    if (
+        !(options.body instanceof FormData)
+    ) {
+        headers["Content-Type"] =
+            "application/json";
+    }
+
+    const res = await fetch(url, {
+        ...options,
+        headers
+    });
+
+    if (!res.ok) {
+        const erro = await res.text();
+
+        console.error(
+            "Erro API:",
+            erro
+        );
+
+        throw new Error(
+            `Erro ${res.status}`
+        );
+    }
+
+    return res.json();
+}
+
+// ===============================
+// CARREGAR TÉCNICOS
+// Usa a mesma referência da página Novo Atendimento
+// ===============================
+async function carregarTecnicos() {
+
+    const tecnicos =
+        await apiFetch(
+            "/api/ordens_servico/tecnicos"
+        );
+
+    const selTec =
+        document.getElementById(
+            "tecnico"
+        );
+
+    selTec.innerHTML = "";
+
+    tecnicos.forEach(t => {
+
+        selTec.innerHTML += `
+            <option value="${t.id}">
+                ${t.nome}
+            </option>
+        `;
+    });
+}
+
+
+// ===============================
+// CARREGAR DADOS PARA EDIÇÃO
+// ===============================
+async function carregarEdicaoOSAvulsaLocal(){
+    if(!osAvulsaId) return;
+
+    try{
+        const os = await apiFetch(`/api/os-avulsas/${osAvulsaId}`);
+
+        document.getElementById("localidade").value = os.localidade || "";
+        document.getElementById("tipo_servico").value = os.tipo_servico || "";
+        document.getElementById("endereco").value = os.endereco || "";
+        document.getElementById("descricao").value = os.descricao || "";
+        document.getElementById("status").value = os.status || "em_aberto";
+
+        let tecnicosIds = [];
+
+        try{
+            tecnicosIds = Array.isArray(os.tecnicos)
+                ? os.tecnicos
+                : JSON.parse(os.tecnicos || "[]");
+        }catch(e){
+            tecnicosIds = String(os.tecnicos || "")
+                .replace(/\[/g, "")
+                .replace(/\]/g, "")
+                .split(",")
+                .map(v => v.trim())
+                .filter(Boolean);
+        }
+
+        const selTec = document.getElementById("tecnico");
+
+        const idsNormalizados = tecnicosIds.map(v => String(v).trim());
+        const nomesNormalizados = String(os.tecnicos_nomes || "")
+            .split(",")
+            .map(v => v.trim().toLowerCase())
+            .filter(Boolean);
+
+        Array.from(selTec.options).forEach(opt => {
+            const optId = String(opt.value).trim();
+            const optNome = String(opt.textContent || "").trim().toLowerCase();
+
+            opt.selected =
+                idsNormalizados.includes(optId) ||
+                nomesNormalizados.includes(optNome);
+        });
+
+        const btnSalvar = document.getElementById("btnSalvar");
+        if(btnSalvar) btnSalvar.innerText = "Atualizar OS Avulsa";
+
+    }catch(err){
+        console.error("Erro ao carregar OS Avulsa para edição:", err);
+        alert("Não foi possível carregar os dados da OS Avulsa para edição.");
+    }
+}
+
+// ===============================
+// INPUT FILE
+// ===============================
+document
+.getElementById("anexo")
+.addEventListener(
+    "change",
+    (e) => {
+
+        const file =
+            e.target.files[0];
+
+        if (!file) return;
+
+        anexoArquivo = file;
+
+        renderPreview(file);
+    }
+);
+
+// ===============================
+// CTRL + V
+// ===============================
+document
+.getElementById("areaPaste")
+.addEventListener(
+    "paste",
+    (event) => {
+
+        const items =
+            event.clipboardData.items;
+
+        for (const item of items) {
+
+            if (
+                item.type.indexOf("image")
+                !== -1
+            ) {
+
+                const blob =
+                    item.getAsFile();
+
+                anexoArquivo = blob;
+
+                renderPreview(blob);
+
+                alert(
+                    "Imagem colada!"
+                );
+
+                return;
+            }
+        }
+    }
+);
+
+// ===============================
+function renderPreview(file){
+
+    const preview =
+        document.getElementById(
+            "previewAnexo"
+        );
+
+    preview.innerHTML = "";
+
+    const container =
+        document.createElement("div");
+
+    container.style.position =
+        "relative";
+
+    container.style.display =
+        "inline-block";
+
+    container.style.marginTop =
+        "15px";
+
+    const fechar =
+        document.createElement("button");
+
+    fechar.innerHTML = "✖";
+
+    fechar.type = "button";
+
+    fechar.style.position =
+        "absolute";
+
+    fechar.style.top = "-12px";
+
+    fechar.style.right = "-2px";
+
+    fechar.style.background =
+        "transparent";
+
+    fechar.style.border =
+        "none";
+
+    fechar.style.color =
+        "#ff0000";
+
+    fechar.style.cursor =
+        "pointer";
+
+    fechar.style.fontWeight =
+        "bold";
+
+    fechar.style.fontSize =
+        "22px";
+
+    fechar.style.padding =
+        "0";
+
+    fechar.style.lineHeight =
+        "1";
+
+    fechar.style.zIndex =
+        "999";
+
+    fechar.style.textShadow =
+        "0 0 3px rgba(255,255,255,0.8)";
+
+    fechar.onclick = () => {
+
+        anexoArquivo = null;
+
+        document.getElementById(
+            "anexo"
+        ).value = "";
+
+        preview.innerHTML = "";
+    };
+
+    container.appendChild(fechar);
+
+    if (
+        file.type &&
+        file.type.startsWith("image/")
+    ) {
+
+        const img =
+            document.createElement("img");
+
+        img.src =
+            URL.createObjectURL(file);
+
+        img.style.maxWidth =
+            "350px";
+
+        img.style.borderRadius =
+            "10px";
+
+        img.style.display =
+            "block";
+
+        container.appendChild(img);
+    }
+
+    else if (
+        file.type &&
+        file.type.startsWith("video/")
+    ) {
+
+        const video =
+            document.createElement("video");
+
+        video.src =
+            URL.createObjectURL(file);
+
+        video.controls = true;
+
+        video.style.maxWidth =
+            "350px";
+
+        video.style.borderRadius =
+            "10px";
+
+        container.appendChild(video);
+    }
+
+    else {
+
+        const arquivo =
+            document.createElement("div");
+
+        arquivo.style.padding =
+            "14px 16px";
+
+        arquivo.style.border =
+            "1px solid #e5e7eb";
+
+        arquivo.style.borderRadius =
+            "10px";
+
+        arquivo.style.background =
+            "#f8fafc";
+
+        arquivo.innerText =
+            file.name || "Arquivo anexado";
+
+        container.appendChild(arquivo);
+    }
+
+    preview.appendChild(container);
+
+    const info =
+        document.createElement("div");
+
+    info.style.marginTop =
+        "10px";
+
+    info.innerHTML = `
+        <b>
+            ${file.name || "imagem-colada.png"}
+        </b>
+
+        <br>
+
+        ${(file.size / 1024 / 1024)
+            .toFixed(2)} MB
+    `;
+
+    preview.appendChild(info);
+}
+
+// ===============================
+function limparFormulario(){
+
+    document.getElementById("localidade").value = "";
+    document.getElementById("tipo_servico").value = "";
+    document.getElementById("endereco").value = "";
+    document.getElementById("descricao").value = "";
+    document.getElementById("status").value = "em_aberto";
+
+    Array
+    .from(
+        document.getElementById("tecnico").options
+    )
+    .forEach(opt => opt.selected = false);
+
+    anexoArquivo = null;
+
+    document.getElementById("anexo").value = "";
+    document.getElementById("previewAnexo").innerHTML = "";
+}
+
+// ===============================
+async function salvarOSAvulsa(){
+
+    const localidade =
+        document
+        .getElementById("localidade")
+        .value
+        .trim();
+
+    const tecnicosSelecionados =
+        Array
+        .from(
+            document
+            .getElementById("tecnico")
+            .selectedOptions
+        );
+
+    const tecnicosIds =
+        tecnicosSelecionados
+        .map(o => Number(o.value));
+
+    const tecnicosNomes =
+        tecnicosSelecionados
+        .map(o => o.textContent.trim());
+
+    const tipoServico =
+        document
+        .getElementById("tipo_servico")
+        .value
+        .trim();
+
+    const endereco =
+        document
+        .getElementById("endereco")
+        .value
+        .trim();
+
+    const descricao =
+        document
+        .getElementById("descricao")
+        .value
+        .trim();
+
+    const status =
+        document
+        .getElementById("status")
+        .value;
+
+    if(!localidade){
+        alert("Informe a localidade.");
+        return;
+    }
+
+    if(tecnicosIds.length === 0){
+        alert("Selecione pelo menos um técnico.");
+        return;
+    }
+
+    if(!tipoServico){
+        alert("Informe o tipo de serviço.");
+        return;
+    }
+
+    const formData =
+        new FormData();
+
+    formData.append(
+        "localidade",
+        localidade
+    );
+
+    formData.append(
+        "tecnicos",
+        JSON.stringify(tecnicosIds)
+    );
+
+    formData.append(
+        "tecnicos_nomes",
+        tecnicosNomes.join(", ")
+    );
+
+    formData.append(
+        "tipo_servico",
+        tipoServico
+    );
+
+    formData.append(
+        "endereco",
+        endereco
+    );
+
+    formData.append(
+        "descricao",
+        descricao
+    );
+
+    formData.append(
+        "status",
+        status
+    );
+
+    if(anexoArquivo){
+        formData.append(
+            "anexo",
+            anexoArquivo
+        );
+    }
+
+    await apiFetch(
+        osAvulsaId ? `/api/os-avulsas/${osAvulsaId}` : "/api/os-avulsas",
+        {
+            method: osAvulsaId ? "PUT" : "POST",
+            body:formData
+        }
+    );
+
+    alert(
+        osAvulsaId
+            ? "OS Avulsa atualizada com sucesso!"
+            : "OS Avulsa salva com sucesso!"
+    );
+
+    window.location.href =
+        "/painel.html";
+}
+
+// ===============================
+document.addEventListener("DOMContentLoaded", async () => {
+    aplicarEstadoSidebar();
+
+    carregarUsuarioTopo();
+    carregarUsuariosOnline();
+
+    await carregarTecnicos();
+    await carregarEdicaoOSAvulsaLocal();
+
+    const paginaAtual =
+        window.location.pathname
+        .split("/")
+        .pop();
+
+    document
+    .querySelectorAll(".sidebar a")
+    .forEach(link => {
+
+        link.classList.remove("ativo");
+
+        if(
+            link.getAttribute("href")
+            === paginaAtual
+        ){
+            link.classList.add("ativo");
+        }
+    });
+
+    document
+    .getElementById("btnSalvar")
+    .addEventListener(
+        "click",
+        salvarOSAvulsa
+    );
+
+    document
+    .getElementById("btnLimpar")
+    .addEventListener(
+        "click",
+        limparFormulario
+    );
+});
+
+setInterval(async () => {
+    const logId = localStorage.getItem("log_id");
+
+    if (logId) {
+        await fetch("/api/ping", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                log_id: logId
+            })
+        }).catch(console.error);
+    }
+
+    carregarUsuariosOnline();
+
+}, 300000);
+</script>
+
+</body>
+</html>

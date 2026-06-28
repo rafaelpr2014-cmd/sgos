@@ -1,0 +1,21 @@
+{
+  "appId": "com.sgos.mobile",
+  "appName": "SGOS Mobile",
+  "webDir": "public",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": [
+      "*.sgos.net.br",
+      "sgos.net.br"
+    ]
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
+  }
+}

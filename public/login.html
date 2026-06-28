@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Login - SGOS</title>
+
+<link rel="icon" type="image/png" href="/img/favicon.png">
+
+<style>
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+}
+
+body{
+    font-family:Arial, Helvetica, sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+        radial-gradient(circle at top left, rgba(37,99,235,.35), transparent 35%),
+        linear-gradient(135deg,#061426,#081a31 55%,#0f172a);
+    padding:20px;
+}
+
+.login-wrapper{
+    width:100%;
+    max-width:420px;
+}
+
+.box{
+    background:white;
+    border-radius:18px;
+    padding:34px;
+    text-align:center;
+    box-shadow:0 30px 80px rgba(0,0,0,.35);
+}
+
+.logo{
+    width:230px;
+    max-width:100%;
+    margin-bottom:26px;
+}
+
+.titulo{
+    font-size:22px;
+    font-weight:800;
+    color:#0f172a;
+    margin-bottom:6px;
+}
+
+.subtitulo{
+    font-size:13px;
+    color:#64748b;
+    margin-bottom:24px;
+}
+
+.campo{
+    text-align:left;
+    margin-bottom:14px;
+}
+
+.campo label{
+    display:block;
+    font-size:13px;
+    font-weight:800;
+    color:#334155;
+    margin-bottom:6px;
+}
+
+input{
+    width:100%;
+    padding:13px 14px;
+    border-radius:12px;
+    border:1px solid #e5e7eb;
+    outline:none;
+    font-size:14px;
+    background:#fff;
+}
+
+input:focus{
+    border-color:#93c5fd;
+    box-shadow:0 0 0 3px rgba(37,99,235,.12);
+}
+
+button{
+    width:100%;
+    padding:13px;
+    background:#2563eb;
+    color:white;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:15px;
+    font-weight:800;
+    margin-top:8px;
+    transition:.2s;
+}
+
+button:hover{
+    background:#1d4ed8;
+}
+
+#erro{
+    color:#dc2626;
+    margin-top:14px;
+    font-size:14px;
+    min-height:18px;
+}
+
+.rodape{
+    margin-top:22px;
+    font-size:12px;
+    color:#94a3b8;
+    text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="login-wrapper">
+
+    <div class="box">
+
+        <img src="https://iili.io/CukfcHN.png" class="logo" alt="SGOS">
+
+        <div class="titulo">Acesso ao Sistema</div>
+        <div class="subtitulo">Sistema de Gestão de Ordens de Serviço</div>
+
+        <div class="campo">
+            <label>Usuário</label>
+            <input type="text" id="usuario" placeholder="Digite seu usuário">
+        </div>
+
+        <div class="campo">
+            <label>Senha</label>
+            <input type="password" id="senha" placeholder="Digite sua senha">
+        </div>
+
+        <button onclick="login()">Entrar</button>
+
+        <p id="erro"></p>
+
+    </div>
+
+    <div class="rodape">
+        SGOS © Sistema de Gestão de Ordens de Serviço
+    </div>
+
+</div>
+
+<script>
+console.log("🔥 LOGIN CARREGADO");
+
+// =========================
+// 🔍 DETECÇÃO APP / WEB
+// =========================
+const isApp = window.Capacitor?.isNativePlatform?.();
+
+// =========================
+// 🌐 BASE DA API
+// =========================
+const API_BASE = localStorage.getItem("api_base") || "";
+
+// =========================
+// 🔁 AUTO LOGIN
+// =========================
+const usuarioSalvo = JSON.parse(
+    localStorage.getItem("usuario") || "{}"
+);
+
+const logId = localStorage.getItem("log_id");
+
+if(usuarioSalvo?.id && logId){
+    console.log("🔁 Usuário já logado");
+
+    if(isApp){
+        window.location.replace("appmobile.html");
+    }else{
+        window.location.replace("painel.html");
+    }
+}
+
+// =========================
+// 🚀 LOGIN
+// =========================
+async function login(){
+
+    const usuarioInput =
+        document.getElementById("usuario").value.trim();
+
+    const senha =
+        document.getElementById("senha").value.trim();
+
+    const erroEl =
+        document.getElementById("erro");
+
+    erroEl.innerText = "";
+
+    if(!usuarioInput || !senha){
+        erroEl.innerText = "Preencha usuário e senha";
+        return;
+    }
+
+    try{
+
+        const url =
+            isApp && API_BASE
+                ? `${API_BASE}/api/login`
+                : "/api/login";
+
+        const res = await fetch(url, {
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                usuario:usuarioInput,
+                senha
+            })
+        });
+
+        const data = await res.json();
+
+        if(res.ok && data.ok && data.usuario && data.log_id){
+
+            const userData = {
+                id:data.usuario.id,
+                usuario:data.usuario.usuario,
+                cargo:data.usuario.cargo,
+                empresa_id:data.usuario.empresa_id,
+                log_id:data.log_id
+            };
+
+            localStorage.setItem(
+                "usuario",
+                JSON.stringify(userData)
+            );
+
+            localStorage.setItem(
+                "log_id",
+                data.log_id
+            );
+
+            localStorage.setItem(
+                "usuario_id",
+                data.usuario.id
+            );
+
+            console.log("✅ LOGIN OK");
+
+            setTimeout(() => {
+                if(isApp){
+                    window.location.replace("appmobile.html");
+                }else{
+                    window.location.replace("painel.html");
+                }
+            }, 100);
+
+        }else{
+            erroEl.innerText =
+                data.erro ||
+                "Erro ao logar";
+        }
+
+    }catch(err){
+        console.error(err);
+        erroEl.innerText = "Erro no servidor";
+    }
+}
+
+// =========================
+// ⌨ ENTER LOGIN
+// =========================
+document.addEventListener("keypress", (e) => {
+    if(e.key === "Enter"){
+        login();
+    }
+});
+</script>
+
+</body>
+</html>

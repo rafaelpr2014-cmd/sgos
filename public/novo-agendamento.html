@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>SGOS - Novo Agendamento</title>
+<link rel="icon" type="image/png" href="/img/favicon.png">
+<script src="/js/auth.js"></script>
+
+<style>
+:root{
+    --azul:#2563eb;
+    --azul-hover:#1d4ed8;
+    --texto:#0f172a;
+    --muted:#64748b;
+    --borda:#e5e7eb;
+    --fundo:#f5f7fb;
+    --verde:#16a34a;
+    --laranja:#f59e0b;
+    --vermelho:#ef4444;
+}
+
+*{ box-sizing:border-box; }
+
+body{
+    margin:0;
+    font-family:Arial, Helvetica, sans-serif;
+    background:var(--fundo);
+    color:var(--texto);
+}
+
+/* ===============================
+   SIDEBAR
+================================ */
+.sidebar{
+    position:fixed;
+    left:0;
+    top:0;
+    width:230px;
+    height:100vh;
+    background:linear-gradient(180deg,#081a31,#061426);
+    color:white;
+    padding:12px 18px 18px;
+    display:flex;
+    flex-direction:column;
+    z-index:20;
+}
+
+.sidebar-logo{
+    display:flex;
+    justify-content:flex-start;
+    align-items:center;
+    padding-left:0px;
+    margin-top:0;
+    margin-bottom:14px;
+}
+
+.sidebar-logo img{
+    width:190px;
+    height:auto;
+    display:block;
+}
+
+.menu-titulo{
+    margin:14px 10px 6px;
+    font-size:12px;
+    color:#94a3b8;
+    text-transform:uppercase;
+    letter-spacing:.2px;
+}
+
+.sidebar a{
+    color:#dbeafe;
+    text-decoration:none;
+    padding:11px 13px;
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    font-size:14px;
+    margin-bottom:2px;
+    transition:.2s;
+}
+
+.sidebar a:hover,
+.sidebar a.ativo{
+    background:var(--azul);
+    color:white;
+}
+
+.menu-icon{
+    width:18px;
+    height:18px;
+    min-width:18px;
+    stroke:currentColor;
+    fill:none;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.sidebar-footer{ margin-top:auto; }
+
+.btn-recolher{
+    width:100%;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.1);
+    color:#e5efff;
+    padding:13px;
+    border-radius:10px;
+    cursor:pointer;
+    text-align:left;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:14px;
+}
+
+.sidebar.recolhida{
+    width:82px;
+    padding:16px 12px;
+    align-items:center;
+}
+
+.sidebar.recolhida .sidebar-logo{
+    justify-content:center;
+    padding-left:0;
+}
+
+.sidebar.recolhida .sidebar-logo img{
+    width:48px;
+}
+
+.sidebar.recolhida .menu-titulo{ display:none; }
+
+.sidebar.recolhida a{
+    justify-content:center;
+    padding:13px;
+    width:52px;
+}
+
+.sidebar.recolhida a span,
+.sidebar.recolhida .btn-recolher span{
+    display:none;
+}
+
+.sidebar.recolhida .btn-recolher{
+    justify-content:center;
+    width:52px;
+    padding:13px;
+}
+
+/* ===============================
+   MAIN / HEADER
+================================ */
+.main{
+    margin-left:230px;
+    min-height:100vh;
+    transition:.25s ease;
+}
+
+.sidebar.recolhida + .main{ margin-left:82px; }
+
+.header{
+    height:92px;
+    background:white;
+    border-bottom:1px solid var(--borda);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 34px;
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+
+.header-left{
+    display:flex;
+    align-items:center;
+    gap:22px;
+}
+
+.header-logo img{
+    height:60px;
+    max-width:190px;
+    object-fit:contain;
+}
+
+.divisor{
+    height:34px;
+    width:1px;
+    background:var(--borda);
+}
+
+.header-title{
+    font-weight:800;
+    font-size:18px;
+}
+
+.header-actions{
+    display:flex;
+    align-items:center;
+    gap:22px;
+}
+
+.usuario-dropdown{ position:relative; }
+
+.usuario-btn{
+    border:none;
+    background:transparent;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    cursor:pointer;
+    padding:0;
+}
+
+.avatar{
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    background:#e2e8f0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+}
+
+.avatar svg{
+    width:28px;
+    height:28px;
+    fill:#cbd5e1;
+}
+
+.usuario-info{ text-align:left; }
+
+.usuario-info strong{
+    font-size:13px;
+    display:block;
+    color:#0f172a;
+}
+
+.usuario-info small{
+    font-size:11px;
+    color:#64748b;
+}
+
+.seta{
+    width:18px;
+    height:18px;
+    color:#1e3a8a;
+    transition:.2s;
+}
+
+.usuario-dropdown.aberto .seta{ transform:rotate(180deg); }
+
+.usuario-menu{
+    display:none;
+    position:absolute;
+    right:0;
+    top:58px;
+    width:260px;
+    background:white;
+    border:1px solid #e5e7eb;
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(15,23,42,0.16);
+    padding:14px;
+    z-index:9999;
+}
+
+.usuario-menu.ativo{ display:block; }
+
+.usuario-menu-titulo{
+    font-size:12px;
+    font-weight:800;
+    color:#64748b;
+    margin-bottom:10px;
+    text-transform:uppercase;
+}
+
+#usuariosOnline{
+    font-size:13px;
+    color:#0f172a;
+    line-height:1.8;
+    max-height:180px;
+    overflow:auto;
+}
+
+.usuario-menu hr{
+    border:none;
+    border-top:1px solid #e5e7eb;
+    margin:12px 0;
+}
+
+.usuario-menu a{
+    display:block;
+    color:#ef4444;
+    text-decoration:none;
+    font-weight:800;
+    font-size:14px;
+}
+
+/* ===============================
+   CONTENT
+================================ */
+.content{
+    padding:28px 18px 38px;
+}
+
+.page-card{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    box-shadow:0 8px 20px rgba(15,23,42,0.04);
+    padding:24px;
+}
+
+.page-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:20px;
+    margin-bottom:22px;
+    padding-bottom:18px;
+    border-bottom:1px solid #f1f5f9;
+}
+
+.page-title{
+    margin:0;
+    font-size:22px;
+    color:#0f172a;
+    font-weight:800;
+}
+
+.page-subtitle{
+    margin-top:6px;
+    color:#64748b;
+    font-size:13px;
+}
+
+.badge-agendamento{
+    background:#dbeafe;
+    color:#2563eb;
+    border-radius:999px;
+    padding:8px 12px;
+    font-size:12px;
+    font-weight:bold;
+    white-space:nowrap;
+}
+
+.section-title{
+    font-size:15px;
+    font-weight:800;
+    color:#0f172a;
+    margin:24px 0 14px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+.section-title:first-of-type{ margin-top:0; }
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:18px;
+}
+
+.campo{
+    display:flex;
+    flex-direction:column;
+}
+
+.full{ grid-column:1 / -1; }
+
+label{
+    font-weight:bold;
+    margin-bottom:7px;
+    color:#334155;
+    font-size:13px;
+}
+
+input,
+select,
+textarea{
+    padding:12px 13px;
+    border-radius:10px;
+    border:1px solid var(--borda);
+    font-size:14px;
+    width:100%;
+    outline:none;
+    background:white;
+    color:#0f172a;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+input:focus,
+select:focus,
+textarea:focus{
+    border-color:#2563eb;
+    box-shadow:0 0 0 3px rgba(37,99,235,0.12);
+}
+
+select[multiple]{
+    min-height:120px;
+}
+
+textarea{
+    min-height:110px;
+    resize:vertical;
+}
+
+.hidden{ display:none; }
+
+
+/* ===============================
+   BUSCA ERP
+================================ */
+.mikweb-selected{
+    color:#1d4ed8 !important;
+    font-weight:800;
+    border-color:#60a5fa !important;
+    background:#eff6ff !important;
+}
+
+.origem-mikweb{
+    display:none;
+    margin-top:7px;
+    color:#1d4ed8;
+    font-size:12px;
+    font-weight:800;
+}
+
+.origem-mikweb.ativo{ display:block; }
+
+.mikweb-resultados{
+    display:none;
+    margin-top:8px;
+    border:1px solid #dbeafe;
+    border-radius:12px;
+    background:#fff;
+    box-shadow:0 10px 24px rgba(15,23,42,0.08);
+    overflow:hidden;
+    max-height:280px;
+    overflow-y:auto;
+}
+
+.mikweb-resultados.ativo{ display:block; }
+
+.mikweb-status{
+    padding:10px 12px;
+    font-size:13px;
+    color:#475569;
+    background:#f8fafc;
+    border-top:1px solid #e5e7eb;
+}
+
+.mikweb-item{
+    padding:12px 14px;
+    border-bottom:1px solid #f1f5f9;
+    cursor:pointer;
+    transition:.15s;
+}
+
+.mikweb-item:hover{ background:#eff6ff; }
+
+.mikweb-item strong{
+    color:#1d4ed8;
+    font-size:14px;
+}
+
+.mikweb-item small{
+    display:block;
+    color:#64748b;
+    margin-top:4px;
+    font-size:12px;
+}
+
+/* ===============================
+   ANEXOS
+================================ */
+.anexo-card{
+    border:1px dashed #cbd5e1;
+    border-radius:14px;
+    padding:18px;
+    background:#f8fafc;
+}
+
+#areaPaste{
+    margin-top:12px;
+    border:2px dashed #cbd5e1;
+    border-radius:12px;
+    padding:22px;
+    text-align:center;
+    background:white;
+    color:#64748b;
+    font-size:14px;
+    transition:.2s;
+}
+
+#areaPaste:hover{
+    border-color:#2563eb;
+    color:#2563eb;
+}
+
+#previewAnexo img,
+#previewAnexo video{
+    margin-top:15px;
+    max-width:350px;
+    border-radius:12px;
+    box-shadow:0 8px 20px rgba(15,23,42,0.08);
+}
+
+/* ===============================
+   BUTTONS
+================================ */
+.botoes{
+    margin-top:26px;
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    padding-top:22px;
+    border-top:1px solid #f1f5f9;
+}
+
+button{
+    border:none;
+    padding:12px 20px;
+    border-radius:10px;
+    cursor:pointer;
+    font-family:Arial, Helvetica, sans-serif;
+    font-weight:bold;
+    color:white;
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+.btn-salvar{ background:#16a34a; }
+.btn-voltar{ background:#64748b; }
+
+.btn-salvar:hover,
+.btn-voltar:hover{ opacity:.92; }
+
+.footer{
+    display:flex;
+    justify-content:space-between;
+    padding:20px 34px;
+    color:#475569;
+    font-size:12px;
+    border-top:1px solid var(--borda);
+}
+
+@media(max-width:900px){
+    .sidebar{ display:none; }
+    .main{ margin-left:0; }
+    .header{
+        flex-direction:column;
+        height:auto;
+        align-items:flex-start;
+        gap:15px;
+        padding:20px;
+    }
+    .header-actions{
+        width:100%;
+        justify-content:space-between;
+        flex-wrap:wrap;
+    }
+    .grid{ grid-template-columns:1fr; }
+    .content{ padding:20px; }
+}
+</style>
+</head>
+
+<body>
+
+<aside class="sidebar">
+
+    <div class="sidebar-logo">
+        <img
+            id="logoSidebar"
+            src="https://iili.io/CujQzXa.png"
+            data-logo-aberta="https://iili.io/CujQzXa.png"
+            data-logo-fechada="https://iili.io/CuwvauR.png"
+            alt="SGOS"
+        >
+    </div>
+
+  <a href="painel.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg>
+        <span>Painel Inicial</span>
+    </a>
+
+    <div class="menu-titulo">Operação</div>
+
+    <a href="agendamentos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+        <span>Agendamentos</span>
+    </a>
+
+    <a href="relatorios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg>
+        <span>Relatórios</span>
+    </a>
+
+<a href="escala.html" class=>
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 14h6"/></svg>
+        <span>Escala</span>
+    </a>
+
+    <a href="cronograma.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg>
+        <span>Cronograma</span>
+    </a>
+
+    <a href="viabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+        <span>Viabilidades</span>
+    </a>
+
+    <a href="inviabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+        <span>Inviabilidades</span>
+    </a>
+
+    <div class="menu-titulo">Cadastros</div>
+
+    <a href="planos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        <span>Planos</span>
+    </a>
+
+    <a href="localidades.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span>Localidades</span>
+    </a>
+
+    <a href="tecnicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Técnicos</span>
+    </a>
+
+    <a href="tipos_servicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.5 2.5-3-3z"/></svg>
+        <span>Tipos de Serviços</span>
+    </a>
+
+    <div class="menu-titulo">Configurações</div>
+
+    <a href="usuarios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Usuários</span>
+    </a>
+
+    <a href="logs_acesso.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        <span>Logs do Sistema</span>
+    </a>
+
+    <a href="logs_acoes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <span>Log de Ações</span>
+    </a>
+
+    <a href="historico-os.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/><path d="M12 8v5l3 2"/></svg>
+        <span>Histórico de OS</span>
+    </a>
+
+    <div class="sidebar-footer">
+        <button class="btn-recolher" onclick="toggleSidebar()" type="button">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M2 12h20"/></svg>
+            <span>Recolher menu</span>
+        </button>
+    </div>
+
+</aside>
+
+<main class="main">
+
+    <header class="header">
+        <div class="header-left">
+            <div class="header-logo">
+                <img id="logoEmpresa" src="/img/logo-default.png" alt="Logo Empresa">
+            </div>
+
+            <div class="divisor"></div>
+
+            <div class="header-title">Novo Agendamento</div>
+        </div>
+
+        <div class="header-actions">
+            <div class="usuario-dropdown" id="usuarioDropdown">
+                <button class="usuario-btn" onclick="toggleUserDropdown()" type="button">
+                    <div class="avatar">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22c1.6-5 14.4-5 16 0"/></svg>
+                    </div>
+
+                    <div class="usuario-info">
+                        <strong id="userEmpresa">Carregando...</strong>
+                        <small id="empresaLogada">Empresa</small>
+                    </div>
+
+                    <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+
+                <div class="usuario-menu" id="usuarioMenuDropdown">
+                    <div class="usuario-menu-titulo">Usuários online</div>
+                    <div id="usuariosOnline">Carregando...</div>
+                    <hr>
+                    <a href="#" onclick="logout()">Sair</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="content">
+
+        <div class="page-card">
+            <div class="page-head">
+                <div>
+                    <h2 class="page-title">Novo Agendamento</h2>
+                    <div class="page-subtitle">Preencha os dados abaixo para criar uma OS agendada.</div>
+                </div>
+
+                <div class="badge-agendamento">Status: Agendado</div>
+            </div>
+
+            <div class="section-title">Dados do cliente</div>
+
+            <div class="grid">
+                <div class="campo">
+                    <label>Cliente</label>
+                    <input id="nome">
+                    <div id="origemMikWeb" class="origem-mikweb">✓ Cliente selecionado via ERP</div>
+                </div>
+
+                <div class="campo">
+                    <label>Telefone</label>
+                    <input id="telefone">
+                </div>
+
+                <div class="campo">
+                    <label>ID ou Nome do Cliente (ERP)</label>
+                    <input id="id_cliente" placeholder="Digite o ID ou nome para buscar no ERP ativo" autocomplete="off">
+                    <div id="resultadoMikWeb" class="mikweb-resultados"></div>
+                </div>
+
+                <div class="campo">
+                    <label>Login</label>
+                    <input id="login">
+                </div>
+            </div>
+
+            <div class="section-title">Serviço</div>
+
+            <div class="grid">
+                <div class="campo">
+                    <label>Localidade</label>
+                    <select id="localidade"></select>
+                </div>
+
+                <div class="campo">
+                    <label>Plano</label>
+                    <select id="plano"></select>
+                </div>
+
+                <div class="campo">
+                    <label>Serviço</label>
+                    <select id="tipo_servico"></select>
+                </div>
+
+                <div class="campo">
+                    <label>Técnicos</label>
+                    <select id="tecnico" multiple></select>
+                </div>
+
+                <div class="campo">
+                    <label>Modo VLAN</label>
+                    <select id="modo_vlan">
+                        <option value="auto">Usar VLAN do sistema</option>
+                        <option value="manual">Manual</option>
+                    </select>
+                </div>
+
+                <div class="campo hidden" id="campo_vlan">
+                    <label>VLAN</label>
+                    <input id="vlan">
+                </div>
+
+                <div class="campo">
+                    <label>Data de Agendamento *</label>
+                    <input id="agendamento_data" type="date" required>
+                </div>
+
+                <div class="campo">
+                    <label>Horário de Realização (opcional)</label>
+                    <input id="agendamento_hora" type="time">
+                </div>
+
+                <div class="campo">
+                    <label>Agendamento de Envio</label>
+                    <input id="agendamento_envio" type="datetime-local">
+                </div>
+            </div>
+
+            <div class="section-title">Endereço</div>
+
+            <div class="grid">
+                <div class="campo">
+                    <label>Rua</label>
+                    <input id="rua">
+                </div>
+
+                <div class="campo">
+                    <label>Número</label>
+                    <input id="n" placeholder="Ex.: 125">
+                </div>
+
+                <div class="campo">
+                    <label>Bairro</label>
+                    <input id="bairro">
+                </div>
+
+                <div class="campo">
+                    <label>Referência</label>
+                    <input id="referencia">
+                </div>
+
+                <div class="campo">
+                    <label>Latitude</label>
+                    <input id="latitude" placeholder="-3.745123">
+                </div>
+
+                <div class="campo">
+                    <label>Longitude</label>
+                    <input id="longitude" placeholder="-38.523456">
+                </div>
+
+                <div class="campo full">
+                    <label>Observações</label>
+                    <textarea id="observacoes"></textarea>
+                </div>
+            </div>
+
+            <div class="section-title">Anexo</div>
+
+            <div class="grid">
+                <div class="campo full anexo-card">
+                    <label>Arquivo</label>
+
+                    <input
+                        id="anexo"
+                        type="file"
+                        accept="image/*,video/*"
+                    >
+
+                    <div id="areaPaste">
+                        Cole imagem com CTRL + V aqui<br><br>
+                        ou selecione manualmente acima
+                    </div>
+
+                    <div id="previewAnexo"></div>
+                </div>
+            </div>
+
+            <div class="botoes">
+                <button class="btn-salvar" onclick="salvar()" type="button">
+                    Salvar Agendamento
+                </button>
+
+                <button class="btn-voltar" onclick="history.back()" type="button">
+                    Voltar
+                </button>
+            </div>
+        </div>
+
+    </section>
+
+    <footer class="footer">
+        <span>SGOS - Sistema de Gestão de Ordens de Serviço</span>
+        <span>Versão 1.0.0</span>
+    </footer>
+
+</main>
+
+<script>
+
+// ===============================
+// BUSCA ERP / ERP
+// ===============================
+let clienteSelecionadoMikWeb = null;
+let erpAtivoConsulta = null;
+
+function nomeERPAtivo(){
+    const nomes = {
+        mikweb: "MikWeb",
+        sgp: "SGP",
+        ixc: "IXC",
+        hubsoft: "HubSoft",
+        mksolutions: "MK Solutions"
+    };
+
+    return nomes[erpAtivoConsulta] || "ERP";
+}
+
+async function carregarERPAtivoPagina(){
+    try{
+        const status = await apiMikWebFetch("/api/integracoes/status");
+        erpAtivoConsulta = status?.atual?.tipo_erp || null;
+
+        const campoBusca = document.getElementById("id_cliente");
+        const origem = document.getElementById("origemMikWeb");
+
+        if(campoBusca){
+            campoBusca.placeholder = erpAtivoConsulta
+                ? `Digite ID ou nome para buscar no ${nomeERPAtivo()}`
+                : "Nenhum ERP ativo configurado";
+        }
+
+        if(origem && !origem.classList.contains("ativo")){
+            origem.innerText = erpAtivoConsulta
+                ? `Busca ativa: ${nomeERPAtivo()}`
+                : "Nenhum ERP ativo configurado";
+        }
+
+        return erpAtivoConsulta;
+    }catch(err){
+        console.warn("ERP ativo não encontrado:", err);
+        erpAtivoConsulta = null;
+        return null;
+    }
+}
+
+let timerBuscaMikWeb = null;
+
+function normalizarTexto(txt){
+    return String(txt || "")
+        .replace(/\(.*?\)/g, "")   // remove exemplos: (FIBRA)
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ");
+}
+
+function setValorCampo(id, valor){
+    const el = document.getElementById(id);
+    if(el) el.value = valor ?? "";
+}
+
+function escaparHtml(txt){
+    return String(txt || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+async function apiMikWebFetch(url){
+    if(typeof apiFetch === "function") return apiFetch(url);
+    if(typeof api === "function") return api(url);
+    if(typeof fetchAuth === "function") return fetchAuth(url);
+
+    const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+    const res = await fetch(url, {
+        headers:{
+            "Content-Type":"application/json",
+            "x-usuario-id": usuario?.id || ""
+        }
+    });
+
+    const data = await res.json();
+    if(!res.ok) throw data;
+    return data;
+}
+
+function selecionarPlanoPorNome(nomePlanoERP){
+    const select = document.getElementById("plano");
+    if(!select || !nomePlanoERP) return;
+
+    const nomeERP = normalizarTexto(nomePlanoERP);
+    let encontrado = false;
+
+    Array.from(select.options).forEach(opt => {
+        const nomeSGOS = normalizarTexto(opt.textContent || opt.innerText || "");
+        if(nomeSGOS === nomeERP){
+            select.value = opt.value;
+            encontrado = true;
+            select.dispatchEvent(new Event("change"));
+        }
+    });
+
+    if(!encontrado){
+        console.warn("Plano vindo do ERP não encontrado no SGOS:", nomePlanoERP);
+    }
+}
+
+function selecionarLocalidadePorNome(nomeCidadeERP){
+    const select = document.getElementById("localidade");
+    if(!select || !nomeCidadeERP) return;
+
+    const cidadeERP = normalizarTexto(nomeCidadeERP);
+    let encontrado = false;
+
+    Array.from(select.options).forEach(opt => {
+        const nomeSGOS = normalizarTexto(opt.textContent || opt.innerText || "");
+        if(nomeSGOS === cidadeERP){
+            select.value = opt.value;
+            encontrado = true;
+            select.dispatchEvent(new Event("change"));
+        }
+    });
+
+    if(!encontrado){
+        console.warn("Localidade/Cidade vinda da MikWeb não encontrada no SGOS:", nomeCidadeERP);
+    }
+}
+
+function fecharResultadosMikWeb(){
+    const box = document.getElementById("resultadoMikWeb");
+    if(box){
+        box.classList.remove("ativo");
+        box.innerHTML = "";
+    }
+}
+
+function renderResultadosMikWeb(clientes, termo){
+    const box = document.getElementById("resultadoMikWeb");
+    if(!box) return;
+
+    box.classList.add("ativo");
+
+    if(!clientes || clientes.length === 0){
+        box.innerHTML = `
+            <div class="mikweb-status" style="color:#991b1b;">
+                Nenhum cliente encontrado para: <strong>${escaparHtml(termo)}</strong>
+            </div>
+        `;
+        return;
+    }
+
+    box.innerHTML = clientes.map(c => {
+        const payload = encodeURIComponent(JSON.stringify(c));
+        return `
+            <div class="mikweb-item" onclick="selecionarClienteMikWeb('${payload}')">
+                <strong>${escaparHtml(c.nome || 'Cliente sem nome')}</strong>
+                <small>ID: ${escaparHtml(c.id || '-')} • Login: ${escaparHtml(c.login || '-')}</small>
+                <small>Plano: ${escaparHtml(c.plano || '-')} • Cidade: ${escaparHtml(c.cidade || '-')}</small>
+                <small>${escaparHtml(c.rua || '-')} ${escaparHtml(c.n || c.numero || '')} ${escaparHtml(c.bairro || '')}</small>
+            </div>
+        `;
+    }).join("") + `
+        <div class="mikweb-status">
+            Clique em um cliente para preencher os dados da OS.
+        </div>
+    `;
+}
+
+async function buscarClienteMikWeb(){
+    const input = document.getElementById("id_cliente");
+    const termo = String(input?.value || "").trim();
+    const box = document.getElementById("resultadoMikWeb");
+
+    if(!termo || termo.length < 2){
+        fecharResultadosMikWeb();
+        return;
+    }
+
+    if(!erpAtivoConsulta){
+        await carregarERPAtivoPagina();
+    }
+
+    if(box){
+        box.classList.add("ativo");
+        box.innerHTML = `<div class="mikweb-status">Buscando no ${nomeERPAtivo()}...</div>`;
+    }
+
+    try{
+        // Rota genérica: usa sempre o ERP habilitado no momento.
+        const res = await apiMikWebFetch("/api/integracoes/pesquisar?termo=" + encodeURIComponent(termo));
+
+        if(res.erp){
+            erpAtivoConsulta = res.erp;
+        }
+
+        const clientes = Array.isArray(res) ? res : (res.clientes || []);
+        renderResultadosMikWeb(clientes, termo);
+    }catch(err){
+        console.error("Erro busca ERP:", err);
+        if(box){
+            box.classList.add("ativo");
+            box.innerHTML = `
+                <div class="mikweb-status" style="color:#991b1b;">
+                    Erro ao consultar o ERP ativo. Verifique a integração habilitada.
+                </div>
+            `;
+        }
+    }
+}
+
+function selecionarClienteMikWeb(payload){
+    const cliente = JSON.parse(decodeURIComponent(payload));
+    preencherClienteMikWeb(cliente);
+}
+
+function preencherClienteMikWeb(cliente){
+    clienteSelecionadoMikWeb = cliente;
+
+    selecionarLocalidadePorNome(cliente.cidade);
+    selecionarPlanoPorNome(cliente.plano);
+
+    setValorCampo("id_cliente", cliente.id || "");
+    setValorCampo("nome", cliente.nome || "");
+    setValorCampo("rua", cliente.rua || "");
+    setValorCampo("n", cliente.n || cliente.numero || "");
+    setValorCampo("bairro", cliente.bairro || "");
+    setValorCampo("referencia", cliente.referencia || "");
+    setValorCampo("telefone", cliente.telefone || "");
+    setValorCampo("login", cliente.login || "");
+    setValorCampo("latitude", cliente.latitude || "");
+    setValorCampo("longitude", cliente.longitude || "");
+
+    const nomeEl = document.getElementById("nome");
+    const origem = document.getElementById("origemMikWeb");
+
+    if(nomeEl) nomeEl.classList.add("mikweb-selected");
+    if(origem){
+        origem.innerText = `✓ Cliente selecionado via ${nomeERPAtivo()} — ID ${cliente.id || '-'}`;
+        origem.classList.add("ativo");
+    }
+
+    const box = document.getElementById("resultadoMikWeb");
+    if(box){
+        box.classList.add("ativo");
+        box.innerHTML = `
+            <div class="mikweb-status" style="color:#166534;font-weight:800;">
+                ✓ ${escaparHtml(cliente.nome || 'Cliente')} selecionado e dados preenchidos.
+            </div>
+        `;
+        setTimeout(() => fecharResultadosMikWeb(), 1800);
+    }
+}
+
+async function iniciarBuscaMikWeb(){
+    const input = document.getElementById("id_cliente");
+    if(!input) return;
+
+    input.addEventListener("input", () => {
+        const nomeEl = document.getElementById("nome");
+        const origem = document.getElementById("origemMikWeb");
+
+        if(nomeEl) nomeEl.classList.remove("mikweb-selected");
+        if(origem) origem.classList.remove("ativo");
+
+        clearTimeout(timerBuscaMikWeb);
+        timerBuscaMikWeb = setTimeout(buscarClienteMikWeb, 500);
+    });
+
+    input.addEventListener("keydown", e => {
+        if(e.key === "Enter"){
+            e.preventDefault();
+            buscarClienteMikWeb();
+        }
+    });
+}
+
+
+let anexoArquivo = null;
+
+async function api(url, options = {}) {
+    const usuario = JSON.parse(localStorage.getItem("usuario"));
+
+    if (!usuario) {
+        alert("Sessão expirada");
+        location.href = "/login.html";
+        return;
+    }
+
+    const headers = {
+        "x-usuario-id": usuario.id
+    };
+
+    if (!(options.body instanceof FormData)) {
+        headers["Content-Type"] = "application/json";
+    }
+
+    const res = await fetch(url, {
+        ...options,
+        headers
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return res.json();
+}
+
+async function carregarUsuario() {
+    try {
+        const userLocal = JSON.parse(localStorage.getItem("usuario") || "{}");
+
+        if (!userLocal?.id) {
+            window.location.href = "login.html";
+            return;
+        }
+
+        const userEmpresaEl = document.getElementById("userEmpresa");
+        const empresaLogadaEl = document.getElementById("empresaLogada");
+
+        const res = await fetch("/api/me", {
+            headers: { "x-usuario-id": userLocal.id }
+        });
+
+        const data = await res.json();
+
+        if (data?.usuario) {
+            userEmpresaEl.innerText = data.usuario;
+
+            if (empresaLogadaEl) {
+                empresaLogadaEl.innerText = data.empresa_nome || userLocal.empresa_nome || "Empresa";
+            }
+
+            const logo = data.empresa_logo;
+            const logoEl = document.getElementById("logoEmpresa");
+
+            const logoFinal = logo
+                ? (logo.startsWith("/") ? logo : "/" + logo)
+                : "/img/logo-default.png";
+
+            if (logoEl) logoEl.src = logoFinal;
+        }
+    } catch (err) {
+        console.error("Erro ao carregar usuário:", err);
+        document.getElementById("userEmpresa").innerText = "Administrador";
+    }
+}
+
+async function carregarUsuariosOnline() {
+    try {
+        const res = await fetch("/api/logs");
+        const logs = await res.json();
+
+        const online = logs
+            .filter(l => !l.logout)
+            .map(l => l.usuario);
+
+        const listaUnica = [...new Set(online)];
+        const container = document.getElementById("usuariosOnline");
+
+        if (!container) return;
+
+        if (listaUnica.length === 0) {
+            container.innerHTML = "Nenhum usuário online";
+        } else {
+            container.innerHTML = listaUnica.map(u => `🟢 ${u}`).join("<br>");
+        }
+    } catch (err) {
+        console.error("Erro ao carregar usuários online:", err);
+        const container = document.getElementById("usuariosOnline");
+        if (container) container.innerText = "Online indisponível";
+    }
+}
+
+function toggleUserDropdown(){
+    const menu = document.getElementById("usuarioMenuDropdown");
+    const box = document.getElementById("usuarioDropdown");
+
+    if(menu) menu.classList.toggle("ativo");
+    if(box) box.classList.toggle("aberto");
+}
+
+document.addEventListener("click", function(e){
+    const box = document.getElementById("usuarioDropdown");
+    const menu = document.getElementById("usuarioMenuDropdown");
+
+    if(!box || !menu) return;
+
+    if(!box.contains(e.target)){
+        menu.classList.remove("ativo");
+        box.classList.remove("aberto");
+    }
+});
+
+function toggleSidebar(){
+    const sidebar = document.querySelector(".sidebar");
+    const logo = document.getElementById("logoSidebar");
+
+    if(!sidebar || !logo) return;
+
+    sidebar.classList.toggle("recolhida");
+
+    if(sidebar.classList.contains("recolhida")){
+        logo.src = logo.dataset.logoFechada;
+        localStorage.setItem("sidebar_recolhida", "1");
+    }else{
+        logo.src = logo.dataset.logoAberta;
+        localStorage.setItem("sidebar_recolhida", "0");
+    }
+}
+
+function logout() {
+    const logId = localStorage.getItem("log_id");
+
+    if (logId) {
+        fetch("/api/logout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ log_id: logId })
+        }).catch(console.error);
+    }
+
+    sessionStorage.clear();
+    localStorage.clear();
+    window.location.href = "login.html";
+}
+
+async function carregar() {
+    const localidades = await api("/api/ordens_servico/localidades");
+    const planos = await api("/api/planos");
+    const servicos = await api("/api/tipos-servico");
+    const tecnicos = await api("/api/ordens_servico/tecnicos");
+
+    localidade.innerHTML =
+        `<option value="">Selecione</option>` +
+        localidades.map(l =>
+            `<option value="${l.id}" data-vlan="${l.vlan || ""}">${l.nome}</option>`
+        ).join("");
+
+    plano.innerHTML =
+        `<option value="">Selecione</option>` +
+        planos.map(p =>
+            `<option value="${p.id}">${p.nome}</option>`
+        ).join("");
+
+    tipo_servico.innerHTML =
+        `<option value="">Selecione</option>` +
+        servicos.map(s =>
+            `<option value="${s.id}">${s.nome}</option>`
+        ).join("");
+
+    tecnico.innerHTML = tecnicos.map(t =>
+        `<option value="${t.id}">${t.nome}</option>`
+    ).join("");
+}
+
+function atualizarVlan() {
+    const opt = localidade.options[localidade.selectedIndex];
+    if (modo_vlan.value !== "auto") return;
+    vlan.value = opt?.dataset?.vlan || "";
+}
+
+function toggleVlan() {
+    if (modo_vlan.value === "auto") {
+        campo_vlan.classList.add("hidden");
+        vlan.setAttribute("readonly", true);
+        atualizarVlan();
+    } else {
+        campo_vlan.classList.remove("hidden");
+        vlan.removeAttribute("readonly");
+    }
+}
+
+function renderPreview(file){
+    const preview = document.getElementById("previewAnexo");
+    preview.innerHTML = "";
+
+    const container = document.createElement("div");
+    container.style.position = "relative";
+    container.style.display = "inline-block";
+    container.style.marginTop = "15px";
+
+    const fechar = document.createElement("button");
+    fechar.innerHTML = "✖";
+    fechar.type = "button";
+    fechar.style.position = "absolute";
+    fechar.style.top = "-12px";
+    fechar.style.right = "-2px";
+    fechar.style.background = "transparent";
+    fechar.style.border = "none";
+    fechar.style.color = "#ff0000";
+    fechar.style.cursor = "pointer";
+    fechar.style.fontWeight = "bold";
+    fechar.style.fontSize = "22px";
+    fechar.style.padding = "0";
+    fechar.style.lineHeight = "1";
+    fechar.style.zIndex = "999";
+
+    fechar.onclick = () => {
+        anexoArquivo = null;
+        document.getElementById("anexo").value = "";
+        preview.innerHTML = "";
+    };
+
+    container.appendChild(fechar);
+
+    if (file.type.startsWith("image/")) {
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(file);
+        img.style.maxWidth = "350px";
+        img.style.borderRadius = "12px";
+        img.style.display = "block";
+        container.appendChild(img);
+    } else if (file.type.startsWith("video/")) {
+        const video = document.createElement("video");
+        video.src = URL.createObjectURL(file);
+        video.controls = true;
+        video.style.maxWidth = "350px";
+        video.style.borderRadius = "12px";
+        container.appendChild(video);
+    }
+
+    preview.appendChild(container);
+
+    const info = document.createElement("div");
+    info.style.marginTop = "10px";
+    info.innerHTML = `<b>${file.name || "imagem-colada.png"}</b><br>${(file.size / 1024 / 1024).toFixed(2)} MB`;
+    preview.appendChild(info);
+}
+
+
+// ===============================
+// CAMPOS OBRIGATÓRIOS
+// ===============================
+function validarCamposObrigatoriosAgendamento(){
+    // Em Novo Agendamento, somente a data é obrigatória.
+    return true;
+}
+
+async function salvar() {
+    if (!agendamento_data.value) {
+        alert("Você precisa informar a data de agendamento!");
+        agendamento_data.focus();
+        return;
+    }
+
+    if(!validarCamposObrigatoriosAgendamento()) return;
+
+    let agendamentoFinal = agendamento_data.value;
+
+    if (agendamento_hora.value) {
+        agendamentoFinal = `${agendamento_data.value}T${agendamento_hora.value}`;
+    }
+
+    const dados = {
+        nome: nome.value,
+        telefone: telefone.value,
+        id_cliente: id_cliente.value,
+        login: login.value,
+        localidade: localidade.value ? Number(localidade.value) : null,
+        plano: plano.value ? Number(plano.value) : null,
+        tipo_servico: tipo_servico.value ? Number(tipo_servico.value) : null,
+        tecnico: Array.from(tecnico.selectedOptions).map(o => Number(o.value)),
+        vlan: vlan.value,
+        rua: rua.value,
+        n: n.value,
+        bairro: bairro.value,
+        referencia: referencia.value,
+        latitude: latitude.value,
+        longitude: longitude.value,
+        observacoes: observacoes.value,
+        agendamento: agendamentoFinal,
+        // Não preencher automaticamente para evitar envio sem confirmação.
+        agendamento_envio: null,
+        status: "agendado"
+    };
+
+    const resultado = await api("/api/ordens_servico", {
+        method: "POST",
+        body: JSON.stringify(dados)
+    });
+
+    const idFinal = resultado.id;
+
+    if (anexoArquivo && idFinal) {
+        const formData = new FormData();
+        formData.append("anexo", anexoArquivo);
+
+        await api(`/api/ordens_servico/anexo/${idFinal}`, {
+            method: "POST",
+            body: formData
+        });
+    }
+
+    alert("Agendamento criado com sucesso!");
+    location.href = "/agendamentos.html";
+}
+
+modo_vlan.onchange = toggleVlan;
+localidade.onchange = atualizarVlan;
+
+document.getElementById("anexo").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    anexoArquivo = file;
+    renderPreview(file);
+});
+
+document.getElementById("areaPaste").addEventListener("paste", (event) => {
+    const items = event.clipboardData.items;
+
+    for (const item of items) {
+        if (item.type.indexOf("image") !== -1) {
+            const blob = item.getAsFile();
+            anexoArquivo = blob;
+            renderPreview(blob);
+            alert("Imagem colada!");
+            return;
+        }
+    }
+});
+
+window.onload = async () => {
+    const sidebar = document.querySelector(".sidebar");
+    const logo = document.getElementById("logoSidebar");
+
+    if(sidebar && logo && localStorage.getItem("sidebar_recolhida") === "1"){
+        sidebar.classList.add("recolhida");
+        logo.src = logo.dataset.logoFechada;
+    }
+
+    await carregarUsuario();
+    await carregarUsuariosOnline();
+    await carregar();
+    toggleVlan();
+};
+
+
+if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", iniciarBuscaMikWeb);
+}else{
+    iniciarBuscaMikWeb();
+}
+</script>
+
+</body>
+</html>

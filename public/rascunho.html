@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Rascunhos - SDOS</title>
+
+<script src="/js/init.js"></script>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background: #f4f6f9;
+}
+
+/* Layout lado a lado */
+.container-principal {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+/* Formulário */
+.formulario {
+    width: 300px;
+    background: white;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+}
+
+/* Tabela */
+.tabela-container {
+    flex: 1;
+    overflow-x: auto;
+}
+
+/* Campos e botões */
+h2 { margin-bottom: 20px; }
+
+input, select, textarea {
+    width: 100%;
+    padding: 5px;
+    margin-bottom: 10px;
+}
+
+button {
+    padding: 8px 15px;
+    margin-top: 10px;
+    cursor: pointer;
+    border: none;
+    background: #4CAF50;
+    color: white;
+}
+
+button:hover { background: #45a049; }
+
+.campo { margin-bottom: 10px; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0;
+    background: white;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+}
+
+.badge-tecnico {
+    background: #2196F3;
+    color: white;
+    padding: 2px 5px;
+    margin-right: 3px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+/* Ícones de ação */
+td span.icone-acao { cursor: pointer; font-size: 16px; margin-right: 5px; transition: transform 0.2s; }
+td span.icone-acao:hover { transform: scale(1.3); }
+
+.badge.prioridade-baixa { background: #4CAF50; }
+.badge.prioridade-media { background: #FF9800; }
+.badge.prioridade-alta { background: #F44336; }
+</style>
+</head>
+
+<body>
+
+<h2>Rascunhos de OS</h2>
+
+<div class="container-principal">
+
+    <!-- Formulário -->
+    <div class="formulario">
+        <div class="campo"><label>Nome:</label><br><input id="nome"></div>
+        <div class="campo"><label>Telefone:</label><br><input id="telefone"></div>
+        <div class="campo"><label>Login:</label><br><input id="login"></div>
+        <div class="campo"><label>ID Cliente:</label><br><input id="id_cliente"></div>
+
+        <div class="campo"><label>Localidade:</label><br><select id="localidade"></select></div>
+        <div class="campo"><label>Plano:</label><br><select id="plano"></select></div>
+        <div class="campo"><label>Serviço:</label><br><select id="servico"></select></div>
+
+        <div class="campo"><label>Técnicos:</label><br><select id="tecnico" multiple></select></div>
+
+        <div class="campo">
+            <label>Prioridade:</label><br>
+            <select id="prioridade">
+                <option value="">Selecione</option>
+                <option value="baixa">Baixa</option>
+                <option value="media">Média</option>
+                <option value="alta">Alta</option>
+            </select>
+        </div>
+
+        <div class="campo"><label>Rua:</label><br><input id="rua"></div>
+        <div class="campo"><label>Bairro:</label><br><input id="bairro"></div>
+        <div class="campo"><label>Referência:</label><br><input id="referencia"></div>
+        <div class="campo"><label>Descrição:</label><br><textarea id="descricao"></textarea></div>
+        <div class="campo"><label>Agendamento:</label><br><input id="agendamento" type="datetime-local"></div>
+
+        <button onclick="salvarRascunho()">Salvar Rascunho</button>
+    </div>
+
+    <!-- Tabela -->
+    <div class="tabela-container">
+        <table>
+        <thead>
+        <tr>
+        <th>ID</th><th>Cliente</th><th>Localidade</th><th>Rua</th><th>Bairro</th>
+        <th>Referência</th><th>Plano</th><th>Serviço</th><th>Login</th>
+        <th>ID Cliente</th><th>Telefone</th><th>Técnicos</th>
+        <th>Prioridade</th><th>Agendamento</th><th>Ações</th>
+        </tr>
+        </thead>
+        <tbody id="listaRascunhos">
+        <tr><td colspan="15">Carregando...</td></tr>
+        </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+// =========================
+// CARREGAR RASCUNHOS
+// =========================
+function carregarRascunhos(){
+    fetchAuth("/api/ordens_servico")
+    .then(data => {
+
+        const rascunhos = data.filter(r => r.status === "rascunho");
+
+        let html = "";
+
+        if(!rascunhos.length){
+            html = `<tr><td colspan="15">Nenhum rascunho</td></tr>`;
+        } else {
+
+            rascunhos.forEach(r => {
+
+                const dataFormatada = r.agendamento
+                    ? new Date(r.agendamento).toLocaleString("pt-BR")
+                    : "-";
+
+                let tecnicos = "-";
+                try{
+                    if(r.tecnico){
+                        const lista = typeof r.tecnico === "string"
+                            ? JSON.parse(r.tecnico)
+                            : r.tecnico;
+
+                        tecnicos = lista.map(t =>
+                            `<span class="badge-tecnico">${t}</span>`
+                        ).join("");
+                    }
+                }catch{}
+
+                html += `
+<tr>
+<td>${r.id}</td>
+<td>${r.nome || "-"}</td>
+<td>${r.localidade_nome || "-"}</td>
+<td>${r.rua || "-"}</td>
+<td>${r.bairro || "-"}</td>
+<td>${r.referencia || "-"}</td>
+<td>${r.plano_nome || "-"}</td>
+<td>${r.tipo_servico_nome || "-"}</td>
+<td>${r.login || "-"}</td>
+<td>${r.id_cliente || "-"}</td>
+<td>${r.telefone || "-"}</td>
+<td>${tecnicos}</td>
+<td>${r.prioridade || "-"}</td>
+<td>${dataFormatada}</td>
+<td>
+    <span class="icone-acao" title="Editar" onclick="editar(${r.id})">✏️</span>
+    <span class="icone-acao" title="Excluir" onclick="excluir(${r.id})">🗑</span>
+    <span class="icone-acao" title="Lançar Agora" onclick="lancarAgora(${r.id})">🚀</span>
+    <span class="icone-acao" title="Lançar Agendado" onclick="lancarAgendado(${r.id})">📅</span>
+</td>
+</tr>`;
+            });
+        }
+
+        document.getElementById("listaRascunhos").innerHTML = html;
+    });
+}
+
+// =========================
+// SELECTS
+// =========================
+function carregarSelect(url, id){
+    fetchAuth(url).then(data => {
+        let html = '<option value="">Selecione</option>';
+        data.forEach(item => {
+            html += `<option value="${item.id}">${item.nome}</option>`;
+        });
+        document.getElementById(id).innerHTML = html;
+    });
+}
+
+function carregarTecnicos(){
+    fetchAuth("/api/tecnicos").then(data => {
+        let html = "";
+        data.forEach(t => {
+            html += `<option value="${t.nome}">${t.nome}</option>`;
+        });
+        document.getElementById("tecnico").innerHTML = html;
+    });
+}
+
+// =========================
+// SALVAR RASCUNHO
+// =========================
+window.salvarRascunho = function(){
+
+    const dados = {
+        nome: document.getElementById("nome").value || null,
+        telefone: document.getElementById("telefone").value || null,
+        login: document.getElementById("login").value || null,
+        id_cliente: document.getElementById("id_cliente").value || null,
+        localidade: document.getElementById("localidade").value || null,
+        plano: document.getElementById("plano").value || null,
+        tipo_servico: document.getElementById("servico").value || null,
+        tecnico: Array.from(document.getElementById("tecnico").selectedOptions).map(o => o.value),
+        prioridade: document.getElementById("prioridade").value || null,
+        rua: document.getElementById("rua").value || null,
+        bairro: document.getElementById("bairro").value || null,
+        referencia: document.getElementById("referencia").value || null,
+        descricao: document.getElementById("descricao").value || null,
+        agendamento: document.getElementById("agendamento").value || null
+    };
+
+    fetchAuth("/api/rascunho", {
+        method: "POST",
+        body: JSON.stringify(dados)
+    }).then(res => {
+        if(!res.ok){
+            res.json().then(err => alert("Erro ao salvar: " + JSON.stringify(err)));
+            return;
+        }
+        alert("Rascunho salvo com sucesso!");
+        carregarRascunhos();
+    }).catch(err => alert("Erro de conexão: " + err));
+}
+
+// =========================
+// EDITAR
+// =========================
+function editar(id){
+    window.location.href = `editar-os.html?id=${id}`;
+}
+
+// =========================
+// LANÇAR AGORA / AGENDADO
+// =========================
+async function lancarAgora(osId){
+    try{
+        const res = await fetchAuth("/api/lancarOS", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({ id: osId, agendamento: null })
+        });
+        const data = await res.json();
+        alert(data.mensagem);
+        carregarRascunhos();
+    }catch(err){
+        console.error(err);
+        alert("Erro ao lançar OS agora");
+    }
+}
+
+async function lancarAgendado(osId){
+    const dataAg = prompt("Digite a data de agendamento (yyyy-mm-dd):");
+    if(!dataAg) return alert("Data obrigatória!");
+    try{
+        const res = await fetchAuth("/api/lancarOS", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({ id: osId, agendamento: dataAg })
+        });
+        const data = await res.json();
+        alert(data.mensagem);
+        carregarRascunhos();
+    }catch(err){
+        console.error(err);
+        alert("Erro ao lançar OS agendada");
+    }
+}
+
+// =========================
+// EXCLUIR
+// =========================
+window.excluir = function(id){
+    if(!confirm("Excluir?")) return;
+
+    fetchAuth(`/api/ordens_servico/${id}`, {
+        method:"DELETE"
+    }).then(() => carregarRascunhos());
+}
+
+// =========================
+// INIT
+// =========================
+carregarRascunhos();
+carregarSelect("/api/localidades", "localidade");
+carregarSelect("/api/planos", "plano");
+carregarSelect("/api/servicos", "servico");
+carregarTecnicos();
+
+});
+</script>
+
+</body>
+</html>

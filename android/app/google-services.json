@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "120404222873",
+    "project_id": "sgos-tecnico",
+    "storage_bucket": "sgos-tecnico.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:120404222873:android:78c90c1d8038f88f6b6908",
+        "android_client_info": {
+          "package_name": "com.sgos.tecnico"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClV0ZBkC3F_E_-7eQpPpQAw1vSmB8DESs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

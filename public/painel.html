@@ -1,0 +1,1789 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>SGOS - Painel Inicial</title>
+
+<link rel="icon" type="image/png" href="/img/favicon.png">
+
+<script src="/js/auth.js" defer></script>
+<script src="/js/init.js" defer></script>
+<script src="/js/painel.js" defer></script>
+
+<style>
+:root{
+    --azul:#2563eb;
+    --azul-hover:#1d4ed8;
+    --texto:#0f172a;
+    --muted:#64748b;
+    --borda:#e5e7eb;
+    --fundo:#f5f7fb;
+    --verde:#16a34a;
+    --laranja:#f59e0b;
+    --vermelho:#ef4444;
+}
+
+*{ box-sizing:border-box; }
+
+body{
+    margin:0;
+    font-family:Arial, Helvetica, sans-serif;
+    background:var(--fundo);
+    color:var(--texto);
+}
+
+/* ===============================
+   SIDEBAR
+================================ */
+.sidebar{
+    position:fixed;
+    left:0;
+    top:0;
+    width:230px;
+    height:100vh;
+    background:linear-gradient(180deg,#081a31,#061426);
+    color:white;
+    padding:12px 18px 18px;
+    display:flex;
+    flex-direction:column;
+    z-index:20;
+}
+
+.sidebar-logo{
+    display:flex;
+    justify-content:flex-start;
+    align-items:center;
+    padding-left:0px;
+    margin-top:0;
+    margin-bottom:14px;
+}
+
+.sidebar-logo img{
+    width:190px;
+    height:auto;
+    display:block;
+}
+
+.menu-titulo{
+    margin:14px 10px 6px;
+    font-size:12px;
+    color:#94a3b8;
+    text-transform:uppercase;
+    letter-spacing:.2px;
+}
+
+.sidebar a{
+    color:#dbeafe;
+    text-decoration:none;
+    padding:11px 13px;
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    font-size:14px;
+    margin-bottom:2px;
+    transition:.2s;
+}
+
+.sidebar a:hover,
+.sidebar a.ativo{
+    background:var(--azul);
+    color:white;
+}
+
+.menu-icon{
+    width:18px;
+    height:18px;
+    min-width:18px;
+    stroke:currentColor;
+    fill:none;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.sidebar-footer{
+    margin-top:auto;
+}
+
+.btn-recolher{
+    width:100%;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.1);
+    color:#e5efff;
+    padding:13px;
+    border-radius:10px;
+    cursor:pointer;
+    text-align:left;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:14px;
+}
+
+#cardOSAvulsas table,
+#cardOSAvulsasConcluidas table{
+    min-width:1300px;
+}
+
+.descricao-avulsa{
+    max-width:420px;
+    white-space:normal;
+    line-height:1.35;
+}
+
+.descricao-avulsa .texto-descricao{
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+    white-space:normal;
+}
+
+.status-avulsa-aberto{
+    background:#dbeafe;
+    color:#2563eb;
+}
+
+.status-avulsa-andamento{
+    background:#ffedd5;
+    color:#f59e0b;
+}
+
+.status-avulsa-concluido{
+    background:#dcfce7;
+    color:#15803d;
+}
+
+.btn-acao-avulsa{
+    border:none;
+    background:#f8fafc;
+    border-radius:8px;
+    padding:6px 8px;
+    cursor:pointer;
+    font-size:15px;
+    color:#0f172a;
+}
+
+.btn-acao-avulsa:hover{
+    background:#e2e8f0;
+}
+
+/* ===============================
+   ÁREA PRINCIPAL
+================================ */
+.main{
+    margin-left:230px;
+    min-height:100vh;
+}
+
+/* ===============================
+   HEADER
+================================ */
+.header{
+    height:92px;
+    background:white;
+    border-bottom:1px solid var(--borda);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 34px;
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+
+.header-left{
+    display:flex;
+    align-items:center;
+    gap:22px;
+}
+
+.header-logo{
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+
+.header-logo img{
+    height:60px;
+    max-width:170px;
+    object-fit:contain;
+}
+
+.divisor{
+    height:34px;
+    width:1px;
+    background:var(--borda);
+}
+
+.header-title{
+    font-weight:800;
+    font-size:18px;
+}
+
+.header-actions{
+    display:flex;
+    align-items:center;
+    gap:22px;
+}
+
+.busca-wrap{
+    position:relative;
+}
+
+.busca-icone{
+    position:absolute;
+    left:13px;
+    top:50%;
+    transform:translateY(-50%);
+    color:#334155;
+    width:18px;
+    height:18px;
+}
+
+.input-busca-menu{
+    width:260px;
+    padding:12px 14px 12px 40px;
+    border:1px solid var(--borda);
+    border-radius:12px;
+    outline:none;
+    font-size:14px;
+    background:#fff;
+}
+
+.notificacao{
+    position:relative;
+    width:40px;
+    height:40px;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#1e3a8a;
+    border:1px solid transparent;
+}
+
+.notificacao svg{
+    width:21px;
+    height:21px;
+    stroke:currentColor;
+    fill:none;
+    stroke-width:1.8;
+}
+
+.notificacao span{
+    position:absolute;
+    top:3px;
+    right:4px;
+    background:#2563eb;
+    color:white;
+    border-radius:999px;
+    font-size:10px;
+    min-width:17px;
+    height:17px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:2px solid white;
+}
+
+/* ===============================
+   USUÁRIO DROPDOWN
+================================ */
+.usuario-dropdown{
+    position:relative;
+}
+
+.usuario-btn{
+    border:none;
+    background:transparent;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    cursor:pointer;
+    padding:0;
+}
+
+.avatar{
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    background:#e2e8f0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+}
+
+.avatar svg{
+    width:28px;
+    height:28px;
+    fill:#cbd5e1;
+}
+
+.usuario-info{
+    text-align:left;
+}
+
+.usuario-info strong{
+    font-size:13px;
+    display:block;
+    color:#0f172a;
+}
+
+.usuario-info small{
+    font-size:11px;
+    color:#64748b;
+}
+
+.seta{
+    width:18px;
+    height:18px;
+    color:#1e3a8a;
+    transition:.2s;
+}
+
+.usuario-dropdown.aberto .seta{
+    transform:rotate(180deg);
+}
+
+.usuario-menu{
+    display:none;
+    position:absolute;
+    right:0;
+    top:58px;
+    width:260px;
+    background:white;
+    border:1px solid #e5e7eb;
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(15,23,42,0.16);
+    padding:14px;
+    z-index:9999;
+}
+
+.usuario-menu.ativo{
+    display:block;
+}
+
+.usuario-menu-titulo{
+    font-size:12px;
+    font-weight:800;
+    color:#64748b;
+    margin-bottom:10px;
+    text-transform:uppercase;
+}
+
+#usuariosOnline{
+    font-size:13px;
+    color:#0f172a;
+    line-height:1.8;
+    max-height:180px;
+    overflow:auto;
+}
+
+.usuario-menu hr{
+    border:none;
+    border-top:1px solid #e5e7eb;
+    margin:12px 0;
+}
+
+.usuario-menu a{
+    display:block;
+    color:#ef4444;
+    text-decoration:none;
+    font-weight:800;
+    font-size:14px;
+}
+
+/* ===============================
+   CONTEÚDO
+================================ */
+.content{
+    padding:28px 18px 38px;
+}
+
+.top-row{
+    display:grid;
+    grid-template-columns:240px repeat(4,1fr);
+    gap:18px;
+    margin-bottom:20px;
+}
+
+.quick-actions{
+    display:grid;
+    gap:16px;
+}
+
+.action-card{
+    height:84px;
+    border:none;
+    border-radius:12px;
+    background:linear-gradient(135deg,#2563eb,#1263ff);
+    color:white;
+    font-family:Arial, Helvetica, sans-serif;
+    font-weight:bold;
+    font-size:15px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:0 22px;
+    cursor:pointer;
+    box-shadow:0 10px 22px rgba(37,99,235,0.22);
+}
+
+.action-card span{
+    width:32px;
+    height:32px;
+    border-radius:8px;
+    background:white;
+    color:var(--azul);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.action-card svg{
+    width:20px;
+    height:20px;
+    stroke:currentColor;
+    fill:none;
+    stroke-width:2.1;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+/* ===============================
+   CARDS INDICADORES
+================================ */
+.card-indicador{
+    background:white;
+    border:1px solid #e5e7eb;
+    border-radius:14px;
+    padding:26px 24px 18px;
+    min-height:168px;
+    box-shadow:0 8px 22px rgba(15,23,42,0.05);
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+}
+
+.card-top{
+    display:flex;
+    align-items:center;
+    gap:18px;
+}
+
+.icon-box{
+    width:58px;
+    height:58px;
+    border-radius:20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.icon-box svg{
+    width:31px;
+    height:31px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:2;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.icon-blue{ background:#dbeafe; color:#2563eb; }
+.icon-green{ background:#dcfce7; color:#16a34a; }
+.icon-orange{ background:#ffedd5; color:#f59e0b; }
+.icon-red{ background:#fee2e2; color:#ef4444; }
+
+.card-info small{
+    font-size:13px;
+    font-weight:800;
+    color:#0f172a;
+}
+
+.card-info strong{
+    display:block;
+    font-size:34px;
+    margin:6px 0;
+    color:#0f172a;
+    line-height:1;
+}
+
+.card-info span{
+    font-size:13px;
+    color:#64748b;
+}
+
+.sparkline{
+    width:100%;
+    height:42px;
+    margin-top:18px;
+}
+
+.sparkline polyline{
+    fill:none;
+    stroke-width:2.4;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.sparkline.blue polyline{ stroke:#2563eb; }
+.sparkline.green polyline{ stroke:#16a34a; }
+.sparkline.orange polyline{ stroke:#f59e0b; }
+.sparkline.red polyline{ stroke:#ef4444; }
+
+/* ===============================
+   FILTRO
+================================ */
+.filtro-periodo{
+    display:flex;
+    justify-content:flex-end;
+    margin-bottom:18px;
+}
+
+.filtro-box{
+    background:white;
+    padding:12px 16px;
+    border-radius:12px;
+    border:1px solid var(--borda);
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.filtro-box label{
+    font-weight:800;
+    color:#334155;
+    font-size:14px;
+}
+
+.filtro-box select{
+    padding:9px 12px;
+    border-radius:8px;
+    border:1px solid var(--borda);
+    outline:none;
+}
+
+/* ===============================
+   TABELAS
+================================ */
+.card-tabela{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    padding:22px;
+    margin-bottom:18px;
+    box-shadow:0 8px 20px rgba(15,23,42,0.04);
+    overflow:hidden;
+    width:100%;
+}
+
+.titulo-card{
+    font-size:18px;
+    font-weight:800;
+    margin-bottom:18px;
+}
+
+.table-wrap{
+    width:100%;
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:1700px;
+}
+
+thead th{
+    background:#f8fafc;
+    color:#0f172a;
+    padding:14px 12px;
+    text-align:left;
+    font-size:12px;
+    border-bottom:1px solid var(--borda);
+    white-space:nowrap;
+}
+
+td{
+    padding:13px 12px;
+    border-bottom:1px solid var(--borda);
+    font-size:13px;
+    color:#1e293b;
+    white-space:nowrap;
+}
+
+td small{ color:var(--muted); }
+
+tr:hover{ background:#f8fbff; }
+
+/* ===============================
+   STATUS
+================================ */
+.status-box{
+    padding:6px 10px;
+    border-radius:999px;
+    font-weight:800;
+    font-size:12px;
+    display:inline-block;
+}
+
+.status-aberto{ background:#dbeafe; color:#2563eb; }
+.status-andamento{ background:#ffedd5; color:#f59e0b; }
+.status-finalizado{ background:#dcfce7; color:#15803d; }
+.status-agendado{ background:#ede9fe; color:#7c3aed; }
+.status-ausente{ background:#fee2e2; color:#dc2626; }
+
+.badge-tecnico{
+    display:inline-block;
+    background:#eef2ff;
+    color:#1e40af;
+    padding:5px 9px;
+    border-radius:999px;
+    font-size:12px;
+    margin:2px;
+    font-weight:800;
+}
+
+.acoes{
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+.icone-acao{
+    cursor:pointer;
+    font-size:17px;
+}
+
+/* ===============================
+   RESUMO INFERIOR
+================================ */
+#resumo-topo{
+    margin-top:10px;
+    display:block;
+}
+
+#resumo-topo .resumo-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:18px;
+}
+
+#resumo-topo .bloco{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    padding:22px;
+    min-height:210px;
+    box-shadow:0 8px 20px rgba(15,23,42,0.04);
+    border-right:none;
+}
+
+#resumo-topo .titulo{
+    font-size:17px;
+    font-weight:800;
+    margin-bottom:18px;
+}
+
+#resumo-topo .item{
+    display:flex;
+    justify-content:space-between;
+    border-bottom:1px solid #f1f5f9;
+    padding:10px 0;
+    font-size:14px;
+}
+
+#resumo-topo .item span{
+    color:var(--texto);
+    font-weight:800;
+}
+
+#resumo-topo .contadores{
+    display:none;
+}
+
+.colunas-internas{
+    display:flex;
+    gap:20px;
+}
+
+.coluna{
+    flex:1;
+}
+
+.vazio{
+    color:var(--muted);
+    font-size:14px;
+}
+
+
+/* ===============================
+   CARDS INFERIORES MODERNOS
+================================ */
+.cards-resumo-bottom{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:18px;
+    margin-top:10px;
+}
+
+.card-bottom{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    padding:22px;
+    min-height:250px;
+    box-shadow:0 8px 20px rgba(15,23,42,0.04);
+}
+
+.titulo-card-bottom{
+    font-size:17px;
+    font-weight:800;
+    margin-bottom:18px;
+    color:#0f172a;
+}
+
+.linha-tecnico{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:10px 0;
+    border-bottom:1px solid #f1f5f9;
+}
+
+.avatar-tecnico{
+    width:38px;
+    height:38px;
+    min-width:38px;
+    border-radius:50%;
+    background:#dbeafe;
+    color:#2563eb;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:bold;
+    font-size:15px;
+}
+
+.avatar-tecnico svg{
+    width:23px;
+    height:23px;
+    fill:#2563eb;
+}
+
+.info-tecnico{
+    flex:1;
+    min-width:0;
+}
+
+.info-tecnico strong{
+    display:block;
+    font-size:13px;
+    color:#0f172a;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.info-tecnico small{
+    display:block;
+    font-size:12px;
+    color:#64748b;
+    margin-top:3px;
+}
+
+.badge-campo{
+    background:#dcfce7;
+    color:#15803d;
+    padding:5px 9px;
+    border-radius:999px;
+    font-size:11px;
+    font-weight:bold;
+    white-space:nowrap;
+}
+
+.badge-disponivel{
+    background:#dbeafe;
+    color:#2563eb;
+    padding:5px 9px;
+    border-radius:999px;
+    font-size:11px;
+    font-weight:bold;
+    white-space:nowrap;
+}
+
+.linha-info{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:13px 0;
+    border-bottom:1px solid #f1f5f9;
+    font-size:14px;
+}
+
+.linha-info span{
+    color:#334155;
+}
+
+.linha-info strong{
+    color:#0f172a;
+}
+
+.link-bottom{
+    display:block;
+    margin-top:18px;
+    color:#2563eb;
+    text-decoration:none;
+    font-size:13px;
+    font-weight:bold;
+}
+
+@media(max-width:1300px){
+    .cards-resumo-bottom{
+        grid-template-columns:1fr;
+    }
+}
+
+
+
+/* ===============================
+   SIDEBAR RECOLHIDA
+================================ */
+.sidebar,
+.main,
+.sidebar-logo img{
+    transition:all .25s ease;
+}
+
+.sidebar.recolhida{
+    width:82px;
+    padding:24px 12px;
+    align-items:center;
+}
+
+.sidebar.recolhida .sidebar-logo{
+    width:100%;
+    margin-bottom:28px;
+}
+
+.sidebar.recolhida .sidebar-logo img{
+    width:48px;
+    max-width:48px;
+}
+
+.sidebar.recolhida .menu-titulo{
+    display:none;
+}
+
+.sidebar.recolhida a{
+    justify-content:center;
+    padding:13px;
+    width:52px;
+
+
+    height:46px;
+    gap:0;
+}
+
+.sidebar.recolhida a span{
+    display:none;
+}
+
+.sidebar.recolhida .menu-icon{
+    width:20px;
+    height:20px;
+    min-width:20px;
+}
+
+.sidebar.recolhida .sidebar-footer{
+    width:100%;
+    display:flex;
+    justify-content:center;
+}
+
+.sidebar.recolhida .btn-recolher{
+    justify-content:center;
+    width:52px;
+    height:46px;
+    padding:13px;
+    gap:0;
+}
+
+.sidebar.recolhida .btn-recolher span{
+    display:none;
+}
+
+.sidebar.recolhida + .main{
+    margin-left:82px;
+}
+
+.sidebar.recolhida .btn-recolher .menu-icon{
+    transform:rotate(180deg);
+}
+
+
+/* ===============================
+   FOOTER
+================================ */
+.footer{
+    display:flex;
+    justify-content:space-between;
+    padding:20px 34px;
+    color:#475569;
+    font-size:12px;
+    border-top:1px solid var(--borda);
+}
+
+/* ===============================
+   RESPONSIVO
+================================ */
+@media(max-width:1300px){
+    .top-row{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .quick-actions{
+        grid-column:1 / -1;
+        grid-template-columns:1fr 1fr;
+    }
+
+    #resumo-topo .resumo-grid{
+        grid-template-columns:1fr;
+    }
+}
+
+@media(max-width:900px){
+    .sidebar{
+        display:none;
+    }
+
+    .main{
+        margin-left:0;
+        min-height:100vh;
+    }
+
+    .header{
+        flex-direction:column;
+        height:auto;
+        align-items:flex-start;
+        gap:15px;
+        padding:20px;
+    }
+
+    .header-actions{
+        width:100%;
+        justify-content:space-between;
+        flex-wrap:wrap;
+    }
+
+    .busca-wrap,
+    .input-busca-menu{
+        width:100%;
+    }
+
+    .content{
+        padding:20px;
+    }
+
+    .top-row{
+        grid-template-columns:1fr;
+    }
+
+    .quick-actions{
+        grid-template-columns:1fr;
+    }
+}
+
+/* ===============================
+   AJUSTE FINAL OS AVULSAS
+   - Avulsas abertas ficam no topo quando existirem
+   - Avulsas finalizadas ficam por último quando existirem no período
+   - Descrição alinhada com as outras colunas
+================================ */
+#cardOSAvulsas td,
+#cardOSAvulsasConcluidas td{
+    vertical-align:middle;
+}
+
+#cardOSAvulsas td,
+#cardOSAvulsasConcluidas td{
+    vertical-align:middle;
+}
+
+#cardOSAvulsas .descricao-avulsa,
+#cardOSAvulsasConcluidas .descricao-avulsa{
+    max-width:360px;
+    min-height:18px;
+    line-height:18px;
+    margin:0;
+    padding:0;
+    white-space:normal !important;
+    overflow:hidden;
+}
+
+#cardOSAvulsas .descricao-avulsa .texto-descricao,
+#cardOSAvulsasConcluidas .descricao-avulsa .texto-descricao{
+    display:block;
+    line-height:61px;
+    max-height:81px;
+    overflow:hidden;
+    margin:0;
+    padding:0;
+}
+
+</style>
+</head>
+
+<body>
+
+<script>
+let periodoAtual = "hoje";
+</script>
+
+<aside class="sidebar">
+
+    <div class="sidebar-logo">
+        <img
+            id="logoSidebar"
+            src="https://iili.io/CujQzXa.png"
+            data-logo-aberta="https://iili.io/CujQzXa.png"
+            data-logo-fechada="https://iili.io/CuwvauR.png"
+            alt="SGOS"
+        >
+    </div>
+
+    <a href="painel.html">
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg>
+    <span>Painel Inicial</span>
+</a>
+
+<div class="menu-titulo">Operação</div>
+
+<a href="agendamentos.html">
+    <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+    <span>Agendamentos</span>
+</a>
+
+<a href="relatorios.html" class=>
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg>
+    <span>Relatórios</span>
+</a>
+
+<a href="escala.html" class=>
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 14h6"/></svg>
+        <span>Escala</span>
+    </a>
+
+<a href="cronograma.html">
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg>
+    <span>Cronograma</span>
+</a>
+
+<a href="viabilidade.html">
+    <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
+    <span>Viabilidades</span>
+</a>
+
+<a href="inviabilidade.html">
+    <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+    <span>Inviabilidades</span>
+</a>
+
+<div class="menu-titulo">Cadastros</div>
+
+<a href="planos.html">
+    <svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+    <span>Planos</span>
+</a>
+
+<a href="localidades.html">
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+    <span>Localidades</span>
+</a>
+
+<a href="tecnicos.html">
+    <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+    <span>Técnicos</span>
+</a>
+
+<a href="tipos_servicos.html">
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.5 2.5-3-3z"/></svg>
+    <span>Tipos de Serviços</span>
+</a>
+
+<div class="menu-titulo">Configurações</div>
+
+<a href="usuarios.html">
+    <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+    <span>Usuários</span>
+</a>
+
+<a href="logs_acesso.html">
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+    <span>Logs do Sistema</span>
+</a>
+
+<a href="logs_acoes.html">
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    <span>Log de Ações</span>
+</a>
+
+
+<a href="historico-os-avulsas.html">
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/><path d="M12 8v5l3 2"/></svg>
+    <span>Histórico OS Avulsas</span>
+</a>
+
+<a href="historico-os.html">
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/><path d="M12 8v5l3 2"/></svg>
+    <span>Histórico de OS</span>
+</a>
+
+<div class="sidebar-footer">
+    <button class="btn-recolher" onclick="toggleSidebar()" type="button">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M2 12h20"/></svg>
+        <span>Recolher menu</span>
+    </button>
+</div>
+
+
+</aside>
+
+<main class="main">
+
+    <header class="header">
+
+        <div class="header-left">
+            <div class="header-logo">
+                <img id="logoEmpresa" src="/img/logo-default.png" alt="Logo Empresa">
+            </div>
+
+            <div class="divisor"></div>
+
+            <div class="header-title">
+                Painel Inicial
+            </div>
+        </div>
+
+        <div class="header-actions">
+
+            <div class="busca-wrap">
+                <svg class="busca-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                <input type="text" id="buscaOS" placeholder="Buscar cliente..." class="input-busca-menu">
+            </div>
+
+            <div class="notificacao">
+                <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+                <span>5</span>
+            </div>
+
+            <div class="usuario-dropdown" id="usuarioDropdown">
+
+                <button class="usuario-btn" onclick="toggleUserDropdown()" type="button">
+                    <div class="avatar">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22c1.6-5 14.4-5 16 0"/></svg>
+                    </div>
+
+                    <div class="usuario-info">
+                        <strong id="userEmpresa">Carregando...</strong>
+                        <small id="empresaLogada">Empresa</small>
+                    </div>
+
+                    <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+
+                <div class="usuario-menu" id="usuarioMenuDropdown">
+                    <div class="usuario-menu-titulo">Usuários online</div>
+                    <div id="usuariosOnline">Carregando...</div>
+
+                    <hr>
+
+                    <a href="#" onclick="logout()">Sair</a>
+                </div>
+
+            </div>
+
+        </div>
+
+    </header>
+
+    <section class="content">
+
+        <div class="top-row">
+
+            <div class="quick-actions">
+                <button onclick="window.location.href='novo-atendimento.html'" class="action-card">
+                    <span>
+                        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                    </span>
+                    Novo Atendimento
+                </button>
+
+                <button onclick="window.location.href='nova-os-avulsa.html'" class="action-card">
+                    <span>
+                        <svg viewBox="0 0 24 24"><path d="M5 7h14v12H5z"/><path d="M8 7V5h8v2"/><path d="M9 13l2 2 4-4"/></svg>
+                    </span>
+                    OS Avulsa
+                </button>
+            </div>
+
+            <div class="card-indicador">
+                <div class="card-top">
+                    <div class="icon-box icon-blue">
+                        <svg viewBox="0 0 24 24"><path d="M9 6h6l1 2h4v13H4V8h4l1-2z"/><path d="M9 13l2 2 4-4"/></svg>
+                    </div>
+                    <div class="card-info">
+                        <small>Abertas</small>
+                        <strong id="abertas">0</strong>
+                        <span>Total em aberto</span>
+                    </div>
+                </div>
+                <svg class="sparkline blue" viewBox="0 0 160 45">
+                    <polyline points="0,35 15,27 30,32 45,20 60,25 75,14 90,30 105,34 120,10 135,24 150,13 160,20"/>
+                </svg>
+            </div>
+
+            <div class="card-indicador">
+                <div class="card-top">
+                    <div class="icon-box icon-orange">
+                        <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/></svg>
+                    </div>
+                    <div class="card-info">
+                        <small>Em Execução</small>
+                        <strong id="execução">0</strong>
+                        <span>Em execução</span>
+                    </div>
+                </div>
+                <svg class="sparkline orange" viewBox="0 0 160 45">
+                    <polyline points="0,33 15,28 30,32 45,20 60,26 75,17 90,30 105,33 120,12 135,26 150,17 160,24"/>
+                </svg>
+            </div>
+
+            <div class="card-indicador">
+                <div class="card-top">
+                    <div class="icon-box icon-green">
+                        <svg viewBox="0 0 24 24"><path d="M9 6h6l1 2h4v13H4V8h4l1-2z"/><path d="M9 13l2 2 4-4"/></svg>
+                    </div>
+                    <div class="card-info">
+                        <small>Finalizadas</small>
+                        <strong id="finalizadas">0</strong>
+                        <span>No período</span>
+                    </div>
+                </div>
+                <svg class="sparkline green" viewBox="0 0 160 45">
+                    <polyline points="0,34 15,27 30,31 45,18 60,33 75,28 90,25 105,9 120,25 135,15 150,28 160,18"/>
+                </svg>
+            </div>
+
+            <div class="card-indicador">
+                <div class="card-top">
+                    <div class="icon-box icon-red">
+                        <svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 4.4 2.8 18a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.4a2 2 0 0 0-3.4 0z"/></svg>
+                    </div>
+                    <div class="card-info">
+                        <small>Ausentes</small>
+                        <strong id="clientesAusentes">0</strong>
+                        <span>Clientes ausentes</span>
+                    </div>
+                </div>
+                <svg class="sparkline red" viewBox="0 0 160 45">
+                    <polyline points="0,28 15,33 30,21 45,25 60,15 75,31 90,26 105,19 120,30 135,24 150,34 160,18"/>
+                </svg>
+            </div>
+
+        </div>
+
+        <div class="filtro-periodo">
+            <div class="filtro-box">
+                <label>Período:</label>
+
+                <select id="filtroPeriodo">
+                    <option value="hoje" selected>Hoje</option>
+                    <option value="ontem">Ontem</option>
+                    <option value="7dias">Últimos 7 dias</option>
+                    <option value="30dias">Últimos 30 dias</option>
+                </select>
+            </div>
+        </div>
+
+
+<!-- OS AVULSAS ABERTAS / EM EXECUÇÃO: sempre primeiro quando existir -->
+<div class="card-tabela" id="cardOSAvulsas" style="display:none;">
+    <div class="titulo-card">Ordens de Serviço Avulsas</div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Localidade</th>
+                    <th>Técnicos</th>
+                    <th>Tipo de Serviço</th>
+                    <th>Endereço</th>
+                    <th>Descrição</th>
+                    <th>Criada em</th>
+                    <th>Iniciada em</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody id="tabelaOSAvulsas"></tbody>
+        </table>
+    </div>
+</div>
+
+        <div class="card-tabela">
+            <div class="titulo-card">Ordens de Serviço Abertas</div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Localidade</th>
+                            <th>Endereço</th>
+                            <th>Técnicos</th>
+                            <th>Serviço</th>
+                            <th>Plano</th>
+                            <th>ID Cliente</th>
+                            <th>Login</th>
+                            <th>Vlan</th>
+                            <th>Telefone</th>
+                            <th>Criada em</th>
+                            <th>Criada por</th>
+                            <th>Agendamento</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="tabelaAbertas">
+                        <tr>
+                            <td colspan="15">Carregando...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-tabela">
+            <div class="titulo-card">Ordens de Serviço em Execução</div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Localidade</th>
+                            <th>Endereço</th>
+                            <th>Técnicos</th>
+                            <th>Serviço</th>
+                            <th>Plano</th>
+                            <th>ID Cliente</th>
+                            <th>Login</th>
+                            <th>Vlan</th>
+                            <th>Telefone</th>
+                            <th>Iniciada em</th>
+                            <th>Enviada Por</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="tabelaAndamento">
+                        <tr>
+                            <td colspan="14">Carregando...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-tabela">
+            <div class="titulo-card">Ordens de Serviço Finalizadas</div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Localidade</th>
+                            <th>Endereço</th>
+                            <th>Técnicos</th>
+                            <th>Serviço</th>
+                            <th>Plano</th>
+                            <th>ID Cliente</th>
+                            <th>Login</th>
+                            <th>Vlan</th>
+                            <th>Telefone</th>
+                            <th>Iniciada em</th>
+                            <th>Finalizada em</th>
+                            <th>Finalizada por</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="tabelaConcluidas">
+                        <tr>
+                            <td colspan="15">Carregando...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+
+<!-- OS AVULSAS FINALIZADAS: sempre por último quando existir no período -->
+<div id="cardOSAvulsasConcluidas" class="card-tabela" style="display:none;">
+    <div class="titulo-card">Ordens de Serviço Avulsas Finalizadas</div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Localidade</th>
+                    <th>Técnicos</th>
+                    <th>Tipo de Serviço</th>
+                    <th>Endereço</th>
+                    <th>Descrição</th>
+                    <th>Iniciada em</th>
+                    <th>Finalizada em</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody id="tabelaOSAvulsasConcluidas"></tbody>
+        </table>
+    </div>
+</div>
+
+
+
+
+
+        <div id="resumo-topo"></div>
+
+    </section>
+
+    <footer class="footer">
+        <span>SGOS - Sistema de Gestão de Ordens de Serviço</span>
+        <span>Versão 1.0.0</span>
+    </footer>
+
+</main>
+
+<script>
+
+function aplicarEstadoSidebar(){
+    const sidebar = document.querySelector(".sidebar");
+    const logo = document.getElementById("logoSidebar");
+
+    if(!sidebar || !logo) return;
+
+    if(localStorage.getItem("sidebar_recolhida") === "1"){
+        sidebar.classList.add("recolhida");
+        logo.src = logo.dataset.logoFechada;
+    }else{
+        sidebar.classList.remove("recolhida");
+        logo.src = logo.dataset.logoAberta;
+    }
+}
+
+function toggleSidebar(){
+    const sidebar = document.querySelector(".sidebar");
+    const logo = document.getElementById("logoSidebar");
+
+    if(!sidebar || !logo) return;
+
+    sidebar.classList.toggle("recolhida");
+
+    if(sidebar.classList.contains("recolhida")){
+        logo.src = logo.dataset.logoFechada;
+        localStorage.setItem("sidebar_recolhida", "1");
+    }else{
+        logo.src = logo.dataset.logoAberta;
+        localStorage.setItem("sidebar_recolhida", "0");
+    }
+}
+
+function toggleUserDropdown(){
+    const menu = document.getElementById("usuarioMenuDropdown");
+    const box = document.getElementById("usuarioDropdown");
+
+    if(menu) menu.classList.toggle("ativo");
+    if(box) box.classList.toggle("aberto");
+}
+
+document.addEventListener("click", function(e){
+    const box = document.getElementById("usuarioDropdown");
+    const menu = document.getElementById("usuarioMenuDropdown");
+
+    if(!box || !menu) return;
+
+    if(!box.contains(e.target)){
+        menu.classList.remove("ativo");
+        box.classList.remove("aberto");
+    }
+});
+
+async function carregarUsuario() {
+    try {
+        const userLocal = JSON.parse(localStorage.getItem("usuario") || "{}");
+
+        if (!userLocal?.id) {
+            window.location.href = "login.html";
+            return;
+        }
+
+        const userEmpresaEl = document.getElementById("userEmpresa");
+        const empresaLogadaEl = document.getElementById("empresaLogada");
+
+        const res = await fetch("/api/me", {
+            headers: {
+                "x-usuario-id": userLocal.id
+            }
+        });
+
+        const data = await res.json();
+
+        if (data?.usuario) {
+            userEmpresaEl.innerText = data.usuario;
+
+            if(empresaLogadaEl){
+                empresaLogadaEl.innerText =
+                    data.empresa_nome ||
+                    userLocal.empresa_nome ||
+                    "Empresa";
+            }
+
+            const logo = data.empresa_logo;
+            const logoEl = document.getElementById("logoEmpresa");
+
+            const logoFinal = logo
+                ? (logo.startsWith("/") ? logo : "/" + logo)
+                : "/img/logo-default.png";
+
+            if (logoEl) logoEl.src = logoFinal;
+
+        } else {
+            userEmpresaEl.innerText = "Administrador";
+        }
+
+    } catch (err) {
+        console.error("Erro ao carregar usuário:", err);
+        document.getElementById("userEmpresa").innerText = "Administrador";
+    }
+}
+
+async function carregarUsuariosOnline() {
+    try {
+        const res = await fetch("/api/logs");
+        const logs = await res.json();
+
+        const online = logs
+            .filter(l => !l.logout)
+            .map(l => l.usuario);
+
+        const listaUnica = [...new Set(online)];
+        const container = document.getElementById("usuariosOnline");
+
+        if (!container) return;
+
+        if (listaUnica.length === 0) {
+            container.innerHTML = "Nenhum usuário online";
+        } else {
+            container.innerHTML = listaUnica
+                .map(u => `🟢 ${u}`)
+                .join("<br>");
+        }
+
+    } catch (err) {
+        console.error("Erro ao carregar usuários online:", err);
+        const container = document.getElementById("usuariosOnline");
+        if (container) container.innerText = "Online indisponível";
+    }
+}
+
+function logout() {
+    const logId = localStorage.getItem("log_id");
+
+    if (logId) {
+        fetch("/api/logout", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                log_id: logId
+            })
+        }).catch(console.error);
+    }
+
+    sessionStorage.clear();
+    localStorage.clear();
+    window.location.href = "login.html";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    aplicarEstadoSidebar();
+
+    window.renderResumoTopo = function(tecnicos, localidades, tipos){
+
+        const el = document.getElementById("resumo-topo");
+        if(!el) return;
+
+        const tecnicosLista = Object.entries(tecnicos || {})
+            .sort((a,b) => b[1] - a[1]);
+
+        const localidadesLista = Object.entries(localidades || {})
+            .sort((a,b) => b[1] - a[1])
+            .slice(0,5);
+
+        const tiposLista = Object.entries(tipos || {})
+            .sort((a,b) => b[1] - a[1])
+            .slice(0,5);
+
+        const avatarIcon = `
+            <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 22c1.6-5 14.4-5 16 0"/>
+            </svg>
+        `;
+
+        el.innerHTML = `
+            <div class="cards-resumo-bottom">
+
+                <div class="card-bottom">
+                    <div class="titulo-card-bottom">Técnicos em Campo</div>
+
+                    ${
+                        tecnicosLista.length
+                        ? tecnicosLista.map(([nome,total]) => `
+                            <div class="linha-tecnico">
+                                <div class="avatar-tecnico">${avatarIcon}</div>
+
+                                <div class="info-tecnico">
+                                    <strong>${nome}</strong>
+                                    <small>${total} OS em execução</small>
+                                </div>
+
+                                <span class="badge-campo">Em campo</span>
+                            </div>
+                        `).join("")
+                        : `
+                            <div class="linha-tecnico">
+                                <div class="avatar-tecnico">${avatarIcon}</div>
+
+                                <div class="info-tecnico">
+                                    <strong>Técnicos disponíveis</strong>
+                                    <small>Nenhuma OS em execução</small>
+                                </div>
+
+                                <span class="badge-disponivel">Disponível</span>
+                            </div>
+                        `
+                    }
+
+                    <a class="link-bottom" href="tecnicos.html">Ver todos os técnicos ›</a>
+                </div>
+
+                <div class="card-bottom">
+                    <div class="titulo-card-bottom">Localidades com OS em Execução</div>
+
+                    ${
+                        localidadesLista.length
+                        ? localidadesLista.map(([nome,total]) => `
+                            <div class="linha-info">
+                                <span>${nome}</span>
+                                <strong>${total}</strong>
+                            </div>
+                        `).join("")
+                        : `<div class="vazio">Nenhuma localidade em execução</div>`
+                    }
+
+                    <a class="link-bottom" href="localidades.html">Ver todas as localidades ›</a>
+                </div>
+
+                <div class="card-bottom">
+                    <div class="titulo-card-bottom">Tipos de Serviços em Execução</div>
+
+                    ${
+                        tiposLista.length
+                        ? tiposLista.map(([nome,total]) => `
+                            <div class="linha-info">
+                                <span>${nome}</span>
+                                <strong>${total}</strong>
+                            </div>
+                        `).join("")
+                        : `<div class="vazio">Nenhum serviço em execução</div>`
+                    }
+
+                    <a class="link-bottom" href="tipos_servicos.html">Ver todos os tipos ›</a>
+                </div>
+
+            </div>
+        `;
+    };
+
+
+    carregarUsuario();
+    carregarUsuariosOnline();
+
+    const busca = document.getElementById("buscaOS");
+
+    if (busca) {
+        busca.addEventListener("keyup", function () {
+            const termo = this.value.toLowerCase();
+
+            document
+                .querySelectorAll("#tabelaOSAvulsas tr, #tabelaAbertas tr, #tabelaAndamento tr, #tabelaConcluidas tr, #tabelaOSAvulsasConcluidas tr")
+                .forEach(linha => {
+                    linha.style.display = linha.innerText.toLowerCase().includes(termo)
+                        ? ""
+                        : "none";
+                });
+        });
+    }
+});
+
+setInterval(async () => {
+    const logId = localStorage.getItem("log_id");
+
+    if (logId) {
+        await fetch("/api/ping", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                log_id: logId
+            })
+        }).catch(console.error);
+    }
+
+    carregarUsuariosOnline();
+
+}, 300000);
+
+function modoTV() {
+    const sidebar = document.querySelector(".sidebar");
+    const header = document.querySelector(".header");
+
+    if (sidebar) sidebar.style.display = "none";
+    if (header) header.style.display = "none";
+
+    document.querySelector(".main").style.marginLeft = "0";
+    document.body.style.background = "#0f172a";
+    document.documentElement.requestFullscreen();
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Login - SGOS</title>
+
+<link rel="icon" type="image/png" href="/img/favicon.png">
+
+<style>
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+}
+
+body{
+    font-family:Arial, Helvetica, sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+        radial-gradient(circle at top left, rgba(37,99,235,.35), transparent 35%),
+        linear-gradient(135deg,#061426,#081a31 55%,#0f172a);
+    padding:20px;
+}
+
+.login-wrapper{
+    width:100%;
+    max-width:430px;
+}
+
+.box{
+    background:white;
+    border-radius:18px;
+    padding:34px;
+    text-align:center;
+    box-shadow:0 30px 80px rgba(0,0,0,.35);
+}
+
+.logo{
+    width:235px;
+    max-width:100%;
+    margin-bottom:24px;
+}
+
+.titulo{
+    font-size:22px;
+    font-weight:800;
+    color:#0f172a;
+    margin-bottom:6px;
+}
+
+.subtitulo{
+    font-size:13px;
+    color:#64748b;
+    margin-bottom:24px;
+}
+
+.campo{
+    text-align:left;
+    margin-bottom:14px;
+}
+
+.campo label{
+    display:block;
+    font-size:13px;
+    font-weight:800;
+    color:#334155;
+    margin-bottom:6px;
+}
+
+input{
+    width:100%;
+    padding:13px 14px;
+    border-radius:12px;
+    border:1px solid #e5e7eb;
+    outline:none;
+    font-size:14px;
+    background:#fff;
+}
+
+input:focus{
+    border-color:#93c5fd;
+    box-shadow:0 0 0 3px rgba(37,99,235,.12);
+}
+
+#preview{
+    margin:8px 0 16px;
+    background:#f8fafc;
+    border:1px solid #e5e7eb;
+    padding:10px;
+    border-radius:12px;
+    font-size:12px;
+    color:#475569;
+    word-break:break-all;
+    text-align:left;
+}
+
+button{
+    width:100%;
+    padding:13px;
+    background:#2563eb;
+    color:white;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:15px;
+    font-weight:800;
+    margin-top:8px;
+    transition:.2s;
+}
+
+button:hover{
+    background:#1d4ed8;
+}
+
+.loading{
+    display:none;
+    margin-top:12px;
+    color:#2563eb;
+    font-size:14px;
+    font-weight:700;
+}
+
+#erro{
+    color:#dc2626;
+    margin-top:14px;
+    font-size:14px;
+    min-height:18px;
+}
+
+.rodape{
+    margin-top:22px;
+    font-size:12px;
+    color:#94a3b8;
+    text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="login-wrapper">
+
+    <div class="box">
+
+        <img
+            src="https://iili.io/CukfcHN.png"
+            class="logo"
+            alt="SGOS"
+        >
+
+        <div class="titulo">Acesso ao Aplicativo</div>
+        <div class="subtitulo">Sistema de Gestão de Ordens de Serviço</div>
+
+        <div class="campo">
+            <label>Provedor</label>
+            <input
+                type="text"
+                id="provedor"
+                placeholder="Ex: suporte"
+                autocomplete="off"
+            >
+        </div>
+
+        <div id="preview">
+            https://provedor.sgos.net.br
+        </div>
+
+        <div class="campo">
+            <label>Usuário</label>
+            <input
+                type="text"
+                id="usuario"
+                placeholder="Digite seu usuário"
+            >
+        </div>
+
+        <div class="campo">
+            <label>Senha</label>
+            <input
+                type="password"
+                id="senha"
+                placeholder="Digite sua senha"
+            >
+        </div>
+
+        <button onclick="login()">Entrar</button>
+
+        <div class="loading" id="loading">
+            Conectando...
+        </div>
+
+        <p id="erro"></p>
+
+    </div>
+
+    <div class="rodape">
+        SGOS © Sistema de Gestão de Ordens de Serviço
+    </div>
+
+</div>
+
+<script>
+console.log("🔥 LOGIN CARREGADO");
+
+// =========================
+// 🔄 PREVIEW URL
+// =========================
+const provedorInput =
+    document.getElementById("provedor");
+
+const preview =
+    document.getElementById("preview");
+
+provedorInput.addEventListener("input", () => {
+
+    let provedor =
+        provedorInput.value
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+
+    if(provedor){
+        preview.innerHTML =
+            `https://${provedor}.sgos.net.br`;
+    }else{
+        preview.innerHTML =
+            `https://provedor.sgos.net.br`;
+    }
+
+});
+
+// =========================
+// 🔁 AUTO LOGIN
+// =========================
+window.onload = () => {
+
+    const provedorSalvo =
+        localStorage.getItem("provedor");
+
+    const usuarioSalvo =
+        JSON.parse(
+            localStorage.getItem("usuario") || "{}"
+        );
+
+    if(provedorSalvo){
+
+        document.getElementById("provedor").value =
+            provedorSalvo;
+
+        preview.innerHTML =
+            `https://${provedorSalvo}.sgos.net.br`;
+    }
+
+    if(
+        usuarioSalvo?.id &&
+        usuarioSalvo?.log_id &&
+        provedorSalvo
+    ){
+        console.log("🔁 AUTO LOGIN");
+
+        const destino =
+            `https://${provedorSalvo}.sgos.net.br/appmobile.html`;
+
+        console.log("🚀 AUTO REDIRECT:", destino);
+
+        window.location.replace(destino);
+    }
+
+};
+
+// =========================
+// 🚀 LOGIN
+// =========================
+async function login(){
+
+    const provedor =
+        document.getElementById("provedor")
+        .value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+
+    const usuarioInput =
+        document.getElementById("usuario")
+        .value
+        .trim();
+
+    const senha =
+        document.getElementById("senha")
+        .value
+        .trim();
+
+    const erroEl =
+        document.getElementById("erro");
+
+    const loading =
+        document.getElementById("loading");
+
+    erroEl.innerText = "";
+
+    if(!provedor){
+        erroEl.innerText = "Digite o provedor";
+        return;
+    }
+
+    if(!usuarioInput || !senha){
+        erroEl.innerText = "Preencha usuário e senha";
+        return;
+    }
+
+    try{
+
+        loading.style.display = "block";
+
+        const API_BASE =
+            `https://${provedor}.sgos.net.br`;
+
+        localStorage.setItem(
+            "api_base",
+            API_BASE
+        );
+
+        localStorage.setItem(
+            "provedor",
+            provedor
+        );
+
+        const url =
+            `${API_BASE}/api/login`;
+
+        console.log("🌐 LOGIN:", url);
+
+        const res = await fetch(url, {
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                usuario:usuarioInput,
+                senha
+            })
+        });
+
+        const data = await res.json();
+
+        if(
+            res.ok &&
+            data.ok &&
+            data.usuario &&
+            data.log_id
+        ){
+            const userData = {
+                id:data.usuario.id,
+                usuario:data.usuario.usuario,
+                cargo:data.usuario.cargo,
+                empresa_id:data.usuario.empresa_id,
+                log_id:data.log_id
+            };
+
+            localStorage.setItem(
+                "usuario",
+                JSON.stringify(userData)
+            );
+
+            localStorage.setItem(
+                "usuario_id",
+                data.usuario.id
+            );
+
+            console.log("✅ LOGIN OK");
+
+            const destino =
+                `https://${provedor}.sgos.net.br/appmobile.html`;
+
+            console.log("🚀 REDIRECIONANDO:", destino);
+
+            setTimeout(() => {
+                window.location.replace(destino);
+            }, 300);
+
+        }else{
+            erroEl.innerText =
+                data.erro ||
+                "Erro ao logar";
+        }
+
+    }catch(err){
+
+        console.error(err);
+
+        erroEl.innerText =
+            "Erro ao conectar servidor";
+
+    }finally{
+
+        loading.style.display = "none";
+    }
+}
+
+// =========================
+// ⌨ ENTER LOGIN
+// =========================
+document.addEventListener("keypress", (e) => {
+    if(e.key === "Enter"){
+        login();
+    }
+});
+</script>
+
+</body>
+</html>

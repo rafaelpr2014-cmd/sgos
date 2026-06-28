@@ -1,0 +1,35 @@
+<h2>Novo Cliente</h2>
+
+<input id="nome" placeholder="Nome"><br><br>
+<input id="telefone" placeholder="Telefone"><br><br>
+<input id="localidade" placeholder="Localidade"><br><br>
+
+<button onclick="salvar()">Salvar</button>
+
+<script>
+
+function salvar(){
+
+    const nome = document.getElementById("nome").value
+    const telefone = document.getElementById("telefone").value
+    const localidade = document.getElementById("localidade").value
+
+    fetch("/api/clientes",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body:JSON.stringify({
+            nome,
+            telefone,
+            localidade
+        })
+    })
+    .then(res=>res.text())
+    .then(data=>{
+        alert(data)
+    })
+
+}
+
+</script>

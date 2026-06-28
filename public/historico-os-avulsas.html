@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Histórico de OS Avulsas - SGOS</title>
+<link rel="icon" type="image/png" href="/img/favicon.png">
+
+<script src="/js/auth.js"></script>
+<script src="/js/init.js"></script>
+
+<style>
+body{
+    font-family:Arial, Helvetica, sans-serif;
+    margin:0;
+    background:#f5f7fb;
+    color:#0f172a;
+    padding:24px;
+}
+
+.topo{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+}
+
+h1{
+    margin:0;
+    font-size:24px;
+}
+
+.btn{
+    border:none;
+    background:#2563eb;
+    color:white;
+    padding:11px 16px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.card{
+    background:white;
+    border:1px solid #e5e7eb;
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 8px 20px rgba(15,23,42,.04);
+}
+
+.filtros{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:16px;
+}
+
+input, select{
+    padding:10px 12px;
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    outline:none;
+}
+
+.table-wrap{
+    width:100%;
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:1300px;
+}
+
+th{
+    background:#f8fafc;
+    text-align:left;
+    font-size:12px;
+    padding:13px 12px;
+    border-bottom:1px solid #e5e7eb;
+    white-space:nowrap;
+}
+
+td{
+    padding:12px;
+    border-bottom:1px solid #e5e7eb;
+    font-size:13px;
+    white-space:nowrap;
+    vertical-align:top;
+}
+
+.descricao{
+    max-width:340px;
+    white-space:normal;
+    line-height:1.35;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+}
+
+.status-box{
+    padding:6px 10px;
+    border-radius:999px;
+    font-weight:bold;
+    font-size:12px;
+    display:inline-block;
+}
+
+.status-aberto{background:#dbeafe;color:#2563eb;}
+.status-andamento{background:#ffedd5;color:#f59e0b;}
+.status-concluido{background:#dcfce7;color:#15803d;}
+
+.acoes{
+    display:flex;
+    gap:8px;
+    align-items:center;
+}
+
+.acao{
+    cursor:pointer;
+    border:none;
+    background:#f8fafc;
+    border-radius:8px;
+    padding:6px 8px;
+    font-size:15px;
+}
+
+.acao:hover{
+    background:#e2e8f0;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topo">
+    <div>
+        <h1>Histórico de OS Avulsas</h1>
+        <small>Consulta geral das ordens de serviço avulsas</small>
+    </div>
+
+    <button class="btn" onclick="window.location.href='/painel.html'">
+        Voltar ao Painel
+    </button>
+</div>
+
+<div class="card">
+
+    <div class="filtros">
+        <input id="busca" type="text" placeholder="Buscar por localidade, técnico, serviço, endereço ou descrição">
+        <select id="status">
+            <option value="">Todos os status</option>
+            <option value="em_aberto">Em aberto</option>
+            <option value="em_andamento">Em execução</option>
+            <option value="concluido">Finalizado</option>
+        </select>
+        <button class="btn" onclick="carregarHistorico()">Filtrar</button>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Localidade</th>
+                    <th>Técnicos</th>
+                    <th>Tipo de Serviço</th>
+                    <th>Endereço</th>
+                    <th>Descrição</th>
+                    <th>Criada em</th>
+                    <th>Iniciada em</th>
+                    <th>Finalizada em</th>
+                    <th>Criada por</th>
+                    <th>Finalizada por</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tbody">
+                <tr><td colspan="12">Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+async function apiFetch(url, options = {}) {
+    const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+
+    if (!usuario || !usuario.id) {
+        alert("Sessão expirada.");
+        window.location.href = "/login.html";
+        return;
+    }
+
+    const res = await fetch(url, {
+        ...options,
+        headers: {
+            "Content-Type": "application/json",
+            "x-usuario-id": usuario.id,
+            ...(options.headers || {})
+        }
+    });
+
+    if (!res.ok) {
+        const text = await res.text();
+        console.error(text);
+        throw new Error(text || "Erro API");
+    }
+
+    return res.json();
+}
+
+function formatarData(data) {
+    if (!data) return "-";
+    const d = new Date(data);
+    return isNaN(d) ? "-" : d.toLocaleString("pt-BR");
+}
+
+function normalizarStatus(status) {
+    const s = String(status || "em_aberto").toLowerCase().trim();
+    if (s.includes("andamento")) return "em_andamento";
+    if (s.includes("concl")) return "concluido";
+    if (s.includes("abert")) return "em_aberto";
+    return s;
+}
+
+function statusHTML(status) {
+    const s = normalizarStatus(status);
+
+    const mapa = {
+        em_aberto: ["status-aberto", "Em aberto"],
+        em_andamento: ["status-andamento", "Em execução"],
+        concluido: ["status-concluido", "Finalizado"]
+    };
+
+    const item = mapa[s] || mapa.em_aberto;
+
+    return `<span class="status-box ${item[0]}">${item[1]}</span>`;
+}
+
+function visualizarAnexoOSAvulsa(arquivo) {
+    if (!arquivo) {
+        alert("Esta OS Avulsa não possui anexo.");
+        return;
+    }
+
+    const url = String(arquivo).startsWith("/")
+        ? arquivo
+        : `/api/os-avulsas/anexo/${arquivo}`;
+
+    window.open(url, "_blank");
+}
+
+function comprovanteOSAvulsa(id) {
+    const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+    const token = btoa((usuario.id || "") + "_SGOS");
+
+    window.open(`/api/os-avulsas/comprovacao/${id}?token=${token}`, "_blank");
+}
+
+async function reciclarOSAvulsa(id) {
+    if (!confirm("Deseja reciclar esta OS Avulsa e voltar para Em aberto?")) return;
+
+    await apiFetch(`/api/os-avulsas/${id}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "em_aberto" })
+    });
+
+    carregarHistorico();
+}
+
+async function carregarHistorico() {
+    const tbody = document.getElementById("tbody");
+    const busca = document.getElementById("busca").value.toLowerCase().trim();
+    const statusFiltro = document.getElementById("status").value;
+
+    tbody.innerHTML = `<tr><td colspan="12">Carregando...</td></tr>`;
+
+    let url = "/api/os-avulsas";
+
+    if (statusFiltro) {
+        url += `?status=${encodeURIComponent(statusFiltro)}`;
+    }
+
+    const lista = await apiFetch(url);
+
+    const filtrados = lista.filter(os => {
+        const texto = [
+            os.localidade,
+            os.tecnicos_nomes,
+            os.tecnicos,
+            os.tipo_servico,
+            os.endereco,
+            os.descricao,
+            os.criado_por_nome,
+            os.finalizado_por_nome
+        ].join(" ").toLowerCase();
+
+        return !busca || texto.includes(busca);
+    });
+
+    if (!filtrados.length) {
+        tbody.innerHTML = `<tr><td colspan="12">Nenhum registro encontrado</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = "";
+
+    filtrados.forEach(os => {
+        const acoes = `
+            <div class="acoes">
+                ${os.anexo ? `
+                    <button class="acao" title="Anexo" onclick="visualizarAnexoOSAvulsa('${os.anexo}')">📎</button>
+                ` : ""}
+
+                <button class="acao" title="Comprovante" onclick="comprovanteOSAvulsa(${os.id})">📄</button>
+
+                ${normalizarStatus(os.status) === "concluido" ? `
+                    <button class="acao" title="Reciclar OS Avulsa" onclick="reciclarOSAvulsa(${os.id})">🔁</button>
+                ` : ""}
+            </div>
+        `;
+
+        tbody.innerHTML += `
+            <tr>
+                <td><strong>${os.localidade || "-"}</strong></td>
+                <td>${os.tecnicos_nomes || os.tecnicos || "-"}</td>
+                <td>${os.tipo_servico || "-"}</td>
+                <td>${os.endereco || "-"}</td>
+                <td><div class="descricao">${os.descricao || "-"}</div></td>
+                <td>${formatarData(os.criado_em)}</td>
+                <td>${formatarData(os.iniciado_em)}</td>
+                <td>${formatarData(os.finalizado_em || os.atualizado_em)}</td>
+                <td>${os.criado_por_nome || "-"}</td>
+                <td>${os.finalizado_por_nome || "-"}</td>
+                <td>${statusHTML(os.status)}</td>
+                <td>${acoes}</td>
+            </tr>
+        `;
+    });
+}
+
+document.getElementById("busca").addEventListener("input", () => {
+    clearTimeout(window.__timerBuscaAvulsa);
+    window.__timerBuscaAvulsa = setTimeout(carregarHistorico, 300);
+});
+
+document.addEventListener("DOMContentLoaded", carregarHistorico);
+</script>
+
+</body>
+</html>

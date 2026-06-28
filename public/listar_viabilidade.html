@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Viabilidades</title>
+
+<style>
+body { font-family: Arial; background: #0f172a; color: #fff; margin: 0; padding: 20px; }
+input { width: 300px; padding: 10px; border-radius: 8px; border: none; margin-bottom: 15px; background: #1e293b; color: #fff; }
+table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 12px; overflow: hidden; }
+th, td { 
+    padding: 14px; 
+    text-align: left;       /* Alinha o conteúdo à esquerda */
+    vertical-align: middle; /* Centraliza verticalmente, se tiver várias linhas */
+    border-bottom: 1px solid #334155; 
+}
+th { background: #020617; color: #94a3b8; }
+tr:hover { background: #273449; }
+button { padding: 6px 10px; border-radius: 6px; border: none; cursor: pointer; margin-right: 5px; }
+.btn-ver { background: #3b82f6; color: #fff; }
+.btn-editar { background: #f59e0b; color: #fff; }
+.btn-excluir { background: #ef4444; color: #fff; }
+.paginacao { margin-top: 15px; }
+
+/* Modal */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; }
+.modal-content { background: #1e293b; padding: 20px; border-radius: 10px; width: 600px; max-height: 80%; overflow: auto; }
+img, video { max-width: 100%; border-radius: 6px; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+<h2>Viabilidades</h2>
+<input type="text" id="busca" placeholder="Buscar..." onkeyup="filtrar()">
+
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Nome</th>
+<th>Endereço</th>
+<th>Telefone</th>
+<th>Cadastrado Por</th>
+<th>Registrado em</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody id="lista"></tbody>
+</table>
+
+<div class="paginacao" id="paginacao"></div>
+</div>
+
+<!-- Modal Anexos -->
+<div class="modal" id="modal">
+<div class="modal-content">
+<h3>Anexos</h3>
+<div id="anexos"></div>
+<br>
+<button onclick="fecharModal()">Fechar</button>
+</div>
+</div>
+
+<script>
+let dadosOriginais = [];
+let dados = [];
+let paginaAtual = 1;
+const porPagina = 5;
+
+// fetch com autenticação
+async function fetchAuth(url, options = {}) {
+    const usuario = JSON.parse(localStorage.getItem("usuario")) || {};
+    const token = localStorage.getItem("token") || "";
+    return fetch(url, { 
+        ...options, 
+        headers: { 
+            ...(options.headers||{}), 
+            "Authorization": token, 
+            "x-usuario-id": usuario.id, 
+            "x-usuario-nome": usuario.nome, 
+            "x-usuario-cargo": usuario.cargo 
+        } 
+    });
+}
+
+// carregar lista
+async function carregar() {
+    try {
+        const res = await fetchAuth("/api/viabilidade");
+        if (!res.ok) { const err = await res.json(); alert("Erro ao carregar: " + err.erro); return; }
+        dadosOriginais = await res.json(); 
+        dados = [...dadosOriginais]; 
+        render();
+    } catch(e){ console.error(e); }
+}
+
+// render tabela
+function render() {
+    const inicio = (paginaAtual-1)*porPagina;
+    const fim = inicio+porPagina;
+    const pagina = dados.slice(inicio,fim);
+    const tbody = document.getElementById("lista"); 
+    tbody.innerHTML = "";
+
+    pagina.forEach(v => {
+        tbody.innerHTML += `<tr>
+            <td>${v.id}</td>
+            <td>${v.nome||'-'}</td>
+            <td>${v.endereco||'-'}</td>
+            <td>${v.telefone||'-'}</td>
+            <td>${v.cadastrado_por||'-'}</td>
+            <td>${v.registrado_em ? new Date(v.registrado_em).toLocaleString() : '-'}</td>
+            <td>
+                <button class="btn-ver" onclick="verAnexos(${v.id})">Anexos</button>
+                <button class="btn-editar" onclick="editar(${v.id})">Editar</button>
+                <button class="btn-excluir" onclick="excluir(${v.id})">Excluir</button>
+            </td>
+        </tr>`;
+    });
+
+    renderPaginacao();
+}
+
+// Paginação
+function renderPaginacao() {
+    const total = Math.ceil(dados.length / porPagina);
+    const div = document.getElementById("paginacao");
+    div.innerHTML = "";
+    for (let i=1; i<=total; i++){
+        div.innerHTML += `<button onclick="irPagina(${i})">${i}</button>`;
+    }
+}
+function irPagina(p){ paginaAtual=p; render(); }
+
+// Busca
+function filtrar() {
+    const termo = document.getElementById("busca").value.toLowerCase();
+    dados = dadosOriginais.filter(v => 
+        (v.nome||'').toLowerCase().includes(termo) ||
+        (v.endereco||'').toLowerCase().includes(termo)
+    );
+    paginaAtual=1; render();
+}
+
+// Editar
+function editar(id){
+    const nome = prompt("Novo nome:");
+    if(!nome) return;
+    fetchAuth(`/api/viabilidade/${id}`, {
+        method:"PUT",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ nome })
+    }).then(()=>carregar());
+}
+
+// Excluir
+function excluir(id){
+    if(!confirm("Deseja excluir?")) return;
+    fetchAuth(`/api/viabilidade/${id}`, { method:"DELETE" }).then(()=>carregar());
+}
+
+// Modal de anexos
+async function verAnexos(id){
+    try {
+        const res = await fetchAuth(`/api/viabilidade_anexos/${id}`);
+        if(!res.ok){ const err=await res.json(); alert("Erro ao buscar anexos: "+err.erro); return; }
+        const lista = await res.json();
+
+        const div = document.getElementById("anexos"); 
+        div.innerHTML = "";
+        if(lista.length===0){ div.innerHTML="<p>Nenhum anexo</p>"; }
+        lista.forEach(a=>{
+            const caminho = `/uploads/viabilidade/${a.nome_arquivo}`;
+            if(a.tipo.includes("image")) div.innerHTML += `<img src="${caminho}">`;
+            else if(a.tipo.includes("video")) div.innerHTML += `<video controls src="${caminho}"></video>`;
+            else div.innerHTML += `<a href="${caminho}" target="_blank">${a.nome_arquivo}</a>`;
+
+            // mostrar usuário que enviou cada anexo
+            div.innerHTML += `<p>Enviado por: ${a.cadastrado_por || "-"} em ${a.registrado_em ? new Date(a.registrado_em).toLocaleString() : "-"}</p>`;
+        });
+
+        document.getElementById("modal").style.display = "flex";
+    } catch(e){ console.error(e); alert("Erro ao abrir anexos"); }
+}
+
+function fecharModal(){ document.getElementById("modal").style.display="none"; }
+
+// INIT
+carregar();
+</script>
+</body>
+</html>

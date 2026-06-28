@@ -1,0 +1,3028 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>SGOS - Relatórios</title>
+
+<link rel="icon" type="image/png" href="/img/favicon.png">
+
+<script src="/js/auth.js" defer></script>
+<script src="/js/init.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+:root{
+    --azul:#2563eb;
+    --azul-hover:#1d4ed8;
+    --texto:#0f172a;
+    --muted:#64748b;
+    --borda:#e5e7eb;
+    --fundo:#f5f7fb;
+    --verde:#16a34a;
+    --laranja:#f59e0b;
+    --vermelho:#ef4444;
+}
+
+*{ box-sizing:border-box; }
+
+body{
+    margin:0;
+    font-family:Arial, Helvetica, sans-serif;
+    background:var(--fundo);
+    color:var(--texto);
+}
+
+/* ===============================
+   SIDEBAR
+================================ */
+.sidebar{
+    position:fixed;
+    left:0;
+    top:0;
+    width:230px;
+    height:100vh;
+    background:linear-gradient(180deg,#081a31,#061426);
+    color:white;
+    padding:12px 18px 18px;
+    display:flex;
+    flex-direction:column;
+    z-index:20;
+}
+
+.sidebar-logo{
+    display:flex;
+    justify-content:flex-start;
+    align-items:center;
+    padding-left:0px;
+    margin-top:0;
+    margin-bottom:14px;
+}
+
+.sidebar-logo img{
+    width:190px;
+    height:auto;
+    display:block;
+}
+
+.menu-titulo{
+    margin:14px 10px 6px;
+    font-size:12px;
+    color:#94a3b8;
+    text-transform:uppercase;
+    letter-spacing:.2px;
+}
+
+.sidebar a{
+    color:#dbeafe;
+    text-decoration:none;
+    padding:11px 13px;
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    font-size:14px;
+    margin-bottom:2px;
+    transition:.2s;
+}
+
+.sidebar a:hover,
+.sidebar a.ativo{
+    background:var(--azul);
+    color:white;
+}
+
+.menu-icon{
+    width:18px;
+    height:18px;
+    min-width:18px;
+    stroke:currentColor;
+    fill:none;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.sidebar-footer{
+    margin-top:auto;
+}
+
+.btn-recolher{
+    width:100%;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.1);
+    color:#e5efff;
+    padding:13px;
+    border-radius:10px;
+    cursor:pointer;
+    text-align:left;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:14px;
+}
+
+/* sidebar recolhida */
+.sidebar.recolhida{
+    width:82px;
+    padding:14px 12px 18px;
+    align-items:center;
+}
+
+.sidebar.recolhida .sidebar-logo{
+    justify-content:center;
+    padding-left:0;
+    margin-bottom:18px;
+}
+
+.sidebar.recolhida .sidebar-logo img{
+    width:48px;
+}
+
+.sidebar.recolhida .menu-titulo{
+    display:none;
+}
+
+.sidebar.recolhida a{
+    justify-content:center;
+    width:52px;
+    padding:13px;
+    gap:0;
+}
+
+.sidebar.recolhida a span,
+.sidebar.recolhida .btn-recolher span{
+    display:none;
+}
+
+.sidebar.recolhida .btn-recolher{
+    justify-content:center;
+    width:52px;
+    padding:13px;
+}
+
+.sidebar.recolhida + .main{
+    margin-left:82px;
+}
+
+/* ===============================
+   ÁREA PRINCIPAL
+================================ */
+.main{
+    margin-left:230px;
+    min-height:100vh;
+    transition:.25s;
+}
+
+/* ===============================
+   HEADER
+================================ */
+.header{
+    height:92px;
+    background:white;
+    border-bottom:1px solid var(--borda);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 34px;
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+
+.header-left{
+    display:flex;
+    align-items:center;
+    gap:22px;
+}
+
+.header-logo img{
+    height:60px;
+    max-width:190px;
+    object-fit:contain;
+}
+
+
+.header-logo img{
+    height:60px;
+    max-width:190px;
+    object-fit:contain;
+}
+
+.divisor{
+    height:34px;
+    width:1px;
+    background:var(--borda);
+}
+
+.header-title{
+    font-weight:800;
+    font-size:18px;
+}
+
+.header-actions{
+    display:flex;
+    align-items:center;
+    gap:22px;
+}
+
+.busca-wrap{
+    position:relative;
+}
+
+.busca-icone{
+    position:absolute;
+    left:13px;
+    top:50%;
+    transform:translateY(-50%);
+    color:#334155;
+    width:18px;
+    height:18px;
+}
+
+.input-busca-menu{
+    width:260px;
+    padding:12px 14px 12px 40px;
+    border:1px solid var(--borda);
+    border-radius:12px;
+    outline:none;
+    font-size:14px;
+    background:#fff;
+}
+
+.notificacao{
+    position:relative;
+    width:40px;
+    height:40px;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#1e3a8a;
+}
+
+.notificacao svg{
+    width:21px;
+    height:21px;
+    stroke:currentColor;
+    fill:none;
+    stroke-width:1.8;
+}
+
+.notificacao span{
+    position:absolute;
+    top:3px;
+    right:4px;
+    background:#2563eb;
+    color:white;
+    border-radius:999px;
+    font-size:10px;
+    min-width:17px;
+    height:17px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:2px solid white;
+}
+
+/* ===============================
+   USUÁRIO DROPDOWN
+================================ */
+.usuario-dropdown{ position:relative; }
+
+.usuario-btn{
+    border:none;
+    background:transparent;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    cursor:pointer;
+    padding:0;
+}
+
+.avatar{
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    background:#e2e8f0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+}
+
+.avatar svg{
+    width:28px;
+    height:28px;
+    fill:#cbd5e1;
+}
+
+.usuario-info{ text-align:left; }
+
+.usuario-info strong{
+    font-size:13px;
+    display:block;
+    color:#0f172a;
+}
+
+.usuario-info small{
+    font-size:11px;
+    color:#64748b;
+}
+
+.seta{
+    width:18px;
+    height:18px;
+    color:#1e3a8a;
+    transition:.2s;
+}
+
+.usuario-dropdown.aberto .seta{
+    transform:rotate(180deg);
+}
+
+.usuario-menu{
+    display:none;
+    position:absolute;
+    right:0;
+    top:58px;
+    width:260px;
+    background:white;
+    border:1px solid #e5e7eb;
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(15,23,42,0.16);
+    padding:14px;
+    z-index:9999;
+}
+
+.usuario-menu.ativo{ display:block; }
+
+.usuario-menu-titulo{
+    font-size:12px;
+    font-weight:800;
+    color:#64748b;
+    margin-bottom:10px;
+    text-transform:uppercase;
+}
+
+#usuariosOnline{
+    font-size:13px;
+    color:#0f172a;
+    line-height:1.8;
+    max-height:180px;
+    overflow:auto;
+}
+
+.usuario-menu hr{
+    border:none;
+    border-top:1px solid #e5e7eb;
+    margin:12px 0;
+}
+
+.usuario-menu a{
+    display:block;
+    color:#ef4444;
+    text-decoration:none;
+    font-weight:800;
+    font-size:14px;
+}
+
+/* ===============================
+   CONTEÚDO
+================================ */
+.content{
+    padding:28px 18px 38px;
+}
+
+.page-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    margin-bottom:18px;
+}
+
+.page-title h2{
+    margin:0;
+    font-size:24px;
+    font-weight:800;
+}
+
+.page-title p{
+    margin:6px 0 0;
+    color:var(--muted);
+    font-size:14px;
+}
+
+.card{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    padding:22px;
+    box-shadow:0 8px 20px rgba(15,23,42,0.04);
+}
+
+.card-title{
+    font-size:18px;
+    font-weight:800;
+    margin:0 0 18px;
+    color:#0f172a;
+}
+
+/* ===============================
+   FILTROS MODERNOS
+================================ */
+.filtros{
+    display:grid;
+    grid-template-columns:repeat(6, minmax(150px, 1fr));
+    gap:14px;
+    align-items:end;
+    margin-bottom:18px;
+}
+
+.filtro-item{
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+}
+
+.filtro-item label{
+    font-size:13px;
+    font-weight:800;
+    color:#334155;
+}
+
+select,
+input{
+    width:100%;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid var(--borda);
+    background:white;
+    outline:none;
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:14px;
+}
+
+.periodo-botoes{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    grid-column:1 / -1;
+}
+
+.btn{
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+    font-family:Arial, Helvetica, sans-serif;
+    font-weight:bold;
+    font-size:14px;
+    cursor:pointer;
+    background:#eef2ff;
+    color:#1e40af;
+    transition:.2s;
+}
+
+.btn:hover{ opacity:.9; transform:translateY(-1px); }
+
+.btn-primary{
+    background:linear-gradient(135deg,#2563eb,#1263ff);
+    color:white;
+    box-shadow:0 8px 18px rgba(37,99,235,0.18);
+}
+
+.btn-green{
+    background:#dcfce7;
+    color:#15803d;
+}
+
+.btn-orange{
+    background:#ffedd5;
+    color:#f59e0b;
+}
+
+.btn-red{
+    background:#fee2e2;
+    color:#dc2626;
+}
+
+.filtros-acoes{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+    grid-column:1 / -1;
+}
+
+/* ===============================
+   CARDS RESUMO
+================================ */
+.cards-kpi{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:18px;
+    margin-bottom:18px;
+}
+
+.kpi{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    padding:22px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    box-shadow:0 8px 20px rgba(15,23,42,0.04);
+}
+
+.kpi-icon{
+    width:54px;
+    height:54px;
+    border-radius:18px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.kpi-icon svg{
+    width:28px;
+    height:28px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:2;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.kpi small{
+    display:block;
+    color:#64748b;
+    font-size:13px;
+}
+
+.kpi strong{
+    display:block;
+    font-size:30px;
+    line-height:1;
+    margin-top:5px;
+}
+
+.icon-blue{ background:#dbeafe; color:#2563eb; }
+.icon-green{ background:#dcfce7; color:#16a34a; }
+.icon-orange{ background:#ffedd5; color:#f59e0b; }
+.icon-red{ background:#fee2e2; color:#ef4444; }
+
+/* ===============================
+   GRÁFICOS
+================================ */
+.charts-container{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:18px;
+    margin-bottom:18px;
+}
+
+.charts-container.triple{
+    grid-template-columns:repeat(3,1fr);
+}
+
+.chart-box{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    padding:22px;
+    min-height:340px;
+    box-shadow:0 8px 20px rgba(15,23,42,0.04);
+}
+
+.chart-box h3{
+    margin:0 0 16px;
+    font-size:17px;
+    font-weight:800;
+    color:#0f172a;
+}
+
+.chart-area{
+    height:260px;
+    position:relative;
+}
+
+canvas{
+    max-height:none !important;
+}
+
+/* ===============================
+   TABELAS RANKING
+================================ */
+.titulo-ranking{
+    margin:24px 0 14px;
+    font-size:20px;
+    font-weight:800;
+    color:#0f172a;
+}
+
+.tables-container{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:18px;
+    margin-bottom:18px;
+}
+
+.table-box{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    padding:22px;
+    min-height:260px;
+    box-shadow:0 8px 20px rgba(15,23,42,0.04);
+}
+
+.table-box h3{
+    margin:0 0 14px;
+    font-size:17px;
+    font-weight:800;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+td{
+    padding:12px 0;
+    border-bottom:1px solid #f1f5f9;
+    font-size:14px;
+}
+
+td:last-child{
+    text-align:right;
+    font-weight:800;
+    color:#0f172a;
+}
+
+/* ===============================
+   ENVIO MANUAL
+================================ */
+.envio-manual{
+    display:grid;
+    grid-template-columns:1.5fr 1fr auto;
+    gap:12px;
+    align-items:end;
+    margin-bottom:18px;
+}
+
+#datasEnvio{
+    grid-column:1 / -1;
+    display:none;
+    gap:12px;
+}
+
+/* ===============================
+   FOOTER
+================================ */
+.footer{
+    display:flex;
+    justify-content:space-between;
+    padding:20px 34px;
+    color:#475569;
+    font-size:12px;
+    border-top:1px solid var(--borda);
+}
+
+/* ===============================
+   RESPONSIVO
+================================ */
+@media(max-width:1300px){
+    .cards-kpi,
+    .charts-container,
+    .charts-container.triple,
+    .tables-container{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .filtros{
+        grid-template-columns:repeat(3,1fr);
+    }
+}
+
+@media(max-width:900px){
+    .sidebar{ display:none; }
+
+    .main{ margin-left:0; }
+
+    .header{
+        height:auto;
+        align-items:flex-start;
+        flex-direction:column;
+        gap:15px;
+        padding:20px;
+    }
+
+    .header-actions{
+        width:100%;
+        justify-content:space-between;
+        flex-wrap:wrap;
+    }
+
+    .busca-wrap,
+    .input-busca-menu{
+        width:100%;
+    }
+
+    .content{ padding:20px; }
+
+    .cards-kpi,
+    .charts-container,
+    .charts-container.triple,
+    .tables-container,
+    .filtros,
+    .envio-manual{
+        grid-template-columns:1fr;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<aside class="sidebar">
+
+    <div class="sidebar-logo">
+        <img
+            id="logoSidebar"
+            src="https://iili.io/CujQzXa.png"
+            data-logo-aberta="https://iili.io/CujQzXa.png"
+            data-logo-fechada="https://iili.io/CuwvauR.png"
+            alt="SGOS"
+        >
+    </div>
+
+    <a href="painel.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg>
+        <span>Painel Inicial</span>
+    </a>
+
+    <div class="menu-titulo">Operação</div>
+
+    <a href="agendamentos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+        <span>Agendamentos</span>
+    </a>
+
+    <a href="relatorios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg>
+        <span>Relatórios</span>
+    </a>
+
+<a href="escala.html" class=>
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 14h6"/></svg>
+        <span>Escala</span>
+    </a>
+
+    <a href="cronograma.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg>
+        <span>Cronograma</span>
+    </a>
+
+    <a href="viabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+        <span>Viabilidades</span>
+    </a>
+
+    <a href="inviabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+        <span>Inviabilidades</span>
+    </a>
+
+    <div class="menu-titulo">Cadastros</div>
+
+    <a href="planos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        <span>Planos</span>
+    </a>
+
+    <a href="localidades.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span>Localidades</span>
+    </a>
+
+    <a href="tecnicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Técnicos</span>
+    </a>
+
+    <a href="tipos_servicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.5 2.5-3-3z"/></svg>
+        <span>Tipos de Serviços</span>
+    </a>
+
+    <div class="menu-titulo">Configurações</div>
+
+    <a href="usuarios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Usuários</span>
+    </a>
+
+    <a href="logs_acesso.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        <span>Logs do Sistema</span>
+    </a>
+
+    <a href="logs_acoes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <span>Log de Ações</span>
+    </a>
+
+    <a href="historico-os.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/><path d="M12 8v5l3 2"/></svg>
+        <span>Histórico de OS</span>
+    </a>
+
+    <div class="sidebar-footer">
+        <button class="btn-recolher" onclick="toggleSidebar()" type="button">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M2 12h20"/></svg>
+            <span>Recolher menu</span>
+        </button>
+    </div>
+
+
+</aside>
+
+<main class="main">
+
+    <header class="header">
+
+        <div class="header-left">
+            <div class="header-logo">
+                <img id="logoEmpresa" src="/img/logo-default.png" alt="Logo Empresa">
+            </div>
+
+            <div class="divisor"></div>
+
+            <div class="header-title">
+                Relatórios
+            </div>
+        </div>
+
+        <div class="header-actions">
+
+            <div class="busca-wrap">
+                <svg class="busca-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                <input type="text" id="buscaRelatorio" placeholder="Buscar relatório..." class="input-busca-menu">
+            </div>
+
+            <div class="notificacao">
+                <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+                <span>5</span>
+            </div>
+
+            <div class="usuario-dropdown" id="usuarioDropdown">
+
+                <button class="usuario-btn" onclick="toggleUserDropdown()" type="button">
+                    <div class="avatar">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22c1.6-5 14.4-5 16 0"/></svg>
+                    </div>
+
+                    <div class="usuario-info">
+                        <strong id="userEmpresa">Carregando...</strong>
+                        <small id="empresaLogada">Empresa</small>
+                    </div>
+
+                    <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+
+                <div class="usuario-menu" id="usuarioMenuDropdown">
+                    <div class="usuario-menu-titulo">Usuários online</div>
+                    <div id="usuariosOnline">Carregando...</div>
+
+                    <hr>
+
+                    <a href="#" onclick="logout()">Sair</a>
+                </div>
+
+            </div>
+
+        </div>
+
+    </header>
+
+    <section class="content">
+
+        <div class="page-title">
+            <div>
+                <h2>Relatórios e Rankings</h2>
+                <p>Acompanhe desempenho por período, técnico, localidade, plano e tipo de serviço.</p>
+            </div>
+        </div>
+
+        <div class="cards-kpi">
+            <div class="kpi">
+                <div class="kpi-icon icon-blue">
+                    <svg viewBox="0 0 24 24"><path d="M9 6h6l1 2h4v13H4V8h4l1-2z"/><path d="M9 13l2 2 4-4"/></svg>
+                </div>
+                <div>
+                    <small>Registros filtrados</small>
+                    <strong id="kpiTotal">0</strong>
+                </div>
+            </div>
+
+            <div class="kpi">
+                <div class="kpi-icon icon-orange">
+                    <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/></svg>
+                </div>
+                <div>
+                    <small>OS abertas</small>
+                    <strong id="kpiAbertas">0</strong>
+                </div>
+            </div>
+
+            <div class="kpi">
+                <div class="kpi-icon icon-green">
+                    <svg viewBox="0 0 24 24"><path d="M9 6h6l1 2h4v13H4V8h4l1-2z"/><path d="M9 13l2 2 4-4"/></svg>
+                </div>
+                <div>
+                    <small>OS concluídas</small>
+                    <strong id="kpiConcluidas">0</strong>
+                </div>
+            </div>
+
+            <div class="kpi">
+                <div class="kpi-icon icon-red">
+                    <svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 4.4 2.8 18a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.4a2 2 0 0 0-3.4 0z"/></svg>
+                </div>
+                <div>
+                    <small>Técnicos ranqueados</small>
+                    <strong id="kpiTecnicos">0</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="card-title">Filtros</h3>
+
+            <div class="filtros">
+
+                <div class="periodo-botoes">
+                    <button class="btn btn-primary" onclick="setPeriodo('hoje')">Hoje</button>
+                    <button class="btn" onclick="setPeriodo('ontem')">Ontem</button>
+                    <button class="btn" onclick="setPeriodo('7')">7 dias</button>
+                    <button class="btn" onclick="setPeriodo('30')">30 dias</button>
+                </div>
+
+                <div class="filtro-item">
+                    <label>Data início</label>
+                    <input type="date" id="dataInicio">
+                </div>
+
+                <div class="filtro-item">
+                    <label>Data fim</label>
+                    <input type="date" id="dataFim">
+                </div>
+
+                <div class="filtro-item">
+                    <label>Técnicos</label>
+                    <select id="filtroTecnico">
+                        <option value="">Todos Técnicos</option>
+                    </select>
+                </div>
+
+                <div class="filtro-item">
+                    <label>Localidade</label>
+                    <select id="filtroLocalidade">
+                        <option value="">Todas Localidades</option>
+                    </select>
+                </div>
+
+                <div class="filtro-item">
+                    <label>Plano</label>
+                    <select id="filtroPlano">
+                        <option value="">Todos Planos</option>
+                    </select>
+                </div>
+
+                <div class="filtro-item">
+                    <label>Status</label>
+                    <select id="filtroStatus">
+                        <option value="">Todos Status</option>
+                        <option value="abertas">Abertas</option>
+                        <option value="concluidas">Concluídas</option>
+                    </select>
+                </div>
+
+                <div class="filtro-item">
+                    <label>Tipos de Serviços</label>
+                    <select id="filtroTipo">
+                        <option value="">Todos Tipos</option>
+                    </select>
+                </div>
+
+                <div class="filtros-acoes">
+                    <button class="btn btn-primary" onclick="setPeriodo('personalizado')">Aplicar período</button>
+                    <button class="btn btn-green" onclick="aplicarFiltros()">Filtrar</button>
+                    <button class="btn btn-red" onclick="limparFiltros()">Limpar</button>
+                    <button class="btn" onclick="exportarPDF()">Exportar PDF</button>
+                    <button class="btn" onclick="exportarXML()">Exportar XML</button>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="card" style="margin-top:18px;">
+            <h3 class="card-title">Envio manual de relatório</h3>
+
+            <div class="envio-manual">
+                <div class="filtro-item">
+                    <label>E-mail</label>
+                    <input type="email" id="emailEnvio" placeholder="Digite o e-mail">
+                </div>
+
+                <div class="filtro-item">
+                    <label>Tipo de envio</label>
+                    <select id="tipoEnvioManual">
+                        <option value="hoje">Hoje</option>
+                        <option value="ontem">Ontem</option>
+                        <option value="semanal">Semanal (7 dias)</option>
+                        <option value="mensal">Mensal (30 dias)</option>
+                        <option value="personalizado">Personalizado</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" onclick="enviarRelatorioManual()">Enviar agora</button>
+
+                <div id="datasEnvio">
+                    <div class="filtro-item">
+                        <label>Data início</label>
+                        <input type="date" id="envioDataInicio">
+                    </div>
+
+                    <div class="filtro-item">
+                        <label>Data fim</label>
+                        <input type="date" id="envioDataFim">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-container" style="margin-top:18px;">
+
+            <div class="chart-box">
+                <h3>OS Abertas</h3>
+                <div class="chart-area">
+                    <canvas id="chartAbertas"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-box">
+                <h3>OS Concluídas</h3>
+                <div class="chart-area">
+                    <canvas id="chartConcluidas"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="titulo-ranking">Ranking</div>
+
+        <div class="tables-container">
+            <div class="table-box">
+                <h3>Técnicos</h3>
+                <table id="tabelaTecnicos"><tbody></tbody></table>
+            </div>
+
+            <div class="table-box">
+                <h3>Localidades</h3>
+                <table id="tabelaLocalidades"><tbody></tbody></table>
+            </div>
+
+            <div class="table-box">
+                <h3>Tipos</h3>
+                <table id="tabelaTipos"><tbody></tbody></table>
+            </div>
+        </div>
+
+        <div class="charts-container triple">
+
+            <div class="chart-box">
+                <h3>Técnicos</h3>
+                <div class="chart-area">
+                    <canvas id="chartTecnicos"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-box">
+                <h3>Localidades</h3>
+                <div class="chart-area">
+                    <canvas id="chartLocalidades"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-box">
+                <h3>Tipos</h3>
+                <div class="chart-area">
+                    <canvas id="chartTipos"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+    </section>
+
+    <footer class="footer">
+        <span>SGOS - Sistema de Gestão de Ordens de Serviço</span>
+        <span>Versão 1.0.0</span>
+    </footer>
+
+</main>
+
+<script>
+
+
+let periodo = "hoje";
+let dataInicio = null;
+let dataFim = null;
+let cache = null;
+let charts = {};
+let dadosFiltrados = [];
+
+// 🔥 mapa de planos por empresa
+let mapaPlanos = {};
+let mapaTecnicos = {};
+
+let filtros = {
+    data: null,
+    tecnico: "",
+    localidade: "",
+    tipo: "",
+    plano: "",
+    status: ""
+};
+
+// ===============================
+// 🔥 SET PERÍODO
+// ===============================
+function setPeriodo(tipo){
+
+    periodo = tipo;
+
+    filtros.data = null;
+
+    if(tipo === "personalizado"){
+        dataInicio = document.getElementById("dataInicio").value;
+        dataFim = document.getElementById("dataFim").value;
+    } else {
+        dataInicio = null;
+        dataFim = null;
+    }
+
+    aplicarFiltros();
+}
+
+// ===============================
+// 🔥 APLICAR FILTROS (CORRIGIDO)
+// ===============================
+function aplicarFiltros(){
+
+    filtros.tecnico = document.getElementById("filtroTecnico").value;
+    filtros.localidade = document.getElementById("filtroLocalidade").value;
+    filtros.tipo = document.getElementById("filtroTipo").value;
+    filtros.plano = document.getElementById("filtroPlano").value;
+    filtros.status = document.getElementById("filtroStatus").value;
+
+    carregar();
+}
+
+// ===============================
+function limparFiltros(){
+
+    filtros = { data:null, tecnico:"", localidade:"", tipo:"", plano:"", status:"" };
+
+    document.getElementById("filtroTecnico").value = "";
+    document.getElementById("filtroLocalidade").value = "";
+    document.getElementById("filtroTipo").value = "";
+    document.getElementById("filtroPlano").value = "";
+    document.getElementById("filtroStatus").value = "";
+
+    carregar();
+}
+
+// ===============================
+function getData(o){
+    let data = o.finalizado_em || o.agendamento || o.data_abertura;
+    if(!data) return null;
+    const d = new Date(data);
+    if(isNaN(d.getTime())) return null;
+    return d;
+}
+
+// ===============================
+function filtroData(d){
+
+    const data = new Date(d);
+
+    const hoje = new Date();
+    hoje.setHours(0,0,0,0);
+
+    const dt = new Date(data);
+    dt.setHours(0,0,0,0);
+
+    // HOJE
+    if(periodo === "hoje"){
+        return dt.getTime() === hoje.getTime();
+    }
+
+    // ONTEM
+    if(periodo === "ontem"){
+        const ontem = new Date();
+        ontem.setDate(ontem.getDate() - 1);
+        ontem.setHours(0,0,0,0);
+
+        return dt.getTime() === ontem.getTime();
+    }
+
+    // 🔥 7 DIAS
+    if(periodo === "7"){
+        const inicio = new Date();
+        inicio.setDate(inicio.getDate() - 6);
+        inicio.setHours(0,0,0,0);
+
+        const fim = new Date();
+        fim.setHours(23,59,59,999);
+
+        return data >= inicio && data <= fim;
+    }
+
+    // 🔥 30 DIAS
+    if(periodo === "30"){
+        const inicio = new Date();
+        inicio.setDate(inicio.getDate() - 29);
+        inicio.setHours(0,0,0,0);
+
+        const fim = new Date();
+        fim.setHours(23,59,59,999);
+
+        return data >= inicio && data <= fim;
+    }
+
+    // PERSONALIZADO
+    if(periodo === "personalizado"){
+        if(!dataInicio || !dataFim) return true;
+
+        const inicio = new Date(dataInicio);
+        const fim = new Date(dataFim);
+
+        inicio.setHours(0,0,0,0);
+        fim.setHours(23,59,59,999);
+
+        return data >= inicio && data <= fim;
+    }
+
+    return true;
+}
+
+// ===============================
+function gerarCores(qtd){
+    return Array.from({length:qtd}, (_,i)=>`hsl(${i*360/qtd},70%,50%)`);
+}
+
+// ===============================
+function renderChart(id, type, labels, data){
+
+    if(charts[id]) charts[id].destroy();
+
+    charts[id] = new Chart(document.getElementById(id), {
+        type,
+        data:{
+            labels,
+            datasets:[{
+                data,
+                backgroundColor: gerarCores(labels.length)
+            }]
+        },
+        options:{
+            responsive:true,
+            maintainAspectRatio:false
+        }
+    });
+}
+
+// ===============================
+// 🔥 CARREGAR DADOS (CORRIGIDO FINAL)
+// ===============================
+async function carregar(){
+
+    try{
+
+        const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+
+        if(!usuario.id){
+            console.error("Usuário não encontrado");
+            return;
+        }
+
+// ===============================
+// 🔥 CARREGAR TÉCNICOS
+// ===============================
+if(!window.tecnicosCarregados){
+
+    const resTec = await fetch("/api/tecnicos", {
+        headers:{
+            "x-usuario-id": usuario.id
+        }
+    });
+
+    const tecnicosApi = await resTec.json();
+
+    mapaTecnicos = {};
+
+    (tecnicosApi || []).forEach(t => {
+
+        mapaTecnicos[String(t.id)] =
+            t.nome || t.usuario || t.name;
+
+    });
+
+    window.tecnicosCarregados = true;
+}
+
+        // ===============================
+        // 🔥 RELATÓRIOS
+        // ===============================
+        if(!cache){
+            const res = await fetch("/api/relatorios", {
+                headers:{ "x-usuario-id": usuario.id }
+            });
+
+            cache = await res.json();
+
+            if(!Array.isArray(cache)){
+                console.error("API não retornou array:", cache);
+                cache = [];
+            }
+        }
+
+        // ===============================
+        // 🔥 PLANOS
+        // ===============================
+        if(!window.planosCarregados){
+
+            const res = await fetch("/api/planos", {
+                headers:{ "x-usuario-id": usuario.id }
+            });
+
+            const planos = await res.json();
+
+            mapaPlanos = {};
+
+            (planos || []).forEach(p=>{
+                mapaPlanos[String(p.id)] = p.nome;
+            });
+
+            window.planosCarregados = true;
+        }
+
+        // ===============================
+        // 🔥 FILTROS (SELECTS)
+        // ===============================
+        if(!window.filtrosCarregados){
+
+            const tecnicosSet = new Set();
+            const localidadesSet = new Set();
+            const tiposSet = new Set();
+            const planosSet = new Set();
+
+            cache.forEach(o=>{
+
+                if(!o) return;
+
+                // técnicos
+                if(o.tecnico){
+                    let lista = [];
+                    try{ lista = JSON.parse(o.tecnico); }
+                    catch{ lista = [o.tecnico]; }
+
+                    lista.forEach(t=>{
+
+    if(!t) return;
+
+    const nomeTecnico =
+        mapaTecnicos[String(t)] || String(t);
+
+    tecnicosSet.add(nomeTecnico.trim());
+});
+                }
+
+                // localidades
+                if(o.nome_localidade && isNaN(o.nome_localidade)){
+                    localidadesSet.add(String(o.nome_localidade).trim());
+                }
+
+                // tipos
+                if(o.nome_tipo_servico && isNaN(o.nome_tipo_servico)){
+                    tiposSet.add(String(o.nome_tipo_servico).trim());
+                }
+
+                // planos
+                if(o.plano){
+                    const nome = mapaPlanos[String(o.plano)] || o.plano;
+
+                    if(nome && isNaN(nome)){
+                        planosSet.add(String(nome).trim());
+                    }
+                }
+
+            });
+
+            const preencher = (id, lista)=>{
+                const el = document.getElementById(id);
+                if(!el) return;
+
+                el.innerHTML = `<option value="">Todos</option>`;
+
+                lista.sort((a,b)=>a.localeCompare(b))
+                     .forEach(v=>{
+                        el.innerHTML += `<option value="${v}">${v}</option>`;
+                     });
+            };
+
+            preencher("filtroTecnico", [...tecnicosSet]);
+            preencher("filtroLocalidade", [...localidadesSet]);
+            preencher("filtroTipo", [...tiposSet]);
+            preencher("filtroPlano", [...planosSet]);
+
+            window.filtrosCarregados = true;
+        }
+
+        // ===============================
+        // 🔥 FILTRAGEM (AGORA NO LUGAR CERTO)
+        // ===============================
+        dadosFiltrados = cache.filter(o => {
+
+            if(!o) return false;
+
+            if(o.status === "em_andamento") return false;
+
+            // data
+            if(filtros.status === "abertas"){
+                if(!o.data_abertura) return false;
+                const d = new Date(o.data_abertura);
+                if(isNaN(d) || !filtroData(d)) return false;
+            }
+            else if(filtros.status === "concluidas"){
+                if(!o.finalizado_em) return false;
+                const d = new Date(o.finalizado_em);
+                if(isNaN(d) || !filtroData(d)) return false;
+            }
+            else{
+                const d = getData(o);
+                if(!d || !filtroData(d)) return false;
+            }
+
+           // técnico
+if(filtros.tecnico){
+
+    let lista = [];
+
+    try{
+
+        if(Array.isArray(o.tecnico)){
+            lista = o.tecnico;
+        }
+        else if(
+            typeof o.tecnico === "string" &&
+            o.tecnico.trim().startsWith("[")
+        ){
+            lista = JSON.parse(o.tecnico);
+        }
+        else{
+            lista = [o.tecnico];
+        }
+
+    }catch{
+        lista = [o.tecnico];
+    }
+
+    lista = lista
+        .map(t => String(t).trim())
+        .filter(t =>
+            t &&
+            t !== "null" &&
+            t !== "undefined"
+        );
+
+    // 🔥 converte IDs em nomes
+    const nomes = lista.map(t =>
+        mapaTecnicos[String(t)] || String(t)
+    );
+
+    if(!nomes.includes(filtros.tecnico)){
+        return false;
+    }
+}
+
+// localidade
+if(
+    filtros.localidade &&
+    o.nome_localidade !== filtros.localidade
+){
+    return false;
+}
+
+// tipo
+if(
+    filtros.tipo &&
+    o.nome_tipo_servico !== filtros.tipo
+){
+    return false;
+}
+
+// plano
+if(filtros.plano){
+
+    const nomePlano =
+        mapaPlanos[String(o.plano)] || o.plano;
+
+    if(nomePlano !== filtros.plano){
+        return false;
+    }
+}
+
+return true;
+
+});
+
+// ===============================
+// 🔥 RANKING
+// ===============================
+const tecnicos = {};
+const localidades = {};
+const tipos = {};
+
+dadosFiltrados.forEach(o => {
+
+    // ===============================
+    // 🔥 TÉCNICOS
+    // ===============================
+    if(o.tecnico){
+
+        let lista = [];
+
+        try{
+
+            if(Array.isArray(o.tecnico)){
+                lista = o.tecnico;
+            }
+            else if(
+                typeof o.tecnico === "string" &&
+                o.tecnico.trim().startsWith("[")
+            ){
+                lista = JSON.parse(o.tecnico);
+            }
+            else{
+                lista = [o.tecnico];
+            }
+
+        }catch{
+            lista = [o.tecnico];
+        }
+
+        lista = [...new Set(lista)]
+            .map(t => String(t).trim())
+            .filter(t =>
+                t &&
+                t !== "null" &&
+                t !== "undefined"
+            );
+
+        lista.forEach(t => {
+
+            // 🔥 converte ID para nome
+            const nomeTecnico =
+                mapaTecnicos[String(t)] || String(t);
+
+            tecnicos[nomeTecnico] =
+                (tecnicos[nomeTecnico] || 0) + 1;
+
+        });
+
+    }
+
+    // ===============================
+    // 🔥 LOCALIDADES
+    // ===============================
+    if(o.nome_localidade){
+
+        localidades[o.nome_localidade] =
+            (localidades[o.nome_localidade] || 0) + 1;
+
+    }
+
+    // ===============================
+    // 🔥 TIPOS
+    // ===============================
+    if(o.nome_tipo_servico){
+
+        tipos[o.nome_tipo_servico] =
+            (tipos[o.nome_tipo_servico] || 0) + 1;
+
+    }
+
+});
+
+        // ===============================
+        // 🔥 TABELAS
+        // ===============================
+        const renderTabela = (id,obj)=>{
+            const el = document.querySelector(`#${id} tbody`);
+            if(!el) return;
+
+            el.innerHTML = Object.entries(obj)
+                .sort((a,b)=>b[1]-a[1])
+                .map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`)
+                .join("");
+        };
+
+        renderTabela("tabelaTecnicos", tecnicos);
+        renderTabela("tabelaLocalidades", localidades);
+        renderTabela("tabelaTipos", tipos);
+
+        // ===============================
+        // 🔥 GRÁFICOS
+        // ===============================
+        renderChart("chartTecnicos","bar",
+            Object.keys(tecnicos),
+            Object.values(tecnicos)
+        );
+
+        renderChart("chartLocalidades","doughnut",
+            Object.keys(localidades),
+            Object.values(localidades)
+        );
+
+        renderChart("chartTipos","doughnut",
+            Object.keys(tipos),
+            Object.values(tipos)
+        );
+
+// 🔥 GRÁFICO DE LINHA
+const { resumo } = gerarResumoPeriodo(dadosFiltrados);
+
+const labels = Object.keys(resumo);
+const abertasData = labels.map(d => resumo[d].abertas);
+const concluidasData = labels.map(d => resumo[d].concluidas);
+
+renderChart("chartAbertas","line", labels, abertasData);
+renderChart("chartConcluidas","line", labels, concluidasData);
+
+} catch(err){
+    console.error("Erro no carregar:", err);
+}
+}
+
+// ===============================
+// 🔥 RESUMO POR PERÍODO (GRÁFICO LINHA)
+// ===============================
+function gerarResumoPeriodo(lista){
+
+    const resumo = {};
+
+    function mesmoDia(data, base){
+        const d = new Date(data);
+        const b = new Date(base);
+
+        d.setHours(0,0,0,0);
+        b.setHours(0,0,0,0);
+
+        return d.getTime() === b.getTime();
+    }
+
+    function chaveHora(data){
+        const d = new Date(data);
+        return String(d.getHours()).padStart(2, "0") + "h";
+    }
+
+    // ===============================
+    // HOJE E ONTEM POR HORA
+    // ===============================
+    if(periodo === "hoje" || periodo === "ontem"){
+
+        for(let h = 0; h < 24; h++){
+            const key = String(h).padStart(2, "0") + "h";
+
+            resumo[key] = {
+                abertas:0,
+                concluidas:0
+            };
+        }
+
+        const diaBase = new Date();
+
+        if(periodo === "ontem"){
+            diaBase.setDate(diaBase.getDate() - 1);
+        }
+
+        lista.forEach(o => {
+
+            if(o.data_abertura && mesmoDia(o.data_abertura, diaBase)){
+                const key = chaveHora(o.data_abertura);
+
+                if(resumo[key]){
+                    resumo[key].abertas++;
+                }
+            }
+
+            if(o.finalizado_em && mesmoDia(o.finalizado_em, diaBase)){
+                const key = chaveHora(o.finalizado_em);
+
+                if(resumo[key]){
+                    resumo[key].concluidas++;
+                }
+            }
+
+        });
+
+        return { resumo };
+    }
+
+    // ===============================
+    // DEMAIS FILTROS POR DIA
+    // ===============================
+    const hoje = new Date();
+    hoje.setHours(0,0,0,0);
+
+    let inicio = new Date(hoje);
+    let fim = new Date(hoje);
+
+    if(periodo === "7"){
+        inicio.setDate(inicio.getDate() - 6);
+    }
+
+    if(periodo === "30"){
+        inicio.setDate(inicio.getDate() - 29);
+    }
+
+    if(periodo === "personalizado" && dataInicio && dataFim){
+        inicio = new Date(dataInicio);
+        fim = new Date(dataFim);
+
+        inicio.setHours(0,0,0,0);
+        fim.setHours(0,0,0,0);
+    }
+
+    for(let d = new Date(inicio); d <= fim; d.setDate(d.getDate()+1)){
+        const key = d.toLocaleDateString("pt-BR", {
+            day:"2-digit",
+            month:"2-digit"
+        });
+
+        resumo[key] = {
+            abertas:0,
+            concluidas:0
+        };
+    }
+
+    lista.forEach(o => {
+
+        if(o.data_abertura){
+            const d = new Date(o.data_abertura);
+
+            const key = d.toLocaleDateString("pt-BR", {
+                day:"2-digit",
+                month:"2-digit"
+            });
+
+            if(resumo[key]){
+                resumo[key].abertas++;
+            }
+        }
+
+        if(o.finalizado_em){
+            const d = new Date(o.finalizado_em);
+
+            const key = d.toLocaleDateString("pt-BR", {
+                day:"2-digit",
+                month:"2-digit"
+            });
+
+            if(resumo[key]){
+                resumo[key].concluidas++;
+            }
+        }
+
+    });
+
+    return { resumo };
+}
+
+// ===============================
+// 🔥 GERAR PDF RELATÓRIO COMPLETO FINAL (LOGO DINÂMICA BD)
+// ===============================
+async function gerarPDFRelatorio(){
+
+    // 🔥 GARANTE QUE NÃO ESTÁ VAZIO
+    if(!dadosFiltrados || dadosFiltrados.length === 0){
+        console.warn("dadosFiltrados vazio, usando cache como fallback");
+        dadosFiltrados = cache || [];
+    }
+
+    const { jsPDF } = window.jspdf;
+
+    // ✔️ CORRETO (com opções do PDF)
+    const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+    });
+
+    const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+
+    let empresa = {};
+
+    try{
+
+        const res = await fetch("/api/empresa", {
+            headers:{
+                "x-usuario-id": usuario.id
+            }
+        });
+
+        empresa = await res.json();
+
+        console.log("EMPRESA:", empresa);
+
+    }catch(e){
+        console.error("Erro empresa:", e);
+    }
+
+    // ===============================
+    // 🔥 BUSCAR PLANOS
+    // ===============================
+    let mapaPlanos = {};
+
+    try{
+
+        const res = await fetch("/api/planos", {
+            headers:{
+                "x-usuario-id": usuario.id
+            }
+        });
+
+        const listaPlanos = await res.json();
+
+        (listaPlanos || []).forEach(p=>{
+
+            mapaPlanos[String(p.id)] =
+                p.nome ||
+                p.nome_plano ||
+                p.descricao ||
+                "SEM PLANO";
+        });
+
+    }catch(e){
+
+        console.error("Erro ao buscar planos:", e);
+    }
+
+    // ===============================
+// ===============================
+// 🔥 LOGO
+// ===============================
+async function carregarLogoBase64(url){
+
+    try{
+
+        if(!url) return null;
+
+        console.log("LOGO ORIGINAL:", url);
+
+        // remove barras extras
+        url = String(url).replace(/^\/+/, "");
+
+        // 🔥 se já vier completo
+        if(url.startsWith("http")){
+            // mantém
+        }
+
+        // 🔥 se já vier uploads/
+        else if(url.startsWith("uploads/")){
+            url = window.location.origin + "/" + url;
+        }
+
+        // 🔥 padrão correto
+        else{
+            url = window.location.origin + "/uploads/logos/" + url;
+        }
+
+        console.log("URL FINAL LOGO:", url);
+
+        const res = await fetch(url);
+
+        if(!res.ok){
+            throw new Error("Logo não encontrada");
+        }
+
+        const blob = await res.blob();
+
+        return await new Promise(resolve=>{
+
+            const reader = new FileReader();
+
+            reader.onloadend = ()=> resolve(reader.result);
+
+            reader.readAsDataURL(blob);
+
+        });
+
+    }catch(e){
+
+        console.error("Erro ao carregar logo:", e.message);
+
+        return null;
+    }
+}
+    // ===============================
+    // 🔥 LOGO
+    // ===============================
+    let logoBase64 = null;
+
+    if(empresa.logo){
+
+        logoBase64 = await carregarLogoBase64(empresa.logo);
+    }
+
+    // ===============================
+    // 🔥 HEADER
+    // ===============================
+    let y = 18;
+
+    if(logoBase64){
+
+        try{
+
+            const img = new Image();
+            img.src = logoBase64;
+
+            await new Promise(resolve=>{
+                img.onload = resolve;
+                img.onerror = resolve;
+            });
+
+            let largura = img.width || 200;
+            let altura = img.height || 80;
+
+            const maxWidth = 42;
+            const maxHeight = 22;
+
+            const ratio = Math.min(
+                maxWidth / largura,
+                maxHeight / altura
+            );
+
+            largura *= ratio;
+            altura *= ratio;
+
+            const posX = 200 - largura - 4;
+            const posY = 8;
+
+            let tipo = "PNG";
+
+            if(
+                logoBase64.includes("image/jpeg") ||
+                logoBase64.includes("image/jpg")
+            ){
+                tipo = "JPEG";
+            }
+
+            doc.addImage(
+                logoBase64,
+                tipo,
+                posX,
+                posY,
+                largura,
+                altura
+            );
+
+        }catch(e){
+
+            console.error("Erro ao desenhar logo:", e);
+        }
+    }
+
+    // ===============================
+    // 🔥 DADOS EMPRESA
+    // ===============================
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(14);
+
+    doc.text(
+        empresa.nome_provedor ||
+        empresa.nome_fantasia ||
+        "EMPRESA",
+        10,
+        y
+    );
+
+    y += 7;
+
+    doc.setFont("helvetica","normal");
+    doc.setFontSize(9);
+
+    doc.text(
+        `CNPJ/CPF: ${empresa.cnpj || empresa.cpf || "-"}`,
+        10,
+        y
+    );
+
+    y += 5;
+
+    doc.text(
+        `Telefone: ${empresa.telefone || "-"}`,
+        10,
+        y
+    );
+
+    y += 5;
+
+    if(empresa.email){
+
+        doc.text(
+            `Email: ${empresa.email}`,
+            10,
+            y
+        );
+
+        y += 5;
+    }
+
+    if(empresa.endereco){
+
+        const endereco = String(empresa.endereco);
+
+        const linhas = doc.splitTextToSize(endereco, 120);
+
+        doc.text(
+            `Endereço:`,
+            10,
+            y
+        );
+
+        doc.text(
+            linhas,
+            30,
+            y
+        );
+
+        y += (linhas.length * 4) + 2;
+    }
+
+    // ===============================
+    // 🔥 PERÍODO
+    // ===============================
+    function formatarData(data){
+
+        if(!data) return "-";
+
+        const d = new Date(data);
+
+        return d.toLocaleDateString("pt-BR");
+    }
+
+    let textoPeriodo = "";
+
+    if(periodo === "personalizado" && dataInicio && dataFim){
+
+        textoPeriodo =
+            `${formatarData(dataInicio)} até ${formatarData(dataFim)}`;
+    }
+    else if(periodo === "7"){
+
+        const fim = new Date();
+
+        const inicio = new Date();
+
+        inicio.setDate(fim.getDate() - 6);
+
+        textoPeriodo =
+            `${formatarData(inicio)} até ${formatarData(fim)}`;
+    }
+    else if(periodo === "30"){
+
+        const fim = new Date();
+
+        const inicio = new Date();
+
+        inicio.setDate(fim.getDate() - 29);
+
+        textoPeriodo =
+            `${formatarData(inicio)} até ${formatarData(fim)}`;
+    }
+    else if(periodo === "ontem"){
+
+        const ontem = new Date();
+
+        ontem.setDate(ontem.getDate() - 1);
+
+        textoPeriodo = formatarData(ontem);
+    }
+    else{
+
+        textoPeriodo = formatarData(new Date());
+    }
+
+    doc.text(
+        `Período: ${textoPeriodo}`,
+        10,
+        y
+    );
+
+    y += 5;
+
+    doc.text(
+        `Gerado em: ${new Date().toLocaleString("pt-BR")}`,
+        10,
+        y
+    );
+
+    y += 10;
+
+    // ===============================
+    // 🔥 TÍTULO AZUL
+    // ===============================
+    function tituloAzul(texto){
+
+        if(y > 270){
+
+            doc.addPage();
+            y = 20;
+        }
+
+        doc.setFillColor(0,102,204);
+
+        doc.rect(10, y - 5, 190, 8, "F");
+
+        doc.setTextColor(255,255,255);
+
+        doc.setFont("helvetica","bold");
+
+        doc.text(texto, 12, y);
+
+        doc.setTextColor(0,0,0);
+
+        doc.setFont("helvetica","normal");
+
+        y += 8;
+    }
+
+    // ===============================
+// 🔥 AGRUPAR (CORRIGIDO E ROBUSTO)
+// ===============================
+function agrupar(lista, campo){
+
+    const obj = {};
+
+    lista.forEach(o => {
+
+        // ===============================
+        // 🔥 CASO TÉCNICO
+        // ===============================
+        if(campo === "tecnico"){
+    let listaTec = [];
+
+    try{
+        if(Array.isArray(o.tecnico)){
+            listaTec = o.tecnico;
+        }
+        else if(typeof o.tecnico === "string" && o.tecnico.trim().startsWith("[")){
+            listaTec = JSON.parse(o.tecnico);
+        }
+        else if(typeof o.tecnico === "string"){
+            listaTec = [o.tecnico];
+        }
+        else{
+            listaTec = [];
+        }
+    }catch{
+        listaTec = [];
+    }
+
+    listaTec = listaTec
+    .map(t => {
+
+        const nome =
+            mapaTecnicos[String(t)] || String(t);
+
+        return nome.trim();
+
+    })
+    .filter(t =>
+        t &&
+        t !== "null" &&
+        t !== "undefined" &&
+        isNaN(t)
+    );
+
+listaTec.forEach(nome => {
+
+    if(!obj[nome]){
+        obj[nome] = {
+            abertas:0,
+            concluidas:0
+        };
+    }
+
+    if(o.data_abertura)
+        obj[nome].abertas++;
+
+    if(o.finalizado_em)
+        obj[nome].concluidas++;
+});
+
+    return;
+}
+
+        // ===============================
+        // 🔥 OUTROS CAMPOS
+        // ===============================
+        const chave =
+            o?.[campo] && String(o[campo]).trim()
+                ? String(o[campo]).trim()
+                : "NÃO INFORMADO";
+
+        if(!obj[chave]){
+            obj[chave] = {
+                abertas: 0,
+                concluidas: 0
+            };
+        }
+
+        if(o.data_abertura){
+            obj[chave].abertas++;
+        }
+
+        if(o.finalizado_em){
+            obj[chave].concluidas++;
+        }
+
+    });
+
+    return obj;
+}
+
+// ===============================
+// 🔥 DESENHAR TABELA (SEM MUDANÇA CRÍTICA)
+// ===============================
+function desenharTabela(obj){
+
+    doc.setFont("helvetica","bold");
+    doc.text("Descrição", 10, y);
+    doc.text("Abertas", 140, y);
+    doc.text("Concluídas", 170, y);
+
+    doc.setFont("helvetica","normal");
+    y += 6;
+
+    Object.entries(obj)
+    .sort((a,b)=>
+        (b[1].abertas + b[1].concluidas) -
+        (a[1].abertas + a[1].concluidas)
+    )
+    .forEach(([k,v])=>{
+
+        if(y > 270){
+            doc.addPage();
+            y = 20;
+        }
+
+        doc.text(String(k).substring(0,40), 10, y);
+        doc.text(String(v.abertas || 0), 145, y);
+        doc.text(String(v.concluidas || 0), 175, y);
+
+        y += 5;
+    });
+
+    y += 4;
+}
+
+// ===============================
+// 🔥 RANKING TÉCNICOS
+// ===============================
+tituloAzul("TÉCNICOS");
+
+const rankingTecnicos = agrupar(
+    dadosFiltrados,
+    "tecnico"
+);
+
+desenharTabela(rankingTecnicos);
+
+// ===============================
+// 🔥 LOCALIDADES
+// ===============================
+tituloAzul("LOCALIDADES");
+
+const rankingLocalidades = agrupar(
+    dadosFiltrados,
+    "nome_localidade"
+);
+
+desenharTabela(rankingLocalidades);
+
+// ===============================
+// 🔥 TIPOS SERVIÇO
+// ===============================
+tituloAzul("TIPOS DE SERVIÇO");
+
+const rankingTipos = agrupar(
+    dadosFiltrados,
+    "nome_tipo_servico"
+);
+
+desenharTabela(rankingTipos);
+
+// ===============================
+// 🔥 INSTALAÇÕES POR LOCALIDADE
+// ===============================
+tituloAzul("INSTALAÇÕES POR LOCALIDADE");
+
+const instalacoes = {};
+
+dadosFiltrados.forEach(o => {
+
+    const tipo = String(o.nome_tipo_servico || "").toUpperCase();
+
+    if(!tipo.includes("INSTALAÇÃO")) return;
+
+    const local = o.nome_localidade || "NÃO INFORMADO";
+
+    if(!instalacoes[local]){
+        instalacoes[local] = {
+            abertas:0,
+            concluidas:0
+        };
+    }
+
+    if(o.data_abertura) instalacoes[local].abertas++;
+    if(o.finalizado_em) instalacoes[local].concluidas++;
+});
+
+desenharTabela(instalacoes);
+
+// ===============================
+// 🔥 DESENHAR LISTA AGRUPADA
+// ===============================
+function desenharListaAgrupada(titulo, dados){
+
+    if(y > 220){
+        doc.addPage();
+        y = 20;
+    }
+
+    // ===============================
+    // 🔥 TÍTULO AZUL
+    // ===============================
+    doc.setFillColor(0,102,204);
+    doc.rect(10, y - 6, 190, 8, "F");
+
+    doc.setTextColor(255,255,255);
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(10);
+
+    doc.text(titulo.toUpperCase(), 12, y - 0.5);
+
+    doc.setTextColor(0,0,0);
+    y += 10;
+
+    // ===============================
+    // 🔥 CABEÇALHO (AJUSTADO E ESTICADO)
+    // ===============================
+    doc.setFontSize(8);
+    doc.setFont("helvetica","bold");
+
+    doc.text("Descrição", 12, y);
+    doc.text("Localidade", 85, y);
+
+    doc.text("Abertas", 155, y, { align:"right" });
+    doc.text("Concluídas", 190, y, { align:"right" });
+
+    y += 5;
+
+    // ===============================
+    // 🔥 CONTEÚDO
+    // ===============================
+    doc.setFont("helvetica","normal");
+
+    Object.entries(dados).forEach(([nome, locais]) => {
+
+        let totalAbertasGrupo = 0;
+        let totalConcluidasGrupo = 0;
+
+        Object.entries(locais).forEach(([local, valores]) => {
+
+            if(y > 270){
+                doc.addPage();
+                y = 20;
+            }
+
+            const abertas = valores.abertas || 0;
+            const concluidas = valores.concluidas || 0;
+
+            totalAbertasGrupo += abertas;
+            totalConcluidasGrupo += concluidas;
+
+            doc.text(String(nome).substring(0,38), 12, y);
+            doc.text(String(local).substring(0,22), 85, y);
+
+            doc.text(String(abertas), 155, y, { align:"right" });
+            doc.text(String(concluidas), 190, y, { align:"right" });
+
+            y += 5;
+        });
+
+        // ===============================
+        // 🔥 TOTAL DO GRUPO
+        // ===============================
+        doc.setFont("helvetica","bold");
+
+        doc.text(`TOTAL = ${nome}`, 12, y);
+        doc.text(String(totalAbertasGrupo), 155, y, { align:"right" });
+        doc.text(String(totalConcluidasGrupo), 190, y, { align:"right" });
+
+        doc.setFont("helvetica","normal");
+
+        y += 8;
+
+        doc.setDrawColor(220);
+        doc.line(10, y - 4, 200, y - 4);
+    });
+
+    y += 5;
+}
+
+// ===============================
+// 🔥 TIPOS DE SERVIÇOS POR LOCALIDADE
+// ===============================
+const tiposLocalidade = {};
+
+(dadosFiltrados || []).forEach(o => {
+
+    const tipo =
+        o.nome_tipo_servico ||
+        "NÃO INFORMADO";
+
+    const local =
+        o.nome_localidade ||
+        "SEM LOCAL";
+
+    if(!tiposLocalidade[tipo]){
+        tiposLocalidade[tipo] = {};
+    }
+
+    if(!tiposLocalidade[tipo][local]){
+        tiposLocalidade[tipo][local] = {
+            abertas:0,
+            concluidas:0
+        };
+    }
+
+    if(o.data_abertura){
+        tiposLocalidade[tipo][local].abertas++;
+    }
+
+    if(o.finalizado_em){
+        tiposLocalidade[tipo][local].concluidas++;
+    }
+});
+
+// ===============================
+// 🔥 INSTALAÇÕES POR LOCALIDADE
+// ===============================
+const instalacoesLocalidade = {};
+
+(dadosFiltrados || []).forEach(o => {
+
+    const tipo = String(
+        o.nome_tipo_servico || ""
+    ).toUpperCase();
+
+    if(!tipo.includes("INSTALA")) return;
+
+    const plano =
+    mapaPlanos[String(o.plano)] ||
+    "";
+
+if(!plano || plano === "SEM PLANO"){
+    return;
+}
+
+    const local =
+        o.nome_localidade ||
+        "SEM LOCAL";
+
+    if(!instalacoesLocalidade[plano]){
+        instalacoesLocalidade[plano] = {};
+    }
+
+    if(!instalacoesLocalidade[plano][local]){
+        instalacoesLocalidade[plano][local] = {
+            abertas:0,
+            concluidas:0
+        };
+    }
+
+    if(o.data_abertura){
+        instalacoesLocalidade[plano][local].abertas++;
+    }
+
+    if(o.finalizado_em){
+        instalacoesLocalidade[plano][local].concluidas++;
+    }
+});
+
+// ===============================
+// 🔥 DESENHAR NO PDF
+// ===============================
+desenharListaAgrupada(
+    "TIPOS DE SERVIÇOS POR LOCALIDADE",
+    tiposLocalidade,
+    false
+);
+
+desenharListaAgrupada(
+    "PLANOS DAS INSTALAÇÕES POR LOCALIDADE",
+    instalacoesLocalidade,
+    false
+);
+// ===============================
+// 🔥 RETORNO PDF
+// ===============================
+return doc.output("datauristring");
+
+    // ===============================
+    // 🔥 RETORNO PDF
+    // ===============================
+    return doc.output("datauristring");
+}
+
+// ===============================
+// 🔥 EXPORTAR PDF
+// ===============================
+async function exportarPDF(){
+    try{
+
+        const base64 = await gerarPDFRelatorio();
+
+        const base64Clean = base64.replace(/^data:application\/pdf.*base64,/, "");
+
+        const byteCharacters = atob(base64Clean);
+        const byteNumbers = [];
+
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers.push(byteCharacters.charCodeAt(i));
+        }
+
+        const blob = new Blob([new Uint8Array(byteNumbers)], {
+            type: "application/pdf"
+        });
+
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "relatorio.pdf";
+        a.click();
+
+        URL.revokeObjectURL(url);
+
+    }catch(err){
+        console.error("ERRO PDF:", err);
+        alert("Erro ao exportar PDF");
+    }
+}
+
+
+// ===============================
+// 🔥 ENVIAR RELATÓRIO
+// ===============================
+async function enviarRelatorioManual(){
+
+    try{
+
+        const email = document.getElementById("emailEnvio")?.value;
+
+        if(!email){
+            alert("Informe um e-mail");
+            return;
+        }
+
+        const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+
+        const res = await fetch("/api/relatorios/enviar-manual", {
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json",
+                "x-usuario-id": usuario.id
+            },
+            body: JSON.stringify({
+                email,
+                pdfBase64: await gerarPDFRelatorio()
+            })
+        });
+
+        const data = await res.json();
+
+        if(data.ok){
+            alert("📧 Enviado com sucesso!");
+        }else{
+            alert("Erro ao enviar");
+        }
+
+    }catch(err){
+        console.error("Erro envio:", err);
+        alert("Erro ao enviar relatório");
+    }
+}
+
+// ===============================
+// 🔥 EXPORTAR XML
+// ===============================
+function exportarXML(){
+
+    try{
+
+        let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<relatorio>\n`;
+
+        dadosFiltrados.forEach(o=>{
+
+            xml += `
+<os>
+    <tipo>${o.nome_tipo_servico || ""}</tipo>
+    <localidade>${o.nome_localidade || ""}</localidade>
+    <tecnico>${o.tecnico || ""}</tecnico>
+    <data>${o.finalizado_em || ""}</data>
+</os>`;
+        });
+
+        xml += `\n</relatorio>`;
+
+        const blob = new Blob([xml], { type: "application/xml" });
+
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "relatorio.xml";
+        a.click();
+
+    } catch(err){
+        console.error(err);
+        alert("Erro ao gerar XML");
+    }
+}
+
+
+// ===============================
+// 🔥 EXPOR FUNÇÕES (BOTÕES)
+// ===============================
+window.exportarPDF = exportarPDF;
+window.enviarRelatorioManual = enviarRelatorioManual;
+window.exportarXML = exportarXML;
+window.setPeriodo = setPeriodo;
+window.aplicarFiltros = aplicarFiltros;
+window.limparFiltros = limparFiltros; // 🔥 importante
+
+
+// ===============================
+// 🔥 INIT (CORRIGIDO)
+// ===============================
+document.addEventListener("DOMContentLoaded", () => {
+
+    try{
+        carregar();
+    }catch(e){
+        console.error("Erro ao iniciar:", e);
+    }
+
+    const tipoEnvio = document.getElementById("tipoEnvioManual");
+    const box = document.getElementById("datasEnvio");
+
+    if(tipoEnvio && box){
+        tipoEnvio.addEventListener("change", (e)=>{
+            box.style.display =
+                e.target.value === "personalizado"
+                ? "block"
+                : "none";
+        });
+    }
+
+});
+
+
+</script>
+
+<script>
+function toggleSidebar(){
+    const sidebar = document.querySelector(".sidebar");
+    const logo = document.getElementById("logoSidebar");
+
+    if(!sidebar || !logo) return;
+
+    sidebar.classList.toggle("recolhida");
+
+    if(sidebar.classList.contains("recolhida")){
+        logo.src = logo.dataset.logoFechada;
+        localStorage.setItem("sidebar_recolhida", "1");
+    }else{
+        logo.src = logo.dataset.logoAberta;
+        localStorage.setItem("sidebar_recolhida", "0");
+    }
+}
+
+function toggleUserDropdown(){
+    const menu = document.getElementById("usuarioMenuDropdown");
+    const box = document.getElementById("usuarioDropdown");
+
+    if(menu) menu.classList.toggle("ativo");
+    if(box) box.classList.toggle("aberto");
+}
+
+document.addEventListener("click", function(e){
+    const box = document.getElementById("usuarioDropdown");
+    const menu = document.getElementById("usuarioMenuDropdown");
+
+    if(!box || !menu) return;
+
+    if(!box.contains(e.target)){
+        menu.classList.remove("ativo");
+        box.classList.remove("aberto");
+    }
+});
+
+async function carregarUsuarioTopo() {
+    try {
+        const userLocal = JSON.parse(localStorage.getItem("usuario") || "{}");
+
+        if (!userLocal?.id) {
+            window.location.href = "login.html";
+            return;
+        }
+
+        const userEmpresaEl = document.getElementById("userEmpresa");
+        const empresaLogadaEl = document.getElementById("empresaLogada");
+
+        const res = await fetch("/api/me", {
+            headers: { "x-usuario-id": userLocal.id }
+        });
+
+        const data = await res.json();
+
+        if (data?.usuario) {
+            if(userEmpresaEl) userEmpresaEl.innerText = data.usuario;
+
+            if(empresaLogadaEl){
+                empresaLogadaEl.innerText =
+                    data.empresa_nome ||
+                    userLocal.empresa_nome ||
+                    "Empresa";
+            }
+
+            const logo = data.empresa_logo;
+            const logoEl = document.getElementById("logoEmpresa");
+
+            const logoFinal = logo
+                ? (logo.startsWith("/") ? logo : "/" + logo)
+                : "/img/logo-default.png";
+
+            if (logoEl) logoEl.src = logoFinal;
+        }
+
+    } catch (err) {
+        console.error("Erro ao carregar usuário:", err);
+        const userEmpresaEl = document.getElementById("userEmpresa");
+        if(userEmpresaEl) userEmpresaEl.innerText = "Administrador";
+    }
+}
+
+async function carregarUsuariosOnlineTopo() {
+    try {
+        const res = await fetch("/api/logs");
+        const logs = await res.json();
+
+        const online = logs
+            .filter(l => !l.logout)
+            .map(l => l.usuario);
+
+        const listaUnica = [...new Set(online)];
+        const container = document.getElementById("usuariosOnline");
+
+        if (!container) return;
+
+        if (listaUnica.length === 0) {
+            container.innerHTML = "Nenhum usuário online";
+        } else {
+            container.innerHTML = listaUnica
+                .map(u => `🟢 ${u}`)
+                .join("<br>");
+        }
+
+    } catch (err) {
+        console.error("Erro ao carregar usuários online:", err);
+        const container = document.getElementById("usuariosOnline");
+        if (container) container.innerText = "Online indisponível";
+    }
+}
+
+function logout() {
+    const logId = localStorage.getItem("log_id");
+
+    if (logId) {
+        fetch("/api/logout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ log_id: logId })
+        }).catch(console.error);
+    }
+
+    sessionStorage.clear();
+    localStorage.clear();
+    window.location.href = "login.html";
+}
+
+/* ===============================
+   GRÁFICOS MODERNIZADOS
+================================ */
+function gerarCores(qtd){
+    const cores = [
+        "#2563eb",
+        "#f59e0b",
+        "#16a34a",
+        "#ef4444",
+        "#7c3aed",
+        "#0ea5e9",
+        "#14b8a6",
+        "#f97316",
+        "#64748b"
+    ];
+
+    return Array.from({length:qtd}, (_,i)=>cores[i % cores.length]);
+}
+
+function renderChart(id, type, labels, data){
+
+    const canvas = document.getElementById(id);
+    if(!canvas) return;
+
+    if(charts[id]) charts[id].destroy();
+
+    const ctx = canvas.getContext("2d");
+
+    let dataset = {
+        data,
+        borderWidth: type === "line" ? 3 : 1,
+        borderRadius: type === "bar" ? 10 : 0,
+        backgroundColor: gerarCores(labels.length),
+        borderColor: gerarCores(labels.length)
+    };
+
+    if(type === "line"){
+        const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+        gradient.addColorStop(0, "rgba(37,99,235,.22)");
+        gradient.addColorStop(1, "rgba(37,99,235,0)");
+
+        dataset = {
+            label: id.includes("Concluidas") ? "Concluídas" : "Abertas",
+            data,
+            borderColor: id.includes("Concluidas") ? "#16a34a" : "#2563eb",
+            backgroundColor: id.includes("Concluidas") ? "rgba(22,163,74,.12)" : gradient,
+            fill:true,
+            tension:.42,
+            pointRadius:4,
+            pointHoverRadius:6,
+            pointBackgroundColor:id.includes("Concluidas") ? "#16a34a" : "#2563eb",
+            borderWidth:3
+        };
+    }
+
+    charts[id] = new Chart(canvas, {
+        type,
+        data:{
+            labels,
+            datasets:[dataset]
+        },
+        options:{
+            responsive:true,
+            maintainAspectRatio:false,
+            plugins:{
+                legend:{
+                    display:type !== "bar",
+                    position:"bottom",
+                    labels:{
+                        boxWidth:12,
+                        usePointStyle:true,
+                        font:{ family:"Arial" }
+                    }
+                },
+                tooltip:{
+                    backgroundColor:"#0f172a",
+                    padding:12,
+                    titleFont:{ family:"Arial", weight:"bold" },
+                    bodyFont:{ family:"Arial" }
+                }
+            },
+            scales:type === "doughnut" ? {} : {
+                x:{
+                    grid:{ display:false },
+                    ticks:{ font:{ family:"Arial" } }
+                },
+                y:{
+                    beginAtZero:true,
+                    grid:{ color:"#eef2f7" },
+                    ticks:{ precision:0, font:{ family:"Arial" } }
+                }
+            },
+            cutout:type === "doughnut" ? "65%" : undefined
+        }
+    });
+
+    atualizarKPIsRelatorio();
+}
+
+function atualizarKPIsRelatorio(){
+    if(!Array.isArray(dadosFiltrados)) return;
+
+    const total = dadosFiltrados.length;
+    const abertas = dadosFiltrados.filter(o => o.data_abertura).length;
+    const concluidas = dadosFiltrados.filter(o => o.finalizado_em).length;
+
+    let tecnicosSet = new Set();
+
+    dadosFiltrados.forEach(o => {
+        if(!o.tecnico) return;
+
+        let lista = [];
+
+        try{
+            if(Array.isArray(o.tecnico)){
+                lista = o.tecnico;
+            }else if(typeof o.tecnico === "string" && o.tecnico.trim().startsWith("[")){
+                lista = JSON.parse(o.tecnico);
+            }else{
+                lista = [o.tecnico];
+            }
+        }catch{
+            lista = [o.tecnico];
+        }
+
+        lista.forEach(t => {
+            const nome = mapaTecnicos[String(t)] || String(t);
+            if(nome && nome !== "null" && nome !== "undefined"){
+                tecnicosSet.add(nome);
+            }
+        });
+    });
+
+    const setText = (id, valor) => {
+        const el = document.getElementById(id);
+        if(el) el.innerText = valor;
+    };
+
+    setText("kpiTotal", total);
+    setText("kpiAbertas", abertas);
+    setText("kpiConcluidas", concluidas);
+    setText("kpiTecnicos", tecnicosSet.size);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const sidebar = document.querySelector(".sidebar");
+    const logo = document.getElementById("logoSidebar");
+
+    if(
+        sidebar &&
+        logo &&
+        localStorage.getItem("sidebar_recolhida") === "1"
+    ){
+        sidebar.classList.add("recolhida");
+        logo.src = logo.dataset.logoFechada;
+    }
+
+    carregarUsuarioTopo();
+    carregarUsuariosOnlineTopo();
+
+    const busca = document.getElementById("buscaRelatorio");
+    if(busca){
+        busca.addEventListener("keyup", function(){
+            const termo = this.value.toLowerCase();
+
+            document
+                .querySelectorAll("#tabelaTecnicos tr, #tabelaLocalidades tr, #tabelaTipos tr")
+                .forEach(linha => {
+                    linha.style.display = linha.innerText.toLowerCase().includes(termo)
+                        ? ""
+                        : "none";
+                });
+        });
+    }
+});
+
+setInterval(carregarUsuariosOnlineTopo, 300000);
+</script>
+
+</body>
+</html>

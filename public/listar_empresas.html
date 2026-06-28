@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Listar Empresas - SDOS</title>
+
+<script src="/js/init.js"></script>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background:#f4f6f9;
+    margin:0;
+    padding:20px;
+}
+
+h2 {
+    text-align:center;
+    margin-bottom:20px;
+}
+
+table {
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+th, td {
+    padding:10px;
+    border-bottom:1px solid #ddd;
+    text-align:left;
+    vertical-align: middle;
+}
+
+th {
+    background:#3498db;
+    color:white;
+}
+
+tr:hover {
+    background:#f1f1f1;
+}
+
+button {
+    padding:5px 10px;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+    margin-right:5px;
+}
+
+button.edit { background:#f39c12; color:white; }
+button.delete { background:#e74c3c; color:white; }
+button.toggle { background:#2ecc71; color:white; }
+button.inactive { background:#95a5a6; color:white; }
+
+.logo-img {
+    width:50px;
+    height:50px;
+    object-fit:contain;
+    border-radius:5px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Empresas Cadastradas</h2>
+
+<table id="tabelaEmpresas">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Logo</th>
+            <th>Tipo</th>
+            <th>CPF / CNPJ</th>
+            <th>Nome Completo / Fantasia</th>
+            <th>Razão Social</th>
+            <th>Nome do provedor</th>
+            <th>CEP</th>
+            <th>Cidade</th>
+            <th>Estado</th>
+            <th>Endereço</th>
+            <th>Subdomínio</th>
+            <th>Plano</th>
+            <th>Vencimento</th>
+            <th>Ativo</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+// =======================
+// LOGIN
+function obterUsuario(){
+    return JSON.parse(localStorage.getItem("usuario"));
+}
+
+if(!obterUsuario()){
+    window.location.href = "/login.html";
+}
+
+// =======================
+// CARREGAR EMPRESAS
+async function carregarEmpresas(){
+    try{
+        const empresas = await fetchAuth("/api/empresa/listar"); // ✅ corrigido
+
+        const tbody = document.querySelector("#tabelaEmpresas tbody");
+        tbody.innerHTML = "";
+
+        empresas.forEach(e => {
+            const tr = document.createElement("tr");
+
+            const logo = e.logo 
+                ? `<img src="/uploads/logos/${e.logo}" class="logo-img">`
+                : "";
+
+            tr.innerHTML = `
+                <td>${e.id}</td>
+                <td>${logo}</td>
+                <td>${e.pessoa_fisica ? "Pessoa Física" : "Pessoa Jurídica"}</td>
+                <td>${e.pessoa_fisica ? e.cpf : e.cnpj}</td>
+                <td>${e.pessoa_fisica ? e.nome_completo : e.nome_fantasia}</td>
+                <td>${e.razao_social || ""}</td>
+                <td>${e.nome_provedor || ""}</td>
+                <td>${e.cep || ""}</td>
+                <td>${e.cidade || ""}</td>
+                <td>${e.estado || ""}</td>
+                <td>${e.endereco || ""}</td>
+                <td>${e.subdominio || ""}</td>
+                <td>${e.plano_empresa || ""}</td>
+                <td>${e.vencimento || ""}</td>
+                <td>${e.ativo == 1 ? "Ativo" : "Inativo"}</td>
+                <td>
+                    <button class="edit" onclick="editarEmpresa(${e.id})">Editar</button>
+                    <button class="delete" onclick="removerEmpresa(${e.id})">Remover</button>
+                    <button class="toggle" onclick="toggleAtivo(${e.id}, ${e.ativo})">
+                        ${e.ativo == 1 ? "Desativar" : "Ativar"}
+                    </button>
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+        });
+
+    } catch(err){
+        console.error(err);
+        alert("Erro ao carregar empresas");
+    }
+}
+
+// =======================
+// EDITAR EMPRESA
+function editarEmpresa(id){
+    // Redireciona para a página de cadastro com id da empresa
+    window.location.href = `/cadastrar_empresa.html?id=${id}`;
+}
+
+// =======================
+// REMOVER EMPRESA
+async function removerEmpresa(id){
+    if(!confirm("Deseja realmente remover esta empresa?")) return;
+    try{
+        await fetchAuth(`/api/empresa/${id}`, { method:"DELETE" });
+        alert("Empresa removida!");
+        carregarEmpresas();
+    }catch(err){
+        console.error(err);
+        alert("Erro ao remover empresa");
+    }
+}
+
+// =======================
+// ATIVAR / DESATIVAR
+async function toggleAtivo(id, atual){
+    try{
+        await fetchAuth(`/api/empresa/toggle/${id}`, { method:"POST" });
+        carregarEmpresas();
+    }catch(err){
+        console.error(err);
+        alert("Erro ao alterar status");
+    }
+}
+
+// =======================
+// INIT
+window.addEventListener("DOMContentLoaded", carregarEmpresas);
+</script>
+
+</body>
+</html>
