@@ -574,23 +574,16 @@ if(token && id){
         JSON.stringify({
             ...usuarioAtual,
             id:id,
-            log_id:token
+            log_id:token,
+            usuario: params.get("usuario") || usuarioAtual.usuario || ""
         })
     );
 
-    // marca app
-    if(app === "1"){
+    localStorage.setItem("log_id", token);
+    localStorage.setItem("usuario_id", id);
+    localStorage.setItem("is_app", "1");
 
-        localStorage.setItem(
-            "is_app",
-            "1"
-        );
-
-    }
-
-    console.log(
-        "✅ sessão recebida APK"
-    );
+    console.log("✅ sessão recebida APK", { id, token });
 
 }
 
@@ -738,20 +731,6 @@ if (!local.id) {
     iniciarSocket();
     iniciarPush();
 
-fetch("/api/push/token", {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json",
-        "x-usuario-id": user.id
-    },
-    body: JSON.stringify({
-        token_fcm: "TESTE_MANUAL_" + Date.now(),
-        plataforma: "teste"
-    })
-})
-.then(r => r.json())
-.then(d => console.log("TESTE TOKEN:", d))
-.catch(e => console.error("ERRO TESTE TOKEN:", e));
 
     // =========================
     // USER
@@ -983,8 +962,8 @@ function render(){
             extras = `
             <b>Iniciado em:</b> ${format(o.iniciado_em)}<br>
             <b>Finalizado em:</b> ${format(o.finalizado_em)}<br>
-            <b>Iniciado por:</b> ${o.iniciado_por || '-'}<br>
-            <b>Finalizado por:</b> ${o.finalizado_por || '-'}<br>
+            <b>Iniciado por:</b> ${o.enviado_por_nome || o.iniciado_por || '-'}<br>
+            <b>Finalizado por:</b> ${o.finalizado_por_nome || o.finalizado_por || '-'}<br>
             <b>VLAN:</b> ${o.vlan || '-'}<br>
             `;
         }

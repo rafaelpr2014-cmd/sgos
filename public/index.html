@@ -208,6 +208,21 @@ button:hover{
 console.log("🔥 LOGIN CARREGADO");
 
 // =========================
+// 🔗 MONTAR URL DO APP
+// =========================
+function montarDestinoApp(provedor, usuarioObj){
+    const params = new URLSearchParams({
+        app: "1",
+        id: String(usuarioObj.id || ""),
+        token: String(usuarioObj.log_id || ""),
+        usuario: String(usuarioObj.usuario || "")
+    });
+
+    return `https://${provedor}.sgos.net.br/appmobile.html?${params.toString()}`;
+}
+
+
+// =========================
 // 🔄 PREVIEW URL
 // =========================
 const provedorInput =
@@ -263,7 +278,7 @@ window.onload = () => {
         console.log("🔁 AUTO LOGIN");
 
         const destino =
-            `https://${provedorSalvo}.sgos.net.br/appmobile.html`;
+            montarDestinoApp(provedorSalvo, usuarioSalvo);
 
         console.log("🚀 AUTO REDIRECT:", destino);
 
@@ -367,6 +382,11 @@ async function login(){
             );
 
             localStorage.setItem(
+                "log_id",
+                String(data.log_id)
+            );
+
+            localStorage.setItem(
                 "usuario_id",
                 data.usuario.id
             );
@@ -374,7 +394,7 @@ async function login(){
             console.log("✅ LOGIN OK");
 
             const destino =
-                `https://${provedor}.sgos.net.br/appmobile.html`;
+                montarDestinoApp(provedor, userData);
 
             console.log("🚀 REDIRECIONANDO:", destino);
 
