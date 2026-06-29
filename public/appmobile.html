@@ -344,6 +344,94 @@ body{
     background:#64748b;
 }
 
+
+
+/* ================= MODAL VISUALIZAR ANEXO ================= */
+.modal-anexo{
+    position:fixed;
+    inset:0;
+    width:100%;
+    height:100%;
+    background:rgba(15,23,42,.78);
+    display:none;
+    justify-content:center;
+    align-items:center;
+    z-index:10000;
+    padding:14px;
+}
+
+.modal-anexo-content{
+    width:100%;
+    max-width:520px;
+    height:88vh;
+    background:#fff;
+    border-radius:20px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 30px 80px rgba(0,0,0,.38);
+    animation:modalUp .18s ease-out;
+}
+
+.modal-anexo-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:12px 14px;
+    border-bottom:1px solid var(--borda);
+    background:#fff;
+}
+
+.modal-anexo-header strong{
+    font-size:15px;
+    color:#0f172a;
+}
+
+.btn-fechar-anexo{
+    width:38px;
+    height:38px;
+    border:none;
+    border-radius:12px;
+    background:#ef4444;
+    color:#fff;
+    font-size:22px;
+    font-weight:900;
+    line-height:1;
+    cursor:pointer;
+}
+
+.anexo-viewer{
+    flex:1;
+    background:#0f172a;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:auto;
+}
+
+.anexo-viewer iframe{
+    width:100%;
+    height:100%;
+    border:0;
+    background:#fff;
+}
+
+.anexo-viewer img{
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
+    display:block;
+}
+
+.anexo-msg{
+    color:#fff;
+    text-align:center;
+    padding:18px;
+    font-weight:800;
+}
+
+
 /* ================= TOAST NOVA OS ================= */
 
 .toast-os{
@@ -509,6 +597,20 @@ body{
         <button class="btn-loc" onclick="visualizarLocalizacao()">🗺️ Ver Localização</button>
 
         <button onclick="fecharModal()">Fechar</button>
+    </div>
+</div>
+
+
+
+<div class="modal-anexo" id="modalAnexo" onclick="fecharModalAnexo()">
+    <div class="modal-anexo-content" onclick="event.stopPropagation()">
+        <div class="modal-anexo-header">
+            <strong id="tituloAnexo">📎 Visualizar Anexo</strong>
+            <button class="btn-fechar-anexo" onclick="fecharModalAnexo()" type="button">×</button>
+        </div>
+        <div class="anexo-viewer" id="anexoViewer">
+            <div class="anexo-msg">Carregando anexo...</div>
+        </div>
     </div>
 </div>
 
@@ -1156,7 +1258,48 @@ function verAnexo(){
         ? os.anexo_path
         : window.location.origin + os.anexo_path;
 
-    window.open(url, "_blank");
+    abrirModalAnexo(url, os.id);
+}
+
+function abrirModalAnexo(url, osId){
+
+    const modalAnexo = document.getElementById("modalAnexo");
+    const viewer = document.getElementById("anexoViewer");
+    const titulo = document.getElementById("tituloAnexo");
+
+    if(!modalAnexo || !viewer){
+        window.open(url, "_blank");
+        return;
+    }
+
+    const urlLimpa = url.split("?")[0].toLowerCase();
+    const isImagem = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/.test(urlLimpa);
+
+    if(titulo){
+        titulo.innerText = osId ? `📎 Anexo da OS #${osId}` : "📎 Visualizar Anexo";
+    }
+
+    if(isImagem){
+        viewer.innerHTML = `<img src="${url}" alt="Anexo da OS" onerror="this.outerHTML='<div class=&quot;anexo-msg&quot;>Não foi possível carregar este anexo.</div>'">`;
+    }else{
+        viewer.innerHTML = `<iframe src="${url}" title="Anexo da OS"></iframe>`;
+    }
+
+    modalAnexo.style.display = "flex";
+}
+
+function fecharModalAnexo(){
+
+    const modalAnexo = document.getElementById("modalAnexo");
+    const viewer = document.getElementById("anexoViewer");
+
+    if(modalAnexo){
+        modalAnexo.style.display = "none";
+    }
+
+    if(viewer){
+        viewer.innerHTML = `<div class="anexo-msg">Carregando anexo...</div>`;
+    }
 }
 
 /* ================= LOCALIZAÇÃO ================= */
@@ -1565,6 +1708,14 @@ function abrirOSDaNotificacaoSeExistir(){
     }, 300);
 }
 
+
+
+document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape"){
+        fecharModalAnexo();
+        fecharModal();
+    }
+});
 
 /* ================= START CORRIGIDO ================= */
 document.addEventListener("DOMContentLoaded", init);

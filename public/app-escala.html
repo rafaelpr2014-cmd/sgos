@@ -48,6 +48,7 @@ function mobileLayout(title, subtitle, active){return `
 `;}
 function formatarDataHora(v){if(!v)return"-";const d=new Date(v);return isNaN(d)?"-":d.toLocaleString("pt-BR")}
 function formatarData(v){if(!v)return"-";const d=new Date((String(v).split("T")[0]||v)+"T00:00:00");return isNaN(d)?"-":d.toLocaleDateString("pt-BR")}
+function formatarDiaSemana(v){if(!v)return"-";const dataBase=String(v).split("T")[0]||v;const d=new Date(dataBase+"T00:00:00");if(isNaN(d))return"-";return d.toLocaleDateString("pt-BR",{weekday:"long"}).replace(/^./,c=>c.toUpperCase())}
 </script><script>document.write(mobileLayout("Escala","SGOS Técnico","escala"));</script><main class="content">
 <div class="mini-cards"><div class="mini-card"><strong id="cardTotal">0</strong><span>Escalas</span></div><div class="mini-card"><strong id="cardHoje">0</strong><span>Hoje</span></div><div class="mini-card"><strong id="cardSemana">0</strong><span>Semana</span></div></div>
 <div class="card-box"><h2 class="section-title">Minha escala</h2><div class="grid-2"><input class="input" type="date" id="dataInicio"><input class="input" type="date" id="dataFim"></div><button class="btn block" style="margin-top:10px" onclick="carregarEscala()">Filtrar</button></div>
@@ -62,7 +63,7 @@ async function carregarEscala(){
  try{const r=await fetch('/api/escalas',{headers:{'x-usuario-id':u.id}}); const data=await r.json(); const lista=Array.isArray(data)?data:(data.dados||data.escalas||[]); const minhas=lista.filter(e=>pertenceAoTecnico(e,u)).filter(dentroPeriodo).sort((a,b)=>String(a.data_escala||a.data).localeCompare(String(b.data_escala||b.data)));
  const hoje=new Date().toISOString().slice(0,10); document.getElementById('cardTotal').innerText=minhas.length; document.getElementById('cardHoje').innerText=minhas.filter(e=>String(e.data_escala||e.data).slice(0,10)===hoje).length; const limite=new Date(); limite.setDate(limite.getDate()+7); document.getElementById('cardSemana').innerText=minhas.filter(e=>{const d=new Date(String(e.data_escala||e.data).slice(0,10)+'T00:00:00'); return d>=new Date(hoje+'T00:00:00')&&d<=limite}).length;
  if(!minhas.length){el.innerHTML='<div class="empty">Nenhuma escala encontrada para este técnico.</div>';return}
- el.innerHTML=minhas.map(e=>`<div class="list-card"><h3>${formatarData(e.data_escala||e.data)} <span class="pill blue">${periodoTexto(e.periodo)}</span></h3><p><b>Técnico:</b> ${e.tecnico||e.tecnico_nome||e.nome_tecnico||'-'}</p><p><b>Dia:</b> ${e.dia_semana||e.dia||'-'}</p></div>`).join('');
+ el.innerHTML=minhas.map(e=>`<div class="list-card"><h3>${formatarData(e.data_escala||e.data)} <span class="pill blue">${periodoTexto(e.periodo)}</span></h3><p><b>Técnico:</b> ${e.tecnico||e.tecnico_nome||e.nome_tecnico||'-'}</p><p><b>Dia:</b> ${e.dia_semana||e.dia||formatarDiaSemana(e.data_escala||e.data)}</p></div>`).join('');
  }catch(err){console.error(err); el.innerHTML='<div class="empty">Erro ao carregar escala.</div>'}
 }
 document.addEventListener('DOMContentLoaded',async()=>{usuarioAtual=await prepararTopo('escala'); if(!usuarioAtual)return; const hoje=new Date(); const ini=new Date(); ini.setDate(hoje.getDate()-7); const fim=new Date(); fim.setDate(hoje.getDate()+15); document.getElementById('dataInicio').value=ini.toISOString().slice(0,10); document.getElementById('dataFim').value=fim.toISOString().slice(0,10); carregarEscala();});
