@@ -512,6 +512,8 @@ body{
     </div>
 </div>
 
+<script src="/socket.io/socket.io.js"></script>
+
 <script>
 
 function abrirMenu(){
@@ -597,6 +599,9 @@ localStorage.getItem("is_app") === "1";
 
 const API = "/api/ordens_servico";
 
+let socket = null;
+let socketConectado = false;
+
 let user = {};
 let OS = [];
 let tab = "andamento";
@@ -610,8 +615,62 @@ let osSelecionada = null;
 let ultimaQuantidadeOS = 0;
 let primeiraCarga = true;
 
+
+/* ================= SOCKET.IO REALTIME ================= */
+function iniciarSocket(){
+    try {
+        if(socketConectado) return;
+        if(typeof io !== "function"){
+            console.warn("Socket.IO não carregado no appmobile.html");
+            return;
+        }
+
+        socket = io(window.location.origin, {
+            transports:["websocket", "polling"]
+        });
+
+        socket.on("connect", () => {
+            console.log("✅ Socket conectado:", socket.id);
+            socketConectado = true;
+
+            if(user?.id && user?.empresa_id){
+                socket.emit("join", {
+                    id:user.id,
+                    usuario:user.usuario || user.nome || "Técnico",
+                    empresa_id:user.empresa_id
+                });
+            }
+        });
+
+        socket.on("disconnect", () => {
+            console.warn("Socket desconectado");
+            socketConectado = false;
+        });
+
+        socket.on("os_update", () => {
+            console.log("🔄 os_update recebido via socket");
+            load();
+        });
+
+        socket.on("nova_os", () => {
+            console.log("🚨 nova_os recebido via socket");
+            load();
+        });
+
+        socket.on("os_andamento", () => {
+            console.log("🚀 os_andamento recebido via socket");
+            load();
+        });
+
+    } catch(err){
+        console.error("Erro ao iniciar Socket.IO:", err);
+    }
+}
+
 /* ================= INIT ================= */
 async function init(){
+
+    console.log("========== INIT EXECUTOU ==========");
 
     const local =
     JSON.parse(
@@ -676,6 +735,7 @@ if (!local.id) {
 
     atualizarMenuUsuario();
 
+    iniciarSocket();
     iniciarPush();
 
     // =========================
@@ -1282,23 +1342,43 @@ let pushRegistrado = false;
 
 function getPushPlugin(){
     try {
-        if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications){
-            return window.Capacitor.Plugins.PushNotifications;
+        const cap = window.Capacitor;
+
+        console.log("Capacitor disponível:", !!cap);
+        console.log("Plugins disponíveis:", cap?.Plugins ? Object.keys(cap.Plugins) : []);
+
+        if(cap?.Plugins?.PushNotifications){
+            return cap.Plugins.PushNotifications;
         }
-        if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotificationsPlugin){
-            return window.Capacitor.Plugins.PushNotificationsPlugin;
+
+        if(cap?.Plugins?.PushNotificationsPlugin){
+            return cap.Plugins.PushNotificationsPlugin;
         }
+
+        if(window.PushNotifications){
+            return window.PushNotifications;
+        }
+
         return null;
     } catch(e){
+        console.error("Erro ao localizar plugin PushNotifications:", e);
         return null;
     }
 }
 
 async function salvarTokenPush(token){
-    if(!token || !user || !user.id) return;
+    if(!token){
+        console.warn("Token FCM vazio");
+        return;
+    }
+
+    if(!user || !user.id){
+        console.warn("Usuário não carregado; não foi possível salvar token FCM");
+        return;
+    }
 
     try {
-        await fetch("/api/push/token", {
+        const res = await fetch("/api/push/token", {
             method:"POST",
             headers:{
                 "Content-Type":"application/json",
@@ -1306,49 +1386,55 @@ async function salvarTokenPush(token){
             },
             body:JSON.stringify({
                 token_fcm: token,
-                plataforma: "android"
+                plataforma: "android",
+                device_id: localStorage.getItem("device_id") || null
             })
         });
 
+        const data = await res.json().catch(() => ({}));
+
+        if(!res.ok){
+            throw new Error(data.erro || "Erro ao salvar token FCM");
+        }
+
         localStorage.setItem("push_token_fcm", token);
-        console.log("✅ Token FCM salvo no SGOS");
+        console.log("✅ Token FCM salvo no SGOS:", token.substring(0, 25) + "...");
     } catch(err){
         console.error("Erro ao salvar token FCM:", err);
     }
 }
 
 async function iniciarPush(){
-    if(pushRegistrado) return;
+    console.log("========== INICIANDO PUSH ==========");
+
+    if(pushRegistrado){
+        console.log("Push já registrado nesta sessão");
+        return;
+    }
 
     const PushNotifications = getPushPlugin();
 
+    console.log("PushNotifications plugin:", PushNotifications);
+
     if(!PushNotifications){
-        console.log("Push Capacitor não encontrado. Via navegador continuará usando notificação web simples.");
+        console.warn("Push Capacitor não encontrado. No navegador comum ficará apenas socket/polling + Notification API.");
         return;
     }
 
     pushRegistrado = true;
 
     try {
-        const perm = await PushNotifications.requestPermissions();
-
-        if(perm.receive !== "granted"){
-            console.warn("Permissão de push negada pelo usuário");
-            return;
-        }
-
-        await PushNotifications.register();
-
-        PushNotifications.addListener("registration", async (token) => {
+        // Registra listeners ANTES do register para não perder o token.
+        await PushNotifications.addListener("registration", async (token) => {
             console.log("✅ FCM Token:", token.value);
             await salvarTokenPush(token.value);
         });
 
-        PushNotifications.addListener("registrationError", (err) => {
+        await PushNotifications.addListener("registrationError", (err) => {
             console.error("Erro no registro push:", err);
         });
 
-        PushNotifications.addListener("pushNotificationReceived", (notification) => {
+        await PushNotifications.addListener("pushNotificationReceived", (notification) => {
             console.log("Push recebido com app aberto:", notification);
 
             tocarSomNovaOS();
@@ -1364,7 +1450,7 @@ async function iniciarPush(){
             }
         });
 
-        PushNotifications.addListener("pushNotificationActionPerformed", (event) => {
+        await PushNotifications.addListener("pushNotificationActionPerformed", (event) => {
             console.log("Notificação tocada:", event);
 
             const data = event?.notification?.data || {};
@@ -1378,8 +1464,20 @@ async function iniciarPush(){
             }
         });
 
+        const perm = await PushNotifications.requestPermissions();
+        console.log("Permissão push:", perm);
+
+        if(perm.receive !== "granted"){
+            console.warn("Permissão de push negada pelo usuário");
+            return;
+        }
+
+        await PushNotifications.register();
+        console.log("✅ PushNotifications.register() executado");
+
     } catch(err){
         console.error("Erro ao iniciar push:", err);
+        pushRegistrado = false;
     }
 }
 

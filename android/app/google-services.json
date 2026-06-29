@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "309520110470",
+    "project_id": "sgos-mobile-40c51",
+    "storage_bucket": "sgos-mobile-40c51.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:309520110470:android:2ad241ad8a714db69bd207",
+        "android_client_info": {
+          "package_name": "com.sgos.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPCy5E_e9o3f1s9Ij3ncnuck7ROa85FEI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
