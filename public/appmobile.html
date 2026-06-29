@@ -650,46 +650,15 @@ function iniciarSocket(){
             load();
         });
 
-        socket.on("os_andamento", async (data = {}) => {
+        socket.on("os_andamento", (data) => {
             console.log("🚀 os_andamento recebido via socket", data);
 
-            // Força alerta visual/sonoro quando uma OS entra em andamento,
-            // mesmo que o ID já existisse na lista.
-            tocarSomNovaOS();
+            mostrarNotificacaoCustom(
+                data?.titulo || "🚀 OS em andamento",
+                data?.mensagem || "Uma ordem de serviço entrou em andamento"
+            );
 
-            if(navigator.vibrate){
-                navigator.vibrate([300, 100, 300]);
-            }
-
-            const toast = document.getElementById("toastNovaOS");
-            if(toast){
-                toast.innerHTML = data.mensagem
-                    ? `🚀 ${data.mensagem}`
-                    : "🚀 OS ENTROU EM ANDAMENTO!";
-
-                toast.classList.add("show");
-
-                setTimeout(() => {
-                    toast.classList.remove("show");
-                }, 5000);
-            }
-
-            if("Notification" in window){
-                if(Notification.permission !== "granted"){
-                    await Notification.requestPermission();
-                }
-
-                if(Notification.permission === "granted"){
-                    new Notification(data.titulo || "🚀 OS em andamento", {
-                        body: data.mensagem || "Uma ordem de serviço entrou em andamento",
-                        icon: "/img/logo.png",
-                        silent: false
-                    });
-                }
-            }
-
-            tab = "andamento";
-            await load();
+            load();
         });
 
     } catch(err){
@@ -767,7 +736,6 @@ if (!local.id) {
 
     iniciarSocket();
     iniciarPush();
-
 
     // =========================
     // USER
@@ -999,7 +967,7 @@ function render(){
             extras = `
             <b>Iniciado em:</b> ${format(o.iniciado_em)}<br>
             <b>Finalizado em:</b> ${format(o.finalizado_em)}<br>
-            <b>Iniciado por:</b> ${o.enviado_por_nome || o.iniciado_por || '-'}<br>
+            <b>Iniciado por:</b> ${o.enviado_por_nome || o.iniciado_por_nome || o.iniciado_por || '-'}<br>
             <b>Finalizado por:</b> ${o.finalizado_por_nome || o.finalizado_por || '-'}<br>
             <b>VLAN:</b> ${o.vlan || '-'}<br>
             `;
@@ -1341,14 +1309,15 @@ async function mostrarNotificacao(qtd = 1){
             ){
 
                 new Notification(
-                    "🚨 NOVA OS LANÇADA!",
+                    "🚨 NOVA OS!",
                     {
                         body:
                         qtd > 1
                         ? `${qtd} novas ordens de serviço`
                         : "Você recebeu uma nova ordem de serviço",
 
-                        icon:"/img/logo.png",
+                        icon:"https://iili.io/CRh1TlV.png",
+                        badge:"https://iili.io/CRh1TlV.png",
                         silent:false
                     }
                 );
@@ -1363,6 +1332,55 @@ async function mostrarNotificacao(qtd = 1){
             "Erro notificação:",
             err
         );
+
+    }
+}
+
+
+/* ================= NOTIFICAÇÃO CUSTOMIZADA ================= */
+async function mostrarNotificacaoCustom(titulo, mensagem){
+
+    try {
+
+        tocarSomNovaOS();
+
+        if(navigator.vibrate){
+            navigator.vibrate([300, 100, 300]);
+        }
+
+        const toast = document.getElementById("toastNovaOS");
+
+        if(toast){
+            toast.innerHTML = titulo || "🚀 OS em andamento";
+            toast.classList.add("show");
+
+            setTimeout(() => {
+                toast.classList.remove("show");
+            }, 5000);
+        }
+
+        if("Notification" in window){
+
+            if(Notification.permission !== "granted"){
+                await Notification.requestPermission();
+            }
+
+            if(Notification.permission === "granted"){
+                new Notification(
+                    titulo || "🚀 OS em andamento",
+                    {
+                        body: mensagem || "Uma ordem de serviço entrou em andamento",
+                        icon: "https://iili.io/CRh1TlV.png",
+                        badge: "https://iili.io/CRh1TlV.png",
+                        silent: false
+                    }
+                );
+            }
+        }
+
+    } catch(err){
+
+        console.error("Erro em mostrarNotificacaoCustom:", err);
 
     }
 }
