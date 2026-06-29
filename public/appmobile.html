@@ -654,7 +654,7 @@ function iniciarSocket(){
             console.log("🚀 os_andamento recebido via socket", data);
 
             mostrarNotificacaoCustom(
-                data?.titulo || "🚀 OS em andamento",
+                data?.titulo || "🚀 NOVA OS LANÇADA!",
                 data?.mensagem || "Uma OS entrou em andamento"
             );
 
@@ -1376,7 +1376,7 @@ async function mostrarNotificacaoCustom(titulo, mensagem){
 
         const toast = document.getElementById("toastNovaOS");
         if(toast){
-            toast.innerHTML = titulo || "🚀 OS em andamento";
+            toast.innerHTML = titulo || "🚀 NOVA OS LANÇADA!";
             toast.classList.add("show");
             setTimeout(() => toast.classList.remove("show"), 5000);
         }
@@ -1387,7 +1387,7 @@ async function mostrarNotificacaoCustom(titulo, mensagem){
             }
 
             if(Notification.permission === "granted"){
-                new Notification(titulo || "🚀 OS em andamento", {
+                new Notification(titulo || "🚀 NOVA OS LANÇADA!", {
                     body: mensagem || "Uma OS entrou em andamento",
                     icon: "https://iili.io/CRh1TlV.png",
                     badge: "https://iili.io/CRh1TlV.png",
