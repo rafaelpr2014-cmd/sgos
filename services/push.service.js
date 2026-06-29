@@ -23,18 +23,18 @@ module.exports = (pool) => {
         `, [id]);
     }
 
-    async function enviarPushNovaOS({ usuarioId, empresaId, osId, cliente, localidade, tipoServico }){
+    async function enviarPushOSAndamento({ usuarioId, empresaId, osId, cliente, localidade, tipoServico }){
         const admin = iniciarFirebase();
 
         if(!admin){
             console.warn("Push não enviado: Firebase ainda não configurado.");
-            return { enviados:0, falhas:0, erro:"firebase_nao_configurado" };
+            return { enviados: 0, falhas: 0, erro: "firebase_nao_configurado" };
         }
 
         const tokens = await buscarTokens(usuarioId, empresaId);
 
         if(!tokens.length){
-            return { enviados:0, falhas:0, erro:"sem_tokens" };
+            return { enviados: 0, falhas: 0, erro: "sem_tokens" };
         }
 
         const bodyParts = [];
@@ -42,7 +42,9 @@ module.exports = (pool) => {
         if(localidade) bodyParts.push(`Localidade: ${localidade}`);
         if(tipoServico) bodyParts.push(`Serviço: ${tipoServico}`);
 
-        const body = bodyParts.length ? bodyParts.join(" • ") : `OS #${osId}`;
+        const body = bodyParts.length
+            ? bodyParts.join(" • ")
+            : `OS #${osId} entrou em andamento`;
 
         let enviados = 0;
         let falhas = 0;
@@ -53,12 +55,12 @@ module.exports = (pool) => {
                     token: item.token_fcm,
 
                     notification: {
-                        title: "🚨 Nova Ordem de Serviço",
+                        title: "🚀 OS em andamento",
                         body
                     },
 
                     data: {
-                        tipo: "nova_os",
+                        tipo: "os_andamento",
                         os_id: String(osId),
                         url: `/appmobile.html?os_id=${osId}`,
                         click_action: "OPEN_OS"
@@ -94,6 +96,11 @@ module.exports = (pool) => {
     }
 
     return {
-        enviarPushNovaOS
+        buscarTokens,
+        enviarPushOSAndamento,
+
+        // Mantido por compatibilidade com a rota /api/push/teste.
+        // Não usar este método na criação de OS aberta.
+        enviarPushNovaOS: enviarPushOSAndamento
     };
 };

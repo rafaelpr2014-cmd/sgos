@@ -1,16 +1,100 @@
+const criarPushService = require("./push.service");
+
 module.exports = (db, io) => {
+
+    const pushService = criarPushService(db);
+
+    function normalizarTecnicos(tecnicoRaw){
+        try {
+            if(Array.isArray(tecnicoRaw)) return tecnicoRaw.map(Number).filter(Boolean);
+
+            if(typeof tecnicoRaw === "string"){
+                const texto = tecnicoRaw.trim();
+                if(!texto) return [];
+
+                if(texto.startsWith("[") && texto.endsWith("]")){
+                    return JSON.parse(texto).map(Number).filter(Boolean);
+                }
+
+                return texto
+                    .split(",")
+                    .map(v => Number(String(v).trim()))
+                    .filter(Boolean);
+            }
+
+            return [];
+        } catch {
+            return [];
+        }
+    }
+
+    async function enviarPushOSAndamento(os){
+        try {
+            const tecnicoIds = normalizarTecnicos(os.tecnico);
+
+            if(!tecnicoIds.length){
+                console.warn(`Push agendamento OS ${os.id} não enviado: OS sem técnico vinculado.`);
+                return;
+            }
+
+            const [usuariosPush] = await db.query(`
+                SELECT DISTINCT usuario_id
+                FROM usuario_tecnicos
+                WHERE empresa_id = ?
+                AND tecnico_id IN (?)
+            `, [
+                os.empresa_id,
+                tecnicoIds
+            ]);
+
+            if(!usuariosPush.length){
+                console.warn(`Push agendamento OS ${os.id} não enviado: nenhum usuário vinculado aos técnicos.`);
+                return;
+            }
+
+            for(const u of usuariosPush){
+                const resultado = await pushService.enviarPushOSAndamento({
+                    usuarioId: u.usuario_id,
+                    empresaId: os.empresa_id,
+                    osId: os.id,
+                    cliente: os.nome,
+                    localidade: os.localidade_nome,
+                    tipoServico: os.tipo_servico_nome
+                });
+
+                console.log("🔔 Push agendamento em andamento:", {
+                    os_id: os.id,
+                    usuario_id: u.usuario_id,
+                    resultado
+                });
+            }
+        } catch(err){
+            console.error("Erro ao enviar push de agendamento em andamento:", err);
+        }
+    }
 
     async function verificarAgendamentos() {
 
         try {
 
             const [ordens] = await db.query(`
-                SELECT id
-                FROM ordens_servico
+                SELECT
+                    os.id,
+                    os.nome,
+                    os.tecnico,
+                    os.empresa_id,
+                    l.nome AS localidade_nome,
+                    ts.nome AS tipo_servico_nome
+                FROM ordens_servico os
+                LEFT JOIN localidades l
+                    ON l.id = os.localidade
+                    AND l.empresa_id = os.empresa_id
+                LEFT JOIN tipos_servico ts
+                    ON ts.id = os.tipo_servico
                 WHERE
-                    status = 'agendado'
-                    AND agendamento_envio IS NOT NULL
-                    AND agendamento_envio <= NOW()
+                    os.status = 'agendado'
+                    AND os.agendamento_envio IS NOT NULL
+                    AND os.agendamento_envio <= NOW()
             `);
 
             if (!ordens.length) return;
@@ -23,9 +107,22 @@ module.exports = (db, io) => {
                         status = 'em_andamento',
                         iniciado_em = NOW()
                     WHERE id = ?
-                `, [os.id]);
+                    AND empresa_id = ?
+                `, [
+                    os.id,
+                    os.empresa_id
+                ]);
 
                 console.log("🚀 OS lançada automaticamente:", os.id);
+
+                io.emit("os_andamento", {
+                    os_id: os.id,
+                    titulo: "🚀 Agendamento em andamento",
+                    mensagem: `A OS agendada #${os.id} entrou em andamento${os.nome ? " - " + os.nome : ""}`,
+                    cliente: os.nome || ""
+                });
+
+                await enviarPushOSAndamento(os);
             }
 
             io.emit("os_update");

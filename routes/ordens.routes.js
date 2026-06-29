@@ -109,6 +109,111 @@ module.exports = (db, verificarAutenticacao, io) => {
    
     const upload = multer({ storage });
 
+
+    // ===============================
+    // 🔔 PUSH FCM - SOMENTE OS EM ANDAMENTO
+    // ===============================
+    function normalizarTecnicos(tecnicoRaw){
+        try {
+            if(Array.isArray(tecnicoRaw)) return tecnicoRaw.map(Number).filter(Boolean);
+
+            if(typeof tecnicoRaw === "string"){
+                const texto = tecnicoRaw.trim();
+                if(!texto) return [];
+
+                if(texto.startsWith("[") && texto.endsWith("]")){
+                    return JSON.parse(texto).map(Number).filter(Boolean);
+                }
+
+                return texto
+                    .split(",")
+                    .map(v => Number(String(v).trim()))
+                    .filter(Boolean);
+            }
+
+            return [];
+        } catch {
+            return [];
+        }
+    }
+
+    async function enviarPushOSAndamento(req, osId){
+        try {
+            const pushService = req.app.get("pushService");
+
+            if(!pushService || !pushService.enviarPushOSAndamento){
+                console.warn("PushService indisponível para OS em andamento");
+                return;
+            }
+
+            const [rows] = await db.query(`
+                SELECT
+                    os.id,
+                    os.nome,
+                    os.tecnico,
+                    os.empresa_id,
+                    l.nome AS localidade_nome,
+                    ts.nome AS tipo_servico_nome
+                FROM ordens_servico os
+                LEFT JOIN localidades l
+                    ON l.id = os.localidade
+                    AND l.empresa_id = os.empresa_id
+                LEFT JOIN tipos_servico ts
+                    ON ts.id = os.tipo_servico
+                WHERE os.id = ?
+                AND os.empresa_id = ?
+                LIMIT 1
+            `, [
+                osId,
+                req.usuario.empresa_id
+            ]);
+
+            if(!rows.length) return;
+
+            const os = rows[0];
+            const tecnicoIds = normalizarTecnicos(os.tecnico);
+
+            if(!tecnicoIds.length){
+                console.warn(`Push OS ${osId} não enviado: OS sem técnico vinculado.`);
+                return;
+            }
+
+            const [usuariosPush] = await db.query(`
+                SELECT DISTINCT usuario_id
+                FROM usuario_tecnicos
+                WHERE empresa_id = ?
+                AND tecnico_id IN (?)
+            `, [
+                os.empresa_id,
+                tecnicoIds
+            ]);
+
+            if(!usuariosPush.length){
+                console.warn(`Push OS ${osId} não enviado: nenhum usuário vinculado aos técnicos.`);
+                return;
+            }
+
+            for(const u of usuariosPush){
+                const resultado = await pushService.enviarPushOSAndamento({
+                    usuarioId: u.usuario_id,
+                    empresaId: os.empresa_id,
+                    osId: os.id,
+                    cliente: os.nome,
+                    localidade: os.localidade_nome,
+                    tipoServico: os.tipo_servico_nome
+                });
+
+                console.log("🔔 Push OS em andamento:", {
+                    os_id: os.id,
+                    usuario_id: u.usuario_id,
+                    resultado
+                });
+            }
+        } catch(pushErr){
+            console.error("Erro ao enviar push de OS em andamento:", pushErr);
+        }
+    }
+
   // ===============================
 // 📋 LISTAR ORDENS
 // ===============================
@@ -585,52 +690,22 @@ router.post(
             // ===============================
             io.emit("os_update");
 
+            // 🔔 Se a OS já foi criada diretamente em andamento, notifica.
+            // OS aberta/agendada NÃO envia push externo.
+            const statusCriacao = String(dados.status || "aberto")
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, "_");
 
-            // ===============================
-            // 🔔 PUSH MOBILE - NOVA OS
-            // Envia para todos os usuários vinculados aos técnicos selecionados.
-            // Não bloqueia a criação da OS caso o Firebase falhe.
-            // ===============================
-            try {
+            if(statusCriacao === "em_andamento"){
+                io.emit("os_andamento", {
+                    os_id: resultado.id,
+                    titulo: "🚀 OS em andamento",
+                    mensagem: `A OS #${resultado.id} entrou em andamento${dados.nome ? " - " + dados.nome : ""}`,
+                    cliente: dados.nome || ""
+                });
 
-                const pushService = req.app.get("pushService");
-
-                if (pushService && Array.isArray(dados.tecnico) && dados.tecnico.length) {
-
-                    const tecnicoIds = dados.tecnico
-                        .map(id => Number(id))
-                        .filter(id => !Number.isNaN(id));
-
-                    if (tecnicoIds.length) {
-
-                        const [usuariosPush] = await db.query(`
-                            SELECT DISTINCT usuario_id
-                            FROM usuario_tecnicos
-                            WHERE empresa_id = ?
-                            AND tecnico_id IN (?)
-                        `, [
-                            req.usuario.empresa_id,
-                            tecnicoIds
-                        ]);
-
-                        for (const u of usuariosPush) {
-
-                            await pushService.enviarPushNovaOS({
-                                usuarioId: u.usuario_id,
-                                empresaId: req.usuario.empresa_id,
-                                osId: resultado.id,
-                                cliente: dados.nome
-                            });
-                        }
-                    }
-                }
-
-            } catch (pushErr) {
-
-                console.error(
-                    "Erro ao enviar push da nova OS:",
-                    pushErr
-                );
+                await enviarPushOSAndamento(req, resultado.id);
             }
 
             // ===============================
@@ -837,6 +912,8 @@ router.post(
                 mensagem: `A OS #${req.params.id} entrou em andamento${os.nome ? " - " + os.nome : ""}`,
                 cliente: os.nome || ""
             });
+
+            await enviarPushOSAndamento(req, req.params.id);
 
             res.json({
                 ok: true
@@ -1625,6 +1702,8 @@ router.put(
                 mensagem: `A OS #${req.params.id} entrou em andamento${nome ? " - " + nome : ""}`,
                 cliente: nome || ""
             });
+
+            await enviarPushOSAndamento(req, req.params.id);
         }
 
         // ===============================
@@ -1693,6 +1772,8 @@ await logService.registrarLog(
                 titulo: "🚀 Agendamento em andamento",
                 mensagem: `A OS agendada #${req.params.id} entrou em andamento`
             });
+
+            await enviarPushOSAndamento(req, req.params.id);
 
             res.json({
                 ok: true
