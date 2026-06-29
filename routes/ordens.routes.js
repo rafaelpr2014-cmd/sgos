@@ -830,6 +830,13 @@ router.post(
 
             io.emit("os_update");
 
+            io.emit("os_andamento", {
+                os_id: req.params.id,
+                cliente: os.nome || "",
+                titulo: "🚀 OS em andamento",
+                mensagem: `A OS #${req.params.id} entrou em andamento${os.nome ? " - " + os.nome : ""}`
+            });
+
             res.json({
                 ok: true
             });
@@ -1502,6 +1509,26 @@ router.put(
             );
 
         // ===============================
+        // 🔎 STATUS ANTERIOR
+        // ===============================
+        const [statusRows] = await db.query(`
+            SELECT status, nome
+            FROM ordens_servico
+            WHERE id = ?
+            AND empresa_id = ?
+            LIMIT 1
+        `, [
+            req.params.id,
+            req.usuario.empresa_id
+        ]);
+
+        const statusAnterior =
+            statusRows?.[0]?.status || "";
+
+        const clienteAnterior =
+            statusRows?.[0]?.nome || nome || "";
+
+        // ===============================
         // ✏️ UPDATE
         // ===============================
         await db.query(`
@@ -1609,6 +1636,18 @@ router.put(
         // ===============================
         io.emit("os_update");
 
+        if(
+            statusFinal === "em_andamento" &&
+            statusAnterior !== "em_andamento"
+        ){
+            io.emit("os_andamento", {
+                os_id: req.params.id,
+                cliente: clienteAnterior || "",
+                titulo: "🚀 OS em andamento",
+                mensagem: `A OS #${req.params.id} entrou em andamento${clienteAnterior ? " - " + clienteAnterior : ""}`
+            });
+        }
+
         // ===============================
         // ✅ RETORNO
         // ===============================
@@ -1643,6 +1682,19 @@ router.post(
 
         try {
 
+            const [rows] = await db.query(`
+                SELECT nome
+                FROM ordens_servico
+                WHERE id = ?
+                AND empresa_id = ?
+                LIMIT 1
+            `, [
+                req.params.id,
+                req.usuario.empresa_id
+            ]);
+
+            const os = rows[0] || {};
+
             await db.query(`
                 UPDATE ordens_servico
                 SET
@@ -1669,6 +1721,13 @@ await logService.registrarLog(
 );
 
             io.emit("os_update");
+
+            io.emit("os_andamento", {
+                os_id: req.params.id,
+                cliente: os.nome || "",
+                titulo: "🚀 OS em andamento",
+                mensagem: `A OS #${req.params.id} entrou em andamento${os.nome ? " - " + os.nome : ""}`
+            });
 
             res.json({
                 ok: true
