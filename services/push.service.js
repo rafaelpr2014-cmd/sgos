@@ -55,7 +55,7 @@ module.exports = (pool) => {
                     token: item.token_fcm,
 
                     notification: {
-                        title: "🚀 OS em andamento",
+                        title: "🚀 NOVA OS LANÇADA! 🚀",
                         body
                     },
 
