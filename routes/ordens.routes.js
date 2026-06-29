@@ -585,6 +585,7 @@ router.post(
             // ===============================
             io.emit("os_update");
 
+
             // ===============================
             // 🔔 PUSH MOBILE - NOVA OS
             // Envia para todos os usuários vinculados aos técnicos selecionados.
@@ -1615,6 +1616,16 @@ router.put(
         // 🔄 SOCKET
         // ===============================
         io.emit("os_update");
+
+        // 🔔 FORÇA NOTIFICAÇÃO QUANDO A OS FOR ENVIADA PARA ANDAMENTO VIA EDIÇÃO/STATUS
+        if (statusFinal === "em_andamento") {
+            io.emit("os_andamento", {
+                os_id: req.params.id,
+                titulo: "🚀 OS em andamento",
+                mensagem: `A OS #${req.params.id} entrou em andamento${nome ? " - " + nome : ""}`,
+                cliente: nome || ""
+            });
+        }
 
         // ===============================
         // ✅ RETORNO
