@@ -738,6 +738,21 @@ if (!local.id) {
     iniciarSocket();
     iniciarPush();
 
+fetch("/api/push/token", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "x-usuario-id": user.id
+    },
+    body: JSON.stringify({
+        token_fcm: "TESTE_MANUAL_" + Date.now(),
+        plataforma: "teste"
+    })
+})
+.then(r => r.json())
+.then(d => console.log("TESTE TOKEN:", d))
+.catch(e => console.error("ERRO TESTE TOKEN:", e));
+
     // =========================
     // USER
     // =========================
