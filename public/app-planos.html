@@ -25,8 +25,19 @@ async function prepararTopo(active){
  const nome=u.usuario||u.nome||("ID "+u.id); const emp=u.empresa_nome||"SGOS Técnico";
  ["topUser","drawerUser"].forEach(id=>{const el=document.getElementById(id);if(el)el.innerText=nome});
  ["topEmpresa","drawerEmpresa"].forEach(id=>{const el=document.getElementById(id);if(el)el.innerText=emp});
- let logo=u.empresa_logo||"https://iili.io/CujQzXa.png"; if(logo&&!logo.startsWith("http")&&!logo.startsWith("/")) logo="/"+logo;
- ["topLogo","drawerLogo"].forEach(id=>{const el=document.getElementById(id);if(el)el.src=logo});
+
+ let logoEmpresa = u.empresa_logo || "https://iili.io/CujQzXa.png";
+
+if (logoEmpresa && !logoEmpresa.startsWith("http") && !logoEmpresa.startsWith("/")) {
+    logoEmpresa = "/" + logoEmpresa;
+}
+
+// Logo da empresa (topo)
+const topLogo = document.getElementById("topLogo");
+if (topLogo) {
+    topLogo.src = logoEmpresa;
+}
+
  document.querySelectorAll(".drawer-nav a").forEach(a=>{if(a.dataset.page===active)a.classList.add("active")});
  return u;
 }
