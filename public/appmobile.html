@@ -645,20 +645,51 @@ function iniciarSocket(){
             load();
         });
 
-        socket.on("nova_os", async (data = {}) => {
-            console.log("🚨 nova_os recebido via socket", data);
-            await mostrarNotificacao(data?.qtd || 1);
+        socket.on("nova_os", () => {
+            console.log("🚨 nova_os recebido via socket");
             load();
         });
 
         socket.on("os_andamento", async (data = {}) => {
             console.log("🚀 os_andamento recebido via socket", data);
 
+            // Força alerta visual/sonoro quando uma OS entra em andamento,
+            // mesmo que o ID já existisse na lista.
+            tocarSomNovaOS();
+
+            if(navigator.vibrate){
+                navigator.vibrate([300, 100, 300]);
+            }
+
+            const toast = document.getElementById("toastNovaOS");
+            if(toast){
+                toast.innerHTML = data.mensagem
+                    ? `🚀 ${data.mensagem}`
+                    : "🚀 OS ENTROU EM ANDAMENTO!";
+
+                toast.classList.add("show");
+
+                setTimeout(() => {
+                    toast.classList.remove("show");
+                }, 5000);
+            }
+
+            if("Notification" in window){
+                if(Notification.permission !== "granted"){
+                    await Notification.requestPermission();
+                }
+
+                if(Notification.permission === "granted"){
+                    new Notification(data.titulo || "🚀 OS em andamento", {
+                        body: data.mensagem || "Uma ordem de serviço entrou em andamento",
+                        icon: "/img/logo.png",
+                        silent: false
+                    });
+                }
+            }
+
             tab = "andamento";
-
-            await mostrarNotificacaoAndamento(data);
-
-            load();
+            await load();
         });
 
     } catch(err){
@@ -1334,77 +1365,7 @@ async function mostrarNotificacao(qtd = 1){
         );
 
     }
-
 }
-
-/* ================= NOTIFICAÇÃO OS EM ANDAMENTO ================= */
-async function mostrarNotificacaoAndamento(data = {}){
-
-    try {
-
-        tocarSomNovaOS();
-
-        if(navigator.vibrate){
-            navigator.vibrate([300,100,300]);
-        }
-
-        const osId =
-            data.os_id ||
-            data.id ||
-            data.id_os ||
-            "";
-
-        const cliente =
-            data.cliente ||
-            "";
-
-        const titulo =
-            data.titulo ||
-            "🚀 OS EM ANDAMENTO!";
-
-        const mensagem =
-            data.mensagem ||
-            (
-                osId
-                ? `A OS #${osId} entrou em andamento${cliente ? " - " + cliente : ""}`
-                : "Uma ordem de serviço entrou em andamento"
-            );
-
-        const toast =
-            document.getElementById("toastNovaOS");
-
-        if(toast){
-
-            toast.innerHTML =
-                osId
-                ? `🚀 OS #${osId} EM ANDAMENTO!`
-                : "🚀 OS EM ANDAMENTO!";
-
-            toast.classList.add("show");
-
-            setTimeout(() => {
-                toast.classList.remove("show");
-            }, 6000);
-        }
-
-        if("Notification" in window){
-
-            if(Notification.permission !== "granted"){
-                await Notification.requestPermission();
-            }
-
-            if(Notification.permission === "granted"){
-                new Notification(titulo, {
-                    body: mensagem,
-                    icon: "/img/logo.png",
-                    silent: false
-                });
-            }
-        }
-
-    } catch(err){
-        console.log("Erro notificação andamento:", err);
-    }
 
 
 /* ================= PUSH NOTIFICATION REAL - CAPACITOR / FCM ================= */
