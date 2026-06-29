@@ -15,13 +15,15 @@ public class MainActivity extends BridgeActivity {
     private static final String TAG = "SGOS_FCM";
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
 
-        criarCanalNotificacao();
-        registrarPonteJavascript();
-        FcmTokenService.buscarToken(this);
-    }
+    Log.e("SGOS_TESTE", "========== MAIN ACTIVITY EXECUTOU ==========");
+
+    criarCanalNotificacao();
+    registrarPonteJavascript();
+    FcmTokenService.buscarToken(this);
+}
 
     private void registrarPonteJavascript() {
         try {
