@@ -706,6 +706,18 @@ app.put("/api/empresa/:id", async (req, res) => {
     }
 });
 
+app.get("/teste-notificacao", (req, res) => {
+    const io = req.app.get("io") || global.io;
+
+    io.emit("os_andamento", {
+        os_id: "999",
+        titulo: "🚀 Teste SGOS",
+        mensagem: "Notificação web de teste recebida"
+    });
+
+    res.json({ ok: true });
+});
+
 
 // ===============================
 // START
