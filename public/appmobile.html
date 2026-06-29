@@ -655,7 +655,7 @@ function iniciarSocket(){
 
             mostrarNotificacaoCustom(
                 data?.titulo || "🚀 OS em andamento",
-                data?.mensagem || "Uma ordem de serviço entrou em andamento"
+                data?.mensagem || "Uma OS entrou em andamento"
             );
 
             load();
@@ -663,6 +663,32 @@ function iniciarSocket(){
 
     } catch(err){
         console.error("Erro ao iniciar Socket.IO:", err);
+    }
+}
+
+
+/* ================= ANDROID NATIVO - USUÁRIO PARA FCM ================= */
+function registrarUsuarioAndroidNativo(){
+    try {
+        const usuarioLocal = user?.id
+            ? user
+            : JSON.parse(localStorage.getItem("usuario") || "{}");
+
+        const usuarioId = usuarioLocal?.id || localStorage.getItem("usuario_id");
+
+        if(!usuarioId){
+            console.log("SGOSAndroid: usuário ainda não disponível");
+            return;
+        }
+
+        if(window.SGOSAndroid && typeof window.SGOSAndroid.salvarUsuarioId === "function"){
+            window.SGOSAndroid.salvarUsuarioId(String(usuarioId));
+            console.log("✅ usuario_id enviado ao Android nativo:", usuarioId);
+        }else{
+            console.log("SGOSAndroid bridge não encontrado; ambiente web comum.");
+        }
+    } catch(err){
+        console.error("Erro ao enviar usuario_id ao Android nativo:", err);
     }
 }
 
@@ -734,8 +760,10 @@ if (!local.id) {
 
     atualizarMenuUsuario();
 
+    registrarUsuarioAndroidNativo();
     iniciarSocket();
     iniciarPush();
+
 
     // =========================
     // USER
@@ -967,7 +995,7 @@ function render(){
             extras = `
             <b>Iniciado em:</b> ${format(o.iniciado_em)}<br>
             <b>Finalizado em:</b> ${format(o.finalizado_em)}<br>
-            <b>Iniciado por:</b> ${o.enviado_por_nome || o.iniciado_por_nome || o.iniciado_por || '-'}<br>
+            <b>Iniciado por:</b> ${o.enviado_por_nome || o.iniciado_por || '-'}<br>
             <b>Finalizado por:</b> ${o.finalizado_por_nome || o.finalizado_por || '-'}<br>
             <b>VLAN:</b> ${o.vlan || '-'}<br>
             `;
@@ -1309,7 +1337,7 @@ async function mostrarNotificacao(qtd = 1){
             ){
 
                 new Notification(
-                    "🚨 NOVA OS!",
+                    "🚨 NOVA OS LANÇADA!",
                     {
                         body:
                         qtd > 1
@@ -1337,11 +1365,9 @@ async function mostrarNotificacao(qtd = 1){
 }
 
 
-/* ================= NOTIFICAÇÃO CUSTOMIZADA ================= */
+
 async function mostrarNotificacaoCustom(titulo, mensagem){
-
     try {
-
         tocarSomNovaOS();
 
         if(navigator.vibrate){
@@ -1349,42 +1375,30 @@ async function mostrarNotificacaoCustom(titulo, mensagem){
         }
 
         const toast = document.getElementById("toastNovaOS");
-
         if(toast){
             toast.innerHTML = titulo || "🚀 OS em andamento";
             toast.classList.add("show");
-
-            setTimeout(() => {
-                toast.classList.remove("show");
-            }, 5000);
+            setTimeout(() => toast.classList.remove("show"), 5000);
         }
 
         if("Notification" in window){
-
             if(Notification.permission !== "granted"){
                 await Notification.requestPermission();
             }
 
             if(Notification.permission === "granted"){
-                new Notification(
-                    titulo || "🚀 OS em andamento",
-                    {
-                        body: mensagem || "Uma ordem de serviço entrou em andamento",
-                        icon: "https://iili.io/CRh1TlV.png",
-                        badge: "https://iili.io/CRh1TlV.png",
-                        silent: false
-                    }
-                );
+                new Notification(titulo || "🚀 OS em andamento", {
+                    body: mensagem || "Uma OS entrou em andamento",
+                    icon: "https://iili.io/CRh1TlV.png",
+                    badge: "https://iili.io/CRh1TlV.png",
+                    silent: false
+                });
             }
         }
-
     } catch(err){
-
         console.error("Erro em mostrarNotificacaoCustom:", err);
-
     }
 }
-
 
 /* ================= PUSH NOTIFICATION REAL - CAPACITOR / FCM ================= */
 let pushRegistrado = false;
