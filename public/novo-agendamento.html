@@ -1420,6 +1420,84 @@ function renderPreview(file){
 }
 
 
+
+function hojeLocalDateValue(){
+    const d = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function agoraLocalDatetimeValue(){
+    const d = new Date();
+    d.setMinutes(d.getMinutes() + 1);
+    const pad = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function anoDataValido(valor){
+    if(!valor) return true;
+    const ano = Number(String(valor).slice(0,4));
+    return ano >= new Date().getFullYear();
+}
+
+function dataHoraEhAtualOuFutura(valor){
+    if(!valor) return true;
+    if(!anoDataValido(valor)) return false;
+    const d = new Date(valor);
+    if(isNaN(d.getTime())) return false;
+    return d.getTime() >= Date.now() - 120000;
+}
+
+function limitarAnoCampoDataHora(el){
+    if(!el) return;
+
+    el.addEventListener("input", () => {
+        if(!el.value) return;
+        const partes = String(el.value).split("-");
+        if(partes[0] && partes[0].length > 4){
+            partes[0] = partes[0].slice(0, 4);
+            el.value = partes.join("-");
+        }
+    });
+
+    el.addEventListener("blur", () => {
+        if(el.value && !anoDataValido(el.value)){
+            alert("Ano inválido. Informe uma data atual ou futura.");
+            el.value = "";
+            el.focus();
+        }
+    });
+}
+
+function prepararCamposDataHoraFutura(){
+    if(document.getElementById("agendamento_data")){
+        agendamento_data.min = hojeLocalDateValue();
+        limitarAnoCampoDataHora(agendamento_data);
+    }
+
+    if(document.getElementById("agendamento_envio")){
+        agendamento_envio.min = agoraLocalDatetimeValue();
+        limitarAnoCampoDataHora(agendamento_envio);
+    }
+}
+
+function validarCampoFuturoValor(valor, nome){
+    if(!valor) return true;
+
+    if(!anoDataValido(valor)){
+        alert(`${nome} inválido. Verifique o ano informado.`);
+        return false;
+    }
+
+    if(!dataHoraEhAtualOuFutura(valor)){
+        alert(`${nome} precisa ser uma data e hora atual ou futura.`);
+        return false;
+    }
+
+    return true;
+}
+
+
 // ===============================
 // CAMPOS OBRIGATÓRIOS
 // ===============================
@@ -1437,10 +1515,30 @@ async function salvar() {
 
     if(!validarCamposObrigatoriosAgendamento()) return;
 
+    const tecnicosSelecionados = Array.from(tecnico.selectedOptions).map(o => Number(o.value));
+
+    if(agendamento_envio.value && tecnicosSelecionados.length === 0){
+        alert("Selecione pelo menos um técnico para criar OS com agendamento de envio.");
+        tecnico.focus();
+        return;
+    }
+
     let agendamentoFinal = agendamento_data.value;
 
     if (agendamento_hora.value) {
         agendamentoFinal = `${agendamento_data.value}T${agendamento_hora.value}`;
+    } else {
+        agendamentoFinal = `${agendamento_data.value}T23:59`;
+    }
+
+    if(!validarCampoFuturoValor(agendamentoFinal, "Agendamento de Realização")){
+        agendamento_data.focus();
+        return;
+    }
+
+    if(!validarCampoFuturoValor(agendamento_envio.value, "Agendamento de Envio")){
+        agendamento_envio.focus();
+        return;
     }
 
     const dados = {
@@ -1451,7 +1549,7 @@ async function salvar() {
         localidade: localidade.value ? Number(localidade.value) : null,
         plano: plano.value ? Number(plano.value) : null,
         tipo_servico: tipo_servico.value ? Number(tipo_servico.value) : null,
-        tecnico: Array.from(tecnico.selectedOptions).map(o => Number(o.value)),
+        tecnico: tecnicosSelecionados,
         vlan: vlan.value,
         rua: rua.value,
         n: n.value,
@@ -1461,15 +1559,21 @@ async function salvar() {
         longitude: longitude.value,
         observacoes: observacoes.value,
         agendamento: agendamentoFinal,
-        // Não preencher automaticamente para evitar envio sem confirmação.
-        agendamento_envio: null,
+        agendamento_envio: agendamento_envio.value || null,
         status: "agendado"
     };
 
-    const resultado = await api("/api/ordens_servico", {
-        method: "POST",
-        body: JSON.stringify(dados)
-    });
+    let resultado;
+
+    try{
+        resultado = await api("/api/ordens_servico", {
+            method: "POST",
+            body: JSON.stringify(dados)
+        });
+    }catch(err){
+        alert(err.message || "Erro ao criar agendamento.");
+        return;
+    }
 
     const idFinal = resultado.id;
 
@@ -1522,6 +1626,7 @@ window.onload = async () => {
 
     await carregarUsuario();
     await carregarUsuariosOnline();
+    prepararCamposDataHoraFutura();
     await carregar();
     toggleVlan();
 };

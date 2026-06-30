@@ -6,6 +6,10 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const integracoesRoutes = require("./routes/integracoes.routes");
+const servicosPendentesRoutes = require("./routes/servicos-pendentes.routes");
+const inviabilidadeRoutes = require("./routes/inviabilidades.routes");
+const svasRoutes = require("./routes/svas.routes");
+
 
 
 const pool = require("./database");
@@ -21,6 +25,7 @@ const osAvulsasRoutes = require("./routes/os-avulsas.routes");
 const cronJobs = require("./cron/jobs");
 const pushRoutes = require("./routes/push.routes");
 const pushService = require("./services/push.service");
+
 
 // ===============================
 // INIT
@@ -139,6 +144,10 @@ app.use("/api/os-avulsas", osAvulsasRoutes(pool));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/integracoes", verificarAutenticacao, integracoesRoutes);
 app.use("/api/push", pushRoutes(pool, verificarAutenticacao));
+app.use("/api/servicos-pendentes", servicosPendentesRoutes);
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/api/inviabilidades", inviabilidadeRoutes);
+app.use("/api/svas", svasRoutes);
 
 // ===============================
 // APP MOBILE

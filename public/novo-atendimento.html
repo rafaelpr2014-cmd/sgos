@@ -441,6 +441,21 @@ textarea{
     resize:vertical;
 }
 
+.sva-info{
+    grid-column:1 / -1;
+    background:#eff6ff;
+    border:1px solid #dbeafe;
+    border-radius:12px;
+    padding:12px 14px;
+    color:#1e3a8a;
+    font-size:13px;
+    font-weight:800;
+}
+input[readonly]{
+    background:#f8fafc;
+    color:#475569;
+}
+
 .full{
     grid-column:1 / -1;
 }
@@ -914,6 +929,42 @@ button:hover{
                     <textarea id="observacoes"></textarea>
                 </div>
 
+                <div class="section-label">Serviço de TV</div>
+
+                <div class="campo full">
+                    <label>Adicionar Serviço de TV?</label>
+                    <select id="adicionar_tv">
+                        <option value="nao" selected>Não</option>
+                        <option value="sim">Sim</option>
+                    </select>
+                </div>
+
+                <div id="campos_tv" class="grid full hidden">
+                    <div class="sva-info" id="infoSvaPadrao">
+                        Selecione "Sim" para carregar o SVA padrão configurado para esta empresa.
+                    </div>
+
+                    <div class="campo">
+                        <label>Aplicativo</label>
+                        <input id="aplicativo" type="text" readonly placeholder="Aplicativo/SVA">
+                    </div>
+
+                    <div class="campo">
+                        <label>URL</label>
+                        <input id="url_sva" type="text" readonly placeholder="URL do SVA">
+                    </div>
+
+                    <div class="campo">
+                        <label>Usuário</label>
+                        <input id="usuario" type="text" placeholder="Digite o usuário do cliente">
+                    </div>
+
+                    <div class="campo">
+                        <label>Senha</label>
+                        <input id="senha" type="text" placeholder="Digite a senha do cliente">
+                    </div>
+                </div>
+
                 <div class="section-label">Anexos</div>
 
                 <div class="campo full">
@@ -978,6 +1029,7 @@ function toggleSidebar(){
 let mikwebTimer = null;
 let clienteSelecionadoMikWeb = null;
 let erpAtivoConsulta = null;
+let svaPadraoTV = null;
 
 function nomeERPAtivo(){
     const nomes = {
@@ -1427,6 +1479,10 @@ async function apiFetch(
             usuario.id
     };
 
+    if (usuario.empresa_id || usuario.empresaId) {
+        headers["x-empresa-id"] = usuario.empresa_id || usuario.empresaId;
+    }
+
     if (
         !(options.body instanceof FormData)
     ) {
@@ -1826,6 +1882,156 @@ function renderPreview(file){
 }
 
 // ===============================
+async function carregarSvaPadraoTV() {
+    try {
+        const lista = await apiFetch("/api/svas");
+
+        const habilitados = (lista || []).filter(s =>
+            s.habilitado === true ||
+            s.habilitado === 1 ||
+            s.habilitado === "1"
+        );
+
+        svaPadraoTV =
+            habilitados.find(s => String(s.nome_sva || "").toLowerCase() === "cdntv") ||
+            habilitados[0] ||
+            null;
+
+        const info = document.getElementById("infoSvaPadrao");
+        if (info) {
+            info.innerText = svaPadraoTV
+                ? `SVA padrão carregado: ${svaPadraoTV.nome_sva} | URL: ${svaPadraoTV.url || "-"}`
+                : "Nenhum SVA habilitado para esta empresa. Configure em Cadastros > SVAs.";
+        }
+
+        return svaPadraoTV;
+
+    } catch (err) {
+        console.error("Erro ao carregar SVA padrão:", err);
+        const info = document.getElementById("infoSvaPadrao");
+        if (info) info.innerText = "Erro ao carregar SVA padrão da empresa.";
+        return null;
+    }
+}
+
+function aplicarSvaPadraoTV() {
+    const addTV = document.getElementById("adicionar_tv");
+    const boxTV = document.getElementById("campos_tv");
+    const appInput = document.getElementById("aplicativo");
+    const urlInput = document.getElementById("url_sva");
+    const usuarioInput = document.getElementById("usuario");
+    const senhaInput = document.getElementById("senha");
+
+    if (!addTV || !boxTV) return;
+
+    if (addTV.value === "sim") {
+        boxTV.classList.remove("hidden");
+
+        if (svaPadraoTV) {
+            appInput.value = svaPadraoTV.nome_sva || "";
+            urlInput.value = svaPadraoTV.url || "";
+        } else {
+            appInput.value = "";
+            urlInput.value = "";
+        }
+
+    } else {
+        boxTV.classList.add("hidden");
+        appInput.value = "";
+        urlInput.value = "";
+        usuarioInput.value = "";
+        senhaInput.value = "";
+    }
+}
+
+
+function agoraLocalDatetimeValue(){
+    const d = new Date();
+    d.setMinutes(d.getMinutes() + 1);
+    const pad = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function anoDataValido(valor){
+    if(!valor) return true;
+    const ano = Number(String(valor).slice(0,4));
+    return ano >= new Date().getFullYear();
+}
+
+function dataHoraEhAtualOuFutura(valor){
+    if(!valor) return true;
+    if(!anoDataValido(valor)) return false;
+    const d = new Date(valor);
+    if(isNaN(d.getTime())) return false;
+    return d.getTime() >= Date.now() - 120000;
+}
+
+function limitarAnoCampoDataHora(el){
+    if(!el) return;
+
+    el.addEventListener("input", () => {
+        if(!el.value) return;
+        const partes = String(el.value).split("-");
+        if(partes[0] && partes[0].length > 4){
+            partes[0] = partes[0].slice(0, 4);
+            el.value = partes.join("-");
+        }
+    });
+
+    el.addEventListener("blur", () => {
+        if(el.value && !anoDataValido(el.value)){
+            alert("Ano inválido. Informe uma data atual ou futura.");
+            el.value = "";
+            el.focus();
+        }
+    });
+}
+
+function prepararCamposDataHoraFutura(){
+    const min = agoraLocalDatetimeValue();
+    ["agendamento", "agendamento_envio"].forEach(id => {
+        const el = document.getElementById(id);
+        if(el){
+            el.min = min;
+            limitarAnoCampoDataHora(el);
+        }
+    });
+}
+
+function validarCampoFuturo(id, nome){
+    const el = document.getElementById(id);
+    if(!el || !el.value) return true;
+
+    if(!anoDataValido(el.value)){
+        alert(`${nome} inválido. Verifique o ano informado.`);
+        el.focus();
+        return false;
+    }
+
+    if(!dataHoraEhAtualOuFutura(el.value)){
+        alert(`${nome} precisa ser uma data e hora atual ou futura.`);
+        el.focus();
+        return false;
+    }
+
+    return true;
+}
+
+
+
+function toLocalInput(dateStr) {
+    if (!dateStr) return "";
+
+    const s = String(dateStr).trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+    if (m) {
+        return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}`;
+    }
+
+    return "";
+}
+
+// ===============================
 async function carregarAtendimento() {
 
     if (!osId) return;
@@ -1876,14 +2082,24 @@ async function carregarAtendimento() {
     observacoes.value =
         os.observacoes || "";
 
+    if (os.aplicativo || os.url || os.usuario || os.senha) {
+        adicionar_tv.value = "sim";
+        campos_tv.classList.remove("hidden");
+        aplicativo.value = os.aplicativo || "";
+        url_sva.value = os.url || "";
+        usuario.value = os.usuario || "";
+        senha.value = os.senha || "";
+    } else {
+        adicionar_tv.value = "nao";
+        campos_tv.classList.add("hidden");
+    }
+
     // ===========================
     // AGENDAMENTO REALIZAÇÃO
     // ===========================
     agendamento.value =
         os.agendamento
-            ? new Date(os.agendamento)
-                .toISOString()
-                .slice(0,16)
+            ? toLocalInput(os.agendamento)
             : "";
 
     // ===========================
@@ -1891,11 +2107,7 @@ async function carregarAtendimento() {
     // ===========================
     agendamento_envio.value =
         os.agendamento_envio
-            ? new Date(
-                os.agendamento_envio
-            )
-            .toISOString()
-            .slice(0,16)
+            ? toLocalInput(os.agendamento_envio)
             : "";
 
     localidade.value =
@@ -1948,15 +2160,43 @@ async function salvarAtendimento(
         return;
     }
 
+    if(!validarCampoFuturo("agendamento_envio", "Agendamento de Envio")) return;
+    if(!validarCampoFuturo("agendamento", "Agendamento de Realização")) return;
+
     const tecnicosSelecionados =
         Array
         .from(tecnico.selectedOptions)
         .map(o => Number(o.value));
 
     if(statusOS === "em_andamento" && tecnicosSelecionados.length === 0){
-        alert("Selecione pelo menos um técnico para lançar a OS em execução.");
+        alert("Selecione pelo menos um técnico para poder lançar OS.");
         tecnico.focus();
         return;
+    }
+
+    if(agendamento_envio.value && tecnicosSelecionados.length === 0){
+        alert("Selecione pelo menos um técnico para criar OS com agendamento de envio.");
+        tecnico.focus();
+        return;
+    }
+
+    if(adicionar_tv.value === "sim"){
+        if(!aplicativo.value || !url_sva.value){
+            alert("Nenhum SVA padrão foi carregado. Configure um SVA habilitado na página SVAs.");
+            return;
+        }
+
+        if(!usuario.value.trim()){
+            alert("Digite o usuário do serviço de TV.");
+            usuario.focus();
+            return;
+        }
+
+        if(!senha.value.trim()){
+            alert("Digite a senha do serviço de TV.");
+            senha.focus();
+            return;
+        }
     }
 
     const dados = {
@@ -1964,7 +2204,7 @@ async function salvarAtendimento(
         status:
             statusOS === "em_andamento"
                 ? "em_andamento"
-                : (agendamento.value ? "agendado" : "aberto"),
+                : ((agendamento.value || agendamento_envio.value) ? "agendado" : "aberto"),
 
         nome:
             nome.value.trim(),
@@ -2019,10 +2259,22 @@ async function salvarAtendimento(
             agendamento.value || null,
 
         agendamento_envio:
-            agendamento.value ? (agendamento_envio.value || null) : null,
+            agendamento_envio.value || null,
 
         vlan:
-            vlan.value.trim()
+            vlan.value.trim(),
+
+        aplicativo:
+            adicionar_tv.value === "sim" ? aplicativo.value.trim() : null,
+
+        url:
+            adicionar_tv.value === "sim" ? url_sva.value.trim() : null,
+
+        usuario:
+            adicionar_tv.value === "sim" ? usuario.value.trim() : null,
+
+        senha:
+            adicionar_tv.value === "sim" ? senha.value.trim() : null
     };
 
     console.log(
@@ -2045,14 +2297,21 @@ async function salvarAtendimento(
             "PUT";
     }
 
-    const resultado =
-        await apiFetch(url, {
+    let resultado;
 
-            method,
+    try{
+        resultado =
+            await apiFetch(url, {
 
-            body:
-                JSON.stringify(dados)
-        });
+                method,
+
+                body:
+                    JSON.stringify(dados)
+            });
+    }catch(err){
+        alert(err.message || "Erro ao salvar OS.");
+        return;
+    }
 
     const idFinal =
         osId || resultado.id;
@@ -2091,7 +2350,11 @@ window.addEventListener(
     "DOMContentLoaded",
     async () => {
 
+        prepararCamposDataHoraFutura();
+
         await carregarSelects();
+
+        await carregarSvaPadraoTV();
 
         await carregarAtendimento();
 
@@ -2133,6 +2396,12 @@ window.addEventListener(
             campoNomeMikWeb.addEventListener("input", function(){
                 limparMarcacaoMikWeb();
             });
+        }
+
+        const selectAdicionarTV = document.getElementById("adicionar_tv");
+        if(selectAdicionarTV){
+            selectAdicionarTV.addEventListener("change", aplicarSvaPadraoTV);
+            aplicarSvaPadraoTV();
         }
 
         // 💾 SALVAR NORMAL

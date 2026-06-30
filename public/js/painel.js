@@ -230,6 +230,12 @@ function formatarEndereco(os) {
     return `${rua}${numero}<br><small>${bairro}${referencia ? " - " + referencia : ""}</small>`;
 }
 
+function osTemTecnicoSelecionado(os){
+    const base = os?.tecnico || os?.tecnicos || os?.tecnicos_nomes;
+    const lista = normalizarTecnicos(base);
+    return lista.filter(Boolean).length > 0;
+}
+
 function formatarTecnicos(tecnicos) {
     if (!tecnicos) return "-";
 
@@ -567,7 +573,7 @@ function montarLinhaOSAvulsa(os, concluida = false) {
     <td>${statusOSAvulsaHTML(status)}</td>
 
     <td>
-        <div class="acoes">
+        <div class="acoes" onclick="event.stopPropagation()">
             ${montarAcoesOSAvulsa(os, concluida)}
         </div>
     </td>
@@ -896,8 +902,7 @@ function popularTabelaCompleta(id, dados) {
         `;
 
         tbody.innerHTML += `
-        <tr>
-
+        <tr class="linha-os-resumo" onclick="abrirResumoOS(${os.id})">
             <td>
                 <strong>${os.nome || "-"}</strong>
             </td>
@@ -950,7 +955,7 @@ function popularTabelaCompleta(id, dados) {
             </td>
 
             <td>
-                ${os.finalizado_por_nome || os.enviado_por_nome || "-"}
+                ${os.finalizado_por_nome || "-"}
             </td>
 
             <td>
@@ -960,7 +965,7 @@ function popularTabelaCompleta(id, dados) {
             </td>
 
             <td>
-                <div class="acoes">
+                <div class="acoes" onclick="event.stopPropagation()">
                     ${botoes}
                 </div>
             </td>
@@ -1038,8 +1043,7 @@ function popularTabelaAndamento(id, dados) {
         `;
 
         tbody.innerHTML += `
-        <tr>
-
+        <tr class="linha-os-resumo" onclick="abrirResumoOS(${os.id})">
             <td>
                 <strong>${os.nome}</strong>
             </td>
@@ -1095,7 +1099,7 @@ function popularTabelaAndamento(id, dados) {
             </td>
 
             <td>
-                <div class="acoes">
+                <div class="acoes" onclick="event.stopPropagation()">
                     ${botoes}
                 </div>
             </td>
@@ -1186,8 +1190,7 @@ function popularTabela(id, dados) {
         `;
 
         tbody.innerHTML += `
-        <tr>
-
+        <tr class="linha-os-resumo" onclick="abrirResumoOS(${os.id})">
             <td>
                 <strong>${os.nome || "-"}</strong>
             </td>
@@ -1247,7 +1250,7 @@ function popularTabela(id, dados) {
             </td>
 
             <td>
-                <div class="acoes">
+                <div class="acoes" onclick="event.stopPropagation()">
                     ${botoes}
                 </div>
             </td>
@@ -1255,6 +1258,431 @@ function popularTabela(id, dados) {
         </tr>`;
     });
 }
+
+
+
+// ===============================
+// POP-UP RESUMO DA OS
+// ===============================
+function escapeResumo(valor){
+    return String(valor ?? "-")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function valorResumo(valor){
+    if(valor === null || valor === undefined || valor === "") return "-";
+    return escapeResumo(valor);
+}
+
+function linhaResumo(label1, valor1, label2, valor2){
+    return `
+        <div class="resumo-linha">
+            <div class="resumo-item">
+                <small>${escapeResumo(label1)}</small>
+                <strong>${valorResumo(valor1)}</strong>
+            </div>
+            <div class="resumo-item">
+                <small>${escapeResumo(label2)}</small>
+                <strong>${valorResumo(valor2)}</strong>
+            </div>
+        </div>
+    `;
+}
+
+function textoResumo(valor){
+    return String(valor ?? "").trim() || "-";
+}
+
+function anexosResumo(os){
+    const anexo = os.anexo_path || os.anexo || "";
+    if(!anexo) return `<div class="resumo-vazio">Nenhum anexo cadastrado.</div>`;
+
+    const arquivo = String(anexo);
+    const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(arquivo);
+    const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(arquivo);
+
+    if(isImg){
+        return `
+            <div class="resumo-midia">
+                <img src="${escapeResumo(arquivo)}" alt="Anexo da OS">
+            </div>
+            <button class="btn-resumo cinza" onclick="event.stopPropagation(); visualizarAnexo('${escapeResumo(arquivo)}')">📎 Abrir anexo</button>
+        `;
+    }
+
+    if(isVideo){
+        return `
+            <div class="resumo-midia">
+                <video controls>
+                    <source src="${escapeResumo(arquivo)}">
+                </video>
+            </div>
+            <button class="btn-resumo cinza" onclick="event.stopPropagation(); visualizarAnexo('${escapeResumo(arquivo)}')">📎 Abrir anexo</button>
+        `;
+    }
+
+    return `<button class="btn-resumo cinza" onclick="event.stopPropagation(); visualizarAnexo('${escapeResumo(arquivo)}')">📎 Abrir anexo</button>`;
+}
+
+function localizacaoResumo(os){
+    const lat = os.latitude;
+    const lng = os.longitude;
+
+    if(!lat || !lng){
+        return `<div class="resumo-vazio">Localização não cadastrada.</div>`;
+    }
+
+    const mapa = `https://maps.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&z=16&output=embed`;
+
+    return `
+        <div class="resumo-mapa">
+            <iframe src="${mapa}" loading="lazy"></iframe>
+        </div>
+        <button class="btn-resumo azul" onclick="event.stopPropagation(); abrirLocalizacao('${escapeResumo(lat)}','${escapeResumo(lng)}')">📍 Abrir no mapa</button>
+    `;
+}
+
+function servicoTVResumo(os){
+    if(!os.aplicativo && !os.url && !os.usuario && !os.senha){
+        return "";
+    }
+
+    return `
+        <div class="resumo-card destaque-tv">
+            <h3>📺 Serviço de TV / SVA</h3>
+            ${linhaResumo("Aplicativo", os.aplicativo, "URL", os.url)}
+            ${linhaResumo("Usuário", os.usuario, "Senha", os.senha)}
+        </div>
+    `;
+}
+
+function garantirModalResumoOS(){
+    if(document.getElementById("modalResumoOS")) return;
+
+    const style = document.createElement("style");
+    style.id = "styleResumoOS";
+    style.innerHTML = `
+        .linha-os-resumo{ cursor:pointer; }
+        .linha-os-resumo:hover{ background:#eff6ff !important; }
+
+        #modalResumoOS{
+            position:fixed;
+            inset:0;
+            background:rgba(15,23,42,0.72);
+            z-index:999999;
+            display:none;
+            align-items:center;
+            justify-content:center;
+            padding:22px;
+        }
+
+        .resumo-os-box{
+            width:min(980px, 96vw);
+            max-height:92vh;
+            background:white;
+            border-radius:18px;
+            box-shadow:0 28px 80px rgba(0,0,0,.35);
+            overflow:hidden;
+            display:flex;
+            flex-direction:column;
+        }
+
+        .resumo-os-head{
+            display:flex;
+            align-items:flex-start;
+            justify-content:space-between;
+            gap:16px;
+            padding:20px 24px;
+            border-bottom:1px solid #e5e7eb;
+            background:#f8fafc;
+        }
+
+        .resumo-os-head h2{
+            margin:0;
+            font-size:21px;
+            color:#0f172a;
+            font-weight:800;
+        }
+
+        .resumo-os-head p{
+            margin:5px 0 0;
+            color:#64748b;
+            font-size:13px;
+        }
+
+        .resumo-fechar{
+            border:none;
+            background:#ef4444;
+            color:white;
+            border-radius:999px;
+            width:34px;
+            height:34px;
+            cursor:pointer;
+            font-weight:800;
+            font-size:16px;
+        }
+
+        .resumo-os-body{
+            padding:20px 24px;
+            overflow:auto;
+        }
+
+        .resumo-grid-cards{
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:14px;
+        }
+
+        .resumo-card{
+            border:1px solid #e5e7eb;
+            border-radius:14px;
+            padding:16px;
+            background:#fff;
+        }
+
+        .resumo-card.full{
+            grid-column:1 / -1;
+        }
+
+        .resumo-card h3{
+            margin:0 0 13px;
+            font-size:15px;
+            color:#0f172a;
+            font-weight:800;
+        }
+
+        .destaque-tv{
+            grid-column:1 / -1;
+            background:#eff6ff;
+            border-color:#bfdbfe;
+        }
+
+        .resumo-linha{
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:12px;
+            margin-bottom:10px;
+        }
+
+        .resumo-linha:last-child{ margin-bottom:0; }
+
+        .resumo-item{
+            background:#f8fafc;
+            border:1px solid #f1f5f9;
+            border-radius:10px;
+            padding:10px 12px;
+            min-height:58px;
+        }
+
+        .resumo-item small{
+            display:block;
+            color:#64748b;
+            font-size:11px;
+            font-weight:800;
+            text-transform:uppercase;
+            margin-bottom:5px;
+        }
+
+        .resumo-item strong{
+            display:block;
+            color:#0f172a;
+            font-size:13px;
+            line-height:1.35;
+            word-break:break-word;
+        }
+
+        .resumo-texto{
+            background:#f8fafc;
+            border:1px solid #f1f5f9;
+            border-radius:10px;
+            padding:12px;
+            color:#0f172a;
+            font-size:13px;
+            line-height:1.45;
+            white-space:pre-wrap;
+            min-height:54px;
+        }
+
+        .resumo-midia img,
+        .resumo-midia video{
+            max-width:100%;
+            max-height:260px;
+            border-radius:12px;
+            display:block;
+            margin-bottom:12px;
+            border:1px solid #e5e7eb;
+        }
+
+        .resumo-mapa iframe{
+            width:100%;
+            height:240px;
+            border:0;
+            border-radius:12px;
+            margin-bottom:12px;
+            background:#f1f5f9;
+        }
+
+        .resumo-vazio{
+            color:#64748b;
+            font-size:13px;
+            background:#f8fafc;
+            border-radius:10px;
+            padding:12px;
+        }
+
+        .resumo-os-actions{
+            display:flex;
+            justify-content:flex-end;
+            gap:10px;
+            padding:16px 24px;
+            border-top:1px solid #e5e7eb;
+            background:#f8fafc;
+            flex-wrap:wrap;
+        }
+
+        .btn-resumo{
+            border:none;
+            color:white;
+            padding:11px 15px;
+            border-radius:10px;
+            cursor:pointer;
+            font-weight:800;
+            font-family:Arial, Helvetica, sans-serif;
+        }
+
+        .btn-resumo.azul{ background:#2563eb; }
+        .btn-resumo.verde{ background:#16a34a; }
+        .btn-resumo.vermelho{ background:#ef4444; }
+        .btn-resumo.cinza{ background:#64748b; }
+
+        @media(max-width:800px){
+            .resumo-grid-cards,
+            .resumo-linha{
+                grid-template-columns:1fr;
+            }
+
+            .resumo-card.full,
+            .destaque-tv{
+                grid-column:auto;
+            }
+
+            .resumo-os-actions{
+                justify-content:flex-start;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+
+    const modal = document.createElement("div");
+    modal.id = "modalResumoOS";
+    modal.onclick = fecharResumoOS;
+    modal.innerHTML = `
+        <div class="resumo-os-box" onclick="event.stopPropagation()">
+            <div class="resumo-os-head">
+                <div>
+                    <h2 id="resumoOSTitulo">Resumo da OS</h2>
+                    <p id="resumoOSSubtitulo">Dados completos do atendimento</p>
+                </div>
+                <button class="resumo-fechar" type="button" onclick="fecharResumoOS()">×</button>
+            </div>
+            <div class="resumo-os-body" id="resumoOSConteudo"></div>
+            <div class="resumo-os-actions" id="resumoOSAcoes"></div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+window.fecharResumoOS = function(){
+    const modal = document.getElementById("modalResumoOS");
+    if(modal) modal.style.display = "none";
+};
+
+window.abrirResumoOS = function(id){
+    garantirModalResumoOS();
+
+    const os = (ordens || []).find(o => Number(o.id) === Number(id));
+
+    if(!os){
+        alert("OS não encontrada no painel.");
+        return;
+    }
+
+    const [classeStatus, textoStatus] = STATUS_MAP[os.status] || STATUS_MAP["aberto"];
+
+    document.getElementById("resumoOSTitulo").innerText =
+        `Resumo da OS #${os.id}`;
+
+    document.getElementById("resumoOSSubtitulo").innerText =
+        `${os.nome || "Cliente não informado"} • ${textoStatus}`;
+
+    const conteudo = document.getElementById("resumoOSConteudo");
+
+    conteudo.innerHTML = `
+        <div class="resumo-grid-cards">
+
+            <div class="resumo-card">
+                <h3>👤 Cliente</h3>
+                ${linhaResumo("Nome", os.nome, "ID Cliente", os.id_cliente)}
+                ${linhaResumo("Telefone", os.telefone, "Login", os.login)}
+                ${linhaResumo("Plano", os.plano_nome, "VLAN", os.vlan || os.localidade_vlan)}
+            </div>
+
+            <div class="resumo-card">
+                <h3>🛠️ Atendimento</h3>
+                ${linhaResumo("Tipo de Serviço", os.tipo_servico_nome, "Status", textoStatus)}
+                ${linhaResumo("Técnicos", (os.tecnicos_nomes || "").replace(/,/g, ", "), "Criado por", os.criado_por_nome)}
+                ${linhaResumo("Criado em", formatarData(os.criado_em || os.data_abertura), "Agendamento", formatarData(os.agendamento))}
+            </div>
+
+            <div class="resumo-card">
+                <h3>📍 Endereço</h3>
+                ${linhaResumo("Localidade", os.localidade_nome, "Bairro", os.bairro)}
+                ${linhaResumo("Rua", os.rua || os.endereco, "Número", os.n)}
+                ${linhaResumo("Referência", os.referencia, "Coordenadas", os.latitude && os.longitude ? `${os.latitude}, ${os.longitude}` : "-")}
+            </div>
+
+            <div class="resumo-card">
+                <h3>📅 Datas</h3>
+                ${linhaResumo("Envio", formatarData(os.agendamento_envio), "Iniciado em", formatarData(os.iniciado_em))}
+                ${linhaResumo("Finalizado em", formatarData(os.finalizado_em), "Finalizado por", os.status === "concluido" ? (os.finalizado_por_nome || "-") : "-")}
+            </div>
+
+            ${servicoTVResumo(os)}
+
+            <div class="resumo-card full">
+                <h3>📝 Observações</h3>
+                <div class="resumo-texto">${escapeResumo(textoResumo(os.observacoes || os.observacao))}</div>
+            </div>
+
+            <div class="resumo-card">
+                <h3>📎 Imagem / Anexo</h3>
+                ${anexosResumo(os)}
+            </div>
+
+            <div class="resumo-card">
+                <h3>🗺️ Localização</h3>
+                ${localizacaoResumo(os)}
+            </div>
+
+        </div>
+    `;
+
+    const acoes = document.getElementById("resumoOSAcoes");
+
+    const podeLancar = ["aberto", "cliente_ausente", "agendado"].includes(os.status);
+
+    acoes.innerHTML = `
+        <button class="btn-resumo azul" onclick="editarOS(${os.id})">✏️ Editar</button>
+        ${podeLancar ? `<button class="btn-resumo verde" onclick="lancarAgora(${os.id})">🚀 Lançar Agora</button>` : ""}
+        <button class="btn-resumo vermelho" onclick="excluirOS(${os.id})">🗑️ Excluir</button>
+    `;
+
+    document.getElementById("modalResumoOS").style.display = "flex";
+};
 
 
 // ===============================
@@ -1304,13 +1732,25 @@ window.editarOS = (id) => {
 
 window.lancarAgora = async (id) => {
 
+    const os = (ordens || []).find(o => Number(o.id) === Number(id));
+
+    if(os && !osTemTecnicoSelecionado(os)){
+        alert("Selecione pelo menos um técnico para poder lançar OS.");
+        return;
+    }
+
     if (!confirm("Deseja iniciar essa OS agora?")) return;
 
-    await apiFetch(`/api/ordens_servico/iniciar/${id}`, {
-        method: "POST"
-    });
+    try{
+        await apiFetch(`/api/ordens_servico/iniciar/${id}`, {
+            method: "POST"
+        });
 
-    carregarOS();
+        fecharResumoOS();
+        carregarOS();
+    }catch(err){
+        alert(err.message || "Erro ao lançar OS. Verifique se existe técnico selecionado.");
+    }
 };
 
 window.finalizarOS = async (id) => {

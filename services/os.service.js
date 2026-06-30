@@ -23,6 +23,81 @@ async function getMapaTecnicos(empresa_id) {
     return mapa;
 }
 
+
+function normalizarTecnicosObrigatorio(tecnicoRaw){
+    try {
+        if(Array.isArray(tecnicoRaw)){
+            return tecnicoRaw
+                .map(v => String(v ?? "").trim())
+                .filter(v => v && v !== "0" && v !== "null" && v !== "undefined");
+        }
+
+        if(typeof tecnicoRaw === "string"){
+            const texto = tecnicoRaw.trim();
+            if(!texto || texto === "[]" || texto === "[null]") return [];
+
+            if(texto.startsWith("[") && texto.endsWith("]")){
+                const parsed = JSON.parse(texto);
+                if(Array.isArray(parsed)){
+                    return parsed
+                        .map(v => String(v ?? "").trim())
+                        .filter(v => v && v !== "0" && v !== "null" && v !== "undefined");
+                }
+            }
+
+            return texto
+                .split(",")
+                .map(v => String(v ?? "").trim())
+                .filter(v => v && v !== "0" && v !== "null" && v !== "undefined");
+        }
+
+        return tecnicoRaw ? [tecnicoRaw] : [];
+    } catch {
+        return [];
+    }
+}
+
+
+function parseDataHoraLocal(valor){
+    if(!valor) return null;
+
+    const s = String(valor).trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+
+    if(m && !/[zZ]$/.test(s)){
+        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6] || 0));
+    }
+
+    return new Date(s);
+}
+
+function validarDataHoraAtualOuFutura(valor, nomeCampo){
+    if(!valor) return;
+
+    const s = String(valor).trim();
+    const ano = Number(s.slice(0, 4));
+    const anoAtual = new Date().getFullYear();
+
+    if(!ano || ano < anoAtual){
+        throw new Error(`${nomeCampo} inválido. Verifique o ano informado.`);
+    }
+
+    const d = parseDataHoraLocal(valor);
+
+    if(!d || isNaN(d.getTime())){
+        throw new Error(`${nomeCampo} inválido.`);
+    }
+
+    // Tolerância de 2 minutos para salvar no mesmo minuto.
+    if(d.getTime() < Date.now() - 120000){
+        throw new Error(`${nomeCampo} precisa ser uma data e hora atual ou futura.`);
+    }
+}
+
+function possuiTecnicoObrigatorio(tecnicoRaw){
+    return normalizarTecnicosObrigatorio(tecnicoRaw).length > 0;
+}
+
 // ===============================
 // 🆕 CRIAR OS (COM AGENDAMENTO CORRETO)
 // ===============================
@@ -50,7 +125,11 @@ exports.criar = async (dados, usuario) => {
         vlan,
         latitude,
         longitude,
-        status
+        status,
+        aplicativo,
+        url,
+        usuario: usuarioTV,
+        senha
     } = dados;
 
     let statusFinal = status || "aberto";
@@ -64,17 +143,34 @@ exports.criar = async (dados, usuario) => {
     // ===============================
     // 🔥 REGRA AGENDAMENTO REAL
     // ===============================
-    let agendamentoEnvioFinal = null;
 
-    if (agendamento) {
+    validarDataHoraAtualOuFutura(agendamento, "Agendamento de Realização");
+    validarDataHoraAtualOuFutura(agendamento_envio, "Agendamento de Envio");
 
-        // Segurança:
-        // - sem data/horário no front, agendamento vem null e status fica aberto
-        // - com data/horário e status "agendado", salva como agendado
-        // - agendamento_envio nunca é preenchido automaticamente
-        agendamentoEnvioFinal = agendamento_envio || null;
+    if (agendamento_envio && statusFinal !== "em_andamento" && statusFinal !== "concluido") {
+        statusFinal = "agendado";
+    }
 
-        if (statusFinal !== "agendado" && statusFinal !== "em_andamento") {
+    // ===============================
+    // 🔒 REGRA TÉCNICO OBRIGATÓRIO
+    // ===============================
+    if (statusFinal === "em_andamento" && !possuiTecnicoObrigatorio(tecnico)) {
+        throw new Error("Selecione pelo menos um técnico para poder lançar OS.");
+    }
+
+    if (agendamento_envio && !possuiTecnicoObrigatorio(tecnico)) {
+        throw new Error("Selecione pelo menos um técnico para criar OS com agendamento de envio.");
+    }
+
+    let agendamentoEnvioFinal = agendamento_envio || null;
+
+    if (agendamento || agendamento_envio) {
+
+        if (agendamento_envio && statusFinal !== "em_andamento" && statusFinal !== "concluido") {
+            statusFinal = "agendado";
+        }
+
+        if (!agendamento_envio && agendamento && statusFinal !== "agendado" && statusFinal !== "em_andamento") {
             statusFinal = "aberto";
         }
     }
@@ -129,6 +225,10 @@ INSERT INTO ordens_servico (
     vlan,
     latitude,
     longitude,
+    aplicativo,
+    url,
+    usuario,
+    senha,
     criado_por,
     iniciado_em,
     data_abertura
@@ -142,6 +242,7 @@ VALUES (
     ?, ?,
     ?, ?,
     ?, ?,
+    ?, ?, ?, ?,
     ?,
     NOW()
 )
@@ -165,6 +266,10 @@ VALUES (
     vlanFinal,
     latitude || null,
     longitude || null,
+    aplicativo || null,
+    url || null,
+    usuarioTV || null,
+    senha || null,
     usuario.id,
     iniciadoEm
 ]);

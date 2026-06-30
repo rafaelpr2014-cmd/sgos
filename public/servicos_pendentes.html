@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>SGOS - Cronograma</title>
+<title>SGOS - Serviços Pendentes</title>
 
 <link rel="icon" type="image/png" href="/img/favicon.png">
 
@@ -390,12 +390,23 @@ body{
     display:flex;
     justify-content:space-between;
     align-items:center;
+    gap:14px;
     margin-bottom:18px;
 }
 
 .titulo-card{
     font-size:18px;
     font-weight:800;
+}
+
+.subtitulo-card{
+    color:#64748b;
+    font-size:13px;
+    margin-top:4px;
+}
+
+.filtro{
+    max-width:360px;
 }
 
 .table-wrap{
@@ -406,7 +417,7 @@ body{
 table{
     width:100%;
     border-collapse:collapse;
-    min-width:1150px;
+    min-width:1180px;
 }
 
 th{
@@ -432,7 +443,8 @@ tr:hover{
 }
 
 input,
-select{
+select,
+textarea{
     width:100%;
     padding:10px 12px;
     border:1px solid var(--borda);
@@ -440,16 +452,19 @@ select{
     outline:none;
     font-size:13px;
     background:white;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+textarea{
+    resize:vertical;
+    min-height:82px;
 }
 
 input:focus,
-select:focus{
+select:focus,
+textarea:focus{
     border-color:#93c5fd;
     box-shadow:0 0 0 3px rgba(37,99,235,.12);
-}
-
-select[multiple]{
-    height:104px;
 }
 
 .acoes{
@@ -468,37 +483,31 @@ select[multiple]{
     display:inline-flex;
     align-items:center;
     gap:6px;
+    text-decoration:none;
+    font-size:12px;
 }
 
 .btn-editar{ background:var(--laranja); }
-.btn-salvar{ background:var(--verde); }
+.btn-imprimir{ background:#0f766e; }
+.btn-anexo{ background:#2563eb; }
 .btn-excluir{ background:var(--vermelho); }
+.btn-salvar{ background:var(--verde); }
+.btn-cancelar{ background:#64748b; }
 
-.equipe-lista{
-    display:flex;
-    flex-wrap:wrap;
-    gap:6px;
-}
-
-.badge-equipe{
-    background:#dbeafe;
-    color:#1d4ed8;
+.badge{
     padding:6px 10px;
     border-radius:999px;
     font-size:12px;
     font-weight:800;
-}
-
-.periodo-badge{
-    background:#f1f5f9;
-    color:#334155;
-    padding:6px 10px;
-    border-radius:999px;
-    font-size:12px;
-    font-weight:800;
-    text-transform:capitalize;
     display:inline-block;
+    white-space:nowrap;
 }
+
+.badge-alta{ background:#fee2e2; color:#b91c1c; }
+.badge-media{ background:#ffedd5; color:#c2410c; }
+.badge-baixa{ background:#dcfce7; color:#15803d; }
+.badge-pendente{ background:#dbeafe; color:#1d4ed8; }
+.badge-realizado{ background:#dcfce7; color:#15803d; }
 
 .footer{
     display:flex;
@@ -523,7 +532,7 @@ select[multiple]{
 
 .modal-content{
     background:white;
-    width:460px;
+    width:590px;
     max-width:100%;
     border-radius:16px;
     padding:24px;
@@ -550,8 +559,31 @@ select[multiple]{
     margin-top:18px;
 }
 
-.btn-cancelar{
-    background:#64748b;
+.anexo-modal-content{
+    width:900px;
+    height:82vh;
+    display:flex;
+    flex-direction:column;
+}
+
+.anexo-topo{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+}
+
+.anexo-topo h3{
+    margin:0;
+}
+
+#frameAnexo{
+    width:100%;
+    height:100%;
+    border:1px solid var(--borda);
+    border-radius:12px;
+    background:#f8fafc;
 }
 
 @media(max-width:1300px){
@@ -578,6 +610,35 @@ select[multiple]{
 
     .top-actions{
         grid-template-columns:1fr;
+    }
+
+    .card-header{
+        flex-direction:column;
+        align-items:stretch;
+    }
+
+    .filtro{
+        max-width:none;
+    }
+}
+
+@media print{
+    body *{
+        visibility:hidden;
+    }
+
+    #areaImpressao,
+    #areaImpressao *{
+        visibility:visible;
+    }
+
+    #areaImpressao{
+        position:absolute;
+        left:0;
+        top:0;
+        width:100%;
+        padding:25px;
+        background:white;
     }
 }
 </style>
@@ -614,14 +675,14 @@ select[multiple]{
         <span>Relatórios</span>
     </a>
 
-<a href="escala.html" class=>
+    <a href="escala.html">
         <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 14h6"/></svg>
         <span>Escala</span>
     </a>
 
-    <a href="cronograma.html">
+    <a href="cronograma.html" class="ativo">
         <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg>
-        <span>Cronograma</span>
+        <span>Serviços Pendentes</span>
     </a>
 
     <a href="viabilidade.html">
@@ -685,7 +746,6 @@ select[multiple]{
         </button>
     </div>
 
-
 </aside>
 
 <main class="main">
@@ -698,7 +758,7 @@ select[multiple]{
 
         <div class="divisor"></div>
 
-        <div class="header-title">Cronograma</div>
+        <div class="header-title">Serviços Pendentes</div>
     </div>
 
     <div class="usuario-dropdown" id="usuarioDropdown">
@@ -727,70 +787,108 @@ select[multiple]{
 <section class="content">
 
     <div class="top-actions">
-        <button class="action-card" onclick="abrirModal()">
+        <button class="action-card" onclick="abrirModalNovo()">
             <span>
                 <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             </span>
-            Novo Agendamento
+            Novo Serviço Pendente
         </button>
 
         <div class="card-indicador">
             <div class="icon-box icon-blue">
-                <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
             </div>
             <div class="card-info">
                 <small>Total</small>
                 <strong id="cardTotal">0</strong>
-                <span>Agendamentos</span>
-            </div>
-        </div>
-
-        <div class="card-indicador">
-            <div class="icon-box icon-green">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
-            </div>
-            <div class="card-info">
-                <small>Equipes</small>
-                <strong id="cardEquipes">0</strong>
-                <span>Técnicos envolvidos</span>
+                <span>Serviços cadastrados</span>
             </div>
         </div>
 
         <div class="card-indicador">
             <div class="icon-box icon-orange">
-                <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
             </div>
             <div class="card-info">
-                <small>Cidades</small>
-                <strong id="cardCidades">0</strong>
-                <span>Localidades usadas</span>
+                <small>Pendentes</small>
+                <strong id="cardPendentes">0</strong>
+                <span>Aguardando execução</span>
+            </div>
+        </div>
+
+        <div class="card-indicador">
+            <div class="icon-box icon-green">
+                <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+            </div>
+            <div class="card-info">
+                <small>Realizados</small>
+                <strong id="cardRealizados">0</strong>
+                <span>Histórico finalizado</span>
             </div>
         </div>
     </div>
 
     <div class="card">
         <div class="card-header">
-            <div class="titulo-card">Agendamentos do Cronograma</div>
+            <div>
+                <div class="titulo-card">Serviços Pendentes</div>
+                <div class="subtitulo-card">Serviços que ainda precisam ser realizados.</div>
+            </div>
+            <input class="filtro" id="filtroBusca" placeholder="Buscar por serviço, localidade, descrição, prioridade..." oninput="renderizarTabelas()">
         </div>
 
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
-                        <th>Equipe</th>
                         <th>Serviço</th>
-                        <th>Cidade</th>
-                        <th>Período</th>
-                        <th>Agendado para</th>
+                        <th>Localidade</th>
+                        <th>Descrição</th>
+                        <th>Prioridade</th>
+                        <th>Enviado por</th>
+                        <th>Status</th>
                         <th>Criado</th>
-                        <th>Adicionado por</th>
+                        <th>Atualizado</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
 
-                <tbody id="tabela">
+                <tbody id="tabelaPendentes">
                     <tr>
-                        <td colspan="8">Carregando...</td>
+                        <td colspan="9">Carregando...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="titulo-card">Histórico de Serviços Realizados</div>
+                <div class="subtitulo-card">Serviços marcados como realizado ficam salvos aqui.</div>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Serviço</th>
+                        <th>Localidade</th>
+                        <th>Descrição</th>
+                        <th>Prioridade</th>
+                        <th>Enviado por</th>
+                        <th>Status</th>
+                        <th>Criado</th>
+                        <th>Atualizado</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+
+                <tbody id="tabelaHistorico">
+                    <tr>
+                        <td colspan="9">Carregando...</td>
                     </tr>
                 </tbody>
             </table>
@@ -806,41 +904,70 @@ select[multiple]{
 
 </main>
 
-<div class="modal" id="modal">
+<div class="modal" id="modalServico">
     <div class="modal-content">
 
-        <h3>Novo Agendamento</h3>
+        <h3 id="modalTitulo">Novo Serviço Pendente</h3>
 
-        <label>Data</label>
-        <input type="date" id="data">
+        <input type="hidden" id="editId">
 
-        <label>Equipe (máx 4)</label>
-        <select multiple id="equipeModal"></select>
+        <label>Serviço</label>
+        <input type="text" id="servico" placeholder="Ex: Colocar CTO">
 
-        <label>Tipo de Serviço</label>
-        <input type="text" id="tipo" placeholder="Ex: Instalação">
+        <label>Localidade</label>
+        <input type="text" id="localidade" placeholder="Ex: Gandu">
 
-        <label>Cidade</label>
-        <select id="cidadeModal"></select>
+        <label>Descrição</label>
+        <textarea id="descricao" placeholder="Descreva o que precisa ser feito..."></textarea>
 
-        <label>Período</label>
-        <select id="periodo">
-            <option value="manha">Manhã</option>
-            <option value="tarde">Tarde</option>
-            <option value="noite">Noite</option>
+        <label>Prioridade</label>
+        <select id="prioridade">
+            <option value="Alta">Alta</option>
+            <option value="Média" selected>Média</option>
+            <option value="Baixa">Baixa</option>
         </select>
 
+        <label>Status</label>
+        <select id="status">
+            <option value="Pendente" selected>Pendente</option>
+            <option value="Realizado">Realizado</option>
+        </select>
+
+        <label>Anexo</label>
+        <input type="file" id="anexo">
+        <small id="anexoAtual" style="display:block; margin-top:6px; color:#64748b;"></small>
+
         <div class="modal-actions">
-            <button class="btn btn-salvar" onclick="salvarNovo()">Salvar</button>
-            <button class="btn btn-cancelar" onclick="fecharModal()">Cancelar</button>
+            <button class="btn btn-salvar" onclick="salvarServico()">Salvar</button>
+            <button class="btn btn-cancelar" onclick="fecharModalServico()">Cancelar</button>
         </div>
 
     </div>
 </div>
 
+<div class="modal" id="modalAnexo">
+    <div class="modal-content anexo-modal-content">
+        <div class="anexo-topo">
+            <h3>Visualizar Anexo</h3>
+            <button class="btn btn-cancelar" onclick="fecharModalAnexo()">Fechar</button>
+        </div>
+        <iframe id="frameAnexo" src=""></iframe>
+    </div>
+</div>
+
+<div id="areaImpressao" style="display:none;"></div>
+
 <script>
-let tecnicos = [];
-let localidades = [];
+let servicosPendentes = [];
+
+function escapeHTML(valor){
+    return String(valor ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
 
 function toggleSidebar(){
     const sidebar = document.querySelector(".sidebar");
@@ -927,7 +1054,7 @@ async function carregarUsuariosOnline(){
         if(!container) return;
 
         container.innerHTML = listaUnica.length
-            ? listaUnica.map(u => `🟢 ${u}`).join("<br>")
+            ? listaUnica.map(u => `🟢 ${escapeHTML(u)}`).join("<br>")
             : "Nenhum usuário online";
 
     }catch(err){
@@ -952,236 +1079,276 @@ function logout(){
     window.location.href = "login.html";
 }
 
-function formatarDataCompleta(data){
-    const d = new Date(data + "T00:00:00");
+function formatarData(data){
+    if(!data) return "-";
 
-    const dias = [
-        "DOMINGO","SEGUNDA-FEIRA","TERÇA-FEIRA",
-        "QUARTA-FEIRA","QUINTA-FEIRA","SEXTA-FEIRA","SÁBADO"
-    ];
+    const d = new Date(data);
 
-    const dia = String(d.getDate()).padStart(2,"0");
-    const mes = String(d.getMonth() + 1).padStart(2,"0");
-    const ano = d.getFullYear();
+    if(isNaN(d.getTime())) return "-";
 
-    return `${dias[d.getDay()]} ${dia}/${mes}/${ano}`;
+    return d.toLocaleString("pt-BR");
 }
 
-async function carregarBase(){
-    tecnicos = await fetchAuth("/api/tecnicos");
-    localidades = await fetchAuth("/api/localidades");
+function classePrioridade(valor){
+    const p = String(valor || "").toLowerCase();
+
+    if(p.includes("alta")) return "badge badge-alta";
+    if(p.includes("baixa")) return "badge badge-baixa";
+
+    return "badge badge-media";
 }
 
-function montarTecnicos(sel = []){
-    return tecnicos.map(t => {
-        const s = sel.includes(t.nome) ? "selected" : "";
-        return `<option ${s}>${t.nome}</option>`;
-    }).join("");
-}
+function classeStatus(valor){
+    const s = String(valor || "").toLowerCase();
 
-function montarCidades(val = ""){
-    return localidades.map(l => {
-        const s = Number(val) === Number(l.id) ? "selected" : "";
-        return `<option value="${l.id}" ${s}>${l.nome}</option>`;
-    }).join("");
+    if(s.includes("realizado")) return "badge badge-realizado";
+
+    return "badge badge-pendente";
 }
 
 function atualizarCards(dados){
     const total = dados.length || 0;
 
-    const equipesUnicas = new Set();
-    const cidadesUnicas = new Set();
-
-    dados.forEach(item => {
-        const equipe = item.equipe ? JSON.parse(item.equipe) : [];
-
-        equipe.forEach(t => equipesUnicas.add(t));
-
-        if(item.cidade_nome){
-            cidadesUnicas.add(item.cidade_nome);
-        }
-    });
+    const pendentes = dados.filter(item => String(item.status || "").toLowerCase() === "pendente").length;
+    const realizados = dados.filter(item => String(item.status || "").toLowerCase() === "realizado").length;
 
     document.getElementById("cardTotal").innerText = total;
-    document.getElementById("cardEquipes").innerText = equipesUnicas.size;
-    document.getElementById("cardCidades").innerText = cidadesUnicas.size;
+    document.getElementById("cardPendentes").innerText = pendentes;
+    document.getElementById("cardRealizados").innerText = realizados;
 }
 
 async function carregar(){
-    await carregarBase();
+    try{
+        const dados = await fetchAuth("/api/servicos-pendentes");
 
-    const dados = await fetchAuth("/api/cronograma");
-    const tabela = document.getElementById("tabela");
+        servicosPendentes = Array.isArray(dados) ? dados : [];
 
-    tabela.innerHTML = "";
+        atualizarCards(servicosPendentes);
+        renderizarTabelas();
 
-    atualizarCards(dados || []);
+    }catch(err){
+        console.error("Erro ao carregar serviços pendentes:", err);
 
-    if(!dados || dados.length === 0){
-        tabela.innerHTML = `
+        document.getElementById("tabelaPendentes").innerHTML = `
             <tr>
-                <td colspan="8">Nenhum agendamento cadastrado</td>
+                <td colspan="9">Erro ao carregar serviços pendentes</td>
             </tr>
         `;
-        return;
+
+        document.getElementById("tabelaHistorico").innerHTML = `
+            <tr>
+                <td colspan="9">Erro ao carregar histórico</td>
+            </tr>
+        `;
     }
+}
 
-    dados.forEach(item => {
-        const equipe = item.equipe ? JSON.parse(item.equipe) : [];
+function filtrarDados(){
+    const termo = document.getElementById("filtroBusca")?.value?.toLowerCase().trim() || "";
 
-        tabela.innerHTML += `
-            <tr>
-                <td>
-                    <div id="view-e-${item.id}" class="equipe-lista">
-                        ${
-                            equipe.length
-                            ? equipe.map(t => `<span class="badge-equipe">${t}</span>`).join("")
-                            : "-"
-                        }
-                    </div>
+    if(!termo) return servicosPendentes;
 
-                    <div id="edit-e-${item.id}" style="display:none;">
-                        <select multiple id="equipe-${item.id}">
-                            ${montarTecnicos(equipe)}
-                        </select>
-                    </div>
-                </td>
+    return servicosPendentes.filter(item => {
+        const texto = [
+            item.servico,
+            item.localidade,
+            item.descricao,
+            item.prioridade,
+            item.enviado_por,
+            item.status
+        ].join(" ").toLowerCase();
 
-                <td>
-                    <div id="view-t-${item.id}">${item.tipo_servico || "-"}</div>
-                    <input id="edit-t-${item.id}" value="${item.tipo_servico || ""}" style="display:none;">
-                </td>
-
-                <td>
-                    <div id="view-c-${item.id}">${item.cidade_nome || "-"}</div>
-                    <select id="edit-c-${item.id}" style="display:none;">
-                        ${montarCidades(item.cidade_id)}
-                    </select>
-                </td>
-
-                <td>
-                    <div id="view-p-${item.id}">
-                        <span class="periodo-badge">${item.periodo || "-"}</span>
-                    </div>
-
-                    <select id="edit-p-${item.id}" style="display:none;">
-                        <option value="manha" ${item.periodo === "manha" ? "selected" : ""}>Manhã</option>
-                        <option value="tarde" ${item.periodo === "tarde" ? "selected" : ""}>Tarde</option>
-                        <option value="noite" ${item.periodo === "noite" ? "selected" : ""}>Noite</option>
-                    </select>
-                </td>
-
-                <td>
-                    <div id="view-d-${item.id}">
-                        ${item.data ? formatarDataCompleta(item.data) : "-"}
-                    </div>
-
-                    <input type="date" id="edit-d-${item.id}" value="${item.data || ""}" style="display:none;">
-                </td>
-
-                <td>${item.criado_em ? new Date(item.criado_em).toLocaleString() : "-"}</td>
-
-                <td>${item.adicionado_por || "-"}</td>
-
-                <td>
-                    <div class="acoes">
-                        <button class="btn btn-editar" onclick="editar(${item.id})">Editar</button>
-                        <button id="save-${item.id}" class="btn btn-salvar" style="display:none;" onclick="salvar(${item.id})">Salvar</button>
-                        <button class="btn btn-excluir" onclick="excluir(${item.id})">Excluir</button>
-                    </div>
-                </td>
-            </tr>
-        `;
+        return texto.includes(termo);
     });
 }
 
-function editar(id){
-    ["e","t","p","c","d"].forEach(f => {
-        document.getElementById(`view-${f}-${id}`).style.display = "none";
-        document.getElementById(`edit-${f}-${id}`).style.display = "block";
-    });
-
-    document.getElementById(`save-${id}`).style.display = "inline-flex";
+function montarLinha(item){
+    return `
+        <tr>
+            <td><strong>${escapeHTML(item.servico || "-")}</strong></td>
+            <td>${escapeHTML(item.localidade || "-")}</td>
+            <td style="min-width:300px;">${escapeHTML(item.descricao || "-")}</td>
+            <td><span class="${classePrioridade(item.prioridade)}">${escapeHTML(item.prioridade || "Média")}</span></td>
+            <td>${escapeHTML(item.enviado_por || "-")}</td>
+            <td><span class="${classeStatus(item.status)}">${escapeHTML(item.status || "Pendente")}</span></td>
+            <td>${formatarData(item.criado_em)}</td>
+            <td>${formatarData(item.atualizado_em)}</td>
+            <td>
+                <div class="acoes">
+                    <button class="btn btn-editar" onclick="abrirModalEditar(${item.id})">Editar</button>
+                    <button class="btn btn-imprimir" onclick="imprimirServico(${item.id})">Imprimir</button>
+                    <button class="btn btn-anexo" onclick="visualizarAnexo(${item.id})">Visualizar Anexo</button>
+                    <button class="btn btn-excluir" onclick="excluir(${item.id})">Excluir</button>
+                </div>
+            </td>
+        </tr>
+    `;
 }
 
-async function salvar(id){
-    const equipe = Array.from(
-        document.getElementById(`equipe-${id}`).selectedOptions
-    ).map(o => o.value);
+function renderizarTabelas(){
+    const dados = filtrarDados();
 
-    if(equipe.length > 4){
-        alert("Máximo 4 técnicos");
+    const pendentes = dados.filter(item => String(item.status || "").toLowerCase() === "pendente");
+    const historico = dados.filter(item => String(item.status || "").toLowerCase() === "realizado");
+
+    const tabelaPendentes = document.getElementById("tabelaPendentes");
+    const tabelaHistorico = document.getElementById("tabelaHistorico");
+
+    tabelaPendentes.innerHTML = pendentes.length
+        ? pendentes.map(montarLinha).join("")
+        : `<tr><td colspan="9">Nenhum serviço pendente cadastrado</td></tr>`;
+
+    tabelaHistorico.innerHTML = historico.length
+        ? historico.map(montarLinha).join("")
+        : `<tr><td colspan="9">Nenhum serviço realizado no histórico</td></tr>`;
+}
+
+function visualizarAnexo(id){
+    const item = servicosPendentes.find(i => Number(i.id) === Number(id));
+
+    if(!item || !item.anexo){
+        alert("Este serviço não possui anexo.");
         return;
     }
 
-    const body = {
-        equipe,
-        tipo_servico:document.getElementById(`edit-t-${id}`).value,
-        periodo:document.getElementById(`edit-p-${id}`).value,
-        cidade_id:document.getElementById(`edit-c-${id}`).value,
-        data:document.getElementById(`edit-d-${id}`).value
-    };
+    document.getElementById("frameAnexo").src = item.anexo;
+    document.getElementById("modalAnexo").style.display = "flex";
+}
 
-    await fetchAuth(`/api/cronograma/${id}`, {
-        method:"PUT",
-        headers:{ "Content-Type":"application/json" },
-        body:JSON.stringify(body)
-    });
+function fecharModalAnexo(){
+    document.getElementById("frameAnexo").src = "";
+    document.getElementById("modalAnexo").style.display = "none";
+}
 
-    carregar();
+function imprimirServico(id){
+    const item = servicosPendentes.find(i => Number(i.id) === Number(id));
+
+    if(!item){
+        alert("Serviço não encontrado.");
+        return;
+    }
+
+    const area = document.getElementById("areaImpressao");
+
+    area.innerHTML = `
+        <div style="font-family:Arial, Helvetica, sans-serif; color:#0f172a;">
+            <h2 style="margin-bottom:5px;">SGOS - Serviço Pendente</h2>
+            <p style="margin-top:0; color:#64748b;">Ficha de serviço registrado</p>
+
+            <hr style="border:none; border-top:1px solid #e5e7eb; margin:18px 0;">
+
+            <p><strong>Serviço:</strong> ${escapeHTML(item.servico || "-")}</p>
+            <p><strong>Localidade:</strong> ${escapeHTML(item.localidade || "-")}</p>
+            <p><strong>Prioridade:</strong> ${escapeHTML(item.prioridade || "Média")}</p>
+            <p><strong>Status:</strong> ${escapeHTML(item.status || "Pendente")}</p>
+            <p><strong>Enviado por:</strong> ${escapeHTML(item.enviado_por || "-")}</p>
+            <p><strong>Criado em:</strong> ${formatarData(item.criado_em)}</p>
+            <p><strong>Atualizado em:</strong> ${formatarData(item.atualizado_em)}</p>
+
+            <h3 style="margin-top:22px;">Descrição</h3>
+            <div style="border:1px solid #e5e7eb; border-radius:10px; padding:14px; min-height:90px;">
+                ${escapeHTML(item.descricao || "-")}
+            </div>
+
+            <p style="margin-top:22px;"><strong>Anexo:</strong> ${item.anexo ? escapeHTML(item.anexo) : "Sem anexo"}</p>
+        </div>
+    `;
+
+    area.style.display = "block";
+    window.print();
+    area.style.display = "none";
 }
 
 async function excluir(id){
-    if(!confirm("Excluir este agendamento?")) return;
+    if(!confirm("Excluir este serviço?")) return;
 
-    await fetchAuth(`/api/cronograma/${id}`, {
+    await fetchAuth(`/api/servicos-pendentes/${id}`, {
         method:"DELETE"
     });
 
     carregar();
 }
 
-async function abrirModal(){
-    await carregarBase();
+function abrirModalNovo(){
+    document.getElementById("modalTitulo").innerText = "Novo Serviço Pendente";
+    document.getElementById("editId").value = "";
 
-    document.getElementById("modal").style.display = "flex";
-    document.getElementById("equipeModal").innerHTML = montarTecnicos();
-    document.getElementById("cidadeModal").innerHTML = montarCidades();
+    document.getElementById("servico").value = "";
+    document.getElementById("localidade").value = "";
+    document.getElementById("descricao").value = "";
+    document.getElementById("prioridade").value = "Média";
+    document.getElementById("status").value = "Pendente";
+    document.getElementById("anexo").value = "";
+    document.getElementById("anexoAtual").innerText = "";
+
+    document.getElementById("modalServico").style.display = "flex";
+    document.getElementById("servico").focus();
 }
 
-function fecharModal(){
-    document.getElementById("modal").style.display = "none";
-}
+function abrirModalEditar(id){
+    const item = servicosPendentes.find(i => Number(i.id) === Number(id));
 
-async function salvarNovo(){
-    const equipe = Array.from(
-        document.getElementById("equipeModal").selectedOptions
-    ).map(o => o.value);
-
-    if(equipe.length > 4){
-        alert("Máximo 4 técnicos");
+    if(!item){
+        alert("Serviço não encontrado.");
         return;
     }
 
-    const body = {
-        data:document.getElementById("data").value,
-        equipe,
-        tipo_servico:document.getElementById("tipo").value,
-        cidade_id:document.getElementById("cidadeModal").value,
-        periodo:document.getElementById("periodo").value
-    };
+    document.getElementById("modalTitulo").innerText = "Editar Serviço";
+    document.getElementById("editId").value = item.id;
 
-    await fetchAuth("/api/cronograma", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body:JSON.stringify(body)
+    document.getElementById("servico").value = item.servico || "";
+    document.getElementById("localidade").value = item.localidade || "";
+    document.getElementById("descricao").value = item.descricao || "";
+    document.getElementById("prioridade").value = item.prioridade || "Média";
+    document.getElementById("status").value = item.status || "Pendente";
+    document.getElementById("anexo").value = "";
+
+    document.getElementById("anexoAtual").innerText = item.anexo
+        ? "Anexo atual será mantido se nenhum novo arquivo for enviado."
+        : "Nenhum anexo atual.";
+
+    document.getElementById("modalServico").style.display = "flex";
+}
+
+function fecharModalServico(){
+    document.getElementById("modalServico").style.display = "none";
+}
+
+async function salvarServico(){
+    const id = document.getElementById("editId").value;
+    const servico = document.getElementById("servico").value.trim();
+
+    if(!servico){
+        alert("Informe o serviço");
+        return;
+    }
+
+    const formData = new FormData();
+
+    formData.append("servico", servico);
+    formData.append("localidade", document.getElementById("localidade").value);
+    formData.append("descricao", document.getElementById("descricao").value);
+    formData.append("prioridade", document.getElementById("prioridade").value);
+    formData.append("status", document.getElementById("status").value);
+
+    const arquivo = document.getElementById("anexo").files[0];
+
+    if(arquivo){
+        formData.append("anexo", arquivo);
+    }
+
+    const url = id
+        ? `/api/servicos-pendentes/${id}`
+        : "/api/servicos-pendentes";
+
+    const method = id ? "PUT" : "POST";
+
+    await fetchAuth(url, {
+        method,
+        body:formData
     });
 
-    document.getElementById("modal").style.display = "none";
-
-    document.getElementById("data").value = "";
-    document.getElementById("tipo").value = "";
-
+    fecharModalServico();
     carregar();
 }
 

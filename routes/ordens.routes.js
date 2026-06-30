@@ -110,6 +110,82 @@ module.exports = (db, verificarAutenticacao, io) => {
     const upload = multer({ storage });
 
 
+function normalizarTecnicosObrigatorio(tecnicoRaw){
+    try {
+        if(Array.isArray(tecnicoRaw)){
+            return tecnicoRaw
+                .map(v => String(v ?? "").trim())
+                .filter(v => v && v !== "0" && v !== "null" && v !== "undefined");
+        }
+
+        if(typeof tecnicoRaw === "string"){
+            const texto = tecnicoRaw.trim();
+            if(!texto || texto === "[]" || texto === "[null]") return [];
+
+            if(texto.startsWith("[") && texto.endsWith("]")){
+                const parsed = JSON.parse(texto);
+                if(Array.isArray(parsed)){
+                    return parsed
+                        .map(v => String(v ?? "").trim())
+                        .filter(v => v && v !== "0" && v !== "null" && v !== "undefined");
+                }
+            }
+
+            return texto
+                .split(",")
+                .map(v => String(v ?? "").trim())
+                .filter(v => v && v !== "0" && v !== "null" && v !== "undefined");
+        }
+
+        return tecnicoRaw ? [tecnicoRaw] : [];
+    } catch {
+        return [];
+    }
+}
+
+
+function parseDataHoraLocal(valor){
+    if(!valor) return null;
+
+    const s = String(valor).trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+
+    if(m && !/[zZ]$/.test(s)){
+        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6] || 0));
+    }
+
+    return new Date(s);
+}
+
+function validarDataHoraAtualOuFutura(valor, nomeCampo){
+    if(!valor) return;
+
+    const s = String(valor).trim();
+    const ano = Number(s.slice(0, 4));
+    const anoAtual = new Date().getFullYear();
+
+    if(!ano || ano < anoAtual){
+        throw new Error(`${nomeCampo} inválido. Verifique o ano informado.`);
+    }
+
+    const d = parseDataHoraLocal(valor);
+
+    if(!d || isNaN(d.getTime())){
+        throw new Error(`${nomeCampo} inválido.`);
+    }
+
+    // Tolerância de 2 minutos para salvar no mesmo minuto.
+    if(d.getTime() < Date.now() - 120000){
+        throw new Error(`${nomeCampo} precisa ser uma data e hora atual ou futura.`);
+    }
+}
+
+function possuiTecnicoObrigatorio(tecnicoRaw){
+    return normalizarTecnicosObrigatorio(tecnicoRaw).length > 0;
+}
+
+
+
     // ===============================
     // 🔔 PUSH FCM - SOMENTE OS EM ANDAMENTO
     // ===============================
@@ -751,7 +827,8 @@ router.delete(
                 SELECT
                     nome,
                     telefone,
-                    login
+                    login,
+                    tecnico
                 FROM ordens_servico
                 WHERE id = ?
                 AND empresa_id = ?
@@ -840,7 +917,8 @@ router.post(
                 SELECT
                     nome,
                     telefone,
-                    login
+                    login,
+                    tecnico
                 FROM ordens_servico
                 WHERE id = ?
                 AND empresa_id = ?
@@ -853,6 +931,12 @@ router.post(
 
             const os =
                 rows[0] || {};
+
+            if(!possuiTecnicoObrigatorio(os.tecnico)){
+                return res.status(400).json({
+                    erro: "Selecione pelo menos um técnico para poder lançar OS."
+                });
+            }
 
             // ===============================
             // UPDATE
@@ -1453,6 +1537,12 @@ router.get("/:id", verificarAutenticacao, async (req, res) => {
 
             SELECT 
                 os.*,
+                DATE_FORMAT(os.agendamento, '%Y-%m-%d %H:%i:%s') AS agendamento,
+                DATE_FORMAT(os.agendamento_envio, '%Y-%m-%d %H:%i:%s') AS agendamento_envio,
+                DATE_FORMAT(os.criado_em, '%Y-%m-%d %H:%i:%s') AS criado_em,
+                DATE_FORMAT(os.data_abertura, '%Y-%m-%d %H:%i:%s') AS data_abertura,
+                DATE_FORMAT(os.iniciado_em, '%Y-%m-%d %H:%i:%s') AS iniciado_em,
+                DATE_FORMAT(os.finalizado_em, '%Y-%m-%d %H:%i:%s') AS finalizado_em,
 
                 u.usuario AS criado_por_nome,
 
@@ -1566,7 +1656,11 @@ router.put(
             agendamento,
             agendamento_envio,
 
-            status
+            status,
+            aplicativo,
+            url,
+            usuario: usuarioTV,
+            senha
 
         } = req.body;
 
@@ -1585,6 +1679,32 @@ router.put(
                 /\s+/g,
                 "_"
             );
+
+        try{
+            validarDataHoraAtualOuFutura(agendamento, "Agendamento de Realização");
+            validarDataHoraAtualOuFutura(agendamento_envio, "Agendamento de Envio");
+        }catch(dataErr){
+            return res.status(400).json({ erro: dataErr.message });
+        }
+
+        if(agendamento_envio && statusFinal !== "em_andamento" && statusFinal !== "concluido"){
+            statusFinal = "agendado";
+        }
+
+        // ===============================
+        // 🔒 REGRA TÉCNICO OBRIGATÓRIO
+        // ===============================
+        if(statusFinal === "em_andamento" && !possuiTecnicoObrigatorio(tecnico)){
+            return res.status(400).json({
+                erro: "Selecione pelo menos um técnico para poder lançar OS."
+            });
+        }
+
+        if(agendamento_envio && !possuiTecnicoObrigatorio(tecnico)){
+            return res.status(400).json({
+                erro: "Selecione pelo menos um técnico para criar OS com agendamento de envio."
+            });
+        }
 
         // ===============================
         // ✏️ UPDATE
@@ -1621,7 +1741,11 @@ router.put(
                 agendamento = ?,
                 agendamento_envio = ?,
 
-                status = ?
+                status = ?,
+                aplicativo = ?,
+                url = ?,
+                usuario = ?,
+                senha = ?
 
             WHERE id = ?
             AND empresa_id = ?
@@ -1657,6 +1781,10 @@ router.put(
             agendamento_envio || null,
 
             statusFinal,
+            aplicativo || null,
+            url || null,
+            usuarioTV || null,
+            senha || null,
 
             req.params.id,
             req.usuario.empresa_id
@@ -1739,6 +1867,25 @@ router.post(
     async (req, res) => {
 
         try {
+
+            const [rows] = await db.query(`
+                SELECT tecnico
+                FROM ordens_servico
+                WHERE id = ?
+                AND empresa_id = ?
+                LIMIT 1
+            `, [
+                req.params.id,
+                req.usuario.empresa_id
+            ]);
+
+            const os = rows[0] || {};
+
+            if(!possuiTecnicoObrigatorio(os.tecnico)){
+                return res.status(400).json({
+                    erro: "Selecione pelo menos um técnico para poder lançar OS."
+                });
+            }
 
             await db.query(`
                 UPDATE ordens_servico

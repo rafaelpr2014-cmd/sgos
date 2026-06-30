@@ -250,6 +250,49 @@ body{
     cursor:pointer;
 }
 
+
+.badge-avulsa{
+    display:inline-block;
+    background:#fef3c7;
+    color:#92400e;
+    padding:5px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:900;
+    margin-left:6px;
+}
+
+.sva-card{
+    margin-top:10px;
+    background:#eff6ff;
+    border:1px solid #bfdbfe;
+    border-radius:14px;
+    padding:10px;
+    color:#1e3a8a;
+    line-height:1.55;
+}
+
+.sva-card b{
+    color:#1e3a8a;
+}
+
+.resumo-modal-os{
+    background:#f8fafc;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    padding:12px;
+    margin-bottom:12px;
+    font-size:13px;
+    line-height:1.55;
+    color:#334155;
+}
+
+.resumo-modal-os h4{
+    margin:0 0 8px;
+    color:#0f172a;
+    font-size:15px;
+}
+
 /* ================= MODAL ================= */
 
 .modal{
@@ -585,6 +628,8 @@ body{
     <div class="modal-content">
         <h3>Ações da OS</h3>
 
+        <div id="resumoModalOS" class="resumo-modal-os"></div>
+
         <textarea id="obs" placeholder="Observação..."></textarea>
         <input type="file" id="foto">
 
@@ -709,6 +754,151 @@ function setTab(novaTab){
 let osSelecionada = null;
 let ultimaQuantidadeOS = 0;
 let primeiraCarga = true;
+
+
+function normalizarStatusApp(status){
+    const s = String(status || "").toLowerCase().trim();
+
+    if(s.includes("andamento") || s.includes("exec")) return "em_andamento";
+    if(s.includes("concl") || s.includes("final")) return "concluido";
+    if(s.includes("ausente")) return "cliente_ausente";
+    if(s.includes("abert")) return "aberto";
+    if(s.includes("agend")) return "agendado";
+
+    return s.replace(/\s+/g, "_");
+}
+
+function chaveOS(os){
+    return `${os._tipo || "normal"}-${os.id}`;
+}
+
+function encontrarOS(chaveOuId){
+    return OS.find(o => chaveOS(o) === String(chaveOuId)) ||
+           OS.find(o => String(o.id) === String(chaveOuId));
+}
+
+function normalizarOSAvulsa(os){
+    const endereco = os.endereco ||
+        [os.rua, os.n, os.bairro].filter(Boolean).join(", ");
+
+    return {
+        ...os,
+        _tipo: "avulsa",
+        _key: `avulsa-${os.id}`,
+        status: normalizarStatusApp(os.status),
+        nome: os.nome || os.cliente || "OS Avulsa",
+        telefone: os.telefone || "",
+        login: os.login || "",
+        id_cliente: os.id_cliente || "",
+        localidade_nome: os.localidade_nome || os.localidade || "-",
+        tipo_servico_nome: os.tipo_servico_nome || os.tipo_servico || "OS Avulsa",
+        plano_nome: os.plano_nome || "-",
+        rua: os.rua || endereco || "-",
+        referencia: os.referencia || "",
+        bairro: os.bairro || "",
+        tecnicos_nomes: os.tecnicos_nomes || os.tecnicos || os.tecnico || "-",
+        iniciado_em: os.iniciado_em || os.iniciada_em || os.atualizado_em || os.criado_em,
+        finalizado_em: os.finalizado_em || os.concluido_em || os.atualizado_em,
+        anexo_path: os.anexo_path || os.anexo || os.arquivo || "",
+        observacao: os.observacao || os.observacoes || os.descricao || "",
+        descricao: os.descricao || os.observacao || ""
+    };
+}
+
+function normalizarOSNormal(os){
+    return {
+        ...os,
+        _tipo: "normal",
+        _key: `normal-${os.id}`,
+        status: normalizarStatusApp(os.status)
+    };
+}
+
+
+function enderecoAvulsaLimpo(os){
+    const texto = String(os.endereco || os.rua || "").trim();
+
+    if(!texto) return "-";
+
+    const idx = texto.toUpperCase().indexOf("CLIENTES:");
+    if(idx >= 0){
+        return texto.slice(0, idx).replace(/[,;\-\s]+$/g, "").trim() || "-";
+    }
+
+    return texto;
+}
+
+function descricaoAvulsaLimpa(os){
+    const texto = String(os.descricao || os.observacao || os.referencia || "").trim();
+    const endereco = String(os.endereco || os.rua || "").trim();
+
+    let base = texto;
+
+    const idxEnd = endereco.toUpperCase().indexOf("CLIENTES:");
+    if(idxEnd >= 0){
+        base = endereco.slice(idxEnd).trim();
+    }
+
+    const idx = base.toUpperCase().indexOf("CLIENTES:");
+    if(idx >= 0){
+        base = base.slice(idx).trim();
+    }
+
+    return base || "-";
+}
+
+function enderecoNormal(os){
+    const partes = [];
+    if(os.rua) partes.push(os.rua);
+    if(os.n) partes.push(os.n);
+    if(os.referencia) partes.push(os.referencia);
+    if(os.bairro) partes.push(`(${os.bairro})`);
+
+    return partes.join(", ").replace(", (", " (") || "-";
+}
+
+function svaHTML(os){
+    if(!os.aplicativo && !os.url && !os.usuario && !os.senha) return "";
+
+    return `
+        <div class="sva-card">
+            <b>📺 Serviço de TV / SVA</b><br>
+            <b>Aplicativo:</b> ${os.aplicativo || "-"}<br>
+            <b>URL:</b> ${os.url || "-"}<br>
+            <b>Usuário:</b> ${os.usuario || "-"}<br>
+            <b>Senha:</b> ${os.senha || "-"}
+        </div>
+    `;
+}
+
+function resumoModalHTML(os){
+    const tipo = os._tipo === "avulsa" ? "OS Avulsa" : "OS";
+
+    if(os._tipo === "avulsa"){
+        return `
+            <h4>${tipo} #${os.id}</h4>
+            <b>Localidade:</b> ${os.localidade_nome || "-"}<br>
+            <b>Tipo:</b> ${os.tipo_servico_nome || "-"}<br>
+            <b>Endereço:</b> ${enderecoAvulsaLimpo(os)}<br>
+            <b>Descrição:</b> ${descricaoAvulsaLimpa(os)}<br>
+            <b>Técnicos:</b> ${os.tecnicos_nomes || "-"}<br>
+        `;
+    }
+
+    return `
+        <h4>${tipo} #${os.id}</h4>
+        <b>Cliente:</b> ${os.nome || "-"}<br>
+        <b>Localidade:</b> ${os.localidade_nome || "-"}<br>
+        <b>Tipo:</b> ${os.tipo_servico_nome || "-"}<br>
+        <b>Plano:</b> ${os.plano_nome || "-"}<br>
+        <b>VLAN:</b> ${os.vlan || "-"}<br>
+        <b>Endereço:</b> ${enderecoNormal(os)}<br>
+        <b>Técnicos:</b> ${os.tecnicos_nomes || "-"}<br>
+        ${os.observacao || os.descricao ? `<b>Observação:</b> ${os.observacao || os.descricao}<br>` : ""}
+        ${svaHTML(os)}
+    `;
+}
+
 
 
 /* ================= SOCKET.IO REALTIME ================= */
@@ -952,7 +1142,28 @@ async function load(){
             }
         });
 
-        const novaLista = await res.json();
+        const listaNormal = await res.json();
+
+        let listaAvulsas = [];
+
+        try {
+            const resAvulsas = await fetch("/api/os-avulsas/painel?periodo=30dias", {
+                headers: {
+                    "x-usuario-id": user.id
+                }
+            });
+
+            if(resAvulsas.ok){
+                listaAvulsas = await resAvulsas.json();
+            }
+        } catch(errAvulsa){
+            console.warn("Não foi possível carregar OS Avulsas no app:", errAvulsa);
+        }
+
+        const novaLista = [
+            ...(Array.isArray(listaNormal) ? listaNormal.map(normalizarOSNormal) : []),
+            ...(Array.isArray(listaAvulsas) ? listaAvulsas.map(normalizarOSAvulsa) : [])
+        ];
 
         // =========================
         // DETECTA NOVAS OS
@@ -963,16 +1174,16 @@ async function load(){
 
             // primeira vez NÃO notifica
             if(primeiraCarga){
-                idsJaCarregados.add(os.id);
+                idsJaCarregados.add(chaveOS(os));
                 return;
             }
 
             // nova OS encontrada
-            if(!idsJaCarregados.has(os.id)){
+            if(!idsJaCarregados.has(chaveOS(os))){
 
-                idsJaCarregados.add(os.id);
+                idsJaCarregados.add(chaveOS(os));
 
-                novosIds.push(os.id);
+                novosIds.push(chaveOS(os));
 
             }
 
@@ -980,7 +1191,7 @@ async function load(){
 
         // remove ids inexistentes
         const idsAtuais =
-        new Set(novaLista.map(o => o.id));
+        new Set(novaLista.map(o => chaveOS(o)));
 
         idsJaCarregados.forEach(id => {
 
@@ -1084,7 +1295,6 @@ function render(){
             <b>Enviado por:</b> ${o.criado_por_nome || '-'}<br>
             <b>Iniciado em:</b> ${format(o.iniciado_em)}<br>
             <b>Agendamento:</b> ${format(o.agendamento)}<br>
-            <b>VLAN:</b> ${o.vlan || '-'}<br>
             `;
         }
 
@@ -1099,33 +1309,38 @@ function render(){
             <b>Finalizado em:</b> ${format(o.finalizado_em)}<br>
             <b>Iniciado por:</b> ${o.enviado_por_nome || o.iniciado_por || '-'}<br>
             <b>Finalizado por:</b> ${o.finalizado_por_nome || o.finalizado_por || '-'}<br>
-            <b>VLAN:</b> ${o.vlan || '-'}<br>
             `;
         }
 
         return `
-        <div class="os" onclick="abrirModal(${o.id})">
+        <div class="os" onclick="abrirModal('${chaveOS(o)}')">
             <div class="data-right">${dataTopo}</div>
 
-            <b>OS #${o.id}</b><br><br>
+            <b>${o._tipo === "avulsa" ? "OS AVULSA" : "OS"} #${o.id}</b>${o._tipo === "avulsa" ? '<span class="badge-avulsa">Avulsa</span>' : ""}<br><br>
 
-            <b>Cliente:</b> ${o.nome || '-'}<br>
-            <b>Localidade:</b> ${o.localidade_nome || '-'}<br>
-            <b>Tipo:</b> ${o.tipo_servico_nome || '-'}<br>
-            <b>Plano:</b> ${o.plano_nome || '-'}<br>
+            ${o._tipo === "avulsa" ? `
+                <b>Localidade:</b> ${o.localidade_nome || '-'}<br>
+                <b>Tipo:</b> ${o.tipo_servico_nome || '-'}<br>
+                <b>Endereço:</b> ${enderecoAvulsaLimpo(o)}<br>
+                <b>Descrição:</b> ${descricaoAvulsaLimpa(o)}<br>
+                ${extras}
+                <b>Técnicos:</b> ${o.tecnicos_nomes || '-'}<br>
+            ` : `
+                <b>Cliente:</b> ${o.nome || '-'}<br>
+                <b>Localidade:</b> ${o.localidade_nome || '-'}<br>
+                <b>Tipo:</b> ${o.tipo_servico_nome || '-'}<br>
+                <b>Plano:</b> ${o.plano_nome || '-'}<br>
+                <b>VLAN:</b> ${o.vlan || '-'}<br>
+                <b>Endereço:</b> ${enderecoNormal(o)}<br>
+                <b>Login:</b> ${o.login || '-'}<br>
+                <b>ID:</b> ${o.id_cliente || '-'}<br>
+                <b>Telefone:</b> ${o.telefone || '-'}<br>
+                ${extras}
+                <b>Técnicos:</b> ${o.tecnicos_nomes || '-'}<br>
+                ${svaHTML(o)}
+            `}
 
-            <b>VLAN:</b> ${o.vlan || '-'}<br>
-
-            <b>Endereço:</b> ${o.rua || ''}, ${o.referencia || ''} (${o.bairro || ''})<br>
-            <b>Login:</b> ${o.login || '-'}<br>
-            <b>ID:</b> ${o.id_cliente || '-'}<br>
-            <b>Telefone:</b> ${o.telefone || '-'}<br>
-
-            ${extras}
-
-            <b>Técnicos:</b> ${o.tecnicos_nomes || '-'}<br>
-
-            <button class="btn-whatsapp" onclick="compartilhar(event, ${o.id})">
+            <button class="btn-whatsapp" onclick="compartilhar(event, '${chaveOS(o)}')">
                 📲
             </button>
         </div>`;
@@ -1138,6 +1353,47 @@ async function enviarAcao(tipo){
     if(!osSelecionada){
         alert("Nenhuma OS selecionada");
         return;
+    }
+
+    const osAtual = encontrarOS(osSelecionada);
+
+    if(!osAtual){
+        alert("OS não encontrada");
+        return;
+    }
+
+    if(osAtual._tipo === "avulsa"){
+        if(tipo !== "concluir"){
+            alert("Para OS Avulsa, use apenas a ação Concluir no app.");
+            return;
+        }
+
+        try{
+            const res = await fetch(`/api/os-avulsas/${osAtual.id}/status`, {
+                method:"PUT",
+                headers:{
+                    "Content-Type":"application/json",
+                    "x-usuario-id": user.id
+                },
+                body:JSON.stringify({ status:"concluido" })
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if(!res.ok){
+                throw new Error(data.erro || "Erro ao concluir OS Avulsa");
+            }
+
+            alert("OS Avulsa concluída com sucesso");
+            fecharModal();
+            load();
+            return;
+
+        }catch(err){
+            console.error(err);
+            alert("Erro ao concluir OS Avulsa");
+            return;
+        }
     }
 
     try {
@@ -1197,11 +1453,30 @@ async function enviarAcao(tipo){
 }
 
 /* ================= MODAL ================= */
-function abrirModal(id){
+function abrirModal(chave){
 
     if(tab !== "andamento") return;
 
-    osSelecionada = id;
+    const os = encontrarOS(chave);
+
+    if(!os){
+        alert("OS não encontrada");
+        return;
+    }
+
+    osSelecionada = chaveOS(os);
+
+    const resumo = document.getElementById("resumoModalOS");
+    if(resumo){
+        resumo.innerHTML = resumoModalHTML(os);
+    }
+
+    const obs = document.getElementById("obs");
+    if(obs) obs.value = "";
+
+    const foto = document.getElementById("foto");
+    if(foto) foto.value = "";
+
     const modal = document.getElementById("modal");
     if(modal) modal.style.display = "flex";
 }
@@ -1222,10 +1497,25 @@ function compartilhar(e, id){
 
     e.stopPropagation();
 
-    const os = OS.find(o => o.id === id);
+    const os = encontrarOS(id);
     if(!os) return;
 
-    const msg = `
+    const svaMsg = (os.aplicativo || os.url || os.usuario || os.senha)
+        ? `\n\n📺 Serviço de TV / SVA\nAplicativo: ${os.aplicativo || '-'}\nURL: ${os.url || '-'}\nUsuário: ${os.usuario || '-'}\nSenha: ${os.senha || '-'}`
+        : "";
+
+    const msg = os._tipo === "avulsa"
+        ? `
+🧾 OS AVULSA #${os.id}
+
+📍 Localidade: ${os.localidade_nome || '-'}
+🛠️ Tipo: ${os.tipo_servico_nome || '-'}
+
+🏠 Endereço: ${enderecoAvulsaLimpo(os)}
+📝 Descrição: ${descricaoAvulsaLimpa(os)}
+👨‍🔧 Técnicos: ${os.tecnicos_nomes || '-'}
+`.trim()
+        : `
 🧾 OS #${os.id}
 
 👤 Cliente: ${os.nome || '-'}
@@ -1233,11 +1523,11 @@ function compartilhar(e, id){
 🛠️ Tipo: ${os.tipo_servico_nome || '-'}
 📦 Plano: ${os.plano_nome || '-'}
 
-🏠 Endereço: ${os.rua || ''}, ${os.referencia || ''} (${os.bairro || ''})
+🏠 Endereço: ${enderecoNormal(os)}
 
 🔐 Login: ${os.login || '-'}
 🆔 ID: ${os.id_cliente || '-'}
-📞 Telefone: ${os.telefone || '-'}
+📞 Telefone: ${os.telefone || '-'}${svaMsg}
 `.trim();
 
     window.open("https://wa.me/?text=" + encodeURIComponent(msg));
@@ -1247,7 +1537,7 @@ function compartilhar(e, id){
 /* ================= VER ANEXO ================= */
 function verAnexo(){
 
-    const os = OS.find(o => o.id === osSelecionada);
+    const os = encontrarOS(osSelecionada);
 
     if(!os || !os.anexo_path){
         alert("Nenhum anexo encontrado");
@@ -1310,6 +1600,12 @@ async function pegarLocalizacao(){
         return;
     }
 
+    const osAtual = encontrarOS(osSelecionada);
+    if(osAtual && osAtual._tipo === "avulsa"){
+        alert("Localização para OS Avulsa ainda não está disponível no app.");
+        return;
+    }
+
     if(!navigator.geolocation){
         alert("GPS não suportado neste dispositivo");
         return;
@@ -1355,7 +1651,7 @@ async function pegarLocalizacao(){
 
 function visualizarLocalizacao(){
 
-    const os = OS.find(o => o.id === osSelecionada);
+    const os = encontrarOS(osSelecionada);
 
     if(!os){
         alert("OS não encontrada");
@@ -1692,7 +1988,7 @@ function abrirOSDaNotificacaoSeExistir(){
 
     if(!idNotificacao || !OS.length) return;
 
-    const os = OS.find(o => String(o.id) === String(idNotificacao));
+    const os = OS.find(o => o._tipo === 'normal' && String(o.id) === String(idNotificacao));
 
     if(!os) return;
 
@@ -1702,8 +1998,8 @@ function abrirOSDaNotificacaoSeExistir(){
     render();
 
     setTimeout(() => {
-        abrirModal(os.id);
-        const card = document.querySelector(`.os[onclick="abrirModal(${os.id})"]`);
+        abrirModal(chaveOS(os));
+        const card = null;
         if(card) card.scrollIntoView({ behavior:"smooth", block:"center" });
     }, 300);
 }

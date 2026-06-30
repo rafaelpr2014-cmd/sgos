@@ -1,19 +1,21 @@
 const path = require("path");
 const fs = require("fs");
 
-let adminInstance = null;
+let firebaseInstance = null;
 
-function iniciarFirebase(){
-    if(adminInstance){
-        return adminInstance;
+function iniciarFirebase() {
+    if (firebaseInstance) {
+        return firebaseInstance;
     }
 
-    let admin;
+    let initializeApp, cert, getApps, getMessaging;
 
     try {
-        admin = require("firebase-admin");
-    } catch(err){
-        console.warn("⚠️ firebase-admin não instalado. Rode: npm install firebase-admin");
+        ({ initializeApp, cert, getApps } = require("firebase-admin/app"));
+        ({ getMessaging } = require("firebase-admin/messaging"));
+    } catch (err) {
+        console.warn("⚠️ Firebase Admin SDK não instalado.");
+        console.warn("Execute: npm install firebase-admin");
         return null;
     }
 
@@ -22,8 +24,8 @@ function iniciarFirebase(){
             process.env.FIREBASE_SERVICE_ACCOUNT ||
             path.join(process.cwd(), "firebase-service-account.json");
 
-        if(!fs.existsSync(servicePath)){
-            console.warn("⚠️ firebase-service-account.json não encontrado. Push FCM não será enviado ainda.");
+        if (!fs.existsSync(servicePath)) {
+            console.warn("⚠️ firebase-service-account.json não encontrado.");
             return null;
         }
 
@@ -31,26 +33,34 @@ function iniciarFirebase(){
             fs.readFileSync(servicePath, "utf8")
         );
 
-        if(!serviceAccount.private_key || !serviceAccount.client_email){
-            console.warn("⚠️ firebase-service-account.json inválido. Gere a chave em Firebase > Configurações do projeto > Contas de serviço.");
+        if (!serviceAccount.private_key || !serviceAccount.client_email) {
+            console.warn("⚠️ firebase-service-account.json inválido.");
             return null;
         }
 
-        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
+        serviceAccount.private_key =
+            serviceAccount.private_key.replace(/\\n/g, "\n");
 
-        try {
-            admin.app();
-        } catch {
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount)
+        if (!getApps().length) {
+            initializeApp({
+                credential: cert(serviceAccount)
             });
+
+            console.log("✅ Firebase Admin inicializado");
         }
 
-        adminInstance = admin;
-        console.log("✅ Firebase Admin inicializado");
-        return adminInstance;
+        const messaging = getMessaging();
 
-    } catch(err){
+        // Compatibilidade com código antigo:
+        // permite usar admin.messaging().send(...)
+        firebaseInstance = {
+            messaging: () => messaging,
+            getMessaging: () => messaging
+        };
+
+        return firebaseInstance;
+
+    } catch (err) {
         console.warn("⚠️ Firebase Admin não inicializado:", err.message);
         return null;
     }

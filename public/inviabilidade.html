@@ -775,7 +775,7 @@ tr:hover{ background:#f8fbff; }
 
                 <select id="filtroPeriodo">
                     <option value="">Todos os períodos</option>
-                    <option value="7" selected>Últimos 7 dias</option>
+                    <option value="7">Últimos 7 dias</option>
                     <option value="15">Últimos 15 dias</option>
                     <option value="30">Últimos 30 dias</option>
                 </select>
@@ -836,7 +836,7 @@ tr:hover{ background:#f8fbff; }
 </div>
 
 <script>
-const API = "/api/ordens_servico";
+const API = "/api/inviabilidades";
 let dados = [];
 let filtradosAtuais = [];
 
@@ -993,11 +993,6 @@ async function carregarInviabilidades(){
                 .includes("inviabilidade")
         );
 
-        const periodoEl = document.getElementById("filtroPeriodo");
-        if(periodoEl && !periodoEl.value){
-            periodoEl.value = "7";
-        }
-
         renderTabela();
 
     }catch(err){
@@ -1053,41 +1048,59 @@ function renderTabela(){
     hoje.setHours(23,59,59,999);
 
     const filtrados = dados.filter(os => {
-        const dataOS = os.finalizado_em ? new Date(os.finalizado_em) : null;
+        const dataBase = os.finalizado_em || os.atualizado_em || os.criado_em || os.agendamento;
+        const dataOS = dataBase ? new Date(dataBase) : null;
         let passouPeriodo = true;
 
-        if(periodo && dataOS){
-            const limite = new Date();
-            limite.setDate(limite.getDate() - (Number(periodo) - 1));
-            limite.setHours(0,0,0,0);
-
-            passouPeriodo = dataOS >= limite && dataOS <= hoje;
-        }
-
-        if(dataInicio && dataOS){
-            const inicio = new Date(dataInicio);
-            inicio.setHours(0,0,0,0);
-
-            if(dataOS < inicio){
+        // IMPORTANTE:
+        // Por padrão a página mostra TODOS os períodos.
+        // Só filtra por período quando o usuário escolher 7, 15 ou 30 dias.
+        if(periodo){
+            if(!dataOS || isNaN(dataOS.getTime())){
                 passouPeriodo = false;
+            }else{
+                const limite = new Date();
+                limite.setDate(limite.getDate() - (Number(periodo) - 1));
+                limite.setHours(0,0,0,0);
+
+                passouPeriodo = dataOS >= limite && dataOS <= hoje;
             }
         }
 
-        if(dataFim && dataOS){
-            const fim = new Date(dataFim);
-            fim.setHours(23,59,59,999);
-
-            if(dataOS > fim){
+        if(dataInicio){
+            if(!dataOS || isNaN(dataOS.getTime())){
                 passouPeriodo = false;
+            }else{
+                const inicio = new Date(dataInicio + "T00:00:00");
+
+                if(dataOS < inicio){
+                    passouPeriodo = false;
+                }
+            }
+        }
+
+        if(dataFim){
+            if(!dataOS || isNaN(dataOS.getTime())){
+                passouPeriodo = false;
+            }else{
+                const fim = new Date(dataFim + "T23:59:59");
+
+                if(dataOS > fim){
+                    passouPeriodo = false;
+                }
             }
         }
 
         return (
             (!filtroCliente || (os.nome || "").toLowerCase().includes(filtroCliente)) &&
-            (!filtroCidade || (os.localidade_nome || "").toLowerCase().includes(filtroCidade)) &&
+            (!filtroCidade || (os.localidade_nome || os.localidade || "").toLowerCase().includes(filtroCidade)) &&
             (!filtroTecnico || (os.tecnicos_nomes || "").toLowerCase().includes(filtroTecnico)) &&
             passouPeriodo
         );
+    }).sort((a,b) => {
+        const dataA = new Date(a.finalizado_em || a.atualizado_em || a.criado_em || a.agendamento || 0).getTime();
+        const dataB = new Date(b.finalizado_em || b.atualizado_em || b.criado_em || b.agendamento || 0).getTime();
+        return dataB - dataA;
     });
 
     filtradosAtuais = filtrados;
@@ -1120,15 +1133,15 @@ function renderTabela(){
 
             <td><strong>${os.nome || "-"}</strong></td>
 
-            <td>${os.localidade_nome || "-"}</td>
+            <td>${os.localidade_nome || os.localidade || "-"}</td>
 
             <td>${formatarEndereco(os)}</td>
 
             <td>${tecnicosFormatados}</td>
 
-            <td>${os.tipo_servico_nome || "-"}</td>
+            <td>${os.tipo_servico_nome || os.tipo_servico || "-"}</td>
 
-            <td>${os.plano_nome || "-"}</td>
+            <td>${os.plano_nome || os.plano || "-"}</td>
 
             <td>${os.id_cliente || "-"}</td>
 
