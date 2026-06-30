@@ -1680,14 +1680,41 @@ router.put(
                 "_"
             );
 
-        try{
-            validarDataHoraAtualOuFutura(agendamento, "Agendamento de Realização");
-            validarDataHoraAtualOuFutura(agendamento_envio, "Agendamento de Envio");
-        }catch(dataErr){
-            return res.status(400).json({ erro: dataErr.message });
+        // ===============================
+        // 🔁 ALIASES DE STATUS
+        // ===============================
+        if(statusFinal === "ausente"){
+            statusFinal = "cliente_ausente";
         }
 
-        if(agendamento_envio && statusFinal !== "em_andamento" && statusFinal !== "concluido"){
+        if(
+            statusFinal === "inviavel" ||
+            statusFinal === "inviável" ||
+            statusFinal === "inviabilizado"
+        ){
+            statusFinal = "inviabilidade";
+        }
+
+        // ===============================
+        // 🗓️ VALIDA DATAS SOMENTE QUANDO A OS CONTINUA ATIVA/AGENDADA
+        // Evita bloquear edição/status de OS antiga por causa de agendamento passado.
+        // ===============================
+        const statusFinalizaFluxo = [
+            "cliente_ausente",
+            "inviabilidade",
+            "concluido"
+        ].includes(statusFinal);
+
+        if(!statusFinalizaFluxo){
+            try{
+                validarDataHoraAtualOuFutura(agendamento, "Agendamento de Realização");
+                validarDataHoraAtualOuFutura(agendamento_envio, "Agendamento de Envio");
+            }catch(dataErr){
+                return res.status(400).json({ erro: dataErr.message });
+            }
+        }
+
+        if(agendamento_envio && statusFinal !== "em_andamento" && statusFinal !== "concluido" && statusFinal !== "cliente_ausente" && statusFinal !== "inviabilidade"){
             statusFinal = "agendado";
         }
 

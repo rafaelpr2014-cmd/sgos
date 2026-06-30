@@ -1411,17 +1411,23 @@ async function enviarAcao(tipo){
         }
 
         let rota = "";
+        const osId = osAtual.id;
 
         if(tipo === "ausente"){
-            rota = `/api/ordens_servico/ausente/${osSelecionada}`;
+            rota = `/api/ordens_servico/ausente/${osId}`;
         }
 
         if(tipo === "inviabilidade"){
-            rota = `/api/ordens_servico/inviabilidade/${osSelecionada}`;
+            rota = `/api/ordens_servico/inviabilidade/${osId}`;
         }
 
         if(tipo === "concluir"){
-            rota = `/api/ordens_servico/concluir/${osSelecionada}`;
+            rota = `/api/ordens_servico/concluir/${osId}`;
+        }
+
+        if(!rota){
+            alert("Ação inválida.");
+            return;
         }
 
         const res = await fetch(rota, {
