@@ -317,9 +317,9 @@ window.onload = () => {
     }
 
     // Se veio de logout, nunca faz auto login novamente.
+    // IMPORTANTE: não remove a trava aqui. Ela só será removida depois de um login manual com sucesso.
     if(veioDeLogout){
-        console.log("🚪 logout detectado; auto login bloqueado");
-        localStorage.removeItem("sgos_logout_forcado");
+        console.log("🚪 logout detectado; auto login bloqueado até novo login manual");
         return;
     }
 
@@ -490,4 +490,4 @@ document.addEventListener("keypress", (e) => {
 
 </body>
 </html>
-<!-- logout seguro atualizado 20260630 -->
+<!-- logout seguro atualizado 20260630 v2 bloqueia auto-login ate login manual -->

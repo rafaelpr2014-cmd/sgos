@@ -746,6 +746,15 @@ const osPushId = params.get("os_id") || params.get("os") || params.get("id_os");
 // =========================
 if(token && id){
 
+    // Se o usuário clicou em SAIR, o WebView pode reabrir a última URL antiga com token.
+    // Nesse caso NÃO aceita esse token antigo em hipótese alguma.
+    if(localStorage.getItem("sgos_logout_forcado") === "1"){
+        console.log("🚪 token antigo bloqueado após logout");
+        limparSessaoSGOS(true);
+        window.location.replace("index.html?logout=1&t=" + Date.now());
+        throw new Error("Login antigo bloqueado após logout");
+    }
+
     // Sempre que chega login pela URL, derruba qualquer sessão antiga antes de salvar a nova.
     limparSessaoSGOS(false);
 
@@ -1721,7 +1730,7 @@ function logout(){
 
     limparSessaoSGOS(true);
 
-    window.location.replace("index.html?logout=1");
+    window.location.replace("index.html?logout=1&t=" + Date.now());
 }
 
 /* ================= SOM ================= */
@@ -2065,4 +2074,4 @@ setInterval(() => {
 </html>
 <!-- force deploy appmobile 20260630005136 -->
 
-<!-- logout seguro atualizado 20260630 -->
+<!-- logout seguro atualizado 20260630 v2 bloqueia token antigo apos logout -->
