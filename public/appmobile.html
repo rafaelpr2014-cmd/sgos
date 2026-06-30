@@ -1,0 +1,2029 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SGOS Técnico</title>
+
+<style>
+:root{
+    --azul:#2563eb;
+    --azul-dark:#081a31;
+    --fundo:#f5f7fb;
+    --card:#ffffff;
+    --texto:#0f172a;
+    --muted:#64748b;
+    --borda:#e5e7eb;
+    --verde:#16a34a;
+    --laranja:#f59e0b;
+    --vermelho:#ef4444;
+    --whatsapp:#25D366;
+}
+
+*{
+    box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
+}
+
+body{
+    margin:0;
+    font-family:Arial, Helvetica, sans-serif;
+    background:var(--fundo);
+    color:var(--texto);
+    min-height:100vh;
+}
+
+/* ================= HEADER ================= */
+
+.header{
+    background:#fff;
+    color:#0f172a;
+    padding:16px;
+    border-bottom:1px solid #e5e7eb;
+    box-shadow:0 2px 12px rgba(0,0,0,.06);
+}
+
+.empresa-box{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:10px 0;
+    background:#fff;
+}
+
+.logo-empresa{
+    max-height:70px;
+    width:auto;
+    object-fit:contain;
+}
+
+#nomeEmpresa{
+    font-size:12px;
+    color:#cbd5e1;
+}
+
+.top-bar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-top:14px;
+}
+
+.user-box{
+    color:#0f172a;
+    font-weight:600;
+    font-size:15px;
+}
+
+#user{
+    font-weight:800;
+}
+
+.logout{
+    background:#ef4444;
+    border:none;
+    color:white;
+    padding:9px 13px;
+    border-radius:999px;
+    font-weight:800;
+    cursor:pointer;
+    box-shadow:0 8px 18px rgba(239,68,68,.25);
+}
+
+/* ================= BUSCA ================= */
+
+.busca{
+    padding:14px 12px 6px;
+}
+
+.busca input{
+    width:100%;
+    padding:13px 14px;
+    border-radius:14px;
+    border:1px solid var(--borda);
+    background:white;
+    color:var(--texto);
+    font-size:14px;
+    outline:none;
+    box-shadow:0 8px 20px rgba(15,23,42,.05);
+}
+
+.busca input:focus{
+    border-color:#93c5fd;
+    box-shadow:0 0 0 3px rgba(37,99,235,.12);
+}
+
+/* ================= CARDS STATUS ================= */
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    padding:10px 12px 12px;
+}
+
+.card{
+    min-height:74px;
+    padding:12px 8px;
+    border-radius:16px;
+    color:white;
+    text-align:center;
+    cursor:pointer;
+    transition:.2s;
+    box-shadow:0 10px 22px rgba(15,23,42,.12);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    font-size:12px;
+    font-weight:800;
+}
+
+.card span{
+    font-size:25px;
+    line-height:1;
+}
+
+.andamento{
+    background:linear-gradient(135deg,#f59e0b,#f97316);
+}
+
+.concluido{
+    background:linear-gradient(135deg,#16a34a,#22c55e);
+}
+
+.ausente{
+    background:linear-gradient(135deg,#ef4444,#dc2626);
+}
+
+.active{
+    transform:translateY(-2px) scale(1.02);
+    outline:3px solid rgba(37,99,235,.18);
+}
+
+.andamento.active{ box-shadow:0 0 0 3px rgba(245,158,11,.18), 0 12px 28px rgba(245,158,11,.25); }
+.concluido.active{ box-shadow:0 0 0 3px rgba(34,197,94,.18), 0 12px 28px rgba(34,197,94,.25); }
+.ausente.active{ box-shadow:0 0 0 3px rgba(239,68,68,.18), 0 12px 28px rgba(239,68,68,.25); }
+
+/* ================= LISTA OS ================= */
+
+.container{
+    padding:4px 12px 18px;
+}
+
+.container > p{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:16px;
+    padding:28px 16px;
+    text-align:center;
+    color:var(--muted);
+    font-weight:800;
+    box-shadow:0 8px 22px rgba(15,23,42,.04);
+}
+
+.os{
+    background:white;
+    border:1px solid var(--borda);
+    padding:15px 14px 62px;
+    border-radius:18px;
+    margin-bottom:12px;
+    cursor:pointer;
+    position:relative;
+    box-shadow:0 10px 24px rgba(15,23,42,.06);
+    font-size:13px;
+    line-height:1.6;
+    color:#334155;
+    overflow:hidden;
+}
+
+.os:before{
+    content:"";
+    position:absolute;
+    left:0;
+    top:0;
+    width:5px;
+    height:100%;
+    background:var(--azul);
+}
+
+.os b{
+    color:#0f172a;
+}
+
+.os > b:first-of-type{
+    display:inline-block;
+    background:#dbeafe;
+    color:#1d4ed8;
+    padding:5px 10px;
+    border-radius:999px;
+    font-size:12px;
+    margin-bottom:6px;
+}
+
+.data-right{
+    position:absolute;
+    right:12px;
+    top:14px;
+    max-width:48%;
+    text-align:right;
+    font-size:11px;
+    color:#64748b;
+    font-weight:800;
+    line-height:1.3;
+}
+
+.btn-whatsapp{
+    position:absolute;
+    right:12px;
+    bottom:12px;
+    width:46px;
+    height:46px;
+    border-radius:50%;
+    border:none;
+    background:var(--whatsapp);
+    color:white;
+    font-size:21px;
+    box-shadow:0 10px 22px rgba(37,211,102,.28);
+    cursor:pointer;
+}
+
+
+.badge-avulsa{
+    display:inline-block;
+    background:#fef3c7;
+    color:#92400e;
+    padding:5px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:900;
+    margin-left:6px;
+}
+
+.sva-card{
+    margin-top:10px;
+    background:#eff6ff;
+    border:1px solid #bfdbfe;
+    border-radius:14px;
+    padding:10px;
+    color:#1e3a8a;
+    line-height:1.55;
+}
+
+.sva-card b{
+    color:#1e3a8a;
+}
+
+.resumo-modal-os{
+    background:#f8fafc;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    padding:12px;
+    margin-bottom:12px;
+    font-size:13px;
+    line-height:1.55;
+    color:#334155;
+}
+
+.resumo-modal-os h4{
+    margin:0 0 8px;
+    color:#0f172a;
+    font-size:15px;
+}
+
+/* ================= MODAL ================= */
+
+.modal{
+    position:fixed;
+    inset:0;
+    width:100%;
+    height:100%;
+    background:rgba(15,23,42,.72);
+    display:none;
+    justify-content:center;
+    align-items:flex-end;
+    z-index:9999;
+    padding:16px;
+}
+
+.modal-content{
+    background:white;
+    padding:20px;
+    border-radius:22px 22px 18px 18px;
+    width:100%;
+    max-width:460px;
+    max-height:92vh;
+    overflow:auto;
+    box-shadow:0 30px 80px rgba(0,0,0,.35);
+    animation:modalUp .18s ease-out;
+}
+
+@keyframes modalUp{
+    from{ transform:translateY(20px); opacity:.4; }
+    to{ transform:translateY(0); opacity:1; }
+}
+
+.modal-content h3{
+    margin:0 0 14px;
+    color:#0f172a;
+    font-size:20px;
+    text-align:center;
+}
+
+.modal input,
+.modal textarea{
+    width:100%;
+    margin:6px 0 10px;
+    padding:12px;
+    border:1px solid var(--borda);
+    border-radius:12px;
+    outline:none;
+    font-size:14px;
+    background:#fff;
+}
+
+.modal textarea{
+    min-height:95px;
+    resize:vertical;
+}
+
+.modal input:focus,
+.modal textarea:focus{
+    border-color:#93c5fd;
+    box-shadow:0 0 0 3px rgba(37,99,235,.12);
+}
+
+.modal button{
+    width:100%;
+    margin:6px 0;
+    padding:12px;
+    border:none;
+    border-radius:12px;
+    color:white;
+    font-weight:800;
+    font-size:14px;
+    cursor:pointer;
+}
+
+.btn-ausente{
+    background:#f59e0b;
+}
+
+.btn-inv{
+    background:#ef4444;
+}
+
+.btn-ok{
+    background:#16a34a;
+}
+
+.btn-loc{
+    background:#0f172a;
+}
+
+.modal button:last-child{
+    background:#64748b;
+}
+
+
+
+/* ================= MODAL VISUALIZAR ANEXO ================= */
+.modal-anexo{
+    position:fixed;
+    inset:0;
+    width:100%;
+    height:100%;
+    background:rgba(15,23,42,.78);
+    display:none;
+    justify-content:center;
+    align-items:center;
+    z-index:10000;
+    padding:14px;
+}
+
+.modal-anexo-content{
+    width:100%;
+    max-width:520px;
+    height:88vh;
+    background:#fff;
+    border-radius:20px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 30px 80px rgba(0,0,0,.38);
+    animation:modalUp .18s ease-out;
+}
+
+.modal-anexo-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:12px 14px;
+    border-bottom:1px solid var(--borda);
+    background:#fff;
+}
+
+.modal-anexo-header strong{
+    font-size:15px;
+    color:#0f172a;
+}
+
+.btn-fechar-anexo{
+    width:38px;
+    height:38px;
+    border:none;
+    border-radius:12px;
+    background:#ef4444;
+    color:#fff;
+    font-size:22px;
+    font-weight:900;
+    line-height:1;
+    cursor:pointer;
+}
+
+.anexo-viewer{
+    flex:1;
+    background:#0f172a;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:auto;
+}
+
+.anexo-viewer iframe{
+    width:100%;
+    height:100%;
+    border:0;
+    background:#fff;
+}
+
+.anexo-viewer img{
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
+    display:block;
+}
+
+.anexo-msg{
+    color:#fff;
+    text-align:center;
+    padding:18px;
+    font-weight:800;
+}
+
+
+/* ================= TOAST NOVA OS ================= */
+
+.toast-os{
+    position:fixed;
+    top:-120px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#ef4444;
+    color:#fff;
+    padding:16px 22px;
+    border-radius:16px;
+    font-weight:800;
+    font-size:16px;
+    z-index:999999;
+    box-shadow:0 14px 34px rgba(239,68,68,.35);
+    transition:.35s;
+    opacity:0;
+    text-align:center;
+    width:calc(100% - 32px);
+    max-width:420px;
+}
+
+.toast-os.show{
+    top:18px;
+    opacity:1;
+}
+
+
+/* ================= MENU LATERAL MOBILE ================= */
+.mobile-topbar-app{
+    height:64px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;gap:12px;padding:10px 14px;position:sticky;top:0;z-index:1000;box-shadow:0 2px 12px rgba(0,0,0,.06);
+}
+.menu-btn{width:42px;height:42px;border:none;border-radius:12px;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.18);flex:0 0 auto;}
+.menu-btn span{display:block;width:20px;height:2px;background:#fff;position:relative;border-radius:99px;}
+.menu-btn span:before,.menu-btn span:after{content:"";position:absolute;left:0;width:20px;height:2px;background:#fff;border-radius:99px;}
+.menu-btn span:before{top:-7px}.menu-btn span:after{top:7px}
+.topbar-title{min-width:0;flex:1}.topbar-title strong{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.topbar-title small{display:block;color:#64748b;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drawer-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1999;opacity:0;pointer-events:none;transition:.25s;}.drawer-overlay.show{opacity:1;pointer-events:auto;}
+.side-drawer{position:fixed;left:0;top:0;height:100vh;width:280px;max-width:82vw;background:linear-gradient(180deg,#081a31,#061426);z-index:2000;transform:translateX(-100%);transition:.25s ease;color:#fff;padding:16px;display:flex;flex-direction:column;box-shadow:18px 0 45px rgba(0,0,0,.32);}
+.side-drawer.open{transform:translateX(0);}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.drawer-head img{width:148px;max-height:58px;object-fit:contain}.drawer-close{width:38px;height:38px;border:none;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-size:22px}
+.drawer-user{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;margin-bottom:14px}.drawer-user strong{display:block;font-size:14px}.drawer-user small{display:block;color:#cbd5e1;font-size:12px;margin-top:3px}
+.drawer-nav{display:flex;flex-direction:column;gap:7px}.drawer-nav a{color:#dbeafe;text-decoration:none;display:flex;align-items:center;gap:12px;padding:13px;border-radius:14px;font-size:15px;font-weight:800}.drawer-nav a.active,.drawer-nav a:hover{background:#2563eb;color:#fff}.drawer-nav .ico{width:28px;height:28px;border-radius:10px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center}.drawer-footer{margin-top:auto}.drawer-logout{width:100%;border:none;background:#ef4444;color:#fff;border-radius:14px;padding:13px;font-weight:900;font-size:14px}
+.header{position:relative;z-index:1;}
+
+/* ================= RESPONSIVO ================= */
+
+@media(min-width:760px){
+    body{
+        max-width:520px;
+        margin:0 auto;
+        background:#e5e7eb;
+    }
+
+    .header{
+        margin-top:10px;
+        border-radius:24px;
+    }
+}
+
+@media(max-width:360px){
+    .cards{
+        gap:7px;
+    }
+
+    .card{
+        font-size:11px;
+        padding:10px 6px;
+    }
+
+    .card span{
+        font-size:22px;
+    }
+
+    .user-box{
+        font-size:12px;
+        max-width:220px;
+    }
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="drawer-overlay" id="drawerOverlay" onclick="fecharMenu()"></div>
+<aside class="side-drawer" id="sideDrawer">
+    <div class="drawer-head">
+         <img id="drawerLogo" src="https://iili.io/C5XGAnp.png" alt="SGOS">
+        <button class="drawer-close" onclick="fecharMenu()" type="button">×</button>
+    </div>
+    <div class="drawer-user">
+        <strong id="drawerUser">Carregando...</strong>
+        <small id="drawerEmpresa">Empresa</small>
+    </div>
+    <nav class="drawer-nav">
+        <a class="active" href="appmobile.html"><span class="ico">🧾</span>Ordens de Serviço</a>
+        <a href="app-escala.html"><span class="ico">📅</span>Escala</a>
+        <a href="app-planos.html"><span class="ico">📦</span>Planos</a>
+        <a href="app-historico-os.html"><span class="ico">🕘</span>Histórico de OS</a>
+    </nav>
+    <div class="drawer-footer"><button class="drawer-logout" onclick="logout()" type="button">Sair</button></div>
+</aside>
+
+<div class="mobile-topbar-app">
+    <button class="menu-btn" onclick="abrirMenu()" type="button" aria-label="Abrir menu"><span></span></button>
+    <div class="topbar-title">
+        <strong>Ordens de Serviço</strong>
+        <small id="drawerEmpresaTop">SGOS Técnico</small>
+    </div>
+</div>
+
+
+<div id="toastNovaOS" class="toast-os">
+    🚨 NOVA OS LANÇADA!
+</div>
+
+<div class="header">
+    
+
+    <div class="empresa-box">
+        <img id="logoEmpresa" class="logo-empresa">
+        <div id="nomeEmpresa"></div>
+    </div>
+
+    <div class="top-bar">
+        <div class="user-box">👤 Usuario logado: <span id="user"></span></div>
+        <button class="logout" onclick="logout()">Sair</button>
+    </div>
+</div>
+
+<div class="busca">
+    <input type="text" id="busca" placeholder="🔎 Buscar OS ou cliente...">
+</div>
+
+<div class="cards">
+    <div class="card andamento" onclick="setTab('andamento')">
+         <span id="cA">0</span><br>Andamento
+    </div>
+<div class="card ausente" onclick="setTab('ausente')">
+         <span id="cX">0</span><br>Ausentes
+    </div>
+    <div class="card concluido" onclick="setTab('concluido')">
+         <span id="cC">0</span><br>Concluídas
+    </div>
+</div>
+
+<div class="container" id="lista"></div>
+
+<div class="modal" id="modal">
+    <div class="modal-content">
+        <h3>Ações da OS</h3>
+
+        <div id="resumoModalOS" class="resumo-modal-os"></div>
+
+        <textarea id="obs" placeholder="Observação..."></textarea>
+        <input type="file" id="foto">
+
+        <button class="btn-loc" onclick="verAnexo()">📎 Ver Anexo</button>
+        <button class="btn-ausente" onclick="enviarAcao('ausente')">Cliente Ausente</button>
+        <button class="btn-inv" onclick="enviarAcao('inviabilidade')">Inviabilidade</button>
+        <button class="btn-ok" onclick="enviarAcao('concluir')">Concluir</button>
+
+        <button class="btn-loc" onclick="pegarLocalizacao()">📍 Enviar Localização</button>
+        <button class="btn-loc" onclick="visualizarLocalizacao()">🗺️ Ver Localização</button>
+
+        <button onclick="fecharModal()">Fechar</button>
+    </div>
+</div>
+
+
+
+<div class="modal-anexo" id="modalAnexo" onclick="fecharModalAnexo()">
+    <div class="modal-anexo-content" onclick="event.stopPropagation()">
+        <div class="modal-anexo-header">
+            <strong id="tituloAnexo">📎 Visualizar Anexo</strong>
+            <button class="btn-fechar-anexo" onclick="fecharModalAnexo()" type="button">×</button>
+        </div>
+        <div class="anexo-viewer" id="anexoViewer">
+            <div class="anexo-msg">Carregando anexo...</div>
+        </div>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+
+function abrirMenu(){
+    document.getElementById("sideDrawer")?.classList.add("open");
+    document.getElementById("drawerOverlay")?.classList.add("show");
+}
+function fecharMenu(){
+    document.getElementById("sideDrawer")?.classList.remove("open");
+    document.getElementById("drawerOverlay")?.classList.remove("show");
+}
+function atualizarMenuUsuario(){
+    const u = JSON.parse(localStorage.getItem("usuario") || "{}");
+    const nome = u.usuario || u.nome || (u.id ? "ID " + u.id : "Técnico");
+    const empresa = u.empresa_nome || "SGOS Técnico";
+    // Logo oficial fixa no menu lateral do app
+    const logoFinal = "https://iili.io/C5XGAnp.png";
+    const drawerUser = document.getElementById("drawerUser");
+    const drawerEmpresa = document.getElementById("drawerEmpresa");
+    const drawerEmpresaTop = document.getElementById("drawerEmpresaTop");
+    const drawerLogo = document.getElementById("drawerLogo");
+    if(drawerUser) drawerUser.innerText = nome;
+    if(drawerEmpresa) drawerEmpresa.innerText = empresa;
+    if(drawerEmpresaTop) drawerEmpresaTop.innerText = empresa;
+    if(drawerLogo) drawerLogo.src = logoFinal;
+}
+
+
+// 🔑 LOGIN VIA APK
+// =========================
+const params =
+new URLSearchParams(
+    window.location.search
+);
+
+const token =
+params.get("token");
+
+const id =
+params.get("id");
+
+const app =
+params.get("app");
+
+const osPushId = params.get("os_id") || params.get("os") || params.get("id_os");
+
+// =========================
+// RECEBE LOGIN APK
+// =========================
+if(token && id){
+
+    const usuarioAtual =
+    JSON.parse(
+        localStorage.getItem("usuario") || "{}"
+    );
+
+    localStorage.setItem(
+        "usuario",
+        JSON.stringify({
+            ...usuarioAtual,
+            id:id,
+            log_id:token,
+            usuario: params.get("usuario") || usuarioAtual.usuario || ""
+        })
+    );
+
+    localStorage.setItem("log_id", token);
+    localStorage.setItem("usuario_id", id);
+    localStorage.setItem("is_app", "1");
+
+    console.log("✅ sessão recebida APK", { id, token });
+
+}
+
+const isApp =
+localStorage.getItem("is_app") === "1";
+
+const API = "/api/ordens_servico";
+
+let socket = null;
+let socketConectado = false;
+
+let user = {};
+let OS = [];
+let tab = "andamento";
+function setTab(novaTab){
+
+    tab = novaTab;
+
+    render();
+}
+let osSelecionada = null;
+let ultimaQuantidadeOS = 0;
+let primeiraCarga = true;
+
+
+function normalizarStatusApp(status){
+    const s = String(status || "").toLowerCase().trim();
+
+    if(s.includes("andamento") || s.includes("exec")) return "em_andamento";
+    if(s.includes("concl") || s.includes("final")) return "concluido";
+    if(s.includes("ausente")) return "cliente_ausente";
+    if(s.includes("abert")) return "aberto";
+    if(s.includes("agend")) return "agendado";
+
+    return s.replace(/\s+/g, "_");
+}
+
+function chaveOS(os){
+    return `${os._tipo || "normal"}-${os.id}`;
+}
+
+function encontrarOS(chaveOuId){
+    return OS.find(o => chaveOS(o) === String(chaveOuId)) ||
+           OS.find(o => String(o.id) === String(chaveOuId));
+}
+
+function normalizarOSAvulsa(os){
+    const endereco = os.endereco ||
+        [os.rua, os.n, os.bairro].filter(Boolean).join(", ");
+
+    return {
+        ...os,
+        _tipo: "avulsa",
+        _key: `avulsa-${os.id}`,
+        status: normalizarStatusApp(os.status),
+        nome: os.nome || os.cliente || "OS Avulsa",
+        telefone: os.telefone || "",
+        login: os.login || "",
+        id_cliente: os.id_cliente || "",
+        localidade_nome: os.localidade_nome || os.localidade || "-",
+        tipo_servico_nome: os.tipo_servico_nome || os.tipo_servico || "OS Avulsa",
+        plano_nome: os.plano_nome || "-",
+        rua: os.rua || endereco || "-",
+        referencia: os.referencia || "",
+        bairro: os.bairro || "",
+        tecnicos_nomes: os.tecnicos_nomes || os.tecnicos || os.tecnico || "-",
+        iniciado_em: os.iniciado_em || os.iniciada_em || os.atualizado_em || os.criado_em,
+        finalizado_em: os.finalizado_em || os.concluido_em || os.atualizado_em,
+        anexo_path: os.anexo_path || os.anexo || os.arquivo || "",
+        observacao: os.observacao || os.observacoes || os.descricao || "",
+        descricao: os.descricao || os.observacao || ""
+    };
+}
+
+function normalizarOSNormal(os){
+    return {
+        ...os,
+        _tipo: "normal",
+        _key: `normal-${os.id}`,
+        status: normalizarStatusApp(os.status)
+    };
+}
+
+
+function enderecoAvulsaLimpo(os){
+    const texto = String(os.endereco || os.rua || "").trim();
+
+    if(!texto) return "-";
+
+    const idx = texto.toUpperCase().indexOf("CLIENTES:");
+    if(idx >= 0){
+        return texto.slice(0, idx).replace(/[,;\-\s]+$/g, "").trim() || "-";
+    }
+
+    return texto;
+}
+
+function descricaoAvulsaLimpa(os){
+    const texto = String(os.descricao || os.observacao || os.referencia || "").trim();
+    const endereco = String(os.endereco || os.rua || "").trim();
+
+    let base = texto;
+
+    const idxEnd = endereco.toUpperCase().indexOf("CLIENTES:");
+    if(idxEnd >= 0){
+        base = endereco.slice(idxEnd).trim();
+    }
+
+    const idx = base.toUpperCase().indexOf("CLIENTES:");
+    if(idx >= 0){
+        base = base.slice(idx).trim();
+    }
+
+    return base || "-";
+}
+
+function enderecoNormal(os){
+    const partes = [];
+    if(os.rua) partes.push(os.rua);
+    if(os.n) partes.push(os.n);
+    if(os.referencia) partes.push(os.referencia);
+    if(os.bairro) partes.push(`(${os.bairro})`);
+
+    return partes.join(", ").replace(", (", " (") || "-";
+}
+
+function svaHTML(os){
+    if(!os.aplicativo && !os.url && !os.usuario && !os.senha) return "";
+
+    return `
+        <div class="sva-card">
+            <b>📺 Serviço de TV / SVA</b><br>
+            <b>Aplicativo:</b> ${os.aplicativo || "-"}<br>
+            <b>URL:</b> ${os.url || "-"}<br>
+            <b>Usuário:</b> ${os.usuario || "-"}<br>
+            <b>Senha:</b> ${os.senha || "-"}
+        </div>
+    `;
+}
+
+function resumoModalHTML(os){
+    const tipo = os._tipo === "avulsa" ? "OS Avulsa" : "OS";
+
+    if(os._tipo === "avulsa"){
+        return `
+            <h4>${tipo} #${os.id}</h4>
+            <b>Localidade:</b> ${os.localidade_nome || "-"}<br>
+            <b>Tipo:</b> ${os.tipo_servico_nome || "-"}<br>
+            <b>Endereço:</b> ${enderecoAvulsaLimpo(os)}<br>
+            <b>Descrição:</b> ${descricaoAvulsaLimpa(os)}<br>
+            <b>Técnicos:</b> ${os.tecnicos_nomes || "-"}<br>
+        `;
+    }
+
+    return `
+        <h4>${tipo} #${os.id}</h4>
+        <b>Cliente:</b> ${os.nome || "-"}<br>
+        <b>Localidade:</b> ${os.localidade_nome || "-"}<br>
+        <b>Tipo:</b> ${os.tipo_servico_nome || "-"}<br>
+        <b>Plano:</b> ${os.plano_nome || "-"}<br>
+        <b>VLAN:</b> ${os.vlan || "-"}<br>
+        <b>Endereço:</b> ${enderecoNormal(os)}<br>
+        <b>Técnicos:</b> ${os.tecnicos_nomes || "-"}<br>
+        ${os.observacao || os.descricao ? `<b>Observação:</b> ${os.observacao || os.descricao}<br>` : ""}
+        ${svaHTML(os)}
+    `;
+}
+
+
+
+/* ================= SOCKET.IO REALTIME ================= */
+function iniciarSocket(){
+    try {
+        if(socketConectado) return;
+        if(typeof io !== "function"){
+            console.warn("Socket.IO não carregado no appmobile.html");
+            return;
+        }
+
+        socket = io(window.location.origin, {
+            transports:["websocket", "polling"]
+        });
+
+        socket.on("connect", () => {
+            console.log("✅ Socket conectado:", socket.id);
+            socketConectado = true;
+
+            if(user?.id && user?.empresa_id){
+                socket.emit("join", {
+                    id:user.id,
+                    usuario:user.usuario || user.nome || "Técnico",
+                    empresa_id:user.empresa_id
+                });
+            }
+        });
+
+        socket.on("disconnect", () => {
+            console.warn("Socket desconectado");
+            socketConectado = false;
+        });
+
+        socket.on("os_update", () => {
+            console.log("🔄 os_update recebido via socket");
+            load();
+        });
+
+        socket.on("nova_os", () => {
+            console.log("🚨 nova_os recebido via socket");
+            load();
+        });
+
+        socket.on("os_andamento", (data) => {
+            console.log("🚀 os_andamento recebido via socket", data);
+
+            mostrarNotificacaoCustom(
+                data?.titulo || "🚀 NOVA OS LANÇADA!",
+                data?.mensagem || "Uma OS entrou em andamento"
+            );
+
+            load();
+        });
+
+    } catch(err){
+        console.error("Erro ao iniciar Socket.IO:", err);
+    }
+}
+
+
+/* ================= ANDROID NATIVO - USUÁRIO PARA FCM ================= */
+function registrarUsuarioAndroidNativo(){
+    try {
+        const usuarioLocal = user?.id
+            ? user
+            : JSON.parse(localStorage.getItem("usuario") || "{}");
+
+        const usuarioId = usuarioLocal?.id || localStorage.getItem("usuario_id");
+
+        if(!usuarioId){
+            console.log("SGOSAndroid: usuário ainda não disponível");
+            return;
+        }
+
+        if(window.SGOSAndroid && typeof window.SGOSAndroid.salvarUsuarioId === "function"){
+            window.SGOSAndroid.salvarUsuarioId(String(usuarioId));
+            console.log("✅ usuario_id enviado ao Android nativo:", usuarioId);
+        }else{
+            console.log("SGOSAndroid bridge não encontrado; ambiente web comum.");
+        }
+    } catch(err){
+        console.error("Erro ao enviar usuario_id ao Android nativo:", err);
+    }
+}
+
+/* ================= INIT ================= */
+async function init(){
+
+    console.log("========== INIT EXECUTOU ==========");
+
+    const local =
+    JSON.parse(
+        localStorage.getItem("usuario") || "{}"
+    );
+
+// =========================
+// SEM LOGIN
+// =========================
+
+console.log("=== DEBUG LOGIN ===");
+console.log("usuario:", localStorage.getItem("usuario"));
+console.log("provedor:", localStorage.getItem("provedor"));
+console.log("is_app:", localStorage.getItem("is_app"));
+console.log("===================");
+
+if (!local.id) {
+
+    console.log("❌ sem sessão");
+
+    window.location.href = "index.html";
+
+    return;
+}
+    // =========================
+    // LOGIN OK
+    // =========================
+    user = local;
+
+    try {
+
+        const res = await fetch("/api/me", {
+
+            headers:{
+                "x-usuario-id": local.id
+            }
+        });
+
+        const completo =
+        await res.json();
+
+        if(completo){
+
+            user = {
+                ...local,
+                ...completo
+            };
+
+            localStorage.setItem(
+                "usuario",
+                JSON.stringify(user)
+            );
+        }
+
+    } catch(e){
+
+        console.warn(
+            "⚠ usando sessão local"
+        );
+
+    }
+
+    atualizarMenuUsuario();
+
+    registrarUsuarioAndroidNativo();
+    iniciarSocket();
+    iniciarPush();
+
+
+    // =========================
+    // USER
+    // =========================
+    const elUser =
+    document.getElementById("user");
+
+    if(elUser){
+
+        elUser.innerText =
+            user.usuario ||
+            user.nome ||
+            ("ID " + user.id);
+
+    }
+
+    // =========================
+    // LOGO
+    // =========================
+    let logo =
+    user.empresa_logo || "https://iili.io/CRh1TlV.png";
+
+    if(
+        logo &&
+        !logo.startsWith("http")
+    ){
+
+        logo =
+        window.location.origin + logo;
+
+    }
+
+    const elLogo =
+    document.getElementById("logoEmpresa");
+
+    if(elLogo){
+
+        elLogo.src = logo;
+
+    }
+
+    // =========================
+    // BUSCA
+    // =========================
+    const inputBusca =
+    document.getElementById("busca");
+
+    if(inputBusca){
+
+        inputBusca.addEventListener(
+            "input",
+            render
+        );
+
+    }
+
+    // =========================
+    // LOAD
+    // =========================
+    load();
+}
+
+if("Notification" in window){
+    Notification.requestPermission();
+}
+
+/* ================= LOAD ================= */
+/* ================= LOAD ================= */
+
+let idsJaCarregados = new Set();
+
+async function load(){
+
+    if(!user.id){
+        console.error("Sem user.id");
+        return;
+    }
+
+    try {
+
+        const res = await fetch(API, {
+            headers: {
+                "x-usuario-id": user.id
+            }
+        });
+
+        const listaNormal = await res.json();
+
+        let listaAvulsas = [];
+
+        try {
+            const resAvulsas = await fetch("/api/os-avulsas/painel?periodo=30dias", {
+                headers: {
+                    "x-usuario-id": user.id
+                }
+            });
+
+            if(resAvulsas.ok){
+                listaAvulsas = await resAvulsas.json();
+            }
+        } catch(errAvulsa){
+            console.warn("Não foi possível carregar OS Avulsas no app:", errAvulsa);
+        }
+
+        const novaLista = [
+            ...(Array.isArray(listaNormal) ? listaNormal.map(normalizarOSNormal) : []),
+            ...(Array.isArray(listaAvulsas) ? listaAvulsas.map(normalizarOSAvulsa) : [])
+        ];
+
+        // =========================
+        // DETECTA NOVAS OS
+        // =========================
+        const novosIds = [];
+
+        novaLista.forEach(os => {
+
+            // primeira vez NÃO notifica
+            if(primeiraCarga){
+                idsJaCarregados.add(chaveOS(os));
+                return;
+            }
+
+            // nova OS encontrada
+            if(!idsJaCarregados.has(chaveOS(os))){
+
+                idsJaCarregados.add(chaveOS(os));
+
+                novosIds.push(chaveOS(os));
+
+            }
+
+        });
+
+        // remove ids inexistentes
+        const idsAtuais =
+        new Set(novaLista.map(o => chaveOS(o)));
+
+        idsJaCarregados.forEach(id => {
+
+            if(!idsAtuais.has(id)){
+                idsJaCarregados.delete(id);
+            }
+
+        });
+
+        // =========================
+        // NOTIFICA
+        // =========================
+        if(novosIds.length > 0){
+
+            tocarSomNovaOS();
+
+            mostrarNotificacao(novosIds.length);
+
+            console.log(
+                "Nova OS detectada:",
+                novosIds
+            );
+
+        }
+
+        primeiraCarga = false;
+
+        OS = novaLista;
+
+        abrirOSDaNotificacaoSeExistir();
+
+    } catch (e){
+
+        console.error(
+            "Erro ao carregar OS:",
+            e
+        );
+
+        OS = [];
+    }
+
+    render();
+}
+
+/* ================= RENDER ================= */
+function render(){
+
+    const inputBusca = document.getElementById("busca");
+    const busca = inputBusca ? inputBusca.value.toLowerCase() : "";
+
+    const norm = s => (s||"").toLowerCase();
+
+    const filtrado = OS.filter(o => {
+
+        const matchBusca =
+            String(o.id).includes(busca) ||
+            norm(o.nome).includes(busca);
+
+        const matchStatus =
+            (tab === "andamento" && norm(o.status).includes("andamento")) ||
+            (tab === "concluido" && norm(o.status).includes("concluido")) ||
+            (tab === "ausente" && norm(o.status).includes("ausente"));
+
+        return matchBusca && matchStatus;
+    });
+
+    // CONTADORES
+    document.getElementById("cA").innerText =
+        OS.filter(o => norm(o.status).includes("andamento")).length;
+
+    document.getElementById("cC").innerText =
+        OS.filter(o => norm(o.status).includes("concluido")).length;
+
+    document.getElementById("cX").innerText =
+        OS.filter(o => norm(o.status).includes("ausente")).length;
+
+    // ATIVO
+    document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
+    const activeCard = document.querySelector("." + tab);
+    if(activeCard) activeCard.classList.add("active");
+
+    const el = document.getElementById("lista");
+
+    if(!filtrado.length){
+        el.innerHTML = "<p>Nenhuma OS</p>";
+        return;
+    }
+
+    el.innerHTML = filtrado.map(o => {
+
+        let dataTopo = "";
+        let extras = "";
+
+        // =========================
+        // ANDAMENTO / AUSENTE
+        // =========================
+        if(tab === "andamento" || tab === "ausente"){
+            dataTopo = format(o.iniciado_em);
+
+            extras = `
+            <b>Enviado por:</b> ${o.criado_por_nome || '-'}<br>
+            <b>Iniciado em:</b> ${format(o.iniciado_em)}<br>
+            <b>Agendamento:</b> ${format(o.agendamento)}<br>
+            `;
+        }
+
+        // =========================
+        // CONCLUÍDO
+        // =========================
+        if(tab === "concluido"){
+            dataTopo = format(o.finalizado_em);
+
+            extras = `
+            <b>Iniciado em:</b> ${format(o.iniciado_em)}<br>
+            <b>Finalizado em:</b> ${format(o.finalizado_em)}<br>
+            <b>Iniciado por:</b> ${o.enviado_por_nome || o.iniciado_por || '-'}<br>
+            <b>Finalizado por:</b> ${o.finalizado_por_nome || o.finalizado_por || '-'}<br>
+            `;
+        }
+
+        return `
+        <div class="os" onclick="abrirModal('${chaveOS(o)}')">
+            <div class="data-right">${dataTopo}</div>
+
+            <b>${o._tipo === "avulsa" ? "OS AVULSA" : "OS"} #${o.id}</b>${o._tipo === "avulsa" ? '<span class="badge-avulsa">Avulsa</span>' : ""}<br><br>
+
+            ${o._tipo === "avulsa" ? `
+                <b>Localidade:</b> ${o.localidade_nome || '-'}<br>
+                <b>Tipo:</b> ${o.tipo_servico_nome || '-'}<br>
+                <b>Endereço:</b> ${enderecoAvulsaLimpo(o)}<br>
+                <b>Descrição:</b> ${descricaoAvulsaLimpa(o)}<br>
+                ${extras}
+                <b>Técnicos:</b> ${o.tecnicos_nomes || '-'}<br>
+            ` : `
+                <b>Cliente:</b> ${o.nome || '-'}<br>
+                <b>Localidade:</b> ${o.localidade_nome || '-'}<br>
+                <b>Tipo:</b> ${o.tipo_servico_nome || '-'}<br>
+                <b>Plano:</b> ${o.plano_nome || '-'}<br>
+                <b>VLAN:</b> ${o.vlan || '-'}<br>
+                <b>Endereço:</b> ${enderecoNormal(o)}<br>
+                <b>Login:</b> ${o.login || '-'}<br>
+                <b>ID:</b> ${o.id_cliente || '-'}<br>
+                <b>Telefone:</b> ${o.telefone || '-'}<br>
+                ${extras}
+                <b>Técnicos:</b> ${o.tecnicos_nomes || '-'}<br>
+                ${svaHTML(o)}
+            `}
+
+            <button class="btn-whatsapp" onclick="compartilhar(event, '${chaveOS(o)}')">
+                📲
+            </button>
+        </div>`;
+    }).join("");
+}
+
+/* ================= AÇÕES ================= */
+async function enviarAcao(tipo){
+
+    if(!osSelecionada){
+        alert("Nenhuma OS selecionada");
+        return;
+    }
+
+    const osAtual = encontrarOS(osSelecionada);
+
+    if(!osAtual){
+        alert("OS não encontrada");
+        return;
+    }
+
+    if(osAtual._tipo === "avulsa"){
+        if(tipo !== "concluir"){
+            alert("Para OS Avulsa, use apenas a ação Concluir no app.");
+            return;
+        }
+
+        try{
+            const res = await fetch(`/api/os-avulsas/${osAtual.id}/status`, {
+                method:"PUT",
+                headers:{
+                    "Content-Type":"application/json",
+                    "x-usuario-id": user.id
+                },
+                body:JSON.stringify({ status:"concluido" })
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if(!res.ok){
+                throw new Error(data.erro || "Erro ao concluir OS Avulsa");
+            }
+
+            alert("OS Avulsa concluída com sucesso");
+            fecharModal();
+            load();
+            return;
+
+        }catch(err){
+            console.error(err);
+            alert("Erro ao concluir OS Avulsa");
+            return;
+        }
+    }
+
+    try {
+
+        const obs = document.getElementById("obs").value;
+
+        const fotoInput = document.getElementById("foto");
+
+        const formData = new FormData();
+
+        formData.append("observacao", obs);
+
+        if(fotoInput.files[0]){
+            formData.append("foto", fotoInput.files[0]);
+        }
+
+        let rota = "";
+
+        if(tipo === "ausente"){
+            rota = `/api/ordens_servico/ausente/${osSelecionada}`;
+        }
+
+        if(tipo === "inviabilidade"){
+            rota = `/api/ordens_servico/inviabilidade/${osSelecionada}`;
+        }
+
+        if(tipo === "concluir"){
+            rota = `/api/ordens_servico/concluir/${osSelecionada}`;
+        }
+
+        const res = await fetch(rota, {
+            method: "POST",
+            headers: {
+                "x-usuario-id": user.id
+            },
+            body: formData
+        });
+
+        const data = await res.json();
+
+        if(!res.ok){
+            throw new Error(data.erro || "Erro");
+        }
+
+        alert("OS atualizada com sucesso");
+
+        fecharModal();
+
+        load();
+
+    } catch(err){
+
+        console.error(err);
+
+        alert("Erro ao executar ação");
+    }
+}
+
+/* ================= MODAL ================= */
+function abrirModal(chave){
+
+    if(tab !== "andamento") return;
+
+    const os = encontrarOS(chave);
+
+    if(!os){
+        alert("OS não encontrada");
+        return;
+    }
+
+    osSelecionada = chaveOS(os);
+
+    const resumo = document.getElementById("resumoModalOS");
+    if(resumo){
+        resumo.innerHTML = resumoModalHTML(os);
+    }
+
+    const obs = document.getElementById("obs");
+    if(obs) obs.value = "";
+
+    const foto = document.getElementById("foto");
+    if(foto) foto.value = "";
+
+    const modal = document.getElementById("modal");
+    if(modal) modal.style.display = "flex";
+}
+
+function fecharModal(){
+    const modal = document.getElementById("modal");
+    if(modal) modal.style.display = "none";
+}
+
+/* ================= UTIL ================= */
+function format(d){
+    if(!d) return "-";
+    return new Date(d).toLocaleString("pt-BR");
+}
+
+/* ================= WHATS ================= */
+function compartilhar(e, id){
+
+    e.stopPropagation();
+
+    const os = encontrarOS(id);
+    if(!os) return;
+
+    const svaMsg = (os.aplicativo || os.url || os.usuario || os.senha)
+        ? `\n\n📺 Serviço de TV / SVA\nAplicativo: ${os.aplicativo || '-'}\nURL: ${os.url || '-'}\nUsuário: ${os.usuario || '-'}\nSenha: ${os.senha || '-'}`
+        : "";
+
+    const msg = os._tipo === "avulsa"
+        ? `
+🧾 OS AVULSA #${os.id}
+
+📍 Localidade: ${os.localidade_nome || '-'}
+🛠️ Tipo: ${os.tipo_servico_nome || '-'}
+
+🏠 Endereço: ${enderecoAvulsaLimpo(os)}
+📝 Descrição: ${descricaoAvulsaLimpa(os)}
+👨‍🔧 Técnicos: ${os.tecnicos_nomes || '-'}
+`.trim()
+        : `
+🧾 OS #${os.id}
+
+👤 Cliente: ${os.nome || '-'}
+📍 Localidade: ${os.localidade_nome || '-'}
+🛠️ Tipo: ${os.tipo_servico_nome || '-'}
+📦 Plano: ${os.plano_nome || '-'}
+
+🏠 Endereço: ${enderecoNormal(os)}
+
+🔐 Login: ${os.login || '-'}
+🆔 ID: ${os.id_cliente || '-'}
+📞 Telefone: ${os.telefone || '-'}${svaMsg}
+`.trim();
+
+    window.open("https://wa.me/?text=" + encodeURIComponent(msg));
+}
+
+
+/* ================= VER ANEXO ================= */
+function verAnexo(){
+
+    const os = encontrarOS(osSelecionada);
+
+    if(!os || !os.anexo_path){
+        alert("Nenhum anexo encontrado");
+        return;
+    }
+
+    const url = os.anexo_path.startsWith("http")
+        ? os.anexo_path
+        : window.location.origin + os.anexo_path;
+
+    abrirModalAnexo(url, os.id);
+}
+
+function abrirModalAnexo(url, osId){
+
+    const modalAnexo = document.getElementById("modalAnexo");
+    const viewer = document.getElementById("anexoViewer");
+    const titulo = document.getElementById("tituloAnexo");
+
+    if(!modalAnexo || !viewer){
+        window.open(url, "_blank");
+        return;
+    }
+
+    const urlLimpa = url.split("?")[0].toLowerCase();
+    const isImagem = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/.test(urlLimpa);
+
+    if(titulo){
+        titulo.innerText = osId ? `📎 Anexo da OS #${osId}` : "📎 Visualizar Anexo";
+    }
+
+    if(isImagem){
+        viewer.innerHTML = `<img src="${url}" alt="Anexo da OS" onerror="this.outerHTML='<div class=&quot;anexo-msg&quot;>Não foi possível carregar este anexo.</div>'">`;
+    }else{
+        viewer.innerHTML = `<iframe src="${url}" title="Anexo da OS"></iframe>`;
+    }
+
+    modalAnexo.style.display = "flex";
+}
+
+function fecharModalAnexo(){
+
+    const modalAnexo = document.getElementById("modalAnexo");
+    const viewer = document.getElementById("anexoViewer");
+
+    if(modalAnexo){
+        modalAnexo.style.display = "none";
+    }
+
+    if(viewer){
+        viewer.innerHTML = `<div class="anexo-msg">Carregando anexo...</div>`;
+    }
+}
+
+/* ================= LOCALIZAÇÃO ================= */
+async function pegarLocalizacao(){
+
+    if(!osSelecionada){
+        alert("Nenhuma OS selecionada");
+        return;
+    }
+
+    const osAtual = encontrarOS(osSelecionada);
+    if(osAtual && osAtual._tipo === "avulsa"){
+        alert("Localização para OS Avulsa ainda não está disponível no app.");
+        return;
+    }
+
+    if(!navigator.geolocation){
+        alert("GPS não suportado neste dispositivo");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        try {
+
+            const res = await fetch(`/api/ordens_servico/localizacao/${osSelecionada}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-usuario-id": user.id
+                },
+                body: JSON.stringify({
+    latitude: lat,
+    longitude: lng
+})
+            });
+
+            const data = await res.json();
+
+            if(!res.ok){
+                throw new Error(data.erro || "Erro ao salvar localização");
+            }
+
+            alert("📍 Localização enviada com sucesso!");
+
+        } catch (err){
+            console.error(err);
+            alert("Erro ao enviar localização");
+        }
+
+    }, () => {
+        alert("Não foi possível obter GPS");
+    });
+
+}
+
+function visualizarLocalizacao(){
+
+    const os = encontrarOS(osSelecionada);
+
+    if(!os){
+        alert("OS não encontrada");
+        return;
+    }
+
+    if(!os.latitude || !os.longitude){
+        alert("Sem localização registrada");
+        return;
+    }
+
+    const url = `https://www.google.com/maps?q=${os.latitude},${os.longitude}`;
+
+    window.open(url, "_blank");
+}
+
+/* ================= LOGOUT ================= */
+function logout(){
+
+    console.log("is_app =", localStorage.getItem("is_app"));
+
+    const isApp =
+    localStorage.getItem("is_app") === "1";
+
+    localStorage.removeItem("usuario");
+    localStorage.removeItem("usuario_id");
+
+    if(isApp){
+
+        window.location.href = "index.html";
+        return;
+    }
+
+   window.location.href = "index.html";
+}
+
+/* ================= SOM ================= */
+function tocarSomNovaOS(){
+
+    const audio = new Audio(
+        "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
+    );
+
+    audio.volume = 1;
+
+    audio.play().catch(() => {});
+}
+
+
+
+/* ================= NOTIFICAÇÃO APP ================= */
+
+async function mostrarNotificacao(qtd = 1){
+
+    try {
+
+        // =========================
+        // SOM
+        // =========================
+        tocarSomNovaOS();
+
+        // =========================
+        // VIBRAÇÃO
+        // =========================
+        if(navigator.vibrate){
+
+            navigator.vibrate([
+                300,
+                100,
+                300
+            ]);
+
+        }
+
+        // =========================
+        // TOAST VISUAL
+        // =========================
+        const toast =
+        document.getElementById(
+            "toastNovaOS"
+        );
+
+        if(toast){
+
+            toast.innerHTML =
+            qtd > 1
+            ? `🚨 ${qtd} NOVAS OS LANÇADAS!`
+            : "🚨 NOVA OS LANÇADA!";
+
+            toast.classList.add("show");
+
+            setTimeout(() => {
+
+                toast.classList.remove(
+                    "show"
+                );
+
+            }, 5000);
+
+        }
+
+        // =========================
+        // NOTIFICAÇÃO WEB
+        // =========================
+        if(
+            "Notification" in window
+        ){
+
+            if(
+                Notification.permission
+                !== "granted"
+            ){
+
+                await Notification
+                .requestPermission();
+
+            }
+
+            if(
+                Notification.permission
+                === "granted"
+            ){
+
+                new Notification(
+                    "🚨 NOVA OS LANÇADA!",
+                    {
+                        body:
+                        qtd > 1
+                        ? `${qtd} novas ordens de serviço`
+                        : "Você recebeu uma nova ordem de serviço",
+
+                        icon:"https://iili.io/CRh1TlV.png",
+                        badge:"https://iili.io/CRh1TlV.png",
+                        silent:false
+                    }
+                );
+
+            }
+
+        }
+
+    } catch(err){
+
+        console.log(
+            "Erro notificação:",
+            err
+        );
+
+    }
+}
+
+
+
+async function mostrarNotificacaoCustom(titulo, mensagem){
+    try {
+        tocarSomNovaOS();
+
+        if(navigator.vibrate){
+            navigator.vibrate([300, 100, 300]);
+        }
+
+        const toast = document.getElementById("toastNovaOS");
+        if(toast){
+            toast.innerHTML = titulo || "🚀 NOVA OS LANÇADA!";
+            toast.classList.add("show");
+            setTimeout(() => toast.classList.remove("show"), 5000);
+        }
+
+        if("Notification" in window){
+            if(Notification.permission !== "granted"){
+                await Notification.requestPermission();
+            }
+
+            if(Notification.permission === "granted"){
+                new Notification(titulo || "🚀 NOVA OS LANÇADA!", {
+                    body: mensagem || "Uma OS entrou em andamento",
+                    icon: "https://iili.io/CRh1TlV.png",
+                    badge: "https://iili.io/CRh1TlV.png",
+                    silent: false
+                });
+            }
+        }
+    } catch(err){
+        console.error("Erro em mostrarNotificacaoCustom:", err);
+    }
+}
+
+/* ================= PUSH NOTIFICATION REAL - CAPACITOR / FCM ================= */
+let pushRegistrado = false;
+
+function getPushPlugin(){
+    try {
+        const cap = window.Capacitor;
+
+        console.log("Capacitor disponível:", !!cap);
+        console.log("Plugins disponíveis:", cap?.Plugins ? Object.keys(cap.Plugins) : []);
+
+        if(cap?.Plugins?.PushNotifications){
+            return cap.Plugins.PushNotifications;
+        }
+
+        if(cap?.Plugins?.PushNotificationsPlugin){
+            return cap.Plugins.PushNotificationsPlugin;
+        }
+
+        if(window.PushNotifications){
+            return window.PushNotifications;
+        }
+
+        return null;
+    } catch(e){
+        console.error("Erro ao localizar plugin PushNotifications:", e);
+        return null;
+    }
+}
+
+async function salvarTokenPush(token){
+    if(!token){
+        console.warn("Token FCM vazio");
+        return;
+    }
+
+    if(!user || !user.id){
+        console.warn("Usuário não carregado; não foi possível salvar token FCM");
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/push/token", {
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json",
+                "x-usuario-id": user.id
+            },
+            body:JSON.stringify({
+                token_fcm: token,
+                plataforma: "android",
+                device_id: localStorage.getItem("device_id") || null
+            })
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if(!res.ok){
+            throw new Error(data.erro || "Erro ao salvar token FCM");
+        }
+
+        localStorage.setItem("push_token_fcm", token);
+        console.log("✅ Token FCM salvo no SGOS:", token.substring(0, 25) + "...");
+    } catch(err){
+        console.error("Erro ao salvar token FCM:", err);
+    }
+}
+
+async function iniciarPush(){
+    console.log("========== INICIANDO PUSH ==========");
+
+    if(pushRegistrado){
+        console.log("Push já registrado nesta sessão");
+        return;
+    }
+
+    const PushNotifications = getPushPlugin();
+
+    console.log("PushNotifications plugin:", PushNotifications);
+
+    if(!PushNotifications){
+        console.warn("Push Capacitor não encontrado. No navegador comum ficará apenas socket/polling + Notification API.");
+        return;
+    }
+
+    pushRegistrado = true;
+
+    try {
+        // Registra listeners ANTES do register para não perder o token.
+        await PushNotifications.addListener("registration", async (token) => {
+            console.log("✅ FCM Token:", token.value);
+            await salvarTokenPush(token.value);
+        });
+
+        await PushNotifications.addListener("registrationError", (err) => {
+            console.error("Erro no registro push:", err);
+        });
+
+        await PushNotifications.addListener("pushNotificationReceived", (notification) => {
+            console.log("Push recebido com app aberto:", notification);
+
+            tocarSomNovaOS();
+            if(navigator.vibrate) navigator.vibrate([300,100,300]);
+
+            const osId = notification?.data?.os_id || notification?.data?.id_os || notification?.data?.id;
+
+            if(osId){
+                localStorage.setItem("abrir_os_push", String(osId));
+                load();
+            }else{
+                mostrarNotificacao(1);
+            }
+        });
+
+        await PushNotifications.addListener("pushNotificationActionPerformed", (event) => {
+            console.log("Notificação tocada:", event);
+
+            const data = event?.notification?.data || {};
+            const osId = data.os_id || data.id_os || data.id;
+
+            if(osId){
+                localStorage.setItem("abrir_os_push", String(osId));
+                window.location.href = `appmobile.html?app=1&os_id=${encodeURIComponent(osId)}`;
+            }else{
+                window.location.href = "appmobile.html?app=1";
+            }
+        });
+
+        const perm = await PushNotifications.requestPermissions();
+        console.log("Permissão push:", perm);
+
+        if(perm.receive !== "granted"){
+            console.warn("Permissão de push negada pelo usuário");
+            return;
+        }
+
+        await PushNotifications.register();
+        console.log("✅ PushNotifications.register() executado");
+
+    } catch(err){
+        console.error("Erro ao iniciar push:", err);
+        pushRegistrado = false;
+    }
+}
+
+function abrirOSDaNotificacaoSeExistir(){
+    const idNotificacao = osPushId || localStorage.getItem("abrir_os_push");
+
+    if(!idNotificacao || !OS.length) return;
+
+    const os = OS.find(o => o._tipo === 'normal' && String(o.id) === String(idNotificacao));
+
+    if(!os) return;
+
+    localStorage.removeItem("abrir_os_push");
+
+    tab = "andamento";
+    render();
+
+    setTimeout(() => {
+        abrirModal(chaveOS(os));
+        const card = null;
+        if(card) card.scrollIntoView({ behavior:"smooth", block:"center" });
+    }, 300);
+}
+
+
+
+document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape"){
+        fecharModalAnexo();
+        fecharModal();
+    }
+});
+
+/* ================= START CORRIGIDO ================= */
+document.addEventListener("DOMContentLoaded", init);
+// Backup leve apenas quando o app estiver aberto.
+// A notificação principal agora é via Firebase Push.
+setInterval(() => {
+    if(document.visibilityState === "visible"){
+        load();
+    }
+}, 30000);
+
+</script>
+
+</body>
+</html>
