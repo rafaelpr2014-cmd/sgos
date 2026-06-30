@@ -663,6 +663,41 @@ body{
 
 <script>
 
+/* ================= SESSÃO / LOGOUT SEGURO ================= */
+const SGOS_SESSION_KEYS = [
+    "usuario",
+    "usuario_id",
+    "log_id",
+    "is_app",
+    "api_base",
+    "push_token_fcm",
+    "abrir_os_push"
+];
+
+function limparSessaoSGOS(marcarLogout = false){
+    SGOS_SESSION_KEYS.forEach(k => localStorage.removeItem(k));
+    sessionStorage.clear();
+
+    if(marcarLogout){
+        localStorage.setItem("sgos_logout_forcado", "1");
+    }else{
+        localStorage.removeItem("sgos_logout_forcado");
+    }
+
+    try{
+        if(window.SGOSAndroid){
+            if(typeof window.SGOSAndroid.salvarUsuarioId === "function"){
+                window.SGOSAndroid.salvarUsuarioId("");
+            }
+            if(typeof window.SGOSAndroid.limparUsuarioId === "function"){
+                window.SGOSAndroid.limparUsuarioId();
+            }
+        }
+    }catch(e){
+        console.warn("Não foi possível limpar sessão nativa Android:", e);
+    }
+}
+
 function abrirMenu(){
     document.getElementById("sideDrawer")?.classList.add("open");
     document.getElementById("drawerOverlay")?.classList.add("show");
@@ -711,26 +746,25 @@ const osPushId = params.get("os_id") || params.get("os") || params.get("id_os");
 // =========================
 if(token && id){
 
-    const usuarioAtual =
-    JSON.parse(
-        localStorage.getItem("usuario") || "{}"
-    );
+    // Sempre que chega login pela URL, derruba qualquer sessão antiga antes de salvar a nova.
+    limparSessaoSGOS(false);
+
+    const usuarioNovo = {
+        id: String(id),
+        log_id: String(token),
+        usuario: params.get("usuario") || ""
+    };
 
     localStorage.setItem(
         "usuario",
-        JSON.stringify({
-            ...usuarioAtual,
-            id:id,
-            log_id:token,
-            usuario: params.get("usuario") || usuarioAtual.usuario || ""
-        })
+        JSON.stringify(usuarioNovo)
     );
 
-    localStorage.setItem("log_id", token);
-    localStorage.setItem("usuario_id", id);
+    localStorage.setItem("log_id", String(token));
+    localStorage.setItem("usuario_id", String(id));
     localStorage.setItem("is_app", "1");
 
-    console.log("✅ sessão recebida APK", { id, token });
+    console.log("✅ nova sessão recebida APK", usuarioNovo);
 
 }
 
@@ -1677,21 +1711,17 @@ function visualizarLocalizacao(){
 /* ================= LOGOUT ================= */
 function logout(){
 
-    console.log("is_app =", localStorage.getItem("is_app"));
+    console.log("🚪 logout solicitado");
 
-    const isApp =
-    localStorage.getItem("is_app") === "1";
+    try{
+        if(socket && typeof socket.disconnect === "function"){
+            socket.disconnect();
+        }
+    }catch(e){}
 
-    localStorage.removeItem("usuario");
-    localStorage.removeItem("usuario_id");
+    limparSessaoSGOS(true);
 
-    if(isApp){
-
-        window.location.href = "index.html";
-        return;
-    }
-
-   window.location.href = "index.html";
+    window.location.replace("index.html?logout=1");
 }
 
 /* ================= SOM ================= */
@@ -2034,3 +2064,5 @@ setInterval(() => {
 </body>
 </html>
 <!-- force deploy appmobile 20260630005136 -->
+
+<!-- logout seguro atualizado 20260630 -->

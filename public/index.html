@@ -207,6 +207,52 @@ button:hover{
 <script>
 console.log("🔥 LOGIN CARREGADO");
 
+/* ================= SESSÃO / LOGOUT SEGURO ================= */
+const SGOS_SESSION_KEYS = [
+    "usuario",
+    "usuario_id",
+    "log_id",
+    "is_app",
+    "api_base",
+    "push_token_fcm",
+    "abrir_os_push"
+];
+
+function limparSessaoSGOS(manterProvedor = true){
+    const provedorAtual = localStorage.getItem("provedor");
+
+    SGOS_SESSION_KEYS.forEach(k => localStorage.removeItem(k));
+    sessionStorage.clear();
+
+    if(!manterProvedor){
+        localStorage.removeItem("provedor");
+    }else if(provedorAtual){
+        localStorage.setItem("provedor", provedorAtual);
+    }
+
+    try{
+        if(window.SGOSAndroid){
+            if(typeof window.SGOSAndroid.salvarUsuarioId === "function"){
+                window.SGOSAndroid.salvarUsuarioId("");
+            }
+            if(typeof window.SGOSAndroid.limparUsuarioId === "function"){
+                window.SGOSAndroid.limparUsuarioId();
+            }
+        }
+    }catch(e){
+        console.warn("Não foi possível limpar sessão nativa Android:", e);
+    }
+}
+
+const urlParamsLogin = new URLSearchParams(window.location.search);
+const veioDeLogout = urlParamsLogin.get("logout") === "1" || localStorage.getItem("sgos_logout_forcado") === "1";
+
+if(veioDeLogout){
+    limparSessaoSGOS(true);
+    localStorage.setItem("sgos_logout_forcado", "1");
+}
+
+
 // =========================
 // 🔗 MONTAR URL DO APP
 // =========================
@@ -270,6 +316,13 @@ window.onload = () => {
             `https://${provedorSalvo}.sgos.net.br`;
     }
 
+    // Se veio de logout, nunca faz auto login novamente.
+    if(veioDeLogout){
+        console.log("🚪 logout detectado; auto login bloqueado");
+        localStorage.removeItem("sgos_logout_forcado");
+        return;
+    }
+
     if(
         usuarioSalvo?.id &&
         usuarioSalvo?.log_id &&
@@ -330,6 +383,10 @@ async function login(){
     try{
 
         loading.style.display = "block";
+
+        // Login novo sempre começa com sessão limpa para não reaproveitar usuário antigo.
+        limparSessaoSGOS(false);
+        localStorage.removeItem("sgos_logout_forcado");
 
         const API_BASE =
             `https://${provedor}.sgos.net.br`;
@@ -433,3 +490,4 @@ document.addEventListener("keypress", (e) => {
 
 </body>
 </html>
+<!-- logout seguro atualizado 20260630 -->
