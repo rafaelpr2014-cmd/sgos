@@ -663,41 +663,6 @@ body{
 
 <script>
 
-/* ================= SESSÃO / LOGOUT SEGURO ================= */
-const SGOS_SESSION_KEYS = [
-    "usuario",
-    "usuario_id",
-    "log_id",
-    "is_app",
-    "api_base",
-    "push_token_fcm",
-    "abrir_os_push"
-];
-
-function limparSessaoSGOS(marcarLogout = false){
-    SGOS_SESSION_KEYS.forEach(k => localStorage.removeItem(k));
-    sessionStorage.clear();
-
-    if(marcarLogout){
-        localStorage.setItem("sgos_logout_forcado", "1");
-    }else{
-        localStorage.removeItem("sgos_logout_forcado");
-    }
-
-    try{
-        if(window.SGOSAndroid){
-            if(typeof window.SGOSAndroid.salvarUsuarioId === "function"){
-                window.SGOSAndroid.salvarUsuarioId("");
-            }
-            if(typeof window.SGOSAndroid.limparUsuarioId === "function"){
-                window.SGOSAndroid.limparUsuarioId();
-            }
-        }
-    }catch(e){
-        console.warn("Não foi possível limpar sessão nativa Android:", e);
-    }
-}
-
 function abrirMenu(){
     document.getElementById("sideDrawer")?.classList.add("open");
     document.getElementById("drawerOverlay")?.classList.add("show");
@@ -744,37 +709,43 @@ const osPushId = params.get("os_id") || params.get("os") || params.get("id_os");
 // =========================
 // RECEBE LOGIN APK
 // =========================
-if(token && id){
+const logoutBloqueado = localStorage.getItem("sgos_logout_bloqueado") === "1";
 
-    // Se o usuário clicou em SAIR, o WebView pode reabrir a última URL antiga com token.
-    // Nesse caso NÃO aceita esse token antigo em hipótese alguma.
-    if(localStorage.getItem("sgos_logout_forcado") === "1"){
-        console.log("🚪 token antigo bloqueado após logout");
-        limparSessaoSGOS(true);
-        window.location.replace("index.html?logout=1&t=" + Date.now());
-        throw new Error("Login antigo bloqueado após logout");
-    }
+// Se o WebView/Android reabrir uma URL antiga com token após o usuário clicar em Sair,
+// NÃO deixa recriar a sessão antiga.
+if(token && id && logoutBloqueado){
+    console.warn("🚫 URL antiga com token bloqueada após logout. Limpando URL...");
 
-    // Sempre que chega login pela URL, derruba qualquer sessão antiga antes de salvar a nova.
-    limparSessaoSGOS(false);
+    try {
+        localStorage.removeItem("usuario");
+        localStorage.removeItem("usuario_id");
+        localStorage.removeItem("log_id");
+        localStorage.removeItem("is_app");
+        sessionStorage.clear();
+    } catch(e){}
 
-    const usuarioNovo = {
-        id: String(id),
-        log_id: String(token),
+    window.location.replace("index.html?logout=1");
+}
+else if(token && id){
+
+    const novoUsuario = {
+        id:id,
+        log_id:token,
         usuario: params.get("usuario") || ""
     };
 
-    localStorage.setItem(
-        "usuario",
-        JSON.stringify(usuarioNovo)
-    );
-
-    localStorage.setItem("log_id", String(token));
-    localStorage.setItem("usuario_id", String(id));
+    localStorage.setItem("usuario", JSON.stringify(novoUsuario));
+    localStorage.setItem("log_id", token);
+    localStorage.setItem("usuario_id", id);
     localStorage.setItem("is_app", "1");
+    localStorage.removeItem("sgos_logout_bloqueado");
 
-    console.log("✅ nova sessão recebida APK", usuarioNovo);
+    console.log("✅ sessão recebida APK", { id, token });
 
+    // Remove token/id da barra do WebView para o app não restaurar login antigo ao reabrir.
+    try {
+        window.history.replaceState({}, document.title, "appmobile.html?app=1");
+    } catch(e){}
 }
 
 const isApp =
@@ -1718,19 +1689,47 @@ function visualizarLocalizacao(){
 }
 
 /* ================= LOGOUT ================= */
-function logout(){
+async function logout(){
 
-    console.log("🚪 logout solicitado");
+    const logId = localStorage.getItem("log_id") || (() => {
+        try { return JSON.parse(localStorage.getItem("usuario") || "{}").log_id; } catch(e){ return null; }
+    })();
 
-    try{
+    // Grava uma trava persistente ANTES de limpar a sessão.
+    // Assim, se o WebView restaurar appmobile.html?token=... antigo, ele será bloqueado.
+    localStorage.setItem("sgos_logout_bloqueado", "1");
+
+    try {
+        if(logId){
+            await fetch("/api/logout", {
+                method:"POST",
+                headers:{ "Content-Type":"application/json" },
+                body:JSON.stringify({ log_id: logId })
+            }).catch(() => {});
+        }
+    } catch(e){}
+
+    try {
         if(socket && typeof socket.disconnect === "function"){
             socket.disconnect();
         }
-    }catch(e){}
+    } catch(e){}
 
-    limparSessaoSGOS(true);
+    try {
+        if(window.SGOSAndroid && typeof window.SGOSAndroid.salvarUsuarioId === "function"){
+            window.SGOSAndroid.salvarUsuarioId("");
+        }
+    } catch(e){}
 
-    window.location.replace("index.html?logout=1&t=" + Date.now());
+    const manterTrava = localStorage.getItem("sgos_logout_bloqueado");
+
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // Recria apenas a trava de logout. Login manual remove essa trava.
+    localStorage.setItem("sgos_logout_bloqueado", manterTrava || "1");
+
+    window.location.replace("index.html?logout=1");
 }
 
 /* ================= SOM ================= */
@@ -2073,5 +2072,3 @@ setInterval(() => {
 </body>
 </html>
 <!-- force deploy appmobile 20260630005136 -->
-
-<!-- logout seguro atualizado 20260630 v2 bloqueia token antigo apos logout -->

@@ -208,6 +208,21 @@ button:hover{
 console.log("🔥 LOGIN CARREGADO");
 
 // =========================
+// 🔗 MONTAR URL DO APP
+// =========================
+function montarDestinoApp(provedor, usuarioObj){
+    const params = new URLSearchParams({
+        app: "1",
+        id: String(usuarioObj.id || ""),
+        token: String(usuarioObj.log_id || ""),
+        usuario: String(usuarioObj.usuario || "")
+    });
+
+    return `https://${provedor}.sgos.net.br/appmobile.html?${params.toString()}`;
+}
+
+
+// =========================
 // 🔄 PREVIEW URL
 // =========================
 const provedorInput =
@@ -234,42 +249,30 @@ provedorInput.addEventListener("input", () => {
 });
 
 // =========================
-// 🔁 AUTO LOGIN
+// 🔁 CARREGAMENTO DA TELA
 // =========================
 window.onload = () => {
 
-    const provedorSalvo =
-        localStorage.getItem("provedor");
+    // Depois do ajuste definitivo, NÃO existe mais auto-login por usuário salvo.
+    // O app só entra novamente depois de digitar usuário e senha.
+    const saiu = new URLSearchParams(window.location.search).get("logout") === "1";
 
-    const usuarioSalvo =
-        JSON.parse(
-            localStorage.getItem("usuario") || "{}"
-        );
+    if(saiu){
+        localStorage.setItem("sgos_logout_bloqueado", "1");
+    }
+
+    const provedorSalvo = localStorage.getItem("provedor");
 
     if(provedorSalvo){
-
-        document.getElementById("provedor").value =
-            provedorSalvo;
-
-        preview.innerHTML =
-            `https://${provedorSalvo}.sgos.net.br`;
+        document.getElementById("provedor").value = provedorSalvo;
+        preview.innerHTML = `https://${provedorSalvo}.sgos.net.br`;
     }
 
-    if(
-        usuarioSalvo?.id &&
-        usuarioSalvo?.log_id &&
-        provedorSalvo
-    ){
-        console.log("🔁 AUTO LOGIN");
-
-        const destino =
-            `https://${provedorSalvo}.sgos.net.br/appmobile.html`;
-
-        console.log("🚀 AUTO REDIRECT:", destino);
-
-        window.location.replace(destino);
-    }
-
+    // Garante que nenhum usuário antigo fique disponível para redirect automático.
+    localStorage.removeItem("usuario");
+    localStorage.removeItem("usuario_id");
+    localStorage.removeItem("log_id");
+    localStorage.removeItem("is_app");
 };
 
 // =========================
@@ -315,6 +318,14 @@ async function login(){
     try{
 
         loading.style.display = "block";
+
+        // Login manual libera a trava do logout e apaga qualquer sessão antiga.
+        localStorage.removeItem("sgos_logout_bloqueado");
+        localStorage.removeItem("usuario");
+        localStorage.removeItem("usuario_id");
+        localStorage.removeItem("log_id");
+        localStorage.removeItem("is_app");
+        sessionStorage.clear();
 
         const API_BASE =
             `https://${provedor}.sgos.net.br`;
@@ -367,6 +378,11 @@ async function login(){
             );
 
             localStorage.setItem(
+                "log_id",
+                String(data.log_id)
+            );
+
+            localStorage.setItem(
                 "usuario_id",
                 data.usuario.id
             );
@@ -374,7 +390,7 @@ async function login(){
             console.log("✅ LOGIN OK");
 
             const destino =
-                `https://${provedor}.sgos.net.br/appmobile.html`;
+                montarDestinoApp(provedor, userData);
 
             console.log("🚀 REDIRECIONANDO:", destino);
 

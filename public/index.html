@@ -207,52 +207,6 @@ button:hover{
 <script>
 console.log("🔥 LOGIN CARREGADO");
 
-/* ================= SESSÃO / LOGOUT SEGURO ================= */
-const SGOS_SESSION_KEYS = [
-    "usuario",
-    "usuario_id",
-    "log_id",
-    "is_app",
-    "api_base",
-    "push_token_fcm",
-    "abrir_os_push"
-];
-
-function limparSessaoSGOS(manterProvedor = true){
-    const provedorAtual = localStorage.getItem("provedor");
-
-    SGOS_SESSION_KEYS.forEach(k => localStorage.removeItem(k));
-    sessionStorage.clear();
-
-    if(!manterProvedor){
-        localStorage.removeItem("provedor");
-    }else if(provedorAtual){
-        localStorage.setItem("provedor", provedorAtual);
-    }
-
-    try{
-        if(window.SGOSAndroid){
-            if(typeof window.SGOSAndroid.salvarUsuarioId === "function"){
-                window.SGOSAndroid.salvarUsuarioId("");
-            }
-            if(typeof window.SGOSAndroid.limparUsuarioId === "function"){
-                window.SGOSAndroid.limparUsuarioId();
-            }
-        }
-    }catch(e){
-        console.warn("Não foi possível limpar sessão nativa Android:", e);
-    }
-}
-
-const urlParamsLogin = new URLSearchParams(window.location.search);
-const veioDeLogout = urlParamsLogin.get("logout") === "1" || localStorage.getItem("sgos_logout_forcado") === "1";
-
-if(veioDeLogout){
-    limparSessaoSGOS(true);
-    localStorage.setItem("sgos_logout_forcado", "1");
-}
-
-
 // =========================
 // 🔗 MONTAR URL DO APP
 // =========================
@@ -295,49 +249,30 @@ provedorInput.addEventListener("input", () => {
 });
 
 // =========================
-// 🔁 AUTO LOGIN
+// 🔁 CARREGAMENTO DA TELA
 // =========================
 window.onload = () => {
 
-    const provedorSalvo =
-        localStorage.getItem("provedor");
+    // Depois do ajuste definitivo, NÃO existe mais auto-login por usuário salvo.
+    // O app só entra novamente depois de digitar usuário e senha.
+    const saiu = new URLSearchParams(window.location.search).get("logout") === "1";
 
-    const usuarioSalvo =
-        JSON.parse(
-            localStorage.getItem("usuario") || "{}"
-        );
+    if(saiu){
+        localStorage.setItem("sgos_logout_bloqueado", "1");
+    }
+
+    const provedorSalvo = localStorage.getItem("provedor");
 
     if(provedorSalvo){
-
-        document.getElementById("provedor").value =
-            provedorSalvo;
-
-        preview.innerHTML =
-            `https://${provedorSalvo}.sgos.net.br`;
+        document.getElementById("provedor").value = provedorSalvo;
+        preview.innerHTML = `https://${provedorSalvo}.sgos.net.br`;
     }
 
-    // Se veio de logout, nunca faz auto login novamente.
-    // IMPORTANTE: não remove a trava aqui. Ela só será removida depois de um login manual com sucesso.
-    if(veioDeLogout){
-        console.log("🚪 logout detectado; auto login bloqueado até novo login manual");
-        return;
-    }
-
-    if(
-        usuarioSalvo?.id &&
-        usuarioSalvo?.log_id &&
-        provedorSalvo
-    ){
-        console.log("🔁 AUTO LOGIN");
-
-        const destino =
-            montarDestinoApp(provedorSalvo, usuarioSalvo);
-
-        console.log("🚀 AUTO REDIRECT:", destino);
-
-        window.location.replace(destino);
-    }
-
+    // Garante que nenhum usuário antigo fique disponível para redirect automático.
+    localStorage.removeItem("usuario");
+    localStorage.removeItem("usuario_id");
+    localStorage.removeItem("log_id");
+    localStorage.removeItem("is_app");
 };
 
 // =========================
@@ -384,9 +319,13 @@ async function login(){
 
         loading.style.display = "block";
 
-        // Login novo sempre começa com sessão limpa para não reaproveitar usuário antigo.
-        limparSessaoSGOS(false);
-        localStorage.removeItem("sgos_logout_forcado");
+        // Login manual libera a trava do logout e apaga qualquer sessão antiga.
+        localStorage.removeItem("sgos_logout_bloqueado");
+        localStorage.removeItem("usuario");
+        localStorage.removeItem("usuario_id");
+        localStorage.removeItem("log_id");
+        localStorage.removeItem("is_app");
+        sessionStorage.clear();
 
         const API_BASE =
             `https://${provedor}.sgos.net.br`;
@@ -490,4 +429,3 @@ document.addEventListener("keypress", (e) => {
 
 </body>
 </html>
-<!-- logout seguro atualizado 20260630 v2 bloqueia auto-login ate login manual -->
