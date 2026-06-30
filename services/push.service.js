@@ -14,6 +14,17 @@ module.exports = (pool) => {
         return rows;
     }
 
+    async function buscarTokensEmpresa(empresaId){
+        const [rows] = await pool.query(`
+            SELECT id, token_fcm
+            FROM usuarios_push_tokens
+            WHERE empresa_id = ?
+              AND ativo = 1
+        `, [empresaId]);
+
+        return rows;
+    }
+
     async function desativarToken(id){
         await pool.query(`
             UPDATE usuarios_push_tokens
@@ -23,7 +34,7 @@ module.exports = (pool) => {
         `, [id]);
     }
 
-    async function enviarPushOSAndamento({ usuarioId, empresaId, osId, cliente, localidade, tipoServico }){
+    async function enviarParaTokens(tokens, payload){
         const admin = iniciarFirebase();
 
         if(!admin){
@@ -31,20 +42,9 @@ module.exports = (pool) => {
             return { enviados: 0, falhas: 0, erro: "firebase_nao_configurado" };
         }
 
-        const tokens = await buscarTokens(usuarioId, empresaId);
-
         if(!tokens.length){
             return { enviados: 0, falhas: 0, erro: "sem_tokens" };
         }
-
-        const bodyParts = [];
-        if(cliente) bodyParts.push(`Cliente: ${cliente}`);
-        if(localidade) bodyParts.push(`Localidade: ${localidade}`);
-        if(tipoServico) bodyParts.push(`Serviço: ${tipoServico}`);
-
-        const body = bodyParts.length
-            ? bodyParts.join(" • ")
-            : `OS #${osId} entrou em andamento`;
 
         let enviados = 0;
         let falhas = 0;
@@ -53,29 +53,7 @@ module.exports = (pool) => {
             try {
                 await admin.messaging().send({
                     token: item.token_fcm,
-
-                    notification: {
-                        title: "🚀 NOVA OS LANÇADA! 🚀",
-                        body
-                    },
-
-                    data: {
-                        tipo: "os_andamento",
-                        os_id: String(osId),
-                        url: `/appmobile.html?os_id=${osId}`,
-                        click_action: "OPEN_OS"
-                    },
-
-                    android: {
-                        priority: "high",
-                        notification: {
-                            channelId: "sgos_os_channel",
-                            sound: "default",
-                            icon: "ic_stat_sgos",
-                            color: "#2563eb",
-                            clickAction: "OPEN_OS"
-                        }
-                    }
+                    ...payload
                 });
 
                 enviados++;
@@ -95,9 +73,87 @@ module.exports = (pool) => {
         return { enviados, falhas };
     }
 
+    async function enviarPushOSAndamento({ usuarioId, empresaId, osId, cliente, localidade, tipoServico }){
+        const tokens = await buscarTokens(usuarioId, empresaId);
+
+        const bodyParts = [];
+        if(cliente) bodyParts.push(`Cliente: ${cliente}`);
+        if(localidade) bodyParts.push(`Localidade: ${localidade}`);
+        if(tipoServico) bodyParts.push(`Serviço: ${tipoServico}`);
+
+        const body = bodyParts.length
+            ? bodyParts.join(" • ")
+            : `OS #${osId} entrou em andamento`;
+
+        return enviarParaTokens(tokens, {
+            notification: {
+                title: "🚀 NOVA OS LANÇADA! 🚀",
+                body
+            },
+
+            data: {
+                tipo: "os_andamento",
+                os_id: String(osId),
+                url: `/appmobile.html?os_id=${osId}`,
+                click_action: "OPEN_OS"
+            },
+
+            android: {
+                priority: "high",
+                notification: {
+                    channelId: "sgos_os_channel",
+                    sound: "default",
+                    icon: "ic_stat_sgos",
+                    color: "#2563eb",
+                    clickAction: "OPEN_OS"
+                }
+            }
+        });
+    }
+
+    async function enviarPushOSEmpresa({ empresaId, osId, cliente, localidade, tipoServico }){
+        const tokens = await buscarTokensEmpresa(empresaId);
+
+        const bodyParts = [];
+        if(cliente) bodyParts.push(`Cliente: ${cliente}`);
+        if(localidade) bodyParts.push(`Localidade: ${localidade}`);
+        if(tipoServico) bodyParts.push(`Serviço: ${tipoServico}`);
+
+        const body = bodyParts.length
+            ? bodyParts.join(" • ")
+            : `OS #${osId} entrou em andamento`;
+
+        return enviarParaTokens(tokens, {
+            notification: {
+                title: "🚀 NOVA OS LANÇADA! 🚀",
+                body
+            },
+
+            data: {
+                tipo: "os_andamento",
+                os_id: String(osId),
+                url: `/appmobile.html?os_id=${osId}`,
+                click_action: "OPEN_OS"
+            },
+
+            android: {
+                priority: "high",
+                notification: {
+                    channelId: "sgos_os_channel",
+                    sound: "default",
+                    icon: "ic_stat_sgos",
+                    color: "#2563eb",
+                    clickAction: "OPEN_OS"
+                }
+            }
+        });
+    }
+
     return {
         buscarTokens,
+        buscarTokensEmpresa,
         enviarPushOSAndamento,
+        enviarPushOSEmpresa,
 
         // Mantido por compatibilidade com a rota /api/push/teste.
         // Não usar este método na criação de OS aberta.

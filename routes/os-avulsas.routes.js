@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const pushServiceFactory = require("../services/push.service");
 
 const uploadDir = path.join(__dirname, "../uploads/os-avulsas");
 
@@ -24,6 +25,53 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 module.exports = (db) => {
+
+    const pushService = pushServiceFactory(db);
+
+    async function buscarEmpresaIdUsuario(usuarioId){
+        if(!usuarioId) return null;
+
+        try{
+            const [rows] = await db.query(
+                "SELECT empresa_id FROM usuarios WHERE id = ? LIMIT 1",
+                [usuarioId]
+            );
+
+            return rows[0]?.empresa_id || null;
+        }catch(err){
+            console.warn("Não foi possível buscar empresa_id do usuário:", err.message);
+            return null;
+        }
+    }
+
+    async function notificarOSAvulsa({ osId, usuarioId, localidade, tipoServico }){
+        try{
+            const empresaId = await buscarEmpresaIdUsuario(usuarioId);
+
+            if(!empresaId){
+                console.warn("Push OS Avulsa não enviado: empresa_id não encontrado.");
+                return;
+            }
+
+            const resultado = await pushService.enviarPushOSEmpresa({
+                empresaId,
+                osId,
+                cliente: "",
+                localidade,
+                tipoServico
+            });
+
+            console.log("🔔 Push OS em andamento:", {
+                os_id: osId,
+                usuario_id: usuarioId,
+                resultado
+            });
+
+        }catch(err){
+            console.error("Erro ao notificar OS Avulsa:", err.message);
+        }
+    }
+
 
     let schemaVerificado = false;
 
@@ -436,6 +484,15 @@ module.exports = (db) => {
                 usuarioId
             ]);
 
+            if((status || "em_aberto") === "em_andamento"){
+                await notificarOSAvulsa({
+                    osId: result.insertId,
+                    usuarioId,
+                    localidade,
+                    tipoServico
+                });
+            }
+
             res.json({
                 sucesso: true,
                 id: result.insertId,
@@ -532,6 +589,13 @@ module.exports = (db) => {
             }
 
             if (status === "em_andamento") {
+                const [antesRows] = await db.query(`
+                    SELECT id, localidade, tipo_servico, status
+                    FROM os_avulsas
+                    WHERE id = ?
+                    LIMIT 1
+                `, [req.params.id]);
+
                 await db.query(`
                     UPDATE os_avulsas
                     SET
@@ -547,6 +611,17 @@ module.exports = (db) => {
                     usuarioId,
                     req.params.id
                 ]);
+
+                const osAntes = antesRows[0] || {};
+
+                if(osAntes.status !== "em_andamento"){
+                    await notificarOSAvulsa({
+                        osId: req.params.id,
+                        usuarioId,
+                        localidade: osAntes.localidade,
+                        tipoServico: osAntes.tipo_servico
+                    });
+                }
             } else if (status === "concluido") {
                 await db.query(`
                     UPDATE os_avulsas
