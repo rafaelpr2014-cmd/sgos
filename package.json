@@ -12,7 +12,6 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@capacitor-firebase/messaging": "^8.3.0",
     "@capacitor/android": "^8.3.1",
     "@capacitor/browser": "^8.0.3",
     "@capacitor/cli": "^8.3.1",
