@@ -14,13 +14,14 @@ workflows:
     integrations:
       app_store_connect: Codemagic
 
-    scripts:
-      - npm install
-      - rm -rf ios
-      - npx cap add ios
-      - npx cap sync ios
-      - xcode-project use-profiles
-      - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+   scripts:
+  - npm install
+  - rm -rf ios
+  - npx cap add ios
+  - npx @capacitor/assets generate
+  - npx cap sync ios
+  - xcode-project use-profiles
+  - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
 
     artifacts:
       - build/ios/ipa/*.ipa
