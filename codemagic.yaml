@@ -16,13 +16,14 @@ workflows:
 
     scripts:
       - npm install
-      - npm install @capacitor/ios
+      - rm -rf ios
       - npx cap add ios
       - npx cap sync ios
       - xcode-project use-profiles
-      - xcode-project build-ipa --workspace App.xcworkspace --scheme App
+      - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
 
     artifacts:
+      - build/ios/ipa/*.ipa
       - ios/App/build/ios/ipa/*.ipa
 
     publishing:
