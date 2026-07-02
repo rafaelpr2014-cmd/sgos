@@ -21,12 +21,9 @@ workflows:
       - npx cap add ios
       - npx @capacitor/assets generate
       - npx cap sync ios
-      - cd ios/App
-      - agvtool new-version -all $PROJECT_BUILD_NUMBER
-      - cd ../..
+      - /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PROJECT_BUILD_NUMBER" ios/App/App/Info.plist
       - xcode-project use-profiles
       - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
-
     artifacts:
       - build/ios/ipa/*.ipa
       - ios/App/build/ios/ipa/*.ipa
