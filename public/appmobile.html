@@ -40,7 +40,7 @@ body{
     color:var(--texto);
     min-height:100vh;
     min-height:100dvh;
-    padding-top:env(safe-area-inset-top);
+    padding-top:0;
     padding-bottom:env(safe-area-inset-bottom);
 }
 
@@ -524,7 +524,7 @@ body{
     align-items:center;
     gap:12px;
     padding:10px 14px;
-    padding-top:calc(10px + env(safe-area-inset-top));
+    padding-top:8px;
     position:sticky;
     top:0;
     z-index:1000;
@@ -1104,6 +1104,19 @@ function registrarUsuarioAndroidNativo(){
         if(window.SGOSAndroid && typeof window.SGOSAndroid.salvarUsuarioId === "function"){
             window.SGOSAndroid.salvarUsuarioId(String(usuarioId));
             console.log("✅ usuario_id enviado ao Android nativo:", usuarioId);
+
+            // Compatibilidade com versões Android que possuem método próprio para registrar/atualizar FCM.
+            // Se o método não existir, nada acontece.
+            try{
+                if(typeof window.SGOSAndroid.registrarPush === "function"){
+                    window.SGOSAndroid.registrarPush();
+                }
+                if(typeof window.SGOSAndroid.atualizarTokenPush === "function"){
+                    window.SGOSAndroid.atualizarTokenPush();
+                }
+            }catch(e){
+                console.warn("Não foi possível forçar atualização do push Android", e);
+            }
         }else{
             console.log("SGOSAndroid bridge não encontrado; ambiente web comum.");
         }
@@ -1989,7 +2002,7 @@ async function mostrarNotificacaoCustom(titulo, mensagem){
     }
 }
 
-/* ================= PUSH NOTIFICATION REAL - CAPACITOR / FCM ================= */
+/* ================= PUSH NOTIFICATION REAL - CAPACITOR / ANDROID NATIVO ================= */
 let pushRegistrado = false;
 
 function getPushPlugin(){
@@ -1997,6 +2010,7 @@ function getPushPlugin(){
         const cap = window.Capacitor;
 
         console.log("Capacitor disponível:", !!cap);
+        console.log("Plataforma:", getPlataformaApp());
         console.log("Plugins disponíveis:", cap?.Plugins ? Object.keys(cap.Plugins) : []);
 
         if(cap?.Plugins?.PushNotifications){
@@ -2018,16 +2032,29 @@ function getPushPlugin(){
     }
 }
 
-async function salvarTokenPush(token){
+function getDeviceIdPush(){
+    let deviceId = localStorage.getItem("device_id");
+
+    if(!deviceId){
+        deviceId = `${getPlataformaApp()}-${user?.id || "user"}-${Date.now()}`;
+        localStorage.setItem("device_id", deviceId);
+    }
+
+    return deviceId;
+}
+
+async function salvarTokenPush(token, plataformaInformada){
     if(!token){
-        console.warn("Token FCM vazio");
+        console.warn("Token push vazio");
         return;
     }
 
     if(!user || !user.id){
-        console.warn("Usuário não carregado; não foi possível salvar token FCM");
+        console.warn("Usuário não carregado; não foi possível salvar token push");
         return;
     }
+
+    const plataforma = plataformaInformada || getPlataformaApp();
 
     try {
         const res = await apiFetch("/api/push/token", {
@@ -2037,24 +2064,33 @@ async function salvarTokenPush(token){
                 "x-usuario-id": user.id
             },
             body:JSON.stringify({
-                token_fcm: token,
-                plataforma: getPlataformaApp(),
-                device_id: localStorage.getItem("device_id") || null
+                token_fcm: String(token),
+                plataforma: plataforma,
+                device_id: getDeviceIdPush()
             })
         });
 
         const data = await res.json().catch(() => ({}));
 
         if(!res.ok){
-            throw new Error(data.erro || "Erro ao salvar token FCM");
+            throw new Error(data.erro || "Erro ao salvar token push");
         }
 
-        localStorage.setItem("push_token_fcm", token);
-        console.log("✅ Token FCM salvo no SGOS:", token.substring(0, 25) + "...");
+        localStorage.setItem("push_token_fcm", String(token));
+        localStorage.setItem("push_plataforma", plataforma);
+        console.log("✅ Token push salvo no SGOS:", plataforma, String(token).substring(0, 25) + "...");
     } catch(err){
-        console.error("Erro ao salvar token FCM:", err);
+        console.error("Erro ao salvar token push:", err);
     }
 }
+
+// Função global para compatibilidade com Android nativo.
+// Se o MainActivity chamar window.salvarTokenPushAndroid(token), o token será salvo no backend.
+window.salvarTokenPushAndroid = async function(token){
+    console.log("📲 Token recebido do Android nativo");
+    await salvarTokenPush(token, "android");
+};
+window.SGOSSalvarTokenPushAndroid = window.salvarTokenPushAndroid;
 
 async function iniciarPush(){
     console.log("========== INICIANDO PUSH ==========");
@@ -2064,22 +2100,29 @@ async function iniciarPush(){
         return;
     }
 
+    const plataforma = getPlataformaApp();
     const PushNotifications = getPushPlugin();
 
     console.log("PushNotifications plugin:", PushNotifications);
 
+    // Se não existir plugin Capacitor mas existir bridge Android, deixa o nativo cuidar do FCM.
     if(!PushNotifications){
-        console.warn("Push Capacitor não encontrado. No navegador comum ficará apenas socket/polling + Notification API.");
+        if(window.SGOSAndroid){
+            console.log("Push Capacitor não encontrado; usando bridge Android nativo, se disponível.");
+            registrarUsuarioAndroidNativo();
+            return;
+        }
+
+        console.warn("Push Capacitor não encontrado. Ficará apenas socket/polling + Notification API.");
         return;
     }
 
     pushRegistrado = true;
 
     try {
-        // Registra listeners ANTES do register para não perder o token.
         await PushNotifications.addListener("registration", async (token) => {
-            console.log("✅ FCM Token:", token.value);
-            await salvarTokenPush(token.value);
+            console.log("✅ Token Push Capacitor:", token.value);
+            await salvarTokenPush(token.value, plataforma);
         });
 
         await PushNotifications.addListener("registrationError", (err) => {
@@ -2121,6 +2164,7 @@ async function iniciarPush(){
 
         if(perm.receive !== "granted"){
             console.warn("Permissão de push negada pelo usuário");
+            pushRegistrado = false;
             return;
         }
 
