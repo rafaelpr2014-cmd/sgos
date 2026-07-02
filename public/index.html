@@ -253,13 +253,8 @@ provedorInput.addEventListener("input", () => {
 // =========================
 window.onload = () => {
 
-    // Depois do ajuste definitivo, NÃO existe mais auto-login por usuário salvo.
-    // O app só entra novamente depois de digitar usuário e senha.
-    const saiu = new URLSearchParams(window.location.search).get("logout") === "1";
-
-    if(saiu){
-        localStorage.setItem("sgos_logout_bloqueado", "1");
-    }
+    const params = new URLSearchParams(window.location.search);
+    const saiu = params.get("logout") === "1";
 
     const provedorSalvo = localStorage.getItem("provedor");
 
@@ -268,11 +263,25 @@ window.onload = () => {
         preview.innerHTML = `https://${provedorSalvo}.sgos.net.br`;
     }
 
-    // Garante que nenhum usuário antigo fique disponível para redirect automático.
-    localStorage.removeItem("usuario");
-    localStorage.removeItem("usuario_id");
-    localStorage.removeItem("log_id");
-    localStorage.removeItem("is_app");
+    // Só limpa sessão se o usuário clicou em SAIR
+    if(saiu){
+        localStorage.setItem("sgos_logout_bloqueado", "1");
+        localStorage.removeItem("usuario");
+        localStorage.removeItem("usuario_id");
+        localStorage.removeItem("log_id");
+        localStorage.removeItem("is_app");
+        sessionStorage.clear();
+        return;
+    }
+
+    // Se já estiver logado no app, volta direto para o appmobile
+    const usuarioSalvo = localStorage.getItem("usuario");
+    const logIdSalvo = localStorage.getItem("log_id");
+    const isApp = localStorage.getItem("is_app") === "1";
+
+    if(usuarioSalvo && logIdSalvo && isApp){
+        window.location.replace("appmobile.html?app=1");
+    }
 };
 
 // =========================
