@@ -14,12 +14,15 @@ workflows:
     integrations:
       app_store_connect: Codemagic
 
-    scripts:
+        scripts:
       - npm install
       - rm -rf ios
       - npx cap add ios
       - npx @capacitor/assets generate
       - npx cap sync ios
+      - cd ios/App
+      - agvtool new-version -all $PROJECT_BUILD_NUMBER
+      - cd ../..
       - xcode-project use-profiles
       - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
 
