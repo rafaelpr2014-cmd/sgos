@@ -14,8 +14,9 @@ workflows:
     integrations:
       app_store_connect: Codemagic
 
-        scripts:
+    scripts:
       - npm install
+      - npm install @capacitor/ios
       - rm -rf ios
       - npx cap add ios
       - npx @capacitor/assets generate
