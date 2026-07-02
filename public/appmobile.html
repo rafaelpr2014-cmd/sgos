@@ -709,43 +709,49 @@ const osPushId = params.get("os_id") || params.get("os") || params.get("id_os");
 // =========================
 // RECEBE LOGIN APK
 // =========================
-const logoutBloqueado = localStorage.getItem("sgos_logout_bloqueado") === "1";
+if(token && id){
 
-// Se o WebView/Android reabrir uma URL antiga com token após o usuário clicar em Sair,
-// NÃO deixa recriar a sessão antiga.
-if(token && id && logoutBloqueado){
-    console.warn("🚫 URL antiga com token bloqueada após logout. Limpando URL...");
+    // IMPORTANTE:
+    // No app Android/iOS o WebView pode reabrir a última URL usada.
+    // Se a URL antiga ainda tiver ?token=...&id=..., ela sobrescreve o login atual.
+    // Por isso salvamos a sessão NOVA sem reaproveitar usuário antigo e limpamos a URL.
 
-    try {
-        localStorage.removeItem("usuario");
-        localStorage.removeItem("usuario_id");
-        localStorage.removeItem("log_id");
-        localStorage.removeItem("is_app");
-        sessionStorage.clear();
-    } catch(e){}
-
-    window.location.replace("index.html?logout=1");
-}
-else if(token && id){
-
-    const novoUsuario = {
-        id:id,
-        log_id:token,
-        usuario: params.get("usuario") || ""
+    const novoUsuarioApp = {
+        id: String(id),
+        log_id: String(token),
+        usuario: params.get("usuario") || "",
+        empresa_id: params.get("empresa_id") || params.get("empresaId") || "",
+        empresa_nome: params.get("empresa_nome") || "",
+        empresa_logo: params.get("empresa_logo") || ""
     };
 
-    localStorage.setItem("usuario", JSON.stringify(novoUsuario));
-    localStorage.setItem("log_id", token);
-    localStorage.setItem("usuario_id", id);
+    localStorage.setItem("usuario", JSON.stringify(novoUsuarioApp));
+    localStorage.setItem("log_id", String(token));
+    localStorage.setItem("usuario_id", String(id));
     localStorage.setItem("is_app", "1");
-    localStorage.removeItem("sgos_logout_bloqueado");
 
-    console.log("✅ sessão recebida APK", { id, token });
+    // Remove token/id da barra para o app não restaurar login antigo ao fechar e abrir.
+    try{
+        const limpa = new URL(window.location.href);
+        limpa.searchParams.delete("token");
+        limpa.searchParams.delete("id");
+        limpa.searchParams.delete("usuario");
+        limpa.searchParams.delete("empresa_id");
+        limpa.searchParams.delete("empresaId");
+        limpa.searchParams.delete("empresa_nome");
+        limpa.searchParams.delete("empresa_logo");
 
-    // Remove token/id da barra do WebView para o app não restaurar login antigo ao reabrir.
-    try {
-        window.history.replaceState({}, document.title, "appmobile.html?app=1");
-    } catch(e){}
+        if(!limpa.searchParams.get("app")){
+            limpa.searchParams.set("app", "1");
+        }
+
+        window.history.replaceState({}, document.title, limpa.pathname + limpa.search + limpa.hash);
+    }catch(e){
+        console.warn("Não foi possível limpar parâmetros de login da URL", e);
+    }
+
+    console.log("✅ sessão nova recebida APK", { id, token });
+
 }
 
 const isApp =
@@ -1425,23 +1431,17 @@ async function enviarAcao(tipo){
         }
 
         let rota = "";
-        const osId = osAtual.id;
 
         if(tipo === "ausente"){
-            rota = `/api/ordens_servico/ausente/${osId}`;
+            rota = `/api/ordens_servico/ausente/${osSelecionada}`;
         }
 
         if(tipo === "inviabilidade"){
-            rota = `/api/ordens_servico/inviabilidade/${osId}`;
+            rota = `/api/ordens_servico/inviabilidade/${osSelecionada}`;
         }
 
         if(tipo === "concluir"){
-            rota = `/api/ordens_servico/concluir/${osId}`;
-        }
-
-        if(!rota){
-            alert("Ação inválida.");
-            return;
+            rota = `/api/ordens_servico/concluir/${osSelecionada}`;
         }
 
         const res = await fetch(rota, {
@@ -1689,47 +1689,44 @@ function visualizarLocalizacao(){
 }
 
 /* ================= LOGOUT ================= */
-async function logout(){
+function logout(){
 
-    const logId = localStorage.getItem("log_id") || (() => {
-        try { return JSON.parse(localStorage.getItem("usuario") || "{}").log_id; } catch(e){ return null; }
-    })();
+    console.log("is_app =", localStorage.getItem("is_app"));
 
-    // Grava uma trava persistente ANTES de limpar a sessão.
-    // Assim, se o WebView restaurar appmobile.html?token=... antigo, ele será bloqueado.
-    localStorage.setItem("sgos_logout_bloqueado", "1");
+    const logId = localStorage.getItem("log_id");
 
-    try {
-        if(logId){
-            await fetch("/api/logout", {
-                method:"POST",
-                headers:{ "Content-Type":"application/json" },
-                body:JSON.stringify({ log_id: logId })
-            }).catch(() => {});
+    if(logId){
+        fetch("/api/logout", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({ log_id: logId })
+        }).catch(console.error);
+    }
+
+    // Limpa sessão web completa
+    try{ sessionStorage.clear(); }catch(e){}
+    try{ localStorage.clear(); }catch(e){}
+
+    // Limpa sessão salva no app nativo, se existir bridge Android/iOS.
+    // Mantém compatibilidade mesmo se o método ainda não existir no app.
+    try{
+        if(window.SGOSAndroid){
+            if(typeof window.SGOSAndroid.limparUsuarioId === "function"){
+                window.SGOSAndroid.limparUsuarioId();
+            }
+            if(typeof window.SGOSAndroid.salvarUsuarioId === "function"){
+                window.SGOSAndroid.salvarUsuarioId("");
+            }
+            if(typeof window.SGOSAndroid.logout === "function"){
+                window.SGOSAndroid.logout();
+            }
         }
-    } catch(e){}
+    }catch(e){
+        console.warn("Não foi possível limpar sessão nativa", e);
+    }
 
-    try {
-        if(socket && typeof socket.disconnect === "function"){
-            socket.disconnect();
-        }
-    } catch(e){}
-
-    try {
-        if(window.SGOSAndroid && typeof window.SGOSAndroid.salvarUsuarioId === "function"){
-            window.SGOSAndroid.salvarUsuarioId("");
-        }
-    } catch(e){}
-
-    const manterTrava = localStorage.getItem("sgos_logout_bloqueado");
-
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // Recria apenas a trava de logout. Login manual remove essa trava.
-    localStorage.setItem("sgos_logout_bloqueado", manterTrava || "1");
-
-    window.location.replace("index.html?logout=1");
+    // Vai para a tela de login sem token/id antigo.
+    window.location.replace("index.html?logout=1&t=" + Date.now());
 }
 
 /* ================= SOM ================= */
