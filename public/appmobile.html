@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>SGOS Técnico</title>
 
 <style>
@@ -25,12 +25,23 @@
     -webkit-tap-highlight-color:transparent;
 }
 
+html, body{
+    overscroll-behavior:none;
+    touch-action:manipulation;
+    -webkit-text-size-adjust:100%;
+    -webkit-user-select:none;
+    user-select:none;
+}
+
 body{
     margin:0;
     font-family:Arial, Helvetica, sans-serif;
     background:var(--fundo);
     color:var(--texto);
     min-height:100vh;
+    min-height:100dvh;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:env(safe-area-inset-bottom);
 }
 
 /* ================= HEADER ================= */
@@ -314,7 +325,7 @@ body{
     border-radius:22px 22px 18px 18px;
     width:100%;
     max-width:460px;
-    max-height:92vh;
+    max-height:92dvh;
     overflow:auto;
     box-shadow:0 30px 80px rgba(0,0,0,.35);
     animation:modalUp .18s ease-out;
@@ -406,7 +417,7 @@ body{
 .modal-anexo-content{
     width:100%;
     max-width:520px;
-    height:88vh;
+    height:88dvh;
     background:#fff;
     border-radius:20px;
     overflow:hidden;
@@ -505,7 +516,19 @@ body{
 
 /* ================= MENU LATERAL MOBILE ================= */
 .mobile-topbar-app{
-    height:64px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;gap:12px;padding:10px 14px;position:sticky;top:0;z-index:1000;box-shadow:0 2px 12px rgba(0,0,0,.06);
+    min-height:64px;
+    height:auto;
+    background:#fff;
+    border-bottom:1px solid var(--borda);
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:10px 14px;
+    padding-top:calc(10px + env(safe-area-inset-top));
+    position:sticky;
+    top:0;
+    z-index:1000;
+    box-shadow:0 2px 12px rgba(0,0,0,.06);
 }
 .menu-btn{width:42px;height:42px;border:none;border-radius:12px;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.18);flex:0 0 auto;}
 .menu-btn span{display:block;width:20px;height:2px;background:#fff;position:relative;border-radius:99px;}
@@ -513,7 +536,7 @@ body{
 .menu-btn span:before{top:-7px}.menu-btn span:after{top:7px}
 .topbar-title{min-width:0;flex:1}.topbar-title strong{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.topbar-title small{display:block;color:#64748b;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .drawer-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1999;opacity:0;pointer-events:none;transition:.25s;}.drawer-overlay.show{opacity:1;pointer-events:auto;}
-.side-drawer{position:fixed;left:0;top:0;height:100vh;width:280px;max-width:82vw;background:linear-gradient(180deg,#081a31,#061426);z-index:2000;transform:translateX(-100%);transition:.25s ease;color:#fff;padding:16px;display:flex;flex-direction:column;box-shadow:18px 0 45px rgba(0,0,0,.32);}
+.side-drawer{position:fixed;left:0;top:0;height:100dvh;width:280px;max-width:82vw;background:linear-gradient(180deg,#081a31,#061426);z-index:2000;transform:translateX(-100%);transition:.25s ease;color:#fff;padding:16px;display:flex;flex-direction:column;box-shadow:18px 0 45px rgba(0,0,0,.32);}
 .side-drawer.open{transform:translateX(0);}
 .drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.drawer-head img{width:148px;max-height:58px;object-fit:contain}.drawer-close{width:38px;height:38px;border:none;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-size:22px}
 .drawer-user{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;margin-bottom:14px}.drawer-user strong{display:block;font-size:14px}.drawer-user small{display:block;color:#cbd5e1;font-size:12px;margin-top:3px}
@@ -663,6 +686,69 @@ body{
 
 <script>
 
+/* ================= API BASE LOCAL/REMOTO ================= */
+function getApiBase(){
+    const salvo = localStorage.getItem("api_base");
+    if(salvo) return salvo.replace(/\/$/, "");
+
+    const provedor = localStorage.getItem("provedor");
+    if(provedor) return `https://${provedor}.sgos.net.br`;
+
+    if(location.protocol.startsWith("http")){
+        return location.origin;
+    }
+
+    return "";
+}
+
+function apiUrl(path){
+    if(!path) return getApiBase();
+
+    if(/^https?:\/\//i.test(path)){
+        return path;
+    }
+
+    const base = getApiBase();
+
+    if(!base){
+        return path;
+    }
+
+    return base + (path.startsWith("/") ? path : "/" + path);
+}
+
+function apiFetch(path, options = {}){
+    return fetch(apiUrl(path), options);
+}
+
+function getPlataformaApp(){
+    try{
+        if(window.Capacitor && typeof window.Capacitor.getPlatform === "function"){
+            return window.Capacitor.getPlatform();
+        }
+    }catch(e){}
+    return "web";
+}
+
+function carregarSocketIo(){
+    return new Promise((resolve) => {
+        if(typeof io === "function"){
+            resolve(true);
+            return;
+        }
+
+        const script = document.createElement("script");
+        script.src = apiUrl("/socket.io/socket.io.js");
+        script.onload = () => resolve(true);
+        script.onerror = () => {
+            console.warn("Não foi possível carregar Socket.IO remoto");
+            resolve(false);
+        };
+        document.head.appendChild(script);
+    });
+}
+
+
 function abrirMenu(){
     document.getElementById("sideDrawer")?.classList.add("open");
     document.getElementById("drawerOverlay")?.classList.add("show");
@@ -704,6 +790,12 @@ params.get("id");
 const app =
 params.get("app");
 
+const provedorParam = params.get("provedor");
+if(provedorParam){
+    localStorage.setItem("provedor", provedorParam);
+    localStorage.setItem("api_base", `https://${provedorParam}.sgos.net.br`);
+}
+
 const osPushId = params.get("os_id") || params.get("os") || params.get("id_os");
 
 // =========================
@@ -730,6 +822,21 @@ if(token && id){
     localStorage.setItem("usuario_id", String(id));
     localStorage.setItem("is_app", "1");
 
+    const provedorSessao = params.get("provedor") || localStorage.getItem("provedor") || "";
+
+    if(provedorSessao){
+        localStorage.setItem("provedor", provedorSessao);
+        localStorage.setItem("api_base", `https://${provedorSessao}.sgos.net.br`);
+    }
+
+    localStorage.setItem("sessao_app", JSON.stringify({
+        provedor: provedorSessao,
+        id: String(id),
+        log_id: String(token),
+        usuario: params.get("usuario") || "",
+        empresa_id: params.get("empresa_id") || params.get("empresaId") || ""
+    }));
+
     // Remove token/id da barra para o app não restaurar login antigo ao fechar e abrir.
     try{
         const limpa = new URL(window.location.href);
@@ -740,6 +847,7 @@ if(token && id){
         limpa.searchParams.delete("empresaId");
         limpa.searchParams.delete("empresa_nome");
         limpa.searchParams.delete("empresa_logo");
+        limpa.searchParams.delete("provedor");
 
         if(!limpa.searchParams.get("app")){
             limpa.searchParams.set("app", "1");
@@ -757,7 +865,7 @@ if(token && id){
 const isApp =
 localStorage.getItem("is_app") === "1";
 
-const API = "/api/ordens_servico";
+const API_PATH = "/api/ordens_servico";
 
 let socket = null;
 let socketConectado = false;
@@ -930,7 +1038,7 @@ function iniciarSocket(){
             return;
         }
 
-        socket = io(window.location.origin, {
+        socket = io(getApiBase(), {
             transports:["websocket", "polling"]
         });
 
@@ -1039,7 +1147,7 @@ if (!local.id) {
 
     try {
 
-        const res = await fetch("/api/me", {
+        const res = await apiFetch("/api/me", {
 
             headers:{
                 "x-usuario-id": local.id
@@ -1073,6 +1181,7 @@ if (!local.id) {
     atualizarMenuUsuario();
 
     registrarUsuarioAndroidNativo();
+    await carregarSocketIo();
     iniciarSocket();
     iniciarPush();
 
@@ -1104,7 +1213,7 @@ if (!local.id) {
     ){
 
         logo =
-        window.location.origin + logo;
+        getApiBase() + logo;
 
     }
 
@@ -1156,7 +1265,7 @@ async function load(){
 
     try {
 
-        const res = await fetch(API, {
+        const res = await apiFetch(API_PATH, {
             headers: {
                 "x-usuario-id": user.id
             }
@@ -1167,7 +1276,7 @@ async function load(){
         let listaAvulsas = [];
 
         try {
-            const resAvulsas = await fetch("/api/os-avulsas/painel?periodo=30dias", {
+            const resAvulsas = await apiFetch("/api/os-avulsas/painel?periodo=30dias", {
                 headers: {
                     "x-usuario-id": user.id
                 }
@@ -1389,7 +1498,7 @@ async function enviarAcao(tipo){
         }
 
         try{
-            const res = await fetch(`/api/os-avulsas/${osAtual.id}/status`, {
+            const res = await apiFetch(`/api/os-avulsas/${osAtual.id}/status`, {
                 method:"PUT",
                 headers:{
                     "Content-Type":"application/json",
@@ -1444,7 +1553,7 @@ async function enviarAcao(tipo){
             rota = `/api/ordens_servico/concluir/${osSelecionada}`;
         }
 
-        const res = await fetch(rota, {
+        const res = await apiFetch(rota, {
             method: "POST",
             headers: {
                 "x-usuario-id": user.id
@@ -1566,7 +1675,7 @@ function verAnexo(){
 
     const url = os.anexo_path.startsWith("http")
         ? os.anexo_path
-        : window.location.origin + os.anexo_path;
+        : getApiBase() + os.anexo_path;
 
     abrirModalAnexo(url, os.id);
 }
@@ -1638,7 +1747,7 @@ async function pegarLocalizacao(){
 
         try {
 
-            const res = await fetch(`/api/ordens_servico/localizacao/${osSelecionada}`, {
+            const res = await apiFetch(`/api/ordens_servico/localizacao/${osSelecionada}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -1696,7 +1805,7 @@ function logout(){
     const logId = localStorage.getItem("log_id");
 
     if(logId){
-        fetch("/api/logout", {
+        apiFetch("/api/logout", {
             method:"POST",
             headers:{ "Content-Type":"application/json" },
             body:JSON.stringify({ log_id: logId })
@@ -1921,7 +2030,7 @@ async function salvarTokenPush(token){
     }
 
     try {
-        const res = await fetch("/api/push/token", {
+        const res = await apiFetch("/api/push/token", {
             method:"POST",
             headers:{
                 "Content-Type":"application/json",
@@ -1929,7 +2038,7 @@ async function salvarTokenPush(token){
             },
             body:JSON.stringify({
                 token_fcm: token,
-                plataforma: "android",
+                plataforma: getPlataformaApp(),
                 device_id: localStorage.getItem("device_id") || null
             })
         });

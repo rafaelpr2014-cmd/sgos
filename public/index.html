@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
 <title>Login - SGOS</title>
 
@@ -15,9 +15,18 @@
     padding:0;
 }
 
+html, body{
+    overscroll-behavior:none;
+    touch-action:manipulation;
+    -webkit-text-size-adjust:100%;
+    -webkit-user-select:none;
+    user-select:none;
+}
+
 body{
     font-family:Arial, Helvetica, sans-serif;
     min-height:100vh;
+    min-height:100dvh;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -215,10 +224,14 @@ function montarDestinoApp(provedor, usuarioObj){
         app: "1",
         id: String(usuarioObj.id || ""),
         token: String(usuarioObj.log_id || ""),
-        usuario: String(usuarioObj.usuario || "")
+        usuario: String(usuarioObj.usuario || ""),
+        provedor: String(provedor || "")
     });
 
-    return `https://${provedor}.sgos.net.br/appmobile.html?${params.toString()}`;
+    // IMPORTANTE iOS:
+    // Mantém o app dentro do Capacitor/local para não separar o localStorage
+    // entre capacitor://localhost e https://provedor.sgos.net.br.
+    return `appmobile.html?${params.toString()}`;
 }
 
 
@@ -253,26 +266,46 @@ provedorInput.addEventListener("input", () => {
 // =========================
 window.onload = () => {
 
-    // Depois do ajuste definitivo, NÃO existe mais auto-login por usuário salvo.
-    // O app só entra novamente depois de digitar usuário e senha.
-    const saiu = new URLSearchParams(window.location.search).get("logout") === "1";
-
-    if(saiu){
-        localStorage.setItem("sgos_logout_bloqueado", "1");
-    }
+    const params = new URLSearchParams(window.location.search);
+    const saiu = params.get("logout") === "1";
 
     const provedorSalvo = localStorage.getItem("provedor");
+    const sessaoApp = localStorage.getItem("sessao_app");
 
     if(provedorSalvo){
         document.getElementById("provedor").value = provedorSalvo;
         preview.innerHTML = `https://${provedorSalvo}.sgos.net.br`;
     }
 
-    // Garante que nenhum usuário antigo fique disponível para redirect automático.
-    localStorage.removeItem("usuario");
-    localStorage.removeItem("usuario_id");
-    localStorage.removeItem("log_id");
-    localStorage.removeItem("is_app");
+    // Só limpa quando clicou em SAIR.
+    if(saiu){
+        localStorage.setItem("sgos_logout_bloqueado", "1");
+        localStorage.removeItem("usuario");
+        localStorage.removeItem("usuario_id");
+        localStorage.removeItem("log_id");
+        localStorage.removeItem("is_app");
+        localStorage.removeItem("sessao_app");
+        sessionStorage.clear();
+        return;
+    }
+
+    // Se já existe sessão do app, entra direto.
+    if(sessaoApp){
+        try{
+            const s = JSON.parse(sessaoApp);
+            if(s && s.provedor && s.id && s.log_id){
+                window.location.replace(montarDestinoApp(s.provedor, {
+                    id: s.id,
+                    log_id: s.log_id,
+                    usuario: s.usuario || ""
+                }));
+                return;
+            }
+        }catch(e){
+            console.warn("Sessão app inválida:", e);
+            localStorage.removeItem("sessao_app");
+        }
+    }
 };
 
 // =========================
@@ -386,6 +419,16 @@ async function login(){
                 "usuario_id",
                 data.usuario.id
             );
+
+            localStorage.setItem("is_app", "1");
+
+            localStorage.setItem("sessao_app", JSON.stringify({
+                provedor: provedor,
+                id: data.usuario.id,
+                log_id: data.log_id,
+                usuario: data.usuario.usuario || usuarioInput,
+                empresa_id: data.usuario.empresa_id || ""
+            }));
 
             console.log("✅ LOGIN OK");
 
