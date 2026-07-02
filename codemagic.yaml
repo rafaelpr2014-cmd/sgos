@@ -14,7 +14,7 @@ workflows:
     integrations:
       app_store_connect: Codemagic
 
-        scripts:
+    scripts:
       - npm install
       - npm install @capacitor/ios
       - rm -rf ios
@@ -26,6 +26,7 @@ workflows:
       - xcode-project use-profiles
       - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
 
+    artifacts:
       - build/ios/ipa/*.ipa
       - ios/App/build/ios/ipa/*.ipa
 
