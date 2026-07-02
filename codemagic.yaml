@@ -19,8 +19,6 @@ workflows:
       - npm install @capacitor/ios
       - npx cap add ios
       - npx cap sync ios
-      - cd ios/App
-      - pod install
       - xcode-project use-profiles
       - xcode-project build-ipa --workspace App.xcworkspace --scheme App
 
