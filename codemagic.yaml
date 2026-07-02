@@ -1,13 +1,18 @@
 workflows:
-  ios-capacitor:
-    name: SGOS Mobile iOS
-
+  ios-capacitor-testflight:
+    name: SGOS Mobile iOS TestFlight
     instance_type: mac_mini_m2
 
     environment:
       node: latest
       xcode: latest
       cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.sgos.mobile
+
+    integrations:
+      app_store_connect: Codemagic
 
     scripts:
       - npm install
@@ -16,8 +21,13 @@ workflows:
       - npx cap sync ios
       - cd ios/App
       - pod install
-      - xcodebuild -workspace App.xcworkspace -scheme App -sdk iphoneos -configuration Release CODE_SIGNING_ALLOWED=NO
+      - xcode-project use-profiles
+      - xcode-project build-ipa --workspace App.xcworkspace --scheme App
 
     artifacts:
-      - ios/App/build/**/*.app
-      - ios/App/build/**/*.ipa
+      - ios/App/build/ios/ipa/*.ipa
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
