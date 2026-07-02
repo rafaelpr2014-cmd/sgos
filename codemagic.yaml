@@ -1,26 +1,23 @@
 workflows:
   ios-capacitor:
-    name: Build iOS SGOS
+    name: SGOS Mobile iOS
 
     instance_type: mac_mini_m2
 
     environment:
       node: latest
+      xcode: latest
+      cocoapods: default
 
     scripts:
       - npm install
       - npm install @capacitor/ios
-      - npx cap add ios || true
+      - npx cap add ios
       - npx cap sync ios
       - cd ios/App
       - pod install
-      - xcodebuild \
-          -workspace App.xcworkspace \
-          -scheme App \
-          -sdk iphoneos \
-          -configuration Release \
-          CODE_SIGNING_ALLOWED=NO
+      - xcodebuild -workspace App.xcworkspace -scheme App -sdk iphoneos -configuration Release CODE_SIGNING_ALLOWED=NO
 
     artifacts:
-      - ios/App/build/**/*.ipa
       - ios/App/build/**/*.app
+      - ios/App/build/**/*.ipa
