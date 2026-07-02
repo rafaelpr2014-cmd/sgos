@@ -1883,42 +1883,46 @@ async function mostrarNotificacaoCustom(titulo, mensagem){
 /* ================= PUSH NOTIFICATION REAL - CAPACITOR / FCM ================= */
 let pushRegistrado = false;
 
+function getPlataformaApp(){
+    try{
+        if(window.Capacitor && typeof window.Capacitor.getPlatform === "function"){
+            return window.Capacitor.getPlatform(); // ios, android, web
+        }
+    }catch(e){}
+    return "web";
+}
+
 function getPushPlugin(){
     try {
         const cap = window.Capacitor;
-
-        console.log("Capacitor disponível:", !!cap);
-        console.log("Plugins disponíveis:", cap?.Plugins ? Object.keys(cap.Plugins) : []);
 
         if(cap?.Plugins?.PushNotifications){
             return cap.Plugins.PushNotifications;
         }
 
-        if(cap?.Plugins?.PushNotificationsPlugin){
-            return cap.Plugins.PushNotificationsPlugin;
-        }
-
-        if(window.PushNotifications){
-            return window.PushNotifications;
+        if(window.Capacitor?.Plugins?.PushNotificationsPlugin){
+            return window.Capacitor.Plugins.PushNotificationsPlugin;
         }
 
         return null;
     } catch(e){
-        console.error("Erro ao localizar plugin PushNotifications:", e);
+        console.error("Erro ao localizar PushNotifications:", e);
         return null;
     }
 }
 
 async function salvarTokenPush(token){
     if(!token){
-        console.warn("Token FCM vazio");
+        alert("Token push vazio");
         return;
     }
 
     if(!user || !user.id){
-        console.warn("Usuário não carregado; não foi possível salvar token FCM");
+        alert("Usuário não carregado para salvar push");
         return;
     }
+
+    const plataforma = getPlataformaApp();
 
     try {
         const res = await fetch("/api/push/token", {
@@ -1929,8 +1933,8 @@ async function salvarTokenPush(token){
             },
             body:JSON.stringify({
                 token_fcm: token,
-                plataforma: "android",
-                device_id: localStorage.getItem("device_id") || null
+                plataforma: plataforma,
+                device_id: localStorage.getItem("device_id") || plataforma + "-" + user.id
             })
         });
 
@@ -1941,14 +1945,19 @@ async function salvarTokenPush(token){
         }
 
         localStorage.setItem("push_token_fcm", token);
-        console.log("✅ Token FCM salvo no SGOS:", token.substring(0, 25) + "...");
+        localStorage.setItem("push_plataforma", plataforma);
+
+        alert("Token Push salvo: " + plataforma);
+        console.log("✅ Token Push salvo:", plataforma, token.substring(0, 30) + "...");
+
     } catch(err){
+        alert("Erro ao salvar token push: " + err.message);
         console.error("Erro ao salvar token FCM:", err);
     }
 }
 
 async function iniciarPush(){
-    console.log("========== INICIANDO PUSH ==========");
+    alert("Iniciando Push...");
 
     if(pushRegistrado){
         console.log("Push já registrado nesta sessão");
@@ -1957,23 +1966,24 @@ async function iniciarPush(){
 
     const PushNotifications = getPushPlugin();
 
-    console.log("PushNotifications plugin:", PushNotifications);
+    alert("Plugin Push: " + (PushNotifications ? "OK" : "NÃO ENCONTRADO"));
 
     if(!PushNotifications){
-        console.warn("Push Capacitor não encontrado. No navegador comum ficará apenas socket/polling + Notification API.");
+        console.warn("Push Capacitor não encontrado.");
         return;
     }
 
     pushRegistrado = true;
 
     try {
-        // Registra listeners ANTES do register para não perder o token.
         await PushNotifications.addListener("registration", async (token) => {
-            console.log("✅ FCM Token:", token.value);
+            alert("TOKEN RECEBIDO");
+            console.log("✅ Token Push:", token.value);
             await salvarTokenPush(token.value);
         });
 
         await PushNotifications.addListener("registrationError", (err) => {
+            alert("Erro registro push: " + JSON.stringify(err));
             console.error("Erro no registro push:", err);
         });
 
@@ -1981,9 +1991,11 @@ async function iniciarPush(){
             console.log("Push recebido com app aberto:", notification);
 
             tocarSomNovaOS();
-            if(navigator.vibrate) navigator.vibrate([300,100,300]);
 
-            const osId = notification?.data?.os_id || notification?.data?.id_os || notification?.data?.id;
+            const osId =
+                notification?.data?.os_id ||
+                notification?.data?.id_os ||
+                notification?.data?.id;
 
             if(osId){
                 localStorage.setItem("abrir_os_push", String(osId));
@@ -2008,17 +2020,21 @@ async function iniciarPush(){
         });
 
         const perm = await PushNotifications.requestPermissions();
-        console.log("Permissão push:", perm);
+
+        alert("Permissão Push: " + JSON.stringify(perm));
 
         if(perm.receive !== "granted"){
-            console.warn("Permissão de push negada pelo usuário");
+            console.warn("Permissão de push negada:", perm);
             return;
         }
 
         await PushNotifications.register();
+
+        alert("Push register executado");
         console.log("✅ PushNotifications.register() executado");
 
     } catch(err){
+        alert("Erro iniciar push: " + err.message);
         console.error("Erro ao iniciar push:", err);
         pushRegistrado = false;
     }
