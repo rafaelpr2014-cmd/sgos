@@ -208,88 +208,6 @@ button:hover{
 console.log("🔥 LOGIN CARREGADO");
 
 // =========================
-// 📦 CAPACITOR PREFERENCES
-// =========================
-function getPreferencesPlugin(){
-    try{
-        return window.Capacitor?.Plugins?.Preferences || null;
-    }catch(e){
-        return null;
-    }
-}
-
-async function prefsSet(key, value){
-    try{
-        const Preferences = getPreferencesPlugin();
-        if(Preferences){
-            await Preferences.set({ key, value });
-        }
-    }catch(e){
-        console.warn("Preferences set erro:", key, e);
-    }
-}
-
-async function prefsGet(key){
-    try{
-        const Preferences = getPreferencesPlugin();
-        if(Preferences){
-            const r = await Preferences.get({ key });
-            return r?.value || null;
-        }
-    }catch(e){
-        console.warn("Preferences get erro:", key, e);
-    }
-    return null;
-}
-
-async function prefsRemove(key){
-    try{
-        const Preferences = getPreferencesPlugin();
-        if(Preferences){
-            await Preferences.remove({ key });
-        }
-    }catch(e){
-        console.warn("Preferences remove erro:", key, e);
-    }
-}
-
-async function limparSessaoApp(){
-    try{ sessionStorage.clear(); }catch(e){}
-
-    localStorage.removeItem("usuario");
-    localStorage.removeItem("usuario_id");
-    localStorage.removeItem("log_id");
-    localStorage.removeItem("is_app");
-    localStorage.removeItem("sessao_app");
-
-    await prefsRemove("usuario");
-    await prefsRemove("usuario_id");
-    await prefsRemove("log_id");
-    await prefsRemove("is_app");
-    await prefsRemove("sessao_app");
-}
-
-async function salvarSessaoApp(sessao){
-    if(!sessao) return;
-
-    localStorage.setItem("usuario", JSON.stringify(sessao.usuarioObj));
-    localStorage.setItem("log_id", String(sessao.log_id));
-    localStorage.setItem("usuario_id", String(sessao.id));
-    localStorage.setItem("is_app", "1");
-    localStorage.setItem("provedor", sessao.provedor);
-    localStorage.setItem("api_base", `https://${sessao.provedor}.sgos.net.br`);
-    localStorage.setItem("sessao_app", JSON.stringify(sessao));
-
-    await prefsSet("usuario", JSON.stringify(sessao.usuarioObj));
-    await prefsSet("log_id", String(sessao.log_id));
-    await prefsSet("usuario_id", String(sessao.id));
-    await prefsSet("is_app", "1");
-    await prefsSet("provedor", sessao.provedor);
-    await prefsSet("api_base", `https://${sessao.provedor}.sgos.net.br`);
-    await prefsSet("sessao_app", JSON.stringify(sessao));
-}
-
-// =========================
 // 🔗 MONTAR URL DO APP
 // =========================
 function montarDestinoApp(provedor, usuarioObj){
@@ -327,14 +245,13 @@ provedorInput.addEventListener("input", () => {
 // =========================
 // 🔁 CARREGAMENTO DA TELA
 // =========================
-window.onload = async () => {
+window.onload = () => {
 
     const params = new URLSearchParams(window.location.search);
     const saiu = params.get("logout") === "1";
 
-    const provedorSalvo =
-        localStorage.getItem("provedor") ||
-        await prefsGet("provedor");
+    const provedorSalvo = localStorage.getItem("provedor");
+    const sessaoApp = localStorage.getItem("sessao_app");
 
     if(provedorSalvo){
         document.getElementById("provedor").value = provedorSalvo;
@@ -344,32 +261,28 @@ window.onload = async () => {
     // Só limpa sessão quando o usuário clicou em SAIR
     if(saiu){
         localStorage.setItem("sgos_logout_bloqueado", "1");
-        await prefsSet("sgos_logout_bloqueado", "1");
-        await limparSessaoApp();
+
+        localStorage.removeItem("usuario");
+        localStorage.removeItem("usuario_id");
+        localStorage.removeItem("log_id");
+        localStorage.removeItem("is_app");
+        localStorage.removeItem("sessao_app");
+
+        sessionStorage.clear();
         return;
     }
 
-    // Busca sessão primeiro no localStorage e depois no armazenamento nativo do Capacitor
-    let sessaoApp = localStorage.getItem("sessao_app");
-
-    if(!sessaoApp){
-        sessaoApp = await prefsGet("sessao_app");
-    }
-
+    // Se já existe sessão salva do app, entra automaticamente
     if(sessaoApp){
         try{
             const s = JSON.parse(sessaoApp);
 
             if(s.provedor && s.id && s.log_id){
 
-                if(s.usuarioObj){
-                    await salvarSessaoApp(s);
-                }
-
                 const destino = montarDestinoApp(s.provedor, {
                     id: s.id,
                     log_id: s.log_id,
-                    usuario: s.usuario || s.usuarioObj?.usuario || ""
+                    usuario: s.usuario || ""
                 });
 
                 console.log("🔁 Restaurando sessão iOS:", destino);
@@ -384,7 +297,6 @@ window.onload = async () => {
         }catch(e){
             console.warn("Sessão app inválida", e);
             localStorage.removeItem("sessao_app");
-            await prefsRemove("sessao_app");
         }
     }
 };
@@ -432,15 +344,18 @@ async function login(){
 
         // Login manual libera a trava do logout e apaga qualquer sessão antiga.
         localStorage.removeItem("sgos_logout_bloqueado");
-        await prefsRemove("sgos_logout_bloqueado");
-        await limparSessaoApp();
+        localStorage.removeItem("usuario");
+        localStorage.removeItem("usuario_id");
+        localStorage.removeItem("log_id");
+        localStorage.removeItem("is_app");
+        localStorage.removeItem("sessao_app");
+
+        sessionStorage.clear();
 
         const API_BASE = `https://${provedor}.sgos.net.br`;
 
         localStorage.setItem("api_base", API_BASE);
         localStorage.setItem("provedor", provedor);
-        await prefsSet("api_base", API_BASE);
-        await prefsSet("provedor", provedor);
 
         const url = `${API_BASE}/api/login`;
 
@@ -474,16 +389,19 @@ async function login(){
                 log_id: data.log_id
             };
 
-            const sessao = {
+            localStorage.setItem("usuario", JSON.stringify(userData));
+            localStorage.setItem("log_id", String(data.log_id));
+            localStorage.setItem("usuario_id", String(data.usuario.id));
+            localStorage.setItem("is_app", "1");
+
+            // Sessão persistente exclusiva para restaurar login no iOS ao reabrir o app
+            localStorage.setItem("sessao_app", JSON.stringify({
                 provedor: provedor,
                 id: data.usuario.id,
                 log_id: data.log_id,
                 usuario: userData.usuario || usuarioInput,
-                empresa_id: data.usuario.empresa_id || "",
-                usuarioObj: userData
-            };
-
-            await salvarSessaoApp(sessao);
+                empresa_id: data.usuario.empresa_id || ""
+            }));
 
             console.log("✅ LOGIN OK");
 
