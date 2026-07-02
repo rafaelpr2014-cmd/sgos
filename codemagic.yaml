@@ -17,6 +17,7 @@ workflows:
     scripts:
       - npm install
       - npm install @capacitor/ios
+      - npm install @capacitor/preferences
       - rm -rf ios
       - npx cap add ios
       - npx @capacitor/assets generate
