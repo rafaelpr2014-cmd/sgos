@@ -221,11 +221,15 @@ function montarDestinoApp(provedor, usuarioObj){
     return `https://${provedor}.sgos.net.br/appmobile.html?${params.toString()}`;
 }
 
+
 // =========================
 // 🔄 PREVIEW URL
 // =========================
-const provedorInput = document.getElementById("provedor");
-const preview = document.getElementById("preview");
+const provedorInput =
+    document.getElementById("provedor");
+
+const preview =
+    document.getElementById("preview");
 
 provedorInput.addEventListener("input", () => {
 
@@ -235,9 +239,11 @@ provedorInput.addEventListener("input", () => {
         .replace(/[^a-z0-9]/g, "");
 
     if(provedor){
-        preview.innerHTML = `https://${provedor}.sgos.net.br`;
+        preview.innerHTML =
+            `https://${provedor}.sgos.net.br`;
     }else{
-        preview.innerHTML = `https://provedor.sgos.net.br`;
+        preview.innerHTML =
+            `https://provedor.sgos.net.br`;
     }
 
 });
@@ -247,58 +253,26 @@ provedorInput.addEventListener("input", () => {
 // =========================
 window.onload = () => {
 
-    const params = new URLSearchParams(window.location.search);
-    const saiu = params.get("logout") === "1";
+    // Depois do ajuste definitivo, NÃO existe mais auto-login por usuário salvo.
+    // O app só entra novamente depois de digitar usuário e senha.
+    const saiu = new URLSearchParams(window.location.search).get("logout") === "1";
+
+    if(saiu){
+        localStorage.setItem("sgos_logout_bloqueado", "1");
+    }
 
     const provedorSalvo = localStorage.getItem("provedor");
-    const sessaoApp = localStorage.getItem("sessao_app");
 
     if(provedorSalvo){
         document.getElementById("provedor").value = provedorSalvo;
         preview.innerHTML = `https://${provedorSalvo}.sgos.net.br`;
     }
 
-    // Só limpa sessão quando o usuário clicou em SAIR
-    if(saiu){
-        localStorage.setItem("sgos_logout_bloqueado", "1");
-
-        localStorage.removeItem("usuario");
-        localStorage.removeItem("usuario_id");
-        localStorage.removeItem("log_id");
-        localStorage.removeItem("is_app");
-        localStorage.removeItem("sessao_app");
-
-        sessionStorage.clear();
-        return;
-    }
-
-    // Se já existe sessão salva do app, entra automaticamente
-    if(sessaoApp){
-        try{
-            const s = JSON.parse(sessaoApp);
-
-            if(s.provedor && s.id && s.log_id){
-
-                const destino = montarDestinoApp(s.provedor, {
-                    id: s.id,
-                    log_id: s.log_id,
-                    usuario: s.usuario || ""
-                });
-
-                console.log("🔁 Restaurando sessão iOS:", destino);
-
-                setTimeout(() => {
-                    window.location.replace(destino);
-                }, 150);
-
-                return;
-            }
-
-        }catch(e){
-            console.warn("Sessão app inválida", e);
-            localStorage.removeItem("sessao_app");
-        }
-    }
+    // Garante que nenhum usuário antigo fique disponível para redirect automático.
+    localStorage.removeItem("usuario");
+    localStorage.removeItem("usuario_id");
+    localStorage.removeItem("log_id");
+    localStorage.removeItem("is_app");
 };
 
 // =========================
@@ -323,8 +297,11 @@ async function login(){
         .value
         .trim();
 
-    const erroEl = document.getElementById("erro");
-    const loading = document.getElementById("loading");
+    const erroEl =
+        document.getElementById("erro");
+
+    const loading =
+        document.getElementById("loading");
 
     erroEl.innerText = "";
 
@@ -348,16 +325,23 @@ async function login(){
         localStorage.removeItem("usuario_id");
         localStorage.removeItem("log_id");
         localStorage.removeItem("is_app");
-        localStorage.removeItem("sessao_app");
-
         sessionStorage.clear();
 
-        const API_BASE = `https://${provedor}.sgos.net.br`;
+        const API_BASE =
+            `https://${provedor}.sgos.net.br`;
 
-        localStorage.setItem("api_base", API_BASE);
-        localStorage.setItem("provedor", provedor);
+        localStorage.setItem(
+            "api_base",
+            API_BASE
+        );
 
-        const url = `${API_BASE}/api/login`;
+        localStorage.setItem(
+            "provedor",
+            provedor
+        );
+
+        const url =
+            `${API_BASE}/api/login`;
 
         console.log("🌐 LOGIN:", url);
 
@@ -381,31 +365,32 @@ async function login(){
             data.log_id
         ){
             const userData = {
-                id: data.usuario.id,
-                usuario: data.usuario.usuario || data.usuario.nome || usuarioInput,
-                nome: data.usuario.nome || data.usuario.usuario || usuarioInput,
-                cargo: data.usuario.cargo,
-                empresa_id: data.usuario.empresa_id,
-                log_id: data.log_id
+                id:data.usuario.id,
+                usuario:data.usuario.usuario,
+                cargo:data.usuario.cargo,
+                empresa_id:data.usuario.empresa_id,
+                log_id:data.log_id
             };
 
-            localStorage.setItem("usuario", JSON.stringify(userData));
-            localStorage.setItem("log_id", String(data.log_id));
-            localStorage.setItem("usuario_id", String(data.usuario.id));
-            localStorage.setItem("is_app", "1");
+            localStorage.setItem(
+                "usuario",
+                JSON.stringify(userData)
+            );
 
-            // Sessão persistente exclusiva para restaurar login no iOS ao reabrir o app
-            localStorage.setItem("sessao_app", JSON.stringify({
-                provedor: provedor,
-                id: data.usuario.id,
-                log_id: data.log_id,
-                usuario: userData.usuario || usuarioInput,
-                empresa_id: data.usuario.empresa_id || ""
-            }));
+            localStorage.setItem(
+                "log_id",
+                String(data.log_id)
+            );
+
+            localStorage.setItem(
+                "usuario_id",
+                data.usuario.id
+            );
 
             console.log("✅ LOGIN OK");
 
-            const destino = montarDestinoApp(provedor, userData);
+            const destino =
+                montarDestinoApp(provedor, userData);
 
             console.log("🚀 REDIRECIONANDO:", destino);
 

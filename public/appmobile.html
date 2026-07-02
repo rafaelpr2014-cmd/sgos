@@ -663,134 +663,6 @@ body{
 
 <script>
 
-/* ================= CAPACITOR PREFERENCES - SESSÃO NATIVA ================= */
-function getPreferencesPlugin(){
-    try{
-        return window.Capacitor?.Plugins?.Preferences || null;
-    }catch(e){
-        return null;
-    }
-}
-
-async function prefsSet(key, value){
-    try{
-        const Preferences = getPreferencesPlugin();
-        if(Preferences){
-            await Preferences.set({ key, value });
-        }
-    }catch(e){
-        console.warn("Preferences set erro:", key, e);
-    }
-}
-
-async function prefsGet(key){
-    try{
-        const Preferences = getPreferencesPlugin();
-        if(Preferences){
-            const r = await Preferences.get({ key });
-            return r?.value || null;
-        }
-    }catch(e){
-        console.warn("Preferences get erro:", key, e);
-    }
-    return null;
-}
-
-async function prefsRemove(key){
-    try{
-        const Preferences = getPreferencesPlugin();
-        if(Preferences){
-            await Preferences.remove({ key });
-        }
-    }catch(e){
-        console.warn("Preferences remove erro:", key, e);
-    }
-}
-
-function detectarProvedorAtual(){
-    try{
-        const host = window.location.hostname || "";
-        const partes = host.split(".");
-        if(partes.length >= 3 && host.endsWith(".sgos.net.br")){
-            return partes[0];
-        }
-    }catch(e){}
-    return localStorage.getItem("provedor") || "";
-}
-
-async function salvarSessaoAppPersistente(sessao){
-    if(!sessao) return;
-
-    localStorage.setItem("usuario", JSON.stringify(sessao.usuarioObj));
-    localStorage.setItem("log_id", String(sessao.log_id));
-    localStorage.setItem("usuario_id", String(sessao.id));
-    localStorage.setItem("is_app", "1");
-
-    if(sessao.provedor){
-        localStorage.setItem("provedor", sessao.provedor);
-        localStorage.setItem("api_base", `https://${sessao.provedor}.sgos.net.br`);
-    }
-
-    localStorage.setItem("sessao_app", JSON.stringify(sessao));
-
-    await prefsSet("usuario", JSON.stringify(sessao.usuarioObj));
-    await prefsSet("log_id", String(sessao.log_id));
-    await prefsSet("usuario_id", String(sessao.id));
-    await prefsSet("is_app", "1");
-
-    if(sessao.provedor){
-        await prefsSet("provedor", sessao.provedor);
-        await prefsSet("api_base", `https://${sessao.provedor}.sgos.net.br`);
-    }
-
-    await prefsSet("sessao_app", JSON.stringify(sessao));
-}
-
-async function restaurarSessaoAppPersistente(){
-    try{
-        let sessaoApp = localStorage.getItem("sessao_app");
-
-        if(!sessaoApp){
-            sessaoApp = await prefsGet("sessao_app");
-        }
-
-        if(!sessaoApp){
-            return null;
-        }
-
-        const sessao = JSON.parse(sessaoApp);
-
-        if(!sessao?.id || !sessao?.log_id){
-            return null;
-        }
-
-        await salvarSessaoAppPersistente(sessao);
-        return sessao.usuarioObj || {
-            id: sessao.id,
-            log_id: sessao.log_id,
-            usuario: sessao.usuario || "",
-            empresa_id: sessao.empresa_id || ""
-        };
-
-    }catch(e){
-        console.warn("Não foi possível restaurar sessão persistente:", e);
-        return null;
-    }
-}
-
-async function limparSessaoAppPersistente(){
-    try{ sessionStorage.clear(); }catch(e){}
-    try{ localStorage.clear(); }catch(e){}
-
-    await prefsRemove("usuario");
-    await prefsRemove("usuario_id");
-    await prefsRemove("log_id");
-    await prefsRemove("is_app");
-    await prefsRemove("sessao_app");
-    await prefsRemove("api_base");
-}
-
-
 function abrirMenu(){
     document.getElementById("sideDrawer")?.classList.add("open");
     document.getElementById("drawerOverlay")?.classList.add("show");
@@ -857,17 +729,6 @@ if(token && id){
     localStorage.setItem("log_id", String(token));
     localStorage.setItem("usuario_id", String(id));
     localStorage.setItem("is_app", "1");
-
-    const provedorAtual = params.get("provedor") || detectarProvedorAtual();
-
-    salvarSessaoAppPersistente({
-        provedor: provedorAtual,
-        id: String(id),
-        log_id: String(token),
-        usuario: novoUsuarioApp.usuario || "",
-        empresa_id: novoUsuarioApp.empresa_id || "",
-        usuarioObj: novoUsuarioApp
-    });
 
     // Remove token/id da barra para o app não restaurar login antigo ao fechar e abrir.
     try{
@@ -1148,17 +1009,10 @@ async function init(){
 
     console.log("========== INIT EXECUTOU ==========");
 
-    let local =
+    const local =
     JSON.parse(
         localStorage.getItem("usuario") || "{}"
     );
-
-    if(!local.id){
-        const restaurado = await restaurarSessaoAppPersistente();
-        if(restaurado?.id){
-            local = restaurado;
-        }
-    }
 
 // =========================
 // SEM LOGIN
@@ -1206,15 +1060,6 @@ if (!local.id) {
                 "usuario",
                 JSON.stringify(user)
             );
-
-            await salvarSessaoAppPersistente({
-                provedor: detectarProvedorAtual(),
-                id: user.id,
-                log_id: user.log_id || localStorage.getItem("log_id"),
-                usuario: user.usuario || user.nome || "",
-                empresa_id: user.empresa_id || "",
-                usuarioObj: user
-            });
         }
 
     } catch(e){
@@ -1844,7 +1689,7 @@ function visualizarLocalizacao(){
 }
 
 /* ================= LOGOUT ================= */
-async function logout(){
+function logout(){
 
     console.log("is_app =", localStorage.getItem("is_app"));
 
@@ -1858,8 +1703,9 @@ async function logout(){
         }).catch(console.error);
     }
 
-    // Limpa sessão web completa + sessão nativa Capacitor
-    await limparSessaoAppPersistente();
+    // Limpa sessão web completa
+    try{ sessionStorage.clear(); }catch(e){}
+    try{ localStorage.clear(); }catch(e){}
 
     // Limpa sessão salva no app nativo, se existir bridge Android/iOS.
     // Mantém compatibilidade mesmo se o método ainda não existir no app.
@@ -2037,46 +1883,42 @@ async function mostrarNotificacaoCustom(titulo, mensagem){
 /* ================= PUSH NOTIFICATION REAL - CAPACITOR / FCM ================= */
 let pushRegistrado = false;
 
-function getPlataformaApp(){
-    try{
-        if(window.Capacitor && typeof window.Capacitor.getPlatform === "function"){
-            return window.Capacitor.getPlatform(); // ios, android, web
-        }
-    }catch(e){}
-    return "web";
-}
-
 function getPushPlugin(){
     try {
         const cap = window.Capacitor;
+
+        console.log("Capacitor disponível:", !!cap);
+        console.log("Plugins disponíveis:", cap?.Plugins ? Object.keys(cap.Plugins) : []);
 
         if(cap?.Plugins?.PushNotifications){
             return cap.Plugins.PushNotifications;
         }
 
-        if(window.Capacitor?.Plugins?.PushNotificationsPlugin){
-            return window.Capacitor.Plugins.PushNotificationsPlugin;
+        if(cap?.Plugins?.PushNotificationsPlugin){
+            return cap.Plugins.PushNotificationsPlugin;
+        }
+
+        if(window.PushNotifications){
+            return window.PushNotifications;
         }
 
         return null;
     } catch(e){
-        console.error("Erro ao localizar PushNotifications:", e);
+        console.error("Erro ao localizar plugin PushNotifications:", e);
         return null;
     }
 }
 
 async function salvarTokenPush(token){
     if(!token){
-        alert("Token push vazio");
+        console.warn("Token FCM vazio");
         return;
     }
 
     if(!user || !user.id){
-        alert("Usuário não carregado para salvar push");
+        console.warn("Usuário não carregado; não foi possível salvar token FCM");
         return;
     }
-
-    const plataforma = getPlataformaApp();
 
     try {
         const res = await fetch("/api/push/token", {
@@ -2087,8 +1929,8 @@ async function salvarTokenPush(token){
             },
             body:JSON.stringify({
                 token_fcm: token,
-                plataforma: plataforma,
-                device_id: localStorage.getItem("device_id") || plataforma + "-" + user.id
+                plataforma: "android",
+                device_id: localStorage.getItem("device_id") || null
             })
         });
 
@@ -2099,19 +1941,14 @@ async function salvarTokenPush(token){
         }
 
         localStorage.setItem("push_token_fcm", token);
-        localStorage.setItem("push_plataforma", plataforma);
-
-        alert("Token Push salvo: " + plataforma);
-        console.log("✅ Token Push salvo:", plataforma, token.substring(0, 30) + "...");
-
+        console.log("✅ Token FCM salvo no SGOS:", token.substring(0, 25) + "...");
     } catch(err){
-        alert("Erro ao salvar token push: " + err.message);
         console.error("Erro ao salvar token FCM:", err);
     }
 }
 
 async function iniciarPush(){
-    alert("Iniciando Push...");
+    console.log("========== INICIANDO PUSH ==========");
 
     if(pushRegistrado){
         console.log("Push já registrado nesta sessão");
@@ -2120,24 +1957,23 @@ async function iniciarPush(){
 
     const PushNotifications = getPushPlugin();
 
-    alert("Plugin Push: " + (PushNotifications ? "OK" : "NÃO ENCONTRADO"));
+    console.log("PushNotifications plugin:", PushNotifications);
 
     if(!PushNotifications){
-        console.warn("Push Capacitor não encontrado.");
+        console.warn("Push Capacitor não encontrado. No navegador comum ficará apenas socket/polling + Notification API.");
         return;
     }
 
     pushRegistrado = true;
 
     try {
+        // Registra listeners ANTES do register para não perder o token.
         await PushNotifications.addListener("registration", async (token) => {
-            alert("TOKEN RECEBIDO");
-            console.log("✅ Token Push:", token.value);
+            console.log("✅ FCM Token:", token.value);
             await salvarTokenPush(token.value);
         });
 
         await PushNotifications.addListener("registrationError", (err) => {
-            alert("Erro registro push: " + JSON.stringify(err));
             console.error("Erro no registro push:", err);
         });
 
@@ -2145,11 +1981,9 @@ async function iniciarPush(){
             console.log("Push recebido com app aberto:", notification);
 
             tocarSomNovaOS();
+            if(navigator.vibrate) navigator.vibrate([300,100,300]);
 
-            const osId =
-                notification?.data?.os_id ||
-                notification?.data?.id_os ||
-                notification?.data?.id;
+            const osId = notification?.data?.os_id || notification?.data?.id_os || notification?.data?.id;
 
             if(osId){
                 localStorage.setItem("abrir_os_push", String(osId));
@@ -2174,21 +2008,17 @@ async function iniciarPush(){
         });
 
         const perm = await PushNotifications.requestPermissions();
-
-        alert("Permissão Push: " + JSON.stringify(perm));
+        console.log("Permissão push:", perm);
 
         if(perm.receive !== "granted"){
-            console.warn("Permissão de push negada:", perm);
+            console.warn("Permissão de push negada pelo usuário");
             return;
         }
 
         await PushNotifications.register();
-
-        alert("Push register executado");
         console.log("✅ PushNotifications.register() executado");
 
     } catch(err){
-        alert("Erro iniciar push: " + err.message);
         console.error("Erro ao iniciar push:", err);
         pushRegistrado = false;
     }
