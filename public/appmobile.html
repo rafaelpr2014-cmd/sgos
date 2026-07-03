@@ -524,7 +524,7 @@ body{
     align-items:center;
     gap:12px;
     padding:10px 14px;
-    padding-top:8px;
+    padding-top:calc(18px + env(safe-area-inset-top));
     position:sticky;
     top:0;
     z-index:1000;
@@ -536,7 +536,7 @@ body{
 .menu-btn span:before{top:-7px}.menu-btn span:after{top:7px}
 .topbar-title{min-width:0;flex:1}.topbar-title strong{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.topbar-title small{display:block;color:#64748b;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .drawer-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1999;opacity:0;pointer-events:none;transition:.25s;}.drawer-overlay.show{opacity:1;pointer-events:auto;}
-.side-drawer{position:fixed;left:0;top:0;height:100dvh;width:280px;max-width:82vw;background:linear-gradient(180deg,#081a31,#061426);z-index:2000;transform:translateX(-100%);transition:.25s ease;color:#fff;padding:16px;display:flex;flex-direction:column;box-shadow:18px 0 45px rgba(0,0,0,.32);}
+.side-drawer{position:fixed;left:0;top:0;height:100dvh;width:280px;max-width:82vw;background:linear-gradient(180deg,#081a31,#061426);z-index:2000;transform:translateX(-100%);transition:.25s ease;color:#fff;padding:16px;padding-top:calc(16px + env(safe-area-inset-top));display:flex;flex-direction:column;box-shadow:18px 0 45px rgba(0,0,0,.32);}
 .side-drawer.open{transform:translateX(0);}
 .drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.drawer-head img{width:148px;max-height:58px;object-fit:contain}.drawer-close{width:38px;height:38px;border:none;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-size:22px}
 .drawer-user{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;margin-bottom:14px}.drawer-user strong{display:block;font-size:14px}.drawer-user small{display:block;color:#cbd5e1;font-size:12px;margin-top:3px}
@@ -1736,6 +1736,69 @@ function fecharModalAnexo(){
 }
 
 /* ================= LOCALIZAÇÃO ================= */
+function erroLocalizacaoMensagem(err){
+    if(!err) return "Não foi possível obter GPS";
+
+    if(err.code === 1){
+        return "Permissão de localização negada. No iPhone, vá em Ajustes > SGOS Mobile > Localização e permita o acesso.";
+    }
+
+    if(err.code === 2){
+        return "Localização indisponível no momento. Ative o GPS e tente novamente.";
+    }
+
+    if(err.code === 3){
+        return "Tempo esgotado ao buscar localização. Tente novamente em área aberta.";
+    }
+
+    return err.message || "Não foi possível obter GPS";
+}
+
+async function obterLocalizacaoAtual(){
+    const capGeo =
+        window.Capacitor?.Plugins?.Geolocation ||
+        window.Capacitor?.Plugins?.GeolocationPlugin ||
+        window.Geolocation;
+
+    if(capGeo && typeof capGeo.getCurrentPosition === "function"){
+        try{
+            const pos = await capGeo.getCurrentPosition({
+                enableHighAccuracy:true,
+                timeout:15000,
+                maximumAge:0
+            });
+
+            return {
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude
+            };
+        }catch(err){
+            console.warn("Erro no Geolocation Capacitor, tentando navegador:", err);
+        }
+    }
+
+    if(!navigator.geolocation){
+        throw new Error("GPS não suportado neste dispositivo");
+    }
+
+    return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                resolve({
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude
+                });
+            },
+            (err) => reject(err),
+            {
+                enableHighAccuracy:true,
+                timeout:15000,
+                maximumAge:0
+            }
+        );
+    });
+}
+
 async function pegarLocalizacao(){
 
     if(!osSelecionada){
@@ -1744,52 +1807,52 @@ async function pegarLocalizacao(){
     }
 
     const osAtual = encontrarOS(osSelecionada);
-    if(osAtual && osAtual._tipo === "avulsa"){
+
+    if(!osAtual){
+        alert("OS não encontrada");
+        return;
+    }
+
+    if(osAtual._tipo === "avulsa"){
         alert("Localização para OS Avulsa ainda não está disponível no app.");
         return;
     }
 
-    if(!navigator.geolocation){
-        alert("GPS não suportado neste dispositivo");
-        return;
-    }
+    try {
 
-    navigator.geolocation.getCurrentPosition(async (pos) => {
+        const pos = await obterLocalizacaoAtual();
 
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
+        const res = await apiFetch(`/api/ordens_servico/localizacao/${osAtual.id}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-usuario-id": user.id
+            },
+            body: JSON.stringify({
+                latitude: pos.latitude,
+                longitude: pos.longitude
+            })
+        });
 
-        try {
+        const data = await res.json().catch(() => ({}));
 
-            const res = await apiFetch(`/api/ordens_servico/localizacao/${osAtual.id}`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-usuario-id": user.id
-                },
-                body: JSON.stringify({
-    latitude: lat,
-    longitude: lng
-})
-            });
-
-            const data = await res.json();
-
-            if(!res.ok){
-                throw new Error(data.erro || "Erro ao salvar localização");
-            }
-
-            alert("📍 Localização enviada com sucesso!");
-
-        } catch (err){
-            console.error(err);
-            alert("Erro ao enviar localização");
+        if(!res.ok){
+            throw new Error(data.erro || "Erro ao salvar localização");
         }
 
-    }, () => {
-        alert("Não foi possível obter GPS");
-    });
+        alert("📍 Localização enviada com sucesso!");
 
+        // Atualiza a OS local para permitir abrir o mapa sem recarregar.
+        osAtual.latitude = pos.latitude;
+        osAtual.longitude = pos.longitude;
+
+        load();
+
+    } catch (err){
+
+        console.error("Erro ao enviar localização:", err);
+        alert(erroLocalizacaoMensagem(err));
+    }
 }
 
 function visualizarLocalizacao(){
