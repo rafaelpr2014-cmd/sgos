@@ -1553,17 +1553,18 @@ async function enviarAcao(tipo){
         }
 
         let rota = "";
+        const osIdAcao = osAtual.id;
 
         if(tipo === "ausente"){
-            rota = `/api/ordens_servico/ausente/${osSelecionada}`;
+            rota = `/api/ordens_servico/ausente/${osIdAcao}`;
         }
 
         if(tipo === "inviabilidade"){
-            rota = `/api/ordens_servico/inviabilidade/${osSelecionada}`;
+            rota = `/api/ordens_servico/inviabilidade/${osIdAcao}`;
         }
 
         if(tipo === "concluir"){
-            rota = `/api/ordens_servico/concluir/${osSelecionada}`;
+            rota = `/api/ordens_servico/concluir/${osIdAcao}`;
         }
 
         const res = await apiFetch(rota, {
@@ -1760,7 +1761,7 @@ async function pegarLocalizacao(){
 
         try {
 
-            const res = await apiFetch(`/api/ordens_servico/localizacao/${osSelecionada}`, {
+            const res = await apiFetch(`/api/ordens_servico/localizacao/${osAtual.id}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -2032,11 +2033,11 @@ function getPushPlugin(){
     }
 }
 
-function getDeviceIdPush(){
+function getDeviceIdPush(plataforma = getPlataformaApp()){
     let deviceId = localStorage.getItem("device_id");
 
     if(!deviceId){
-        deviceId = `${getPlataformaApp()}-${user?.id || "user"}-${Date.now()}`;
+        deviceId = `${plataforma || "app"}-${user?.id || "user"}-${Date.now()}`;
         localStorage.setItem("device_id", deviceId);
     }
 
@@ -2054,7 +2055,12 @@ async function salvarTokenPush(token, plataformaInformada){
         return;
     }
 
-    const plataforma = plataformaInformada || getPlataformaApp();
+    let plataforma = plataformaInformada || getPlataformaApp();
+
+    // Mantém compatibilidade com o Android antigo que já funcionava.
+    if(window.SGOSAndroid){
+        plataforma = "android";
+    }
 
     try {
         const res = await apiFetch("/api/push/token", {
@@ -2066,7 +2072,7 @@ async function salvarTokenPush(token, plataformaInformada){
             body:JSON.stringify({
                 token_fcm: String(token),
                 plataforma: plataforma,
-                device_id: getDeviceIdPush()
+                device_id: getDeviceIdPush(plataforma)
             })
         });
 
@@ -2084,13 +2090,20 @@ async function salvarTokenPush(token, plataformaInformada){
     }
 }
 
-// Função global para compatibilidade com Android nativo.
-// Se o MainActivity chamar window.salvarTokenPushAndroid(token), o token será salvo no backend.
-window.salvarTokenPushAndroid = async function(token){
+// Funções globais para compatibilidade com Android nativo.
+// Assim mantemos compatibilidade com nomes diferentes usados em versões antigas do APK.
+async function receberTokenPushAndroid(token){
     console.log("📲 Token recebido do Android nativo");
     await salvarTokenPush(token, "android");
-};
-window.SGOSSalvarTokenPushAndroid = window.salvarTokenPushAndroid;
+}
+
+window.salvarTokenPushAndroid = receberTokenPushAndroid;
+window.SGOSSalvarTokenPushAndroid = receberTokenPushAndroid;
+window.salvarTokenFCM = receberTokenPushAndroid;
+window.registrarTokenFCM = receberTokenPushAndroid;
+window.receberTokenFCM = receberTokenPushAndroid;
+window.onFcmToken = receberTokenPushAndroid;
+window.onFirebaseToken = receberTokenPushAndroid;
 
 async function iniciarPush(){
     console.log("========== INICIANDO PUSH ==========");
