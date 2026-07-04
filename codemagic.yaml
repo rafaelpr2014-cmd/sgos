@@ -14,25 +14,17 @@ workflows:
     integrations:
       app_store_connect: Codemagic
 
-    scripts:
-      - npm install
-      - npm install @capacitor/ios
-      - rm -rf ios
-      - npx cap add ios
-      - npx @capacitor/assets generate
-      - npx cap sync ios
-      - cp assets/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
-      - |
-        grep -q "FirebaseCore" ios/App/App/AppDelegate.swift || sed -i '' '1i\
-        import FirebaseCore
-        ' ios/App/App/AppDelegate.swift
-      - |
-        grep -q "FirebaseApp.configure()" ios/App/App/AppDelegate.swift || sed -i '' '/GeneratedPluginRegistrant.register(with: self)/i\
-                FirebaseApp.configure()
-        ' ios/App/App/AppDelegate.swift
-      - /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PROJECT_BUILD_NUMBER" ios/App/App/Info.plist
-      - xcode-project use-profiles
-      - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+   scripts:
+  - npm install
+  - npm install @capacitor/ios
+  - rm -rf ios
+  - npx cap add ios
+  - npx @capacitor/assets generate
+  - npx cap sync ios
+  - cp assets/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
+  - /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PROJECT_BUILD_NUMBER" ios/App/App/Info.plist
+  - xcode-project use-profiles
+  - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
 
     artifacts:
       - build/ios/ipa/*.ipa
