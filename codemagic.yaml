@@ -15,8 +15,8 @@ workflows:
       app_store_connect: Codemagic
 
     scripts:
-      - npm install
-      - npm install @capacitor/ios
+      - npm install --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
+      - npm install @capacitor/ios --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
       - rm -rf ios
       - npx cap add ios
       - npx @capacitor/assets generate
