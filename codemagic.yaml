@@ -17,11 +17,50 @@ workflows:
     scripts:
       - npm install --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
       - npm install @capacitor/ios --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
+      - npm install @capacitor/push-notifications --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
       - rm -rf ios
       - npx cap add ios
       - npx @capacitor/assets generate
       - npx cap sync ios
+
+      # Firebase iOS
       - cp assets/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
+
+      # AppDelegate.swift: repassa token APNs para o Capacitor PushNotifications
+      - |
+        python3 - <<'PY'
+        from pathlib import Path
+
+        p = Path("ios/App/App/AppDelegate.swift")
+        text = p.read_text()
+
+        code = '''
+            // Necessário para o Capacitor PushNotifications receber o token APNs no iOS
+            func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+                NotificationCenter.default.post(
+                    name: .capacitorDidRegisterForRemoteNotifications,
+                    object: deviceToken
+                )
+            }
+
+            // Necessário para o Capacitor PushNotifications reportar falha de registro no iOS
+            func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+                NotificationCenter.default.post(
+                    name: .capacitorDidFailToRegisterForRemoteNotifications,
+                    object: error
+                )
+            }
+        '''
+
+        if "capacitorDidRegisterForRemoteNotifications" not in text:
+            text = text.rstrip()
+            if text.endswith("}"):
+                text = text[:-1] + code + "\n}\n"
+            else:
+                text += code
+            p.write_text(text)
+        PY
+
       - /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PROJECT_BUILD_NUMBER" ios/App/App/Info.plist
       - xcode-project use-profiles
       - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
