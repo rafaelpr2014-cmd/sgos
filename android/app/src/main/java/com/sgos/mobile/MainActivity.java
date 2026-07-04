@@ -22,7 +22,6 @@ protected void onCreate(Bundle savedInstanceState) {
 
     criarCanalNotificacao();
     registrarPonteJavascript();
-    FcmTokenService.buscarToken(this);
 }
 
     private void registrarPonteJavascript() {
