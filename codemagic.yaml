@@ -20,7 +20,55 @@ workflows:
       - rm -rf ios
       - npx cap add ios
       - npx @capacitor/assets generate
+
+      # Firebase iOS precisa entrar no projeto recriado pelo Codemagic
+      - cp assets/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
+
+      # Adiciona Firebase Core/Messaging no Podfile, se ainda não existir
+      - |
+        python3 - <<'PY'
+        from pathlib import Path
+
+        podfile = Path("ios/App/Podfile")
+        text = podfile.read_text()
+
+        add = "  pod 'FirebaseCore'\n  pod 'FirebaseMessaging'\n"
+
+        if "pod 'FirebaseCore'" not in text:
+            text = text.replace("target 'App' do\n", "target 'App' do\n" + add)
+
+        podfile.write_text(text)
+        PY
+
+      # Inicializa Firebase no AppDelegate.swift recriado pelo Capacitor
+      - |
+        python3 - <<'PY'
+        from pathlib import Path
+
+        app_delegate = Path("ios/App/App/AppDelegate.swift")
+        text = app_delegate.read_text()
+
+        if "import FirebaseCore" not in text:
+            text = text.replace("import UIKit\n", "import UIKit\nimport FirebaseCore\n")
+
+        if "FirebaseApp.configure()" not in text:
+            marker = "GeneratedPluginRegistrant.register(with: self)"
+            text = text.replace(marker, "FirebaseApp.configure()\n        " + marker)
+
+        app_delegate.write_text(text)
+        PY
+
+      # Habilita Background Modes para notificações remotas no Info.plist
+      - |
+        /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" ios/App/App/Info.plist || true
+        /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" ios/App/App/Info.plist
+        /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" ios/App/App/Info.plist
+
       - npx cap sync ios
+
+      # Garante pods após adicionar Firebase
+      - cd ios/App && pod install && cd ../..
+
       - /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PROJECT_BUILD_NUMBER" ios/App/App/Info.plist
       - xcode-project use-profiles
       - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
