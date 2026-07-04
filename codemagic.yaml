@@ -21,19 +21,24 @@ workflows:
       - npx cap add ios
       - npx @capacitor/assets generate
 
-     # Firebase iOS precisa entrar no projeto recriado pelo Codemagic
-- cp assets/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
+      # Firebase iOS precisa entrar no projeto recriado pelo Codemagic
+      - cp assets/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
 
-# Inicializa Firebase no AppDelegate
-- |
-  grep -q "FirebaseCore" ios/App/App/AppDelegate.swift || sed -i '' '1i\
-  import FirebaseCore
-  ' ios/App/App/AppDelegate.swift
+      # Adiciona Firebase Core/Messaging no Podfile, se ainda não existir
+      - |
+        python3 - <<'PY'
+        from pathlib import Path
 
-- |
-  grep -q "FirebaseApp.configure()" ios/App/App/AppDelegate.swift || sed -i '' '/GeneratedPluginRegistrant.register(with: self)/i\
-          FirebaseApp.configure()
-  ' ios/App/App/AppDelegate.swift
+        podfile = Path("ios/App/Podfile")
+        text = podfile.read_text()
+
+        add = "  pod 'FirebaseCore'\n  pod 'FirebaseMessaging'\n"
+
+        if "pod 'FirebaseCore'" not in text:
+            text = text.replace("target 'App' do\n", "target 'App' do\n" + add)
+
+        podfile.write_text(text)
+        PY
 
       # Inicializa Firebase no AppDelegate.swift recriado pelo Capacitor
       - |
