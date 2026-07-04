@@ -2100,6 +2100,20 @@ async function salvarTokenPush(token, plataformaInformada){
     }
 }
 
+async function iniciarPush(){
+    alert("INICIANDO PUSH IOS");
+
+    console.log("========== INICIANDO PUSH ==========");
+
+    const plataforma = getPlataformaApp();
+    alert("PLATAFORMA: " + plataforma);
+
+    const PushNotifications = getPushPlugin();
+    alert("PLUGIN PUSH: " + (PushNotifications ? "SIM" : "NAO"));
+
+    ...
+}
+
 // Funções globais para compatibilidade com Android nativo.
 // Assim mantemos compatibilidade com nomes diferentes usados em versões antigas do APK.
 async function receberTokenPushAndroid(token){
