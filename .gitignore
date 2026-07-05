@@ -1,18 +1,52 @@
+# Dependências
 node_modules/
+
+# Uploads
 uploads/
+
+# Android
 android/.gradle/
 android/build/
 android/app/build/
 android/app/release/
+
+# iOS
+ios/App/Pods/
+ios/App/build/
+ios/DerivedData/
+
+# WhatsApp
 sdos-whatsapp-teste/
 **/.wwebjs_cache/
 **/.wwebjs_auth/
 
+# Builds
 *.apk
 *.aab
+*.ipa
 *.zip
 *.rar
+
+# Ambiente
 .env
 .env.*
-firebase-service-account.json
 
+# Firebase
+firebase-service-account.json
+GoogleService-Info.plist
+
+# Apple APNs
+*.p8
+AuthKey_*.p8
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini

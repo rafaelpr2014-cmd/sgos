@@ -1,4 +1,43 @@
 const iniciarFirebase = require("./firebase");
+const apn = require("apn");
+const fs = require("fs");
+
+let apnProvider = null;
+
+function normalizarPlataforma(plataforma){
+    return String(plataforma || "").toLowerCase().trim();
+}
+
+function getApnConfig(){
+    const keyPath = process.env.APNS_KEY_PATH || "/root/sgos/AuthKey_7338N29JMD.p8";
+    const keyId = process.env.APNS_KEY_ID || "7338N29JMD";
+    const teamId = process.env.APNS_TEAM_ID || "T7VMAXZY78";
+    const bundleId = process.env.APNS_BUNDLE_ID || "com.sgos.mobile";
+    const production = String(process.env.APNS_PRODUCTION || "true").toLowerCase() !== "false";
+
+    return { keyPath, keyId, teamId, bundleId, production };
+}
+
+function getApnProvider(){
+    if(apnProvider) return apnProvider;
+
+    const cfg = getApnConfig();
+
+    if(!fs.existsSync(cfg.keyPath)){
+        throw new Error(`Arquivo APNs .p8 não encontrado em ${cfg.keyPath}`);
+    }
+
+    apnProvider = new apn.Provider({
+        token: {
+            key: cfg.keyPath,
+            keyId: cfg.keyId,
+            teamId: cfg.teamId
+        },
+        production: cfg.production
+    });
+
+    return apnProvider;
+}
 
 module.exports = (pool) => {
 
@@ -55,57 +94,76 @@ module.exports = (pool) => {
         };
 
         return {
-            notification: {
-                title,
-                body
-            },
-
+            title,
+            body,
             data,
-
-            android: {
-                priority: "high",
-                notification: {
-                    channelId: "sgos_os_channel",
-                    sound: "default",
-                    icon: "ic_stat_sgos",
-                    color: "#2563eb",
-                    clickAction: "OPEN_OS"
-                }
-            },
-
-            apns: {
-                headers: {
-                    "apns-priority": "10",
-                    "apns-push-type": "alert"
-                },
-                payload: {
-                    aps: {
-                        alert: {
-                            title,
-                            body
-                        },
+            fcm: {
+                notification: { title, body },
+                data,
+                android: {
+                    priority: "high",
+                    notification: {
+                        channelId: "sgos_os_channel",
                         sound: "default",
-                        badge: 1,
-                        category: "OPEN_OS"
+                        icon: "ic_stat_sgos",
+                        color: "#2563eb",
+                        clickAction: "OPEN_OS"
                     }
-                },
-                fcm_options: {
-                    image: "https://iili.io/CRh1TlV.png"
                 }
             }
         };
     }
 
-    async function enviarParaTokens(tokens, payload){
+    async function enviarFcm(item, payload){
         const admin = iniciarFirebase();
 
         if(!admin){
-            console.warn("Push não enviado: Firebase ainda não configurado.");
-            return { enviados: 0, falhas: 0, erro: "firebase_nao_configurado" };
+            throw Object.assign(new Error("Firebase ainda não configurado"), { code:"firebase_nao_configurado" });
         }
 
+        await admin.messaging().send({
+            token: item.token_fcm,
+            ...payload.fcm
+        });
+    }
+
+    async function enviarApns(item, payload){
+        const cfg = getApnConfig();
+        const provider = getApnProvider();
+
+        const note = new apn.Notification();
+        note.topic = cfg.bundleId;
+        note.expiry = Math.floor(Date.now() / 1000) + 3600;
+        note.priority = 10;
+        note.sound = "default";
+        note.badge = 1;
+        note.alert = {
+            title: payload.title,
+            body: payload.body
+        };
+        note.payload = payload.data;
+        note.category = "OPEN_OS";
+
+        // token_fcm mantém o nome da coluna atual, mas no iOS ele guarda o token APNs.
+        const tokenApns = String(item.token_fcm || "").replace(/\s+/g, "");
+        const resultado = await provider.send(note, tokenApns);
+
+        if(resultado.sent && resultado.sent.length > 0){
+            return;
+        }
+
+        const falha = resultado.failed && resultado.failed[0];
+        const motivo = falha?.response?.reason || falha?.error?.message || "Falha APNs";
+        const status = falha?.status || falha?.response?.statusCode || null;
+        const erro = new Error(motivo);
+        erro.code = `apns/${motivo}`;
+        erro.status = status;
+        throw erro;
+    }
+
+    async function enviarParaTokens(tokens, payload){
         if(!tokens.length){
-            return { enviados: 0, falhas: 0, erro: "sem_tokens" };
+            return { enviados: 0, falhas: 0, erro: "sem_tokens", detalhes: [] };
         }
 
         let enviados = 0;
@@ -113,35 +171,41 @@ module.exports = (pool) => {
         const detalhes = [];
 
         for(const item of tokens){
+            const plataforma = normalizarPlataforma(item.plataforma);
+
             try {
-                await admin.messaging().send({
-                    token: item.token_fcm,
-                    ...payload
-                });
+                if(plataforma === "ios"){
+                    await enviarApns(item, payload);
+                }else{
+                    await enviarFcm(item, payload);
+                }
 
                 enviados++;
                 detalhes.push({ token_id: item.id, plataforma: item.plataforma, ok: true });
             } catch(err){
                 falhas++;
-
-                console.error("Erro ao enviar push FCM:", {
-                    token_id: item.id,
-                    plataforma: item.plataforma,
-                    code: err.code,
-                    message: err.message
-                });
-
-                detalhes.push({
+                const detalhe = {
                     token_id: item.id,
                     plataforma: item.plataforma,
                     ok: false,
-                    code: err.code,
+                    code: err.code || "erro_push",
                     message: err.message
-                });
+                };
+
+                if(err.status) detalhe.status = err.status;
+                detalhes.push(detalhe);
+
+                console.error("Erro ao enviar push:", detalhe);
+
+                const code = String(err.code || "");
+                const message = String(err.message || "");
 
                 if(
-                    err.code === "messaging/registration-token-not-registered" ||
-                    err.code === "messaging/invalid-registration-token"
+                    code === "messaging/registration-token-not-registered" ||
+                    code === "messaging/invalid-registration-token" ||
+                    message === "BadDeviceToken" ||
+                    message === "Unregistered" ||
+                    err.status === 410
                 ){
                     await desativarToken(item.id);
                 }
