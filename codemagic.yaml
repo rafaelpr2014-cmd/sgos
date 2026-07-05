@@ -104,8 +104,6 @@ workflows:
       - echo "========== PROVISIONING / SIGNING =========="
 
       # Busca arquivos de assinatura atualizados da Apple
-      - app-store-connect fetch-signing-files com.sgos.mobile --type IOS_APP_STORE --create
-      - keychain initialize
       - /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PROJECT_BUILD_NUMBER" ios/App/App/Info.plist
       - xcode-project use-profiles
       - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
