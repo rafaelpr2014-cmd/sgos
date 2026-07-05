@@ -8,12 +8,12 @@ function normalizarPlataforma(plataforma){
     return String(plataforma || "").toLowerCase().trim();
 }
 
-function getApnConfig(){
+function getApnConfig() {
     const keyPath = process.env.APNS_KEY_PATH || "/root/sgos/AuthKey_7338N29JMD.p8";
     const keyId = process.env.APNS_KEY_ID || "7338N29JMD";
     const teamId = process.env.APNS_TEAM_ID || "T7VMAXZY78";
     const bundleId = process.env.APNS_BUNDLE_ID || "com.sgos.mobile";
-    const production = false;
+    const production = true;
 
     return { keyPath, keyId, teamId, bundleId, production };
 }
