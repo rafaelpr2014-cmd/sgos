@@ -7,11 +7,19 @@ module.exports = (pool, verificarAutenticacao) => {
         try {
             const usuarioId = req.usuario.id;
             const empresaId = req.usuario.empresa_id;
-            const { token_fcm, plataforma = "android", device_id = null } = req.body;
+
+            const token_fcm = req.body?.token_fcm;
+            const plataforma = String(req.body?.plataforma || "web").toLowerCase();
+            const device_id = req.body?.device_id || null;
 
             if(!token_fcm){
                 return res.status(400).json({ erro: "token_fcm não informado" });
             }
+
+            const plataformasPermitidas = ["ios", "android", "web"];
+            const plataformaFinal = plataformasPermitidas.includes(plataforma)
+                ? plataforma
+                : "web";
 
             await pool.query(`
                 INSERT INTO usuarios_push_tokens
@@ -24,9 +32,13 @@ module.exports = (pool, verificarAutenticacao) => {
                     device_id = VALUES(device_id),
                     ativo = 1,
                     atualizado_em = NOW()
-            `, [usuarioId, empresaId, token_fcm, plataforma, device_id]);
+            `, [usuarioId, empresaId, token_fcm, plataformaFinal, device_id]);
 
-            return res.json({ ok:true });
+            return res.json({
+                ok: true,
+                plataforma: plataformaFinal,
+                token_inicio: String(token_fcm).substring(0, 25)
+            });
         } catch(err){
             console.error("ERRO /api/push/token:", err);
             return res.status(500).json({ erro: err.message });
@@ -43,7 +55,9 @@ module.exports = (pool, verificarAutenticacao) => {
                 usuarioId: req.usuario.id,
                 empresaId: req.usuario.empresa_id,
                 osId,
-                cliente: req.body?.cliente || "Teste SGOS"
+                cliente: req.body?.cliente || "Teste SGOS",
+                localidade: req.body?.localidade || "",
+                tipoServico: req.body?.tipo_servico || ""
             });
 
             return res.json({ ok:true, resultado });

@@ -44,6 +44,8 @@ module.exports = (pool) => {
             ? bodyParts.join(" • ")
             : `OS #${osId} entrou em andamento`;
 
+        const title = "🚀 NOVA OS LANÇADA! 🚀";
+
         const data = {
             tipo: "os_andamento",
             os_id: String(osId),
@@ -54,7 +56,7 @@ module.exports = (pool) => {
 
         return {
             notification: {
-                title: "🚀 NOVA OS LANÇADA! 🚀",
+                title,
                 body
             },
 
@@ -71,7 +73,6 @@ module.exports = (pool) => {
                 }
             },
 
-            // Mantém o backend pronto para iOS quando o app passar a salvar token FCM iOS válido.
             apns: {
                 headers: {
                     "apns-priority": "10",
@@ -80,13 +81,16 @@ module.exports = (pool) => {
                 payload: {
                     aps: {
                         alert: {
-                            title: "🚀 NOVA OS LANÇADA! 🚀",
+                            title,
                             body
                         },
                         sound: "default",
                         badge: 1,
                         category: "OPEN_OS"
                     }
+                },
+                fcm_options: {
+                    image: "https://iili.io/CRh1TlV.png"
                 }
             }
         };
@@ -106,6 +110,7 @@ module.exports = (pool) => {
 
         let enviados = 0;
         let falhas = 0;
+        const detalhes = [];
 
         for(const item of tokens){
             try {
@@ -115,11 +120,21 @@ module.exports = (pool) => {
                 });
 
                 enviados++;
+                detalhes.push({ token_id: item.id, plataforma: item.plataforma, ok: true });
             } catch(err){
                 falhas++;
+
                 console.error("Erro ao enviar push FCM:", {
                     token_id: item.id,
                     plataforma: item.plataforma,
+                    code: err.code,
+                    message: err.message
+                });
+
+                detalhes.push({
+                    token_id: item.id,
+                    plataforma: item.plataforma,
+                    ok: false,
                     code: err.code,
                     message: err.message
                 });
@@ -133,7 +148,7 @@ module.exports = (pool) => {
             }
         }
 
-        return { enviados, falhas };
+        return { enviados, falhas, detalhes };
     }
 
     async function enviarPushOSAndamento({ usuarioId, empresaId, osId, cliente, localidade, tipoServico }){
