@@ -22,11 +22,8 @@ workflows:
       - npx cap add ios
       - npx @capacitor/assets generate
       - npx cap sync ios
-
-      # Firebase iOS
       - cp assets/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
 
-      # AppDelegate.swift: repassa token APNs para o Capacitor PushNotifications
       - |
         python3 - <<'PY'
         from pathlib import Path
@@ -35,7 +32,6 @@ workflows:
         text = p.read_text()
 
         code = '''
-            // Necessário para o Capacitor PushNotifications receber o token APNs no iOS
             func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
                 NotificationCenter.default.post(
                     name: .capacitorDidRegisterForRemoteNotifications,
@@ -43,7 +39,6 @@ workflows:
                 )
             }
 
-            // Necessário para o Capacitor PushNotifications reportar falha de registro no iOS
             func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
                 NotificationCenter.default.post(
                     name: .capacitorDidFailToRegisterForRemoteNotifications,
@@ -54,38 +49,7 @@ workflows:
 
         if "capacitorDidRegisterForRemoteNotifications" not in text:
             text = text.rstrip()
-            if text.endswith("}"):
-                text = text[:-1] + code + "\n}\n"
-            else:
-                text += code
-            p.write_text(text)
-        PY
-
-      # Entitlements de Push e Background Mode
-      - |
-        cat > ios/App/App/App.entitlements <<'EOF'
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>aps-environment</key>
-            <string>production</string>
-        </dict>
-        </plist>
-        EOF
-
-      - |
-        python3 - <<'PY'
-        from pathlib import Path
-
-        p = Path("ios/App/App.xcodeproj/project.pbxproj")
-        text = p.read_text()
-
-        if "CODE_SIGN_ENTITLEMENTS = App/App.entitlements;" not in text:
-            text = text.replace(
-                "PRODUCT_BUNDLE_IDENTIFIER = com.sgos.mobile;",
-                "PRODUCT_BUNDLE_IDENTIFIER = com.sgos.mobile;\n\t\t\t\tCODE_SIGN_ENTITLEMENTS = App/App.entitlements;"
-            )
+            text = text[:-1] + code + "\n}\n"
 
         p.write_text(text)
         PY
@@ -94,31 +58,13 @@ workflows:
         /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" ios/App/App/Info.plist || true
         /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" ios/App/App/Info.plist || true
 
-      # Logs de diagnóstico no Codemagic
       - echo "========== APPDELEGATE FINAL =========="
       - cat ios/App/App/AppDelegate.swift
-      - echo "========== ENTITLEMENTS FINAL =========="
-      - cat ios/App/App/App.entitlements
       - echo "========== INFO PLIST BACKGROUND MODES =========="
       - /usr/libexec/PlistBuddy -c "Print :UIBackgroundModes" ios/App/App/Info.plist || true
-      - echo "========== PROVISIONING / SIGNING =========="
-
-      # Busca arquivos de assinatura atualizados da Apple
       - /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PROJECT_BUILD_NUMBER" ios/App/App/Info.plist
       - xcode-project use-profiles
-     
-- |
-  set -o pipefail
-
-  xcodebuild -project ios/App/App.xcodeproj \
-    -scheme App \
-    -archivePath build/ios/xcarchive/App.xcarchive \
-    archive \
-    COMPILER_INDEX_STORE_ENABLE=NO \
-    DEVELOPMENT_TEAM=T7VMAXZY78 \
-    CODE_SIGN_IDENTITY="Apple Distribution" \
-    CODE_SIGN_STYLE=Manual \
-    -verbose
+      - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
 
     artifacts:
       - build/ios/ipa/*.ipa
