@@ -2115,71 +2115,6 @@ window.receberTokenFCM = receberTokenPushAndroid;
 window.onFcmToken = receberTokenPushAndroid;
 window.onFirebaseToken = receberTokenPushAndroid;
 
-
-function getFirebaseMessagingPlugin(){
-    try{
-        return window.Capacitor?.Plugins?.FirebaseMessaging || null;
-    }catch(e){
-        console.error("Erro ao localizar FirebaseMessaging:", e);
-        return null;
-    }
-}
-
-async function registrarTokenFCMiOS(PushNotifications){
-    const FirebaseMessaging = getFirebaseMessagingPlugin();
-
-    console.log("FirebaseMessaging plugin:", FirebaseMessaging);
-
-    try{
-        alert("PLUGIN FIREBASE MESSAGING: " + (FirebaseMessaging ? "OK" : "NÃO ENCONTRADO"));
-    }catch(e){}
-
-    if(!FirebaseMessaging){
-        console.warn("FirebaseMessaging não encontrado. O iOS vai gerar apenas token APNs, que não serve para envio via Firebase Admin.");
-        return false;
-    }
-
-    try{
-        if(typeof FirebaseMessaging.requestPermissions === "function"){
-            const permFirebase = await FirebaseMessaging.requestPermissions();
-            console.log("Permissão FirebaseMessaging:", permFirebase);
-        }
-
-        // Garante que o APNs registre antes de pedir o token FCM.
-        if(PushNotifications && typeof PushNotifications.register === "function"){
-            await PushNotifications.register();
-            console.log("✅ APNs register executado antes do FCM");
-        }
-
-        // Pequena espera para o Firebase receber o APNs token.
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        const resultado = await FirebaseMessaging.getToken();
-        const tokenFCM = resultado?.token || resultado?.value || resultado;
-
-        if(tokenFCM){
-            console.log("✅ TOKEN FCM iOS RECEBIDO:", String(tokenFCM).substring(0, 35) + "...");
-            try{
-                alert("TOKEN FCM IOS RECEBIDO");
-                alert("FCM: " + String(tokenFCM).substring(0, 35) + "...");
-            }catch(e){}
-
-            await salvarTokenPush(tokenFCM, "ios");
-            return true;
-        }
-
-        console.warn("FirebaseMessaging.getToken não retornou token:", resultado);
-        return false;
-
-    }catch(err){
-        console.error("Erro ao obter token FCM iOS:", err);
-        try{
-            alert("ERRO TOKEN FCM IOS: " + (err?.message || JSON.stringify(err)));
-        }catch(e){}
-        return false;
-    }
-}
-
 async function iniciarPush(){
     console.log("========== INICIANDO PUSH ==========");
 
@@ -2307,20 +2242,6 @@ async function iniciarPush(){
             console.warn("Permissão de push negada pelo usuário");
             pushRegistrado = false;
             return;
-        }
-
-        if(plataforma === "ios"){
-            const tokenFCMSalvo = await registrarTokenFCMiOS(PushNotifications);
-
-            if(tokenFCMSalvo){
-                console.log("✅ Fluxo iOS usando token FCM concluído");
-                try {
-                    alert("REGISTER EXECUTADO");
-                } catch(e){}
-                return;
-            }
-
-            console.warn("Não foi possível obter token FCM iOS. O token APNs não será útil para Firebase Admin.");
         }
 
         await PushNotifications.register();
