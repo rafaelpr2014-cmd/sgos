@@ -109,6 +109,7 @@ workflows:
      
 - |
   set -o pipefail
+
   xcodebuild -project ios/App/App.xcodeproj \
     -scheme App \
     -archivePath build/ios/xcarchive/App.xcarchive \
