@@ -23,8 +23,12 @@ workflows:
       - npx @capacitor/assets generate
       - npx cap sync ios
 
+      # Firebase iOS
       - cp assets/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
+      - echo "========== ARQUIVOS EM ios/App/App =========="
+      - ls -la ios/App/App
 
+      # AppDelegate.swift: repassa token APNs para o Capacitor PushNotifications
       - |
         python3 - <<'PY'
         from pathlib import Path
@@ -55,63 +59,28 @@ workflows:
         p.write_text(text)
         PY
 
-      - |
-        cat > ios/App/App/App.entitlements <<'EOF'
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-          <key>aps-environment</key>
-          <string>production</string>
-        </dict>
-        </plist>
-        EOF
+      # Background Mode para remote notifications
+      - /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" ios/App/App/Info.plist || true
+      - /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" ios/App/App/Info.plist || true
 
-      - |
-        python3 - <<'PY'
-        from pathlib import Path
-
-        p = Path("ios/App/App.xcodeproj/project.pbxproj")
-        text = p.read_text()
-
-        text = text.replace("CODE_SIGN_ENTITLEMENTS = App/App.entitlements;", "")
-
-        text = text.replace(
-            "PRODUCT_BUNDLE_IDENTIFIER = com.sgos.mobile;",
-            "PRODUCT_BUNDLE_IDENTIFIER = com.sgos.mobile;\n\t\t\t\tCODE_SIGN_ENTITLEMENTS = App/App.entitlements;"
-        )
-
-        p.write_text(text)
-        PY
-
-      - |
-        /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" ios/App/App/Info.plist || true
-        /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" ios/App/App/Info.plist || true
-
+      # Logs de diagnóstico
       - echo "========== APPDELEGATE FINAL =========="
       - cat ios/App/App/AppDelegate.swift
-      - echo "========== ENTITLEMENTS FINAL =========="
-      - cat ios/App/App/App.entitlements
-      - echo "========== BUILD SETTINGS SIGNING =========="
+      - echo "========== INFO PLIST BACKGROUND MODES =========="
+      - /usr/libexec/PlistBuddy -c "Print :UIBackgroundModes" ios/App/App/Info.plist || true
+
+      # Versão do build
+      - /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PROJECT_BUILD_NUMBER" ios/App/App/Info.plist
+
+      # Assinatura
+      - xcode-project use-profiles
+
+      # Logs após aplicar o profile
+      - echo "========== BUILD SETTINGS SIGNING APOS USE-PROFILES =========="
       - xcodebuild -project ios/App/App.xcodeproj -scheme App -showBuildSettings | grep -E "CODE_SIGN_ENTITLEMENTS|PRODUCT_BUNDLE_IDENTIFIER|PROVISIONING_PROFILE_SPECIFIER|DEVELOPMENT_TEAM" || true
 
-      - /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PROJECT_BUILD_NUMBER" ios/App/App/Info.plist
-      - xcode-project use-profiles
-            - |
-        set -o pipefail
-        xcodebuild -project ios/App/App.xcodeproj \
-          -scheme App \
-          -archivePath build/ios/xcarchive/App.xcarchive \
-          archive \
-          COMPILER_INDEX_STORE_ENABLE=NO \
-          DEVELOPMENT_TEAM=T7VMAXZY78 \
-          CODE_SIGN_IDENTITY="Apple Distribution" \
-          CODE_SIGN_STYLE=Manual \
-          2>&1 | tee xcodebuild-full.log
-
-        echo "========== ERROS XCODE =========="
-        grep -iE "error:|provisioning|entitlement|signing|aps-environment|failed" xcodebuild-full.log || true
-        exit 1
+      # Build IPA
+      - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
 
     artifacts:
       - build/ios/ipa/*.ipa
