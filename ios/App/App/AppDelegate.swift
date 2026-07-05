@@ -1,7 +1,5 @@
 import UIKit
 import Capacitor
-import FirebaseCore
-import FirebaseMessaging
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -9,11 +7,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Inicializa o Firebase no iOS para permitir gerar token FCM.
-        if FirebaseApp.app() == nil {
-            FirebaseApp.configure()
-        }
-
         return true
     }
 
@@ -45,18 +38,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
-    // APNs registra o device token. O Capacitor PushNotifications recebe esse token,
-    // e o Firebase Messaging usa o mesmo token APNs para gerar o token FCM do iOS.
+    // Necessário para o Capacitor PushNotifications receber o token APNs no iOS
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        Messaging.messaging().apnsToken = deviceToken
-
         NotificationCenter.default.post(
             name: .capacitorDidRegisterForRemoteNotifications,
             object: deviceToken
         )
     }
 
-    // Falha de registro do APNs.
+    // Necessário para o Capacitor PushNotifications reportar falha de registro no iOS
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         NotificationCenter.default.post(
             name: .capacitorDidFailToRegisterForRemoteNotifications,
