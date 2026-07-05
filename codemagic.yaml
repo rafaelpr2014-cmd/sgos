@@ -106,7 +106,18 @@ workflows:
       # Busca arquivos de assinatura atualizados da Apple
       - /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PROJECT_BUILD_NUMBER" ios/App/App/Info.plist
       - xcode-project use-profiles
-      - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+     
+- |
+  set -o pipefail
+  xcodebuild -project ios/App/App.xcodeproj \
+    -scheme App \
+    -archivePath build/ios/xcarchive/App.xcarchive \
+    archive \
+    COMPILER_INDEX_STORE_ENABLE=NO \
+    DEVELOPMENT_TEAM=T7VMAXZY78 \
+    CODE_SIGN_IDENTITY="Apple Distribution" \
+    CODE_SIGN_STYLE=Manual \
+    -verbose
 
     artifacts:
       - build/ios/ipa/*.ipa
