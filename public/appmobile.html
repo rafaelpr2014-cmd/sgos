@@ -2043,6 +2043,99 @@ function getPushPlugin(){
     }
 }
 
+function getFirebaseMessagingPlugin(){
+    try {
+        const cap = window.Capacitor;
+
+        if(cap?.Plugins?.FirebaseMessaging){
+            return cap.Plugins.FirebaseMessaging;
+        }
+
+        if(window.FirebaseMessaging){
+            return window.FirebaseMessaging;
+        }
+
+        return null;
+    } catch(e){
+        console.error("Erro ao localizar plugin FirebaseMessaging:", e);
+        return null;
+    }
+}
+
+function extrairTokenFirebaseMessaging(resp){
+    if(!resp) return "";
+    return resp.token || resp.value || resp.registrationToken || resp.fcmToken || "";
+}
+
+async function tentarRegistrarTokenFcmIos(){
+    const plataforma = getPlataformaApp();
+
+    if(plataforma !== "ios"){
+        return false;
+    }
+
+    const FirebaseMessaging = getFirebaseMessagingPlugin();
+
+    console.log("FirebaseMessaging plugin:", FirebaseMessaging);
+
+    try {
+        alert("PLUGIN FIREBASE MESSAGING: " + (FirebaseMessaging ? "OK" : "NÃO ENCONTRADO"));
+    } catch(e){}
+
+    if(!FirebaseMessaging){
+        console.warn("FirebaseMessaging não encontrado; iOS ficará apenas com token APNs.");
+        return false;
+    }
+
+    try {
+        if(typeof FirebaseMessaging.requestPermissions === "function"){
+            const perm = await FirebaseMessaging.requestPermissions();
+            console.log("Permissão FirebaseMessaging:", perm);
+        }
+
+        if(typeof FirebaseMessaging.addListener === "function"){
+            try {
+                await FirebaseMessaging.addListener("tokenReceived", async (event) => {
+                    const tokenFcm = extrairTokenFirebaseMessaging(event);
+                    if(tokenFcm){
+                        console.log("✅ TOKEN FCM IOS RECEBIDO via tokenReceived:", tokenFcm.substring(0, 35) + "...");
+                        try { alert("TOKEN FCM IOS RECEBIDO"); } catch(e){}
+                        await salvarTokenPush(tokenFcm, "ios");
+                    }
+                });
+            } catch(listenerErr){
+                console.warn("Não foi possível adicionar listener tokenReceived:", listenerErr);
+            }
+        }
+
+        if(typeof FirebaseMessaging.getToken !== "function"){
+            console.warn("FirebaseMessaging.getToken não disponível");
+            return false;
+        }
+
+        const respToken = await FirebaseMessaging.getToken();
+        const tokenFcm = extrairTokenFirebaseMessaging(respToken);
+
+        console.log("Resposta FirebaseMessaging.getToken:", respToken);
+
+        if(!tokenFcm){
+            console.warn("FirebaseMessaging.getToken não retornou token FCM válido.");
+            try { alert("FCM IOS SEM TOKEN"); } catch(e){}
+            return false;
+        }
+
+        console.log("✅ TOKEN FCM IOS RECEBIDO:", tokenFcm.substring(0, 35) + "...");
+        try { alert("TOKEN FCM IOS RECEBIDO"); } catch(e){}
+        await salvarTokenPush(tokenFcm, "ios");
+        return true;
+
+    } catch(err){
+        console.error("Erro ao obter token FCM iOS:", err);
+        try { alert("ERRO FCM IOS: " + (err?.message || JSON.stringify(err))); } catch(e){}
+        return false;
+    }
+}
+
 function getDeviceIdPush(plataforma = getPlataformaApp()){
     let deviceId = localStorage.getItem("device_id");
 
@@ -2150,13 +2243,21 @@ async function iniciarPush(){
 
     try {
         await PushNotifications.addListener("registration", async (token) => {
-            // DEBUG TEMPORÁRIO IOS
+            // No iOS, o plugin PushNotifications retorna token APNs (hexadecimal).
+            // Para enviar via Firebase Admin, precisamos salvar o FCM token do FirebaseMessaging.
             try {
-                alert("TOKEN RECEBIDO");
-                alert("TOKEN: " + String(token.value).substring(0, 35) + "...");
+                alert("TOKEN APNS RECEBIDO");
+                alert("APNS: " + String(token.value).substring(0, 35) + "...");
             } catch(e){}
 
-            console.log("✅ Token Push Capacitor:", token.value);
+            console.log("✅ Token Push Capacitor/APNs:", token.value);
+
+            if(plataforma === "ios"){
+                localStorage.setItem("push_token_apns", String(token.value));
+                await tentarRegistrarTokenFcmIos();
+                return;
+            }
+
             await salvarTokenPush(token.value, plataforma);
         });
 
@@ -2251,6 +2352,14 @@ async function iniciarPush(){
         try {
             alert("REGISTER EXECUTADO");
         } catch(e){}
+
+        // Backup: em alguns builds o listener registration demora ou não dispara imediatamente.
+        // Tentamos buscar o token FCM do iOS também após o register().
+        if(plataforma === "ios"){
+            setTimeout(() => {
+                tentarRegistrarTokenFcmIos().catch(console.error);
+            }, 1200);
+        }
 
     } catch(err){
         console.error("Erro ao iniciar push:", err);

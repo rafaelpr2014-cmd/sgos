@@ -16,6 +16,13 @@
         "sound",
         "alert"
       ]
+    },
+    "FirebaseMessaging": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
     }
   }
 }
