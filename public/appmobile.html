@@ -2194,6 +2194,24 @@ async function iniciarPush(){
             }
         });
 
+        let permissaoAntes = null;
+        try {
+            if (typeof PushNotifications.checkPermissions === "function") {
+                permissaoAntes = await PushNotifications.checkPermissions();
+                console.log("Permissões antes:", permissaoAntes);
+
+                // DEBUG TEMPORÁRIO IOS
+                try {
+                    alert("PERMISSÕES ANTES: " + JSON.stringify(permissaoAntes));
+                } catch(e){}
+            }
+        } catch(e) {
+            console.warn("Erro ao consultar permissões antes:", e);
+            try {
+                alert("ERRO CHECK ANTES: " + (e?.message || JSON.stringify(e)));
+            } catch(_){}
+        }
+
         const perm = await PushNotifications.requestPermissions();
         console.log("Permissão push:", perm);
 
@@ -2201,6 +2219,24 @@ async function iniciarPush(){
         try {
             alert("PERMISSÃO PUSH: " + JSON.stringify(perm));
         } catch(e){}
+
+        let permissaoDepois = null;
+        try {
+            if (typeof PushNotifications.checkPermissions === "function") {
+                permissaoDepois = await PushNotifications.checkPermissions();
+                console.log("Permissões depois:", permissaoDepois);
+
+                // DEBUG TEMPORÁRIO IOS
+                try {
+                    alert("PERMISSÕES DEPOIS: " + JSON.stringify(permissaoDepois));
+                } catch(e){}
+            }
+        } catch(e) {
+            console.warn("Erro ao consultar permissões depois:", e);
+            try {
+                alert("ERRO CHECK DEPOIS: " + (e?.message || JSON.stringify(e)));
+            } catch(_){}
+        }
 
         if(perm.receive !== "granted"){
             console.warn("Permissão de push negada pelo usuário");
