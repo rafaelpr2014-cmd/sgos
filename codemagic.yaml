@@ -22,6 +22,7 @@ workflows:
       - npx cap add ios
       - npx @capacitor/assets generate
       - npx cap sync ios
+
       - cp assets/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
 
       - |
@@ -55,13 +56,45 @@ workflows:
         PY
 
       - |
+        cat > ios/App/App/App.entitlements <<'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>aps-environment</key>
+          <string>production</string>
+        </dict>
+        </plist>
+        EOF
+
+      - |
+        python3 - <<'PY'
+        from pathlib import Path
+
+        p = Path("ios/App/App.xcodeproj/project.pbxproj")
+        text = p.read_text()
+
+        text = text.replace("CODE_SIGN_ENTITLEMENTS = App/App.entitlements;", "")
+
+        text = text.replace(
+            "PRODUCT_BUNDLE_IDENTIFIER = com.sgos.mobile;",
+            "PRODUCT_BUNDLE_IDENTIFIER = com.sgos.mobile;\n\t\t\t\tCODE_SIGN_ENTITLEMENTS = App/App.entitlements;"
+        )
+
+        p.write_text(text)
+        PY
+
+      - |
         /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" ios/App/App/Info.plist || true
         /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" ios/App/App/Info.plist || true
 
       - echo "========== APPDELEGATE FINAL =========="
       - cat ios/App/App/AppDelegate.swift
-      - echo "========== INFO PLIST BACKGROUND MODES =========="
-      - /usr/libexec/PlistBuddy -c "Print :UIBackgroundModes" ios/App/App/Info.plist || true
+      - echo "========== ENTITLEMENTS FINAL =========="
+      - cat ios/App/App/App.entitlements
+      - echo "========== BUILD SETTINGS SIGNING =========="
+      - xcodebuild -project ios/App/App.xcodeproj -scheme App -showBuildSettings | grep -E "CODE_SIGN_ENTITLEMENTS|PRODUCT_BUNDLE_IDENTIFIER|PROVISIONING_PROFILE_SPECIFIER|DEVELOPMENT_TEAM" || true
+
       - /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PROJECT_BUILD_NUMBER" ios/App/App/Info.plist
       - xcode-project use-profiles
       - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
