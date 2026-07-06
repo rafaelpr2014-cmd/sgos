@@ -18,6 +18,7 @@ workflows:
       - npm install --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
       - npm install @capacitor/ios --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
       - npm install @capacitor/push-notifications --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
+      - npm install @capacitor-firebase/messaging --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
 
       # Recria o projeto iOS do Capacitor
       - rm -rf ios
@@ -27,6 +28,39 @@ workflows:
 
       # Firebase iOS
       - cp assets/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
+
+
+      # Garante que GoogleService-Info.plist entre no target iOS
+      - |
+        python3 - <<'PY'
+        from pathlib import Path
+        p = Path("ios/App/App.xcodeproj/project.pbxproj")
+        text = p.read_text()
+        file_ref = "A1B2C3D4E5F60718293A4B5C"
+        build_ref = "A1B2C3D4E5F60718293A4B5D"
+
+        if "GoogleService-Info.plist" not in text:
+            text = text.replace(
+                "/* Begin PBXFileReference section */",
+                "/* Begin PBXFileReference section */\n\t\t%s /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = GoogleService-Info.plist; sourceTree = "<group>"; };" % file_ref
+            )
+            text = text.replace(
+                "/* Begin PBXBuildFile section */",
+                "/* Begin PBXBuildFile section */\n\t\t%s /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = %s /* GoogleService-Info.plist */; };" % (build_ref, file_ref)
+            )
+
+            # adiciona ao grupo App
+            marker = "AppDelegate.swift,"
+            if marker in text:
+                text = text.replace(marker, marker + "\n\t\t\t\t%s /* GoogleService-Info.plist */," % file_ref, 1)
+
+            # adiciona à fase Resources
+            marker2 = "LaunchScreen.storyboard in Resources */,"
+            if marker2 in text:
+                text = text.replace(marker2, marker2 + "\n\t\t\t\t%s /* GoogleService-Info.plist in Resources */," % build_ref, 1)
+
+        p.write_text(text)
+        PY
 
       # AppDelegate.swift: repassa token APNs para o Capacitor PushNotifications
       - |
@@ -98,6 +132,9 @@ workflows:
 
       # Assinatura
       - xcode-project use-profiles
+
+      - echo "========== CAPACITOR FIREBASE MESSAGING =========="
+      - npm list @capacitor-firebase/messaging || true
 
       # Logs de diagnóstico antes do build
       - echo "========== APP.ENTITLEMENTS =========="
