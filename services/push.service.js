@@ -13,7 +13,7 @@ function getApnConfig() {
     const keyId = process.env.APNS_KEY_ID || "7338N29JMD";
     const teamId = process.env.APNS_TEAM_ID || "T7VMAXZY78";
     const bundleId = process.env.APNS_BUNDLE_ID || "com.sgos.mobile";
-    const production = true;
+    const production = false;
 
     return { keyPath, keyId, teamId, bundleId, production };
 }
