@@ -15,69 +15,113 @@ workflows:
       app_store_connect: Codemagic
 
     scripts:
-      - name: Install dependencies
-        script: |
-          npm install --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
+      - npm install --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
+      - npm install @capacitor/ios --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
+      - npm install @capacitor/push-notifications --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
 
-      - name: Verify Capacitor and Firebase Messaging dependencies
-        script: |
-          npm list @capacitor/core @capacitor/ios @capacitor/push-notifications @capacitor-firebase/messaging
+      # Recria o projeto iOS do Capacitor
+      - rm -rf ios
+      - npx cap add ios
+      - npx @capacitor/assets generate
+      - npx cap sync ios
 
-      - name: Sync existing iOS project
-        script: |
-          # IMPORTANTE: não recria a pasta ios.
-          # Mantém AppDelegate.swift, Info.plist, App.entitlements e project.pbxproj do repositório.
-          npx cap sync ios
+      # Firebase iOS
+      - cp assets/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
 
-      - name: Ensure GoogleService-Info.plist is present
-        script: |
-          if [ -f "assets/GoogleService-Info.plist" ]; then
-            cp assets/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
-          elif [ -f "GoogleService-Info.plist" ]; then
-            cp GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
-          fi
+      # AppDelegate.swift: repassa token APNs para o Capacitor PushNotifications
+      - |
+        python3 - <<'PY'
+        from pathlib import Path
 
-          if [ ! -f "ios/App/App/GoogleService-Info.plist" ]; then
-            echo "ERRO: GoogleService-Info.plist não encontrado em ios/App/App/"
-            exit 1
-          fi
+        p = Path("ios/App/App/AppDelegate.swift")
+        text = p.read_text()
 
-          echo "GoogleService-Info.plist OK"
-          /usr/libexec/PlistBuddy -c "Print :BUNDLE_ID" ios/App/App/GoogleService-Info.plist || true
+        code = '''
+            func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+                NotificationCenter.default.post(
+                    name: .capacitorDidRegisterForRemoteNotifications,
+                    object: deviceToken
+                )
+            }
 
-      - name: Set build number
-        script: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PROJECT_BUILD_NUMBER" ios/App/App/Info.plist
+            func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+                NotificationCenter.default.post(
+                    name: .capacitorDidFailToRegisterForRemoteNotifications,
+                    object: error
+                )
+            }
+        '''
 
-      - name: Apply iOS signing profiles
-        script: |
-          xcode-project use-profiles
+        if "capacitorDidRegisterForRemoteNotifications" not in text:
+            text = text.rstrip()
+            text = text[:-1] + code + "\n}\n"
 
-      - name: Diagnostics before build
-        script: |
-          echo "========== APP.ENTITLEMENTS =========="
-          cat ios/App/App/App.entitlements || true
+        p.write_text(text)
+        PY
 
-          echo "========== SIGNING SETTINGS =========="
-          xcodebuild -project ios/App/App.xcodeproj -scheme App -showBuildSettings | grep -E "CODE_SIGN_ENTITLEMENTS|PRODUCT_BUNDLE_IDENTIFIER|PROVISIONING_PROFILE_SPECIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE" || true
+      # Cria App.entitlements para Push Notifications iOS
+      - |
+        cat > ios/App/App/App.entitlements <<'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>aps-environment</key>
+            <string>production</string>
+        </dict>
+        </plist>
+        EOF
 
-          echo "========== GOOGLE SERVICE FILE =========="
-          ls -l ios/App/App/GoogleService-Info.plist
+      # Vincula o entitlements ao target App no project.pbxproj
+      - |
+        python3 - <<'PY'
+        from pathlib import Path
 
-      - name: Build IPA
-        script: |
-          xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+        p = Path("ios/App/App.xcodeproj/project.pbxproj")
+        text = p.read_text()
 
-      - name: Check signed entitlements
-        script: |
-          set -e
-          IPA=$(ls build/ios/ipa/*.ipa ios/App/build/ios/ipa/*.ipa 2>/dev/null | head -n 1)
-          echo "IPA: $IPA"
-          rm -rf /tmp/sgos_ipa_check
-          mkdir -p /tmp/sgos_ipa_check
-          unzip -q "$IPA" -d /tmp/sgos_ipa_check
-          APP=$(find /tmp/sgos_ipa_check/Payload -name "*.app" -type d | head -n 1)
-          codesign -d --entitlements :- "$APP" || true
+        if "CODE_SIGN_ENTITLEMENTS = App/App.entitlements;" not in text:
+            text = text.replace(
+                "CODE_SIGN_STYLE = Automatic;",
+                "CODE_SIGN_ENTITLEMENTS = App/App.entitlements;\n\t\t\t\tCODE_SIGN_STYLE = Automatic;"
+            )
+
+        p.write_text(text)
+        PY
+
+      # Background Mode para remote notifications
+      - /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" ios/App/App/Info.plist || true
+      - /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" ios/App/App/Info.plist || true
+
+      # Versão do build
+      - /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $PROJECT_BUILD_NUMBER" ios/App/App/Info.plist
+
+      # Assinatura
+      - xcode-project use-profiles
+
+      # Logs de diagnóstico antes do build
+      - echo "========== APP.ENTITLEMENTS =========="
+      - cat ios/App/App/App.entitlements
+      - echo "========== BUILD SETTINGS SIGNING =========="
+      - xcodebuild -project ios/App/App.xcodeproj -scheme App -showBuildSettings | grep -E "CODE_SIGN_ENTITLEMENTS|PRODUCT_BUNDLE_IDENTIFIER|PROVISIONING_PROFILE_SPECIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE" || true
+      - echo "========== INFO PLIST BACKGROUND MODES =========="
+      - /usr/libexec/PlistBuddy -c "Print :UIBackgroundModes" ios/App/App/Info.plist || true
+
+      # Build IPA
+      - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+
+      # Diagnóstico do IPA gerado: precisa mostrar aps-environment = production
+      - |
+        set -e
+        IPA=$(ls build/ios/ipa/*.ipa ios/App/build/ios/ipa/*.ipa 2>/dev/null | head -n 1)
+        echo "========== IPA GERADO =========="
+        echo "$IPA"
+        rm -rf /tmp/sgos_ipa_check
+        mkdir -p /tmp/sgos_ipa_check
+        unzip -q "$IPA" -d /tmp/sgos_ipa_check
+        APP=$(find /tmp/sgos_ipa_check/Payload -name "*.app" -type d | head -n 1)
+        echo "========== ENTITLEMENTS ASSINADOS NO IPA =========="
+        codesign -d --entitlements :- "$APP" || true
 
     artifacts:
       - build/ios/ipa/*.ipa
