@@ -11,19 +11,45 @@ function limparBaseUrl(baseUrl){
     return `${base}/webservice/v1`;
 }
 
-function montarHeaders(config){
+function tokenPareceBase64(token){
+    const t = String(token || "").trim();
+    if(!t || /[^A-Za-z0-9+/=]/.test(t)) return false;
+    if(t.length % 4 !== 0) return false;
+    try{
+        Buffer.from(t, "base64").toString("utf8");
+        return true;
+    }catch(e){
+        return false;
+    }
+}
+
+function montarAuthorization(config, modo = "raw"){
     const tokenOriginal = String(config.token || "").trim();
 
     if(!tokenOriginal){
         throw new Error("Token do IXC não informado.");
     }
 
-    const authorization = /^Basic\s+/i.test(tokenOriginal)
-        ? tokenOriginal
-        : "Basic " + Buffer.from(`${tokenOriginal}:`).toString("base64");
+    if(/^Basic\s+/i.test(tokenOriginal)){
+        return tokenOriginal;
+    }
 
+    // IXC geralmente usa o token gerado no usuário já como credencial Basic.
+    // Algumas bases antigas/ambientes podem exigir token codificado em base64.
+    if(modo === "base64_colon"){
+        return "Basic " + Buffer.from(`${tokenOriginal}:`).toString("base64");
+    }
+
+    if(modo === "base64"){
+        return "Basic " + Buffer.from(tokenOriginal).toString("base64");
+    }
+
+    return "Basic " + tokenOriginal;
+}
+
+function montarHeaders(config, modoAuth = "raw"){
     return {
-        "Authorization": authorization,
+        "Authorization": montarAuthorization(config, modoAuth),
         "Content-Type": "application/json",
         "Accept": "application/json",
         "ixcsoft": "listar"
@@ -66,12 +92,33 @@ async function listar(config, tabela, body = {}){
         sortorder: body.sortorder || "desc"
     };
 
-    const resposta = await axios.post(url, payload, {
-        headers: montarHeaders(config),
-        timeout: Number(process.env.IXC_TIMEOUT_MS || 15000)
-    });
+    const token = String(config.token || "").trim();
+    const modos = /^Basic\s+/i.test(token)
+        ? ["raw"]
+        : ["raw", "base64_colon", "base64"];
 
-    return resposta.data;
+    let ultimoErro = null;
+
+    for(const modoAuth of modos){
+        try{
+            const resposta = await axios.post(url, payload, {
+                headers: montarHeaders(config, modoAuth),
+                timeout: Number(process.env.IXC_TIMEOUT_MS || 15000)
+            });
+
+            return resposta.data;
+        }catch(err){
+            ultimoErro = err;
+
+            const status = err.response?.status;
+            // Só tenta outro formato quando for falha de autenticação.
+            if(status !== 401 && status !== 403){
+                throw err;
+            }
+        }
+    }
+
+    throw ultimoErro;
 }
 
 function somenteNumeros(valor){
