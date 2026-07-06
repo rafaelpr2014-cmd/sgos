@@ -129,6 +129,23 @@ function primeiroValor(...valores){
     return valores.find(v => v !== undefined && v !== null && String(v).trim() !== "") || "";
 }
 
+
+function normalizarNomePlanoIXC(valor){
+    let texto = String(valor || "").trim();
+    if(!texto) return "";
+
+    // Remove valores comerciais que costumam vir no IXC, ex: "300MEGA R$ 62,90"
+    texto = texto.replace(/\s*R\$\s*[0-9.,]+.*/i, "");
+
+    // Remove observações finais, ex: "300MEGA (FIBRA)" quando o SGOS tem o plano como "300MEGA"
+    texto = texto.replace(/\s*\([^)]*\)\s*$/g, "");
+
+    // Normaliza espaços
+    texto = texto.replace(/\s+/g, " ").trim();
+
+    return texto;
+}
+
 function montarEndereco(cliente){
     return [
         primeiroValor(cliente.endereco, cliente.logradouro, cliente.rua),
@@ -169,7 +186,9 @@ function normalizarCliente(cliente, contrato = null, login = null){
         ),
         senha: primeiroValor(login?.senha, login?.password, login?.senha_pppoe, cliente.senha),
         senha_pppoe: primeiroValor(login?.senha, login?.password, login?.senha_pppoe, cliente.senha),
-        plano_nome: contrato ? primeiroValor(contrato.contrato, contrato.plano, contrato.plano_nome, contrato.descricao, contrato.id_vd_contrato, contrato.id_produto) : primeiroValor(cliente.plano, cliente.plano_nome),
+        plano_nome: normalizarNomePlanoIXC(contrato ? primeiroValor(contrato.contrato, contrato.plano, contrato.plano_nome, contrato.descricao, contrato.id_vd_contrato, contrato.id_produto) : primeiroValor(cliente.plano, cliente.plano_nome)),
+        plano_nome_erp: contrato ? primeiroValor(contrato.contrato, contrato.plano, contrato.plano_nome, contrato.descricao) : primeiroValor(cliente.plano, cliente.plano_nome),
+        plano_id_erp: contrato ? primeiroValor(contrato.id_vd_contrato, contrato.id_produto, contrato.id_plano) : primeiroValor(cliente.id_vd_contrato, cliente.id_plano),
         endereco: montarEndereco(cliente),
         cidade: primeiroValor(cliente.cidade_nome, cliente.cidade),
         rua: primeiroValor(cliente.endereco, cliente.logradouro, cliente.rua),
