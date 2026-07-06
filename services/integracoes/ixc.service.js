@@ -129,6 +129,64 @@ function primeiroValor(...valores){
     return valores.find(v => v !== undefined && v !== null && String(v).trim() !== "") || "";
 }
 
+const cacheCidades = new Map();
+
+function chaveCacheCidade(config, cidadeId){
+    return `${String(config?.base_url || "").trim()}::${String(cidadeId || "").trim()}`;
+}
+
+function pareceIdNumerico(valor){
+    return /^\d+$/.test(String(valor || "").trim());
+}
+
+async function buscarCidadePorId(config, cidadeId){
+    const id = String(cidadeId || "").trim();
+    if(!id || !pareceIdNumerico(id) || id === "0") return null;
+
+    const chave = chaveCacheCidade(config, id);
+    if(cacheCidades.has(chave)) return cacheCidades.get(chave);
+
+    const tentativas = [
+        { tabela: "cidade", qtype: "cidade.id" },
+        { tabela: "cidade", qtype: "id" },
+        { tabela: "cidades", qtype: "cidades.id" },
+        { tabela: "cidades", qtype: "id" }
+    ];
+
+    for(const t of tentativas){
+        try{
+            const data = await listar(config, t.tabela, {
+                qtype: t.qtype,
+                query: id,
+                oper: "=",
+                rp: "1",
+                sortname: "id"
+            });
+
+            const cidade = extrairRegistros(data)[0] || null;
+            if(cidade){
+                const nome = primeiroValor(
+                    cidade.nome,
+                    cidade.cidade,
+                    cidade.descricao,
+                    cidade.municipio,
+                    cidade.nome_cidade
+                );
+
+                if(nome){
+                    const normalizada = { ...cidade, nome_cidade_sgos: nome };
+                    cacheCidades.set(chave, normalizada);
+                    return normalizada;
+                }
+            }
+        }catch(err){
+            // Algumas bases IXC usam nome de tabela/campo diferente. Tenta a próxima opção.
+        }
+    }
+
+    cacheCidades.set(chave, null);
+    return null;
+}
 
 function normalizarNomePlanoIXC(valor){
     let texto = String(valor || "").trim();
@@ -146,16 +204,16 @@ function normalizarNomePlanoIXC(valor){
     return texto;
 }
 
-function montarEndereco(cliente){
+function montarEndereco(cliente, cidadeNome = ""){
     return [
         primeiroValor(cliente.endereco, cliente.logradouro, cliente.rua),
         primeiroValor(cliente.numero, cliente.n),
         primeiroValor(cliente.bairro),
-        primeiroValor(cliente.cidade_nome, cliente.cidade)
+        primeiroValor(cidadeNome, cliente.cidade_nome, pareceIdNumerico(cliente.cidade) ? "" : cliente.cidade)
     ].filter(Boolean).join(", ");
 }
 
-function normalizarCliente(cliente, contrato = null, login = null){
+function normalizarCliente(cliente, contrato = null, login = null, cidade = null){
     const nome = primeiroValor(cliente.razao, cliente.nome, cliente.fantasia);
     const telefone = primeiroValor(
         cliente.telefone_celular,
@@ -163,6 +221,15 @@ function normalizarCliente(cliente, contrato = null, login = null){
         cliente.whatsapp,
         cliente.telefone,
         cliente.fone
+    );
+
+    const cidadeNome = primeiroValor(
+        cidade?.nome_cidade_sgos,
+        cidade?.nome,
+        cidade?.cidade,
+        cidade?.descricao,
+        cliente.cidade_nome,
+        pareceIdNumerico(cliente.cidade) ? "" : cliente.cidade
     );
 
     return {
@@ -189,8 +256,9 @@ function normalizarCliente(cliente, contrato = null, login = null){
         plano_nome: normalizarNomePlanoIXC(contrato ? primeiroValor(contrato.contrato, contrato.plano, contrato.plano_nome, contrato.descricao, contrato.id_vd_contrato, contrato.id_produto) : primeiroValor(cliente.plano, cliente.plano_nome)),
         plano_nome_erp: contrato ? primeiroValor(contrato.contrato, contrato.plano, contrato.plano_nome, contrato.descricao) : primeiroValor(cliente.plano, cliente.plano_nome),
         plano_id_erp: contrato ? primeiroValor(contrato.id_vd_contrato, contrato.id_produto, contrato.id_plano) : primeiroValor(cliente.id_vd_contrato, cliente.id_plano),
-        endereco: montarEndereco(cliente),
-        cidade: primeiroValor(cliente.cidade_nome, cliente.cidade),
+        endereco: montarEndereco(cliente, cidadeNome),
+        cidade: cidadeNome || primeiroValor(cliente.cidade_nome, cliente.cidade),
+        cidade_id_erp: primeiroValor(cliente.cidade, cliente.id_cidade),
         rua: primeiroValor(cliente.endereco, cliente.logradouro, cliente.rua),
         numero: primeiroValor(cliente.numero, cliente.n),
         n: primeiroValor(cliente.numero, cliente.n),
@@ -199,7 +267,7 @@ function normalizarCliente(cliente, contrato = null, login = null){
         latitude: primeiroValor(cliente.latitude, cliente.lat),
         longitude: primeiroValor(cliente.longitude, cliente.lng, cliente.lon),
         status: primeiroValor(cliente.ativo, cliente.status, contrato?.status),
-        bruto: { cliente, contrato, login }
+        bruto: { cliente, contrato, login, cidade }
     };
 }
 
@@ -389,17 +457,18 @@ async function buscarClientes(config, termo){
 
     for(const cliente of mapa.values()){
         const clienteId = primeiroValor(cliente.id, cliente.id_cliente);
+        const cidade = await buscarCidadePorId(config, primeiroValor(cliente.cidade, cliente.id_cidade));
         const contratos = await buscarContratosCliente(config, clienteId);
 
         if(contratos.length){
             for(const contrato of contratos){
                 const contratoId = primeiroValor(contrato.id, contrato.id_contrato);
                 const logins = await buscarLoginsContrato(config, contratoId, clienteId);
-                clientes.push(normalizarCliente(cliente, contrato, logins[0] || null));
+                clientes.push(normalizarCliente(cliente, contrato, logins[0] || null, cidade));
             }
         }else{
             const logins = await buscarLoginsContrato(config, null, clienteId);
-            clientes.push(normalizarCliente(cliente, null, logins[0] || null));
+            clientes.push(normalizarCliente(cliente, null, logins[0] || null, cidade));
         }
     }
 
@@ -418,10 +487,11 @@ async function buscarClientePorId(config, id){
         return null;
     }
 
+    const cidade = await buscarCidadePorId(config, primeiroValor(cliente.cidade, cliente.id_cidade));
     const contratos = await buscarContratosCliente(config, cliente.id);
     const contrato = contratos[0] || null;
     const logins = await buscarLoginsContrato(config, contrato ? primeiroValor(contrato.id, contrato.id_contrato) : null, cliente.id);
-    return normalizarCliente(cliente, contrato, logins[0] || null);
+    return normalizarCliente(cliente, contrato, logins[0] || null, cidade);
 }
 
 async function testarConexao(config){
@@ -447,6 +517,7 @@ module.exports = {
     testarConexao,
     buscarClientes,
     buscarClientePorId,
+    buscarCidadePorId,
     buscarLoginsContrato,
     buscarContratoPorId
 };
