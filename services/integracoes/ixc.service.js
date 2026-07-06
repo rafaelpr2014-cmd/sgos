@@ -138,7 +138,7 @@ function montarEndereco(cliente){
     ].filter(Boolean).join(", ");
 }
 
-function normalizarCliente(cliente, contrato = null){
+function normalizarCliente(cliente, contrato = null, login = null){
     const nome = primeiroValor(cliente.razao, cliente.nome, cliente.fantasia);
     const telefone = primeiroValor(
         cliente.telefone_celular,
@@ -157,8 +157,19 @@ function normalizarCliente(cliente, contrato = null){
         fantasia: primeiroValor(cliente.fantasia),
         cpf_cnpj: primeiroValor(cliente.cnpj_cpf, cliente.cpf_cnpj, cliente.cpf, cliente.cnpj),
         telefone,
-        login: contrato ? primeiroValor(contrato.login, contrato.usuario, contrato.pppoe_login) : primeiroValor(cliente.login),
-        plano_nome: contrato ? primeiroValor(contrato.plano, contrato.plano_nome, contrato.id_vd_contrato, contrato.id_produto) : primeiroValor(cliente.plano, cliente.plano_nome),
+        login: primeiroValor(
+            login?.login,
+            login?.usuario,
+            login?.username,
+            login?.pppoe_login,
+            contrato?.login,
+            contrato?.usuario,
+            contrato?.pppoe_login,
+            cliente.login
+        ),
+        senha: primeiroValor(login?.senha, login?.password, login?.senha_pppoe, cliente.senha),
+        senha_pppoe: primeiroValor(login?.senha, login?.password, login?.senha_pppoe, cliente.senha),
+        plano_nome: contrato ? primeiroValor(contrato.contrato, contrato.plano, contrato.plano_nome, contrato.descricao, contrato.id_vd_contrato, contrato.id_produto) : primeiroValor(cliente.plano, cliente.plano_nome),
         endereco: montarEndereco(cliente),
         cidade: primeiroValor(cliente.cidade_nome, cliente.cidade),
         rua: primeiroValor(cliente.endereco, cliente.logradouro, cliente.rua),
@@ -169,7 +180,7 @@ function normalizarCliente(cliente, contrato = null){
         latitude: primeiroValor(cliente.latitude, cliente.lat),
         longitude: primeiroValor(cliente.longitude, cliente.lng, cliente.lon),
         status: primeiroValor(cliente.ativo, cliente.status, contrato?.status),
-        bruto: { cliente, contrato }
+        bruto: { cliente, contrato, login }
     };
 }
 
@@ -188,6 +199,104 @@ async function buscarContratosCliente(config, clienteId){
         return extrairRegistros(data);
     }catch(err){
         return [];
+    }
+}
+
+
+async function buscarLoginsContrato(config, contratoId, clienteId = null){
+    const tentativas = [];
+
+    if(contratoId){
+        tentativas.push({
+            qtype: "radusuarios.id_contrato",
+            query: String(contratoId),
+            oper: "=",
+            rp: "10",
+            sortname: "id"
+        });
+        tentativas.push({
+            qtype: "radusuarios.id_cliente_contrato",
+            query: String(contratoId),
+            oper: "=",
+            rp: "10",
+            sortname: "id"
+        });
+        tentativas.push({
+            qtype: "radusuarios.contrato",
+            query: String(contratoId),
+            oper: "=",
+            rp: "10",
+            sortname: "id"
+        });
+    }
+
+    if(clienteId){
+        tentativas.push({
+            qtype: "radusuarios.id_cliente",
+            query: String(clienteId),
+            oper: "=",
+            rp: "10",
+            sortname: "id"
+        });
+    }
+
+    for(const filtro of tentativas){
+        try{
+            const data = await listar(config, "radusuarios", filtro);
+            const registros = extrairRegistros(data);
+            if(registros.length){
+                if(contratoId){
+                    const exato = registros.find(r =>
+                        String(primeiroValor(r.id_contrato, r.id_cliente_contrato, r.contrato)).trim() === String(contratoId).trim()
+                    );
+                    if(exato) return [exato];
+                }
+                return registros;
+            }
+        }catch(err){
+            // Algumas versões do IXC usam nomes de campos diferentes. Tenta o próximo formato.
+        }
+    }
+
+    return [];
+}
+
+async function buscarLoginsPorLogin(config, termo){
+    const busca = String(termo || "").trim();
+    if(!busca) return [];
+
+    const tentativas = [
+        { qtype: "radusuarios.login", query: busca, oper: "LIKE", rp: "20", sortname: "id" },
+        { qtype: "radusuarios.usuario", query: busca, oper: "LIKE", rp: "20", sortname: "id" }
+    ];
+
+    for(const filtro of tentativas){
+        try{
+            const data = await listar(config, "radusuarios", filtro);
+            const registros = extrairRegistros(data);
+            if(registros.length) return registros;
+        }catch(err){
+            // ignora e tenta próximo campo
+        }
+    }
+
+    return [];
+}
+
+async function buscarContratoPorId(config, contratoId){
+    if(!contratoId) return null;
+
+    try{
+        const data = await listar(config, "cliente_contrato", {
+            qtype: "cliente_contrato.id",
+            query: String(contratoId),
+            oper: "=",
+            rp: "1",
+            sortname: "id"
+        });
+        return extrairRegistros(data)[0] || null;
+    }catch(err){
+        return null;
     }
 }
 
@@ -245,14 +354,33 @@ async function buscarClientes(config, termo){
 
     const clientes = [];
 
+    // Também permite pesquisar diretamente pelo login PPPoE.
+    try{
+        const loginsEncontrados = await buscarLoginsPorLogin(config, busca);
+        for(const login of loginsEncontrados){
+            const clienteIdLogin = primeiroValor(login.id_cliente, login.cliente);
+            if(clienteIdLogin && !mapa.has(String(clienteIdLogin))){
+                const achados = await buscarPorCampo(config, "cliente.id", String(clienteIdLogin), "=", "1");
+                if(achados[0]) mapa.set(String(clienteIdLogin), achados[0]);
+            }
+        }
+    }catch(err){
+        // Mantém a busca normal caso a consulta por login não esteja disponível.
+    }
+
     for(const cliente of mapa.values()){
         const clienteId = primeiroValor(cliente.id, cliente.id_cliente);
         const contratos = await buscarContratosCliente(config, clienteId);
 
         if(contratos.length){
-            contratos.forEach(contrato => clientes.push(normalizarCliente(cliente, contrato)));
+            for(const contrato of contratos){
+                const contratoId = primeiroValor(contrato.id, contrato.id_contrato);
+                const logins = await buscarLoginsContrato(config, contratoId, clienteId);
+                clientes.push(normalizarCliente(cliente, contrato, logins[0] || null));
+            }
         }else{
-            clientes.push(normalizarCliente(cliente));
+            const logins = await buscarLoginsContrato(config, null, clienteId);
+            clientes.push(normalizarCliente(cliente, null, logins[0] || null));
         }
     }
 
@@ -272,7 +400,9 @@ async function buscarClientePorId(config, id){
     }
 
     const contratos = await buscarContratosCliente(config, cliente.id);
-    return normalizarCliente(cliente, contratos[0] || null);
+    const contrato = contratos[0] || null;
+    const logins = await buscarLoginsContrato(config, contrato ? primeiroValor(contrato.id, contrato.id_contrato) : null, cliente.id);
+    return normalizarCliente(cliente, contrato, logins[0] || null);
 }
 
 async function testarConexao(config){
@@ -297,5 +427,7 @@ module.exports = {
     listar,
     testarConexao,
     buscarClientes,
-    buscarClientePorId
+    buscarClientePorId,
+    buscarLoginsContrato,
+    buscarContratoPorId
 };
