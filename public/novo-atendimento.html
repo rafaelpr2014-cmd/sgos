@@ -1026,8 +1026,10 @@ function toggleSidebar(){
     }
 }
 
+let mikwebTimer = null;
 let clienteSelecionadoMikWeb = null;
 let erpAtivoConsulta = null;
+let svaPadraoTV = null;
 
 function nomeERPAtivo(){
     const nomes = {
@@ -1043,11 +1045,11 @@ function nomeERPAtivo(){
 
 async function carregarERPAtivoNovoAtendimento(){
     try{
-        const status = await apiMikWebFetch("/api/integracoes/status");
+        const status = await apiFetch("/api/integracoes/status");
         erpAtivoConsulta = status?.atual?.tipo_erp || null;
 
-        const campoBusca = document.getElementById("id_cliente");
         const origem = document.getElementById("origemMikWeb");
+        const campoBusca = document.getElementById("id_cliente");
 
         if(campoBusca){
             campoBusca.placeholder = erpAtivoConsulta
@@ -1062,6 +1064,7 @@ async function carregarERPAtivoNovoAtendimento(){
         }
 
         return erpAtivoConsulta;
+
     }catch(err){
         console.warn("ERP ativo não encontrado:", err);
         erpAtivoConsulta = null;
@@ -1069,53 +1072,7 @@ async function carregarERPAtivoNovoAtendimento(){
     }
 }
 
-let mikwebTimer = null;
-
-
-function isClienteIXC(cliente){
-    return String(cliente?.origem_erp || cliente?.erp || erpAtivoConsulta || "").toLowerCase() === "ixc";
-}
-
-function normalizarPlanoIXC(nomePlano){
-    return String(nomePlano || "")
-        .replace(/\bR\$\s*\d+[\d.]*([,.]\d+)?\b/gi, "")
-        .replace(/\b\d+[\d.]*([,.]\d+)?\s*R\$\b/gi, "")
-        .replace(/\(.*?\)/g, "")
-        .replace(/[-–—]+\s*$/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-}
-
-function obterPlanoERPParaSelecao(cliente){
-    if(!cliente) return "";
-
-    // Mantém MikWeb/SGP exatamente como já funcionavam.
-    if(!isClienteIXC(cliente)){
-        return cliente.plano || cliente.plano_nome || "";
-    }
-
-    // Somente IXC: o plano pode vir como "300MEGA R$ 62,90".
-    // Para casar com o cadastro local do SGOS, removemos apenas preço/observações.
-    return normalizarPlanoIXC(
-        cliente.plano ||
-        cliente.plano_nome ||
-        cliente.plano_nome_erp ||
-        cliente.bruto?.contrato?.contrato ||
-        ""
-    );
-}
-
-function normalizarTexto(txt){
-    return String(txt || "")
-        .replace(/\(.*?\)/g, "")   // remove exemplos: (FIBRA)
-        .trim()
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/\s+/g, " ");
-}
-
-function extrairTelefoneERP(valor){
+function extrairCampoERP(valor){
     if(valor === undefined || valor === null) return "";
 
     if(Array.isArray(valor)){
@@ -1123,11 +1080,23 @@ function extrairTelefoneERP(valor){
             valor.find(v => String(v?.tipoContato || v?.tipo || "").toLowerCase().includes("celular") && String(v?.tipoContato || v?.tipo || "").toLowerCase().includes("pessoal")) ||
             valor.find(v => String(v?.tipoContato || v?.tipo || "").toLowerCase().includes("celular")) ||
             valor[0];
-        return extrairTelefoneERP(preferido);
+
+        return extrairCampoERP(preferido);
     }
 
     if(typeof valor === "object"){
-        return extrairTelefoneERP(valor.contato || valor.numero || valor.telefone || valor.celular || valor.whatsapp || valor.fone || valor.valor || "");
+        return extrairCampoERP(
+            valor.contato ||
+            valor.numero ||
+            valor.telefone ||
+            valor.celular ||
+            valor.whatsapp ||
+            valor.fone ||
+            valor.login ||
+            valor.usuario ||
+            valor.valor ||
+            ""
+        );
     }
 
     const texto = String(valor).trim();
@@ -1135,18 +1104,32 @@ function extrairTelefoneERP(valor){
 }
 
 function obterTelefoneClienteERP(cliente){
-    return extrairTelefoneERP(
-        cliente.telefone ||
-        cliente.telefones ||
-        cliente.celular ||
-        cliente.whatsapp ||
-        cliente.fone ||
-        cliente.bruto?.telefones ||
-        cliente.bruto?.telefone ||
-        cliente.bruto?.cliente?.telefones ||
-        cliente.bruto?.cliente?.telefone ||
-        cliente.bruto?.cliente?.celular ||
-        cliente.bruto?.cliente?.fone ||
+    return extrairCampoERP(
+        cliente?.telefone ||
+        cliente?.telefones ||
+        cliente?.celular ||
+        cliente?.whatsapp ||
+        cliente?.fone ||
+        cliente?.contato ||
+        cliente?.bruto?.telefones ||
+        cliente?.bruto?.telefone ||
+        cliente?.bruto?.cliente?.telefones ||
+        cliente?.bruto?.cliente?.telefone ||
+        cliente?.bruto?.cliente?.celular ||
+        cliente?.bruto?.cliente?.telefone_celular ||
+        cliente?.bruto?.cliente?.whatsapp ||
+        cliente?.bruto?.cliente?.fone ||
+        ""
+    );
+}
+
+function obterLoginClienteERP(cliente){
+    return extrairCampoERP(
+        cliente?.login ||
+        cliente?.usuario ||
+        cliente?.pppoe ||
+        cliente?.bruto?.login?.login ||
+        cliente?.bruto?.cliente?.login ||
         ""
     );
 }
@@ -1156,152 +1139,77 @@ function setValorCampo(id, valor){
     if(!el) return;
 
     if(id === "telefone"){
-        el.value = extrairTelefoneERP(valor);
+        el.value = extrairCampoERP(valor);
         return;
     }
 
     if(typeof valor === "object" && valor !== null){
-        el.value = "";
+        el.value = extrairCampoERP(valor);
         return;
     }
 
-    el.value = valor ?? "";
+    el.value = valor || "";
 }
 
-function escaparHtml(txt){
-    return String(txt || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+function setTextoCampo(id, valor){
+    const el = document.getElementById(id);
+    if(el) el.innerText = valor || "";
 }
 
-async function apiMikWebFetch(url){
-    if(typeof apiFetch === "function") return apiFetch(url);
-    if(typeof api === "function") return api(url);
-    if(typeof fetchAuth === "function") return fetchAuth(url);
+function limparMarcacaoMikWeb(){
+    const nomeEl = document.getElementById("nome");
+    const origem = document.getElementById("origemMikWeb");
 
-    const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
-    const res = await fetch(url, {
-        headers:{
-            "Content-Type":"application/json",
-            "x-usuario-id": usuario?.id || ""
-        }
-    });
+    if(nomeEl) nomeEl.classList.remove("mikweb-selected");
+    if(origem) origem.classList.remove("ativo");
 
-    const data = await res.json();
-    if(!res.ok) throw data;
-    return data;
-}
-
-function selecionarPlanoPorNome(nomePlanoERP, somenteIXC = false) {
-    const select = document.getElementById("plano");
-    if (!select || !nomePlanoERP) return;
-
-    const nomeERP = normalizarTexto(nomePlanoERP);
-    const nomeERPIXC = normalizarTexto(normalizarPlanoIXC(nomePlanoERP));
-    let encontrado = false;
-
-    Array.from(select.options).forEach(opt => {
-        if (encontrado) return;
-
-        const textoOpcao = opt.textContent || opt.innerText || "";
-        const nomePlanoSGOS = normalizarTexto(textoOpcao);
-
-        // Regra antiga preservada para MikWeb/SGP e demais ERPs.
-        if (nomePlanoSGOS === nomeERP) {
-            select.value = opt.value;
-            encontrado = true;
-            select.dispatchEvent(new Event("change"));
-            return;
-        }
-
-        // Adaptação SOMENTE para IXC:
-        // compara também removendo preço/observações dos dois lados.
-        // Ex.: ERP "300MEGA R$ 62,90" casa com opção "300MEGA" ou "300MEGA R$ 62,90".
-        if (somenteIXC) {
-            const nomePlanoSGOSIXC = normalizarTexto(normalizarPlanoIXC(textoOpcao));
-            if (nomePlanoSGOSIXC && nomePlanoSGOSIXC === nomeERPIXC) {
-                select.value = opt.value;
-                encontrado = true;
-                select.dispatchEvent(new Event("change"));
-            }
-        }
-    });
-
-    if (!encontrado) {
-        console.warn("Plano vindo do ERP não encontrado no SGOS:", nomePlanoERP);
-    }
-}
-
-function selecionarLocalidadePorNome(nomeCidadeERP){
-    const select = document.getElementById("localidade");
-    if(!select || !nomeCidadeERP) return;
-
-    const cidadeERP = normalizarTexto(nomeCidadeERP);
-    let encontrado = false;
-
-    Array.from(select.options).forEach(opt => {
-        const nomeSGOS = normalizarTexto(opt.textContent || opt.innerText || "");
-        if(nomeSGOS === cidadeERP){
-            select.value = opt.value;
-            encontrado = true;
-            select.dispatchEvent(new Event("change"));
-        }
-    });
-
-    if(!encontrado){
-        console.warn("Localidade/Cidade vinda da MikWeb não encontrada no SGOS:", nomeCidadeERP);
-    }
+    clienteSelecionadoMikWeb = null;
 }
 
 function fecharResultadosMikWeb(){
     const box = document.getElementById("resultadoMikWeb");
-    if(box){
-        box.classList.remove("ativo");
-        box.innerHTML = "";
-    }
+    if(!box) return;
+
+    box.classList.remove("ativo");
+    box.innerHTML = "";
 }
 
 function renderResultadosMikWeb(clientes, termo){
     const box = document.getElementById("resultadoMikWeb");
     if(!box) return;
 
-    box.classList.add("ativo");
-
     if(!clientes || clientes.length === 0){
+        box.classList.add("ativo");
         box.innerHTML = `
-            <div class="mikweb-status" style="color:#991b1b;">
-                Nenhum cliente encontrado para: <strong>${escaparHtml(termo)}</strong>
+            <div class="mikweb-status">
+                Nenhum cliente encontrado para: <strong>${termo}</strong>
             </div>
         `;
         return;
     }
 
-    box.innerHTML = clientes.map(c => {
+    box.classList.add("ativo");
+    box.innerHTML = clientes.map((c, idx) => {
         const payload = encodeURIComponent(JSON.stringify(c));
+
         return `
             <div class="mikweb-item" onclick="selecionarClienteMikWeb('${payload}')">
-                <strong>${escaparHtml(c.nome || 'Cliente sem nome')}</strong>
-                <small>ID: ${escaparHtml(c.id || '-')} • Login: ${escaparHtml(c.login || '-')}</small>
-                <small>Plano: ${escaparHtml(obterPlanoERPParaSelecao(c) || c.plano || c.plano_nome || '-')} • Cidade: ${escaparHtml(c.cidade || '-')}</small>
-                <small>${escaparHtml(c.rua || '-')} ${escaparHtml(c.n || c.numero || '')} ${escaparHtml(c.bairro || '')}</small>
+                <strong>${c.nome || '-'}</strong>
+                <small>ID: ${c.id || '-'} | Login: ${obterLoginClienteERP(c) || '-'}</small>
+                <small>${c.rua || '-'} ${c.n || c.numero || ''} ${c.bairro ? ' - ' + c.bairro : ''}</small>
             </div>
         `;
     }).join("") + `
         <div class="mikweb-status">
-            Clique em um cliente para preencher os dados da OS.
+            ${clientes.length} resultado(s) encontrado(s) no ERP ativo. Clique no cliente para preencher a OS.
         </div>
     `;
 }
 
-async function buscarClienteMikWeb(){
-    const input = document.getElementById("id_cliente");
-    const termo = String(input?.value || "").trim();
-    const box = document.getElementById("resultadoMikWeb");
+async function buscarClienteMikWeb(termo){
+    termo = String(termo || "").trim();
 
-    if(!termo || termo.length < 2){
+    if(termo.length < 2){
         fecharResultadosMikWeb();
         return;
     }
@@ -1310,6 +1218,7 @@ async function buscarClienteMikWeb(){
         await carregarERPAtivoNovoAtendimento();
     }
 
+    const box = document.getElementById("resultadoMikWeb");
     if(box){
         box.classList.add("ativo");
         box.innerHTML = `<div class="mikweb-status">Buscando no ${nomeERPAtivo()}...</div>`;
@@ -1317,7 +1226,9 @@ async function buscarClienteMikWeb(){
 
     try{
         // Rota genérica: usa sempre o ERP habilitado no momento.
-        const res = await apiMikWebFetch("/api/integracoes/pesquisar?termo=" + encodeURIComponent(termo));
+        const res = await apiFetch(
+            "/api/integracoes/pesquisar?termo=" + encodeURIComponent(termo)
+        );
 
         if(res.erp){
             erpAtivoConsulta = res.erp;
@@ -1325,6 +1236,7 @@ async function buscarClienteMikWeb(){
 
         const clientes = Array.isArray(res) ? res : (res.clientes || []);
         renderResultadosMikWeb(clientes, termo);
+
     }catch(err){
         console.error("Erro busca ERP:", err);
         if(box){
@@ -1343,7 +1255,7 @@ function selecionarClienteMikWeb(payload){
     preencherClienteMikWeb(cliente);
 }
 
-function preencherClienteMikWeb(cliente){
+function preencherClienteMikWeb(cliente) {
     clienteSelecionadoMikWeb = cliente;
 
     selecionarLocalidadePorNome(cliente.cidade);
@@ -1356,7 +1268,7 @@ function preencherClienteMikWeb(cliente){
     setValorCampo("bairro", cliente.bairro || "");
     setValorCampo("referencia", cliente.referencia || "");
     setValorCampo("telefone", obterTelefoneClienteERP(cliente));
-    setValorCampo("login", cliente.login || "");
+    setValorCampo("login", obterLoginClienteERP(cliente));
     setValorCampo("latitude", cliente.latitude || "");
     setValorCampo("longitude", cliente.longitude || "");
 
@@ -1374,12 +1286,14 @@ function preencherClienteMikWeb(cliente){
         box.classList.add("ativo");
         box.innerHTML = `
             <div class="mikweb-status" style="color:#166534;font-weight:800;">
-                ✓ ${escaparHtml(cliente.nome || 'Cliente')} selecionado e dados preenchidos.
+                ✓ ${cliente.nome || 'Cliente'} selecionado e dados preenchidos.
             </div>
         `;
+
         setTimeout(() => fecharResultadosMikWeb(), 1800);
     }
 }
+
 
 function aplicarEstadoSidebar(){
     const sidebar = document.querySelector(".sidebar");
