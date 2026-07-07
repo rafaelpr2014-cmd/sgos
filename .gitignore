@@ -14,6 +14,7 @@ android/app/release/
 ios/App/Pods/
 ios/App/build/
 ios/DerivedData/
+DerivedData/
 
 # WhatsApp
 sdos-whatsapp-teste/
@@ -31,11 +32,10 @@ sdos-whatsapp-teste/
 .env
 .env.*
 
-# Firebase
+# Firebase / credenciais privadas
 firebase-service-account.json
-GoogleService-Info.plist
 
-# Apple APNs
+# Apple APNs private key
 *.p8
 AuthKey_*.p8
 
