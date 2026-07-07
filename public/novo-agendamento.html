@@ -977,9 +977,57 @@ function normalizarTexto(txt){
         .replace(/\s+/g, " ");
 }
 
+function extrairTelefoneERP(valor){
+    if(valor === undefined || valor === null) return "";
+
+    if(Array.isArray(valor)){
+        const preferido =
+            valor.find(v => String(v?.tipoContato || v?.tipo || "").toLowerCase().includes("celular") && String(v?.tipoContato || v?.tipo || "").toLowerCase().includes("pessoal")) ||
+            valor.find(v => String(v?.tipoContato || v?.tipo || "").toLowerCase().includes("celular")) ||
+            valor[0];
+        return extrairTelefoneERP(preferido);
+    }
+
+    if(typeof valor === "object"){
+        return extrairTelefoneERP(valor.contato || valor.numero || valor.telefone || valor.celular || valor.whatsapp || valor.fone || valor.valor || "");
+    }
+
+    const texto = String(valor).trim();
+    return texto === "[object Object]" ? "" : texto;
+}
+
+function obterTelefoneClienteERP(cliente){
+    return extrairTelefoneERP(
+        cliente.telefone ||
+        cliente.telefones ||
+        cliente.celular ||
+        cliente.whatsapp ||
+        cliente.fone ||
+        cliente.bruto?.telefones ||
+        cliente.bruto?.telefone ||
+        cliente.bruto?.cliente?.telefones ||
+        cliente.bruto?.cliente?.telefone ||
+        cliente.bruto?.cliente?.celular ||
+        cliente.bruto?.cliente?.fone ||
+        ""
+    );
+}
+
 function setValorCampo(id, valor){
     const el = document.getElementById(id);
-    if(el) el.value = valor ?? "";
+    if(!el) return;
+
+    if(id === "telefone"){
+        el.value = extrairTelefoneERP(valor);
+        return;
+    }
+
+    if(typeof valor === "object" && valor !== null){
+        el.value = "";
+        return;
+    }
+
+    el.value = valor ?? "";
 }
 
 function escaparHtml(txt){
@@ -1169,7 +1217,7 @@ function preencherClienteMikWeb(cliente){
     setValorCampo("n", cliente.n || cliente.numero || "");
     setValorCampo("bairro", cliente.bairro || "");
     setValorCampo("referencia", cliente.referencia || "");
-    setValorCampo("telefone", cliente.telefone || "");
+    setValorCampo("telefone", obterTelefoneClienteERP(cliente));
     setValorCampo("login", cliente.login || "");
     setValorCampo("latitude", cliente.latitude || "");
     setValorCampo("longitude", cliente.longitude || "");

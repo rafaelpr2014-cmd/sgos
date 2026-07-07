@@ -16,7 +16,25 @@
  */
 
 function primeiroValor(...valores){
-    return valores.find(v => v !== undefined && v !== null && String(v).trim() !== "") || "";
+    for(const v of valores){
+        if(v === undefined || v === null) continue;
+        if(typeof v === "object"){
+            const interno = primeiroValor(
+                v.contato,
+                v.numero,
+                v.telefone,
+                v.celular,
+                v.whatsapp,
+                v.fone,
+                v.valor
+            );
+            if(interno) return interno;
+            continue;
+        }
+        const txt = String(v).trim();
+        if(txt && txt !== "[object Object]") return txt;
+    }
+    return "";
 }
 
 
@@ -141,7 +159,17 @@ function criarProviderPadrao(nome, service){
     }
 
     async function buscarClientes(config, termo){
-        if(typeof service.buscarClientes === "function") return service.buscarClientes(config, termo);
+        if(typeof service.buscarClientes === "function"){
+            const resposta = await service.buscarClientes(config, termo);
+            const lista = normalizarListaResposta(resposta, nome).map(c => normalizarClientePadrao(c, nome));
+            return {
+                origem_erp: resposta?.origem_erp || nome,
+                total: lista.length,
+                clientes: lista,
+                bruto: resposta
+            };
+        }
+
         const cliente = await buscarClienteCompleto(config, termo);
         return { origem_erp: nome, total: cliente ? 1 : 0, clientes: cliente ? [cliente] : [] };
     }

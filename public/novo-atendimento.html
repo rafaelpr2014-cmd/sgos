@@ -1193,7 +1193,7 @@ function preencherClienteMikWeb(cliente) {
     setValorCampo("n", cliente.n || cliente.numero || "");
     setValorCampo("bairro", cliente.bairro || "");
     setValorCampo("referencia", cliente.referencia || "");
-    setValorCampo("telefone", cliente.telefone || "");
+    setValorCampo("telefone", obterTelefoneClienteERP(cliente));
     setValorCampo("login", cliente.login || "");
     setValorCampo("latitude", cliente.latitude || "");
     setValorCampo("longitude", cliente.longitude || "");
