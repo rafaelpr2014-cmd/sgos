@@ -979,7 +979,7 @@ tr:hover{ background:#f8fbff; }
                                 <option value="mikweb">MikWeb</option>
                                 <option value="ixc">IXC</option>
                                 <option value="sgp">SGP</option>
-                                <option value="hubsoft" disabled>HubSoft - Em breve</option>
+                                <option value="hubsoft">HubSoft</option>
                                 <option value="mksolutions" disabled>MK Solutions - Em breve</option>
                             </select>
                         </div>
@@ -1254,27 +1254,37 @@ function atualizarCamposERP(){
     const nome = document.getElementById("nome");
     const termoBusca = document.getElementById("termoBusca");
 
+    const erpsComApp = ["sgp"];
     if(campoApp){
-        campoApp.style.display = tipo === "sgp" ? "flex" : "none";
+        campoApp.style.display = erpsComApp.includes(tipo) ? "flex" : "none";
     }
 
-    if(app && tipo !== "sgp"){
+    if(app && !erpsComApp.includes(tipo)){
         app.value = "";
     }
 
+    const nomesERP = ["MikWeb", "SGP", "IXC", "HubSoft", "MK Solutions"];
+    const nomeAtual = nome ? String(nome.value || "") : "";
+    const deveTrocarNome = !nomeAtual || nomesERP.some(n => nomeAtual.includes(n));
+
     if(tipo === "sgp"){
-        if(nome && (!nome.value || nome.value.includes("MikWeb") || nome.value.includes("IXC"))) nome.value = "SGP Produção";
+        if(nome && deveTrocarNome) nome.value = "SGP Produção";
         if(baseUrl) baseUrl.placeholder = "https://seusgp.com.br";
         if(token) token.placeholder = "Token do SGP";
         if(app) app.placeholder = "APP do SGP";
         if(termoBusca) termoBusca.placeholder = "Digite contrato, login, CPF/CNPJ ou telefone";
     }else if(tipo === "ixc"){
-        if(nome && (!nome.value || nome.value.includes("MikWeb") || nome.value.includes("SGP"))) nome.value = "IXC Produção";
+        if(nome && deveTrocarNome) nome.value = "IXC Produção";
         if(baseUrl) baseUrl.placeholder = "https://seudominio.com.br/webservice/v1";
         if(token) token.placeholder = "Token API do IXC";
         if(termoBusca) termoBusca.placeholder = "Digite nome, ID, CPF/CNPJ, login ou contrato";
+    }else if(tipo === "hubsoft"){
+        if(nome && deveTrocarNome) nome.value = "HubSoft Produção";
+        if(baseUrl) baseUrl.placeholder = "https://seudominio.hubsoft.com.br/api/v1";
+        if(token) token.placeholder = "Token Bearer da HubSoft";
+        if(termoBusca) termoBusca.placeholder = "Digite nome, ID, CPF/CNPJ, login ou contrato";
     }else{
-        if(nome && (!nome.value || nome.value.includes("SGP") || nome.value.includes("IXC"))) nome.value = "MikWeb Produção";
+        if(nome && deveTrocarNome) nome.value = "MikWeb Produção";
         if(baseUrl) baseUrl.placeholder = "https://api.mikweb.com.br/v1/admin";
         if(token) token.placeholder = "Token da MikWeb";
         if(termoBusca) termoBusca.placeholder = "Digite nome, ID, login ou contrato";

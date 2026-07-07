@@ -214,6 +214,59 @@ router.get("/:tipo_erp/pesquisar", async (req,res)=>{
     }catch(err){ console.error(err.response?.data || err.message); res.status(500).json({erro:"Erro ao pesquisar cliente no ERP.", detalhe:err.response?.data || err.message}); }
 });
 
+router.get("/:tipo_erp/cliente-completo", async (req,res)=>{
+    try{
+        const empresaId = getEmpresaId(req);
+        const tipo = normalizarTipoERP(req.params.tipo_erp);
+        const termo = req.query.termo || req.query.id || "";
+        const config = await getAtiva(empresaId, tipo);
+        if(!config) return res.status(404).json({erro:`Integração ${tipo.toUpperCase()} não está habilitada.`});
+        const provider = getProvider(config.tipo_erp);
+        const cliente = await provider.buscarClienteCompleto(config, termo);
+        await pool.query(`INSERT INTO integracoes_logs (empresa_id, integracao_id, tipo_erp, acao, endpoint, status, mensagem) VALUES (?, ?, ?, 'buscar_cliente_completo', ?, 'sucesso', ?)`, [empresaId, config.id, config.tipo_erp, provider.endpointClientes || "-", `Busca completa: ${termo}`]);
+        res.json(cliente || {});
+    }catch(err){ console.error(err.response?.data || err.message); res.status(500).json({erro:"Erro ao buscar cliente completo no ERP.", detalhe:err.response?.data || err.message}); }
+});
+
+router.get("/:tipo_erp/contrato", async (req,res)=>{
+    try{
+        const empresaId = getEmpresaId(req);
+        const tipo = normalizarTipoERP(req.params.tipo_erp);
+        const termo = req.query.termo || req.query.id || "";
+        const config = await getAtiva(empresaId, tipo);
+        if(!config) return res.status(404).json({erro:`Integração ${tipo.toUpperCase()} não está habilitada.`});
+        const provider = getProvider(config.tipo_erp);
+        const dados = await provider.buscarContrato(config, termo);
+        res.json(dados || {});
+    }catch(err){ console.error(err.response?.data || err.message); res.status(500).json({erro:"Erro ao buscar contrato no ERP.", detalhe:err.response?.data || err.message}); }
+});
+
+router.get("/:tipo_erp/login", async (req,res)=>{
+    try{
+        const empresaId = getEmpresaId(req);
+        const tipo = normalizarTipoERP(req.params.tipo_erp);
+        const termo = req.query.termo || req.query.id || "";
+        const config = await getAtiva(empresaId, tipo);
+        if(!config) return res.status(404).json({erro:`Integração ${tipo.toUpperCase()} não está habilitada.`});
+        const provider = getProvider(config.tipo_erp);
+        const dados = await provider.buscarLogin(config, termo);
+        res.json(dados || {});
+    }catch(err){ console.error(err.response?.data || err.message); res.status(500).json({erro:"Erro ao buscar login no ERP.", detalhe:err.response?.data || err.message}); }
+});
+
+router.get("/:tipo_erp/plano", async (req,res)=>{
+    try{
+        const empresaId = getEmpresaId(req);
+        const tipo = normalizarTipoERP(req.params.tipo_erp);
+        const termo = req.query.termo || req.query.id || "";
+        const config = await getAtiva(empresaId, tipo);
+        if(!config) return res.status(404).json({erro:`Integração ${tipo.toUpperCase()} não está habilitada.`});
+        const provider = getProvider(config.tipo_erp);
+        const dados = await provider.buscarPlano(config, termo);
+        res.json(dados || {});
+    }catch(err){ console.error(err.response?.data || err.message); res.status(500).json({erro:"Erro ao buscar plano no ERP.", detalhe:err.response?.data || err.message}); }
+});
+
 router.get("/:tipo_erp/os-cliente/:id", async (req,res)=>{
     try{
         const empresaId = getEmpresaId(req);
