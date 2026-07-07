@@ -1009,23 +1009,42 @@ async function apiMikWebFetch(url){
     return data;
 }
 
-function selecionarPlanoPorNome(nomePlanoERP){
+function selecionarPlanoPorNome(nomePlanoERP, somenteIXC = false) {
     const select = document.getElementById("plano");
-    if(!select || !nomePlanoERP) return;
+    if (!select || !nomePlanoERP) return;
 
     const nomeERP = normalizarTexto(nomePlanoERP);
+    const nomeERPIXC = normalizarTexto(normalizarPlanoIXC(nomePlanoERP));
     let encontrado = false;
 
     Array.from(select.options).forEach(opt => {
-        const nomeSGOS = normalizarTexto(opt.textContent || opt.innerText || "");
-        if(nomeSGOS === nomeERP){
+        if (encontrado) return;
+
+        const textoOpcao = opt.textContent || opt.innerText || "";
+        const nomePlanoSGOS = normalizarTexto(textoOpcao);
+
+        // Regra antiga preservada para MikWeb/SGP e demais ERPs.
+        if (nomePlanoSGOS === nomeERP) {
             select.value = opt.value;
             encontrado = true;
             select.dispatchEvent(new Event("change"));
+            return;
+        }
+
+        // Adaptação SOMENTE para IXC:
+        // compara também removendo preço/observações dos dois lados.
+        // Ex.: ERP "300MEGA R$ 62,90" casa com opção "300MEGA" ou "300MEGA R$ 62,90".
+        if (somenteIXC) {
+            const nomePlanoSGOSIXC = normalizarTexto(normalizarPlanoIXC(textoOpcao));
+            if (nomePlanoSGOSIXC && nomePlanoSGOSIXC === nomeERPIXC) {
+                select.value = opt.value;
+                encontrado = true;
+                select.dispatchEvent(new Event("change"));
+            }
         }
     });
 
-    if(!encontrado){
+    if (!encontrado) {
         console.warn("Plano vindo do ERP não encontrado no SGOS:", nomePlanoERP);
     }
 }
@@ -1142,7 +1161,7 @@ function preencherClienteMikWeb(cliente){
     clienteSelecionadoMikWeb = cliente;
 
     selecionarLocalidadePorNome(cliente.cidade);
-    selecionarPlanoPorNome(obterPlanoERPParaSelecao(cliente));
+    selecionarPlanoPorNome(obterPlanoERPParaSelecao(cliente), isClienteIXC(cliente));
 
     setValorCampo("id_cliente", cliente.id || "");
     setValorCampo("nome", cliente.nome || "");
