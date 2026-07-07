@@ -1132,6 +1132,40 @@ async function carregarERPAtivoPagina(){
 
 let timerBuscaMikWeb = null;
 
+
+function isClienteIXC(cliente){
+    return String(cliente?.origem_erp || cliente?.erp || erpAtivoConsulta || "").toLowerCase() === "ixc";
+}
+
+function normalizarPlanoIXC(nomePlano){
+    return String(nomePlano || "")
+        .replace(/\bR\$\s*\d+[\d.]*([,.]\d+)?\b/gi, "")
+        .replace(/\b\d+[\d.]*([,.]\d+)?\s*R\$\b/gi, "")
+        .replace(/\(.*?\)/g, "")
+        .replace(/[-–—]+\s*$/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function obterPlanoERPParaSelecao(cliente){
+    if(!cliente) return "";
+
+    // Mantém MikWeb/SGP exatamente como já funcionavam.
+    if(!isClienteIXC(cliente)){
+        return cliente.plano || cliente.plano_nome || "";
+    }
+
+    // Somente IXC: o plano pode vir como "300MEGA R$ 62,90".
+    // Para casar com o cadastro local do SGOS, removemos apenas preço/observações.
+    return normalizarPlanoIXC(
+        cliente.plano ||
+        cliente.plano_nome ||
+        cliente.plano_nome_erp ||
+        cliente.bruto?.contrato?.contrato ||
+        ""
+    );
+}
+
 function normalizarTexto(txt){
     return String(txt || "")
         .replace(/\(.*?\)/g, "")   // remove exemplos: (FIBRA)
@@ -1245,7 +1279,7 @@ function renderResultadosMikWeb(clientes, termo){
             <div class="mikweb-item" onclick="selecionarClienteMikWeb('${payload}')">
                 <strong>${escaparHtml(c.nome || 'Cliente sem nome')}</strong>
                 <small>ID: ${escaparHtml(c.id || '-')} • Login: ${escaparHtml(c.login || '-')}</small>
-                <small>Plano: ${escaparHtml(c.plano || '-')} • Cidade: ${escaparHtml(c.cidade || '-')}</small>
+                <small>Plano: ${escaparHtml(obterPlanoERPParaSelecao(c) || c.plano || c.plano_nome || '-')} • Cidade: ${escaparHtml(c.cidade || '-')}</small>
                 <small>${escaparHtml(c.rua || '-')} ${escaparHtml(c.n || c.numero || '')} ${escaparHtml(c.bairro || '')}</small>
             </div>
         `;
@@ -1307,7 +1341,7 @@ function preencherClienteMikWeb(cliente){
     clienteSelecionadoMikWeb = cliente;
 
     selecionarLocalidadePorNome(cliente.cidade);
-    selecionarPlanoPorNome(cliente.plano);
+    selecionarPlanoPorNome(obterPlanoERPParaSelecao(cliente));
 
     setValorCampo("id_cliente", cliente.id || "");
     setValorCampo("nome", cliente.nome || "");
