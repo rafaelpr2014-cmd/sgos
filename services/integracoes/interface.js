@@ -19,6 +19,58 @@ function primeiroValor(...valores){
     return valores.find(v => v !== undefined && v !== null && String(v).trim() !== "") || "";
 }
 
+
+function extrairTelefoneSGOS(cliente = {}){
+    const candidatos = [];
+
+    function adicionar(valor){
+        if(valor === undefined || valor === null) return;
+
+        if(Array.isArray(valor)){
+            valor.forEach(adicionar);
+            return;
+        }
+
+        if(typeof valor === "object"){
+            const tipo = String(valor.tipoContato || valor.tipo || valor.descricao || valor.nome || "").toLowerCase();
+            const contato = primeiroValor(
+                valor.contato,
+                valor.numero,
+                valor.telefone,
+                valor.celular,
+                valor.whatsapp,
+                valor.fone
+            );
+
+            if(contato){
+                candidatos.push({ tipo, contato: String(contato).trim() });
+            }
+
+            return;
+        }
+
+        const texto = String(valor).trim();
+        if(texto && texto !== "[object Object]"){
+            candidatos.push({ tipo: "", contato: texto });
+        }
+    }
+
+    adicionar(cliente.telefones);
+    adicionar(cliente.telefone);
+    adicionar(cliente.celular);
+    adicionar(cliente.whatsapp);
+    adicionar(cliente.fone);
+
+    const preferido =
+        candidatos.find(t => t.tipo.includes("celular") && t.tipo.includes("pessoal")) ||
+        candidatos.find(t => t.tipo.includes("celular")) ||
+        candidatos.find(t => t.tipo.includes("whatsapp")) ||
+        candidatos.find(t => t.tipo.includes("telefone")) ||
+        candidatos[0];
+
+    return preferido?.contato || "";
+}
+
 function normalizarListaResposta(resposta, origem = ""){
     if(!resposta) return [];
     if(Array.isArray(resposta)) return resposta;
@@ -45,7 +97,7 @@ function normalizarClientePadrao(cliente = {}, origem = ""){
         nome: primeiroValor(cliente.nome, cliente.razao, cliente.razao_social, cliente.fantasia),
         fantasia: primeiroValor(cliente.fantasia, cliente.nome_fantasia),
         cpf_cnpj: primeiroValor(cliente.cpf_cnpj, cliente.cnpj_cpf, cliente.cpf, cliente.cnpj),
-        telefone: primeiroValor(cliente.telefone, cliente.celular, cliente.whatsapp, cliente.fone),
+        telefone: extrairTelefoneSGOS(cliente),
         login: primeiroValor(cliente.login, login.login, login.usuario, login.username),
         senha: primeiroValor(cliente.senha, cliente.senha_pppoe, login.senha, login.password),
         senha_pppoe: primeiroValor(cliente.senha_pppoe, cliente.senha, login.senha, login.password),
@@ -136,5 +188,6 @@ module.exports = {
     criarProviderPadrao,
     normalizarClientePadrao,
     normalizarListaResposta,
-    primeiroValor
+    primeiroValor,
+    extrairTelefoneSGOS
 };
