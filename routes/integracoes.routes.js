@@ -122,7 +122,7 @@ router.post("/:tipo_erp/configurar", async (req,res)=>{
     try{
         const empresaId = getEmpresaId(req);
         const tipo = normalizarTipoERP(req.params.tipo_erp);
-        const { nome, base_url, token, app, ativo, client_id, client_secret, username, password, password_api } = req.body;
+        const { nome, base_url, token, app, ativo, client_id, client_secret, username, password } = req.body;
         if(!empresaId) return res.status(401).json({erro:"Empresa não identificada."});
         if(!base_url) return res.status(400).json({erro:"URL Base é obrigatória."});
         if(tipo === "sgp" && !app) return res.status(400).json({erro:"APP é obrigatório para integração SGP."});
@@ -135,7 +135,7 @@ router.post("/:tipo_erp/configurar", async (req,res)=>{
         const clientIdFinal = client_id || atual?.client_id || null;
         const clientSecretFinal = client_secret || atual?.client_secret || null;
         const usernameFinal = username || atual?.username || null;
-        const passwordFinal = password || password_api || atual?.password || null;
+        const passwordFinal = password || password || atual?.password || null;
 
         if(ehHubSoft){
             const temToken = !!String(tokenFinal || "").trim();
