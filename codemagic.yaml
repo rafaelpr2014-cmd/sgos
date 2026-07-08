@@ -19,6 +19,16 @@ workflows:
         script: |
           npm install --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
 
+
+      - name: Gerar ícone e splash do iOS
+        script: |
+          if [ -f assets/icon.png ] && [ -f assets/splash.png ]; then
+            echo "Gerando AppIcon e Splash a partir de assets/icon.png e assets/splash.png"
+            npx capacitor-assets generate --ios
+          else
+            echo "AVISO: assets/icon.png ou assets/splash.png não encontrados. Mantendo ícone/splash atuais."
+          fi
+
       - name: Sincronizar Capacitor iOS sem recriar projeto
         script: |
           test -d ios/App || (echo "ERRO: pasta ios/App não existe no repositório. Não vou recriar automaticamente." && exit 1)
