@@ -397,71 +397,8 @@ async function testarConexao(config){
             retorno: { status: "ok", graphql: true, campos_cliente_encontrados: campos }
         };
     }catch(err){
-        // Fallback apenas para confirmar autenticação em ambientes sem GraphQL liberado.
-        const tentativas = [
-            { method: "get", path: "api/v1/clientes", params: { per_page: 1, limit: 1 } },
-            { method: "get", path: "api/v1/cliente", params: { per_page: 1, limit: 1 } }
-        ];
-
-        let ultimoErro = err;
-        for(const t of tentativas){
-            try{
-                const retorno = await request(config, t.method, t.path, { params: t.params, token });
-                return { ok: true, mensagem: "HubSoft autenticou, mas GraphQL não respondeu. Verifique se o usuário está liberado para API GraphQL.", endpoint: t.path, retorno };
-            }catch(e){
-                ultimoErro = e;
-            }
-        }
-        throw ultimoErro || new Error("Não foi possível conectar na HubSoft.");
+        throw err;
     }
-}
-
-async function executarTentativaBusca(config, tentativa, token){
-    if(tentativa.method === "post"){
-        return request(config, "post", tentativa.path, { data: tentativa.data, params: tentativa.params, token });
-    }
-    return request(config, "get", tentativa.path, { params: tentativa.params, token });
-}
-
-async function buscarClientesRestLegado(config, busca, token){
-    const paramsBusca = [
-        { busca }, { search: busca }, { termo: busca }, { q: busca }, { nome: busca },
-        { cpf_cnpj: busca }, { documento: busca }, { login: busca }, { contrato: busca }
-    ];
-
-    const paths = [
-        "api/v1/clientes", "api/v1/cliente", "api/v1/integracao/clientes", "api/v1/integracao/cliente",
-        "clientes", "cliente", "integracao/clientes", "integracao/cliente"
-    ];
-
-    const tentativas = [];
-    for(const path of paths){
-        for(const params of paramsBusca) tentativas.push({ method: "get", path, params });
-    }
-
-    const debugTentativas = [];
-    let ultimoErro = null;
-
-    for(const t of tentativas){
-        try{
-            const retorno = await executarTentativaBusca(config, t, token);
-            const lista = extrairLista(retorno);
-            debugTentativas.push({ endpoint: t.path, method: t.method, params: t.params || null, total_extraido: lista.length });
-            const clientes = lista.map(normalizarHubSoft);
-            if(clientes.length){
-                return { origem_erp: "hubsoft", total: clientes.length, clientes, bruto: retorno, endpoint: t.path, metodo: t.method };
-            }
-        }catch(err){
-            ultimoErro = err;
-            debugTentativas.push({ endpoint: t.path, method: t.method, params: t.params || null, erro: err.response?.status || err.message });
-        }
-    }
-
-    if(ultimoErro && ultimoErro.response?.status && ![404, 405, 422].includes(ultimoErro.response.status)){
-        throw ultimoErro;
-    }
-
-    return { origem_erp: "hubsoft", total: 0, clientes: [], debug: debugTentativas.slice(0, 20) };
 }
 
 async function buscarClientes(config, termo){
@@ -469,19 +406,7 @@ async function buscarClientes(config, termo){
     if(!busca) return { origem_erp: "hubsoft", total: 0, clientes: [] };
 
     const token = await obterToken(config);
-
-    try{
-        const gql = await buscarClientesGraphQL(config, busca, token);
-        if(gql.clientes?.length) return gql;
-
-        const rest = await buscarClientesRestLegado(config, busca, token);
-        return { ...rest, debug_graphql: gql.debug_graphql, endpoint_graphql: gql.endpoint_graphql };
-    }catch(err){
-        // Se GraphQL estiver sem permissão, ainda tenta REST legado para não bloquear ambientes antigos.
-        const rest = await buscarClientesRestLegado(config, busca, token).catch(() => null);
-        if(rest?.clientes?.length) return rest;
-        throw err;
-    }
+    return buscarClientesGraphQL(config, busca, token);
 }
 
 async function buscarCliente(config, termo){
