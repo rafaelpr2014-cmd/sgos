@@ -1020,8 +1020,8 @@ tr:hover{ background:#f8fbff; }
                         </div>
 
                         <div class="campo" id="campoHubsoftPassword" style="display:none;">
-                            <label>HubSoft Password API</label>
-                            <input type="password" id="password_api" placeholder="Senha da API HubSoft">
+                            <label>HubSoft Password</label>
+                            <input type="password" id="password" placeholder="Senha da API HubSoft">
                         </div>
 
                         <div class="campo">
@@ -1584,7 +1584,7 @@ async function carregarIntegracaoAtual() {
             if(document.getElementById("client_id")) document.getElementById("client_id").value = "";
             if(document.getElementById("client_secret")) document.getElementById("client_secret").value = "";
             if(document.getElementById("username")) document.getElementById("username").value = config.username || "";
-            if(document.getElementById("password_api")) document.getElementById("password_api").value = "";
+            if(document.getElementById("password")) document.getElementById("password").value = "";
         }
 
     } catch (err) {
@@ -1610,14 +1610,14 @@ window.salvarIntegracao = async function(){
             client_id: document.getElementById("client_id")?.value.trim() || "",
             client_secret: document.getElementById("client_secret")?.value.trim() || "",
             username: document.getElementById("username")?.value.trim() || "",
-            password_api: document.getElementById("password_api")?.value.trim() || "",
+            password: document.getElementById("password")?.value.trim() || "",
             ativo: document.getElementById("ativoIntegracao")?.value === "1"
         };
 
         if(!body.base_url) return mostrarStatus("erro", "Informe a URL Base da API.");
         if(tipo === "sgp" && !body.app) return mostrarStatus("erro", "Informe o APP do SGP.");
         if(tipo === "hubsoft"){
-            const temOAuth = body.client_id && body.client_secret && body.username && body.password_api;
+            const temOAuth = body.client_id && body.client_secret && body.username && body.password;
             if(!body.token && !temOAuth){
                 return mostrarStatus("erro", "Para HubSoft, informe o Token Bearer ou Client ID, Client Secret, Username e Password API.");
             }
@@ -1700,7 +1700,7 @@ window.limparFormulario = function(){
     if(document.getElementById("client_id")) document.getElementById("client_id").value = "";
     if(document.getElementById("client_secret")) document.getElementById("client_secret").value = "";
     if(document.getElementById("username")) document.getElementById("username").value = "";
-    if(document.getElementById("password_api")) document.getElementById("password_api").value = "";
+    if(document.getElementById("password")) document.getElementById("password").value = "";
     atualizarCamposERP();
     document.getElementById("termoBusca").value = "";
     document.getElementById("resultadoJson").textContent = "Resultado da consulta aparecerá aqui...";

@@ -12,7 +12,7 @@ function temOAuth(config){
         String(config.client_id || "").trim() &&
         String(config.client_secret || "").trim() &&
         String(config.username || "").trim() &&
-        String(config.password_api || config.password || "").trim()
+        String(config.password || config.password || "").trim()
     );
 }
 
@@ -46,11 +46,11 @@ function montarHeaders(config, tokenOverride = null){
 
 async function autenticarOAuth(config){
     if(!temOAuth(config)){
-        throw new Error("Credenciais OAuth da HubSoft incompletas. Informe client_id, client_secret, username e password_api.");
+        throw new Error("Credenciais OAuth da HubSoft incompletas. Informe client_id, client_secret, username e password.");
     }
 
     const baseUrl = limparBaseUrl(config.base_url);
-    const password = String(config.password_api || config.password || "").trim();
+    const password = String(config.password || config.password || "").trim();
 
     const body = {
         grant_type: "password",
