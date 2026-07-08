@@ -7,12 +7,16 @@ function limparBaseUrl(baseUrl){
     return base;
 }
 
+function getPassword(config){
+    return String(config.password || config.password_api || "").trim();
+}
+
 function temOAuth(config){
     return !!(
         String(config.client_id || "").trim() &&
         String(config.client_secret || "").trim() &&
         String(config.username || "").trim() &&
-        String(config.password || config.password || "").trim()
+        getPassword(config)
     );
 }
 
@@ -25,7 +29,6 @@ function joinUrl(baseUrl, path){
     const p = String(path || "").replace(/^\/+/, "");
     if(!p) return base;
 
-    // Evita duplicar /api/v1 quando a URL Base já foi cadastrada com /api/v1.
     if(/\/api\/v1$/i.test(base) && /^api\/v1\//i.test(p)){
         return `${base}/${p.replace(/^api\/v1\//i, "")}`;
     }
@@ -50,27 +53,21 @@ async function autenticarOAuth(config){
     }
 
     const baseUrl = limparBaseUrl(config.base_url);
-    const password = String(config.password || config.password || "").trim();
-
     const body = {
         grant_type: "password",
         client_id: String(config.client_id || "").trim(),
         client_secret: String(config.client_secret || "").trim(),
         username: String(config.username || "").trim(),
-        password
+        password: getPassword(config)
     };
 
-    const paths = [
-        "oauth/token",
-        "api/v1/oauth/token",
-        "api/oauth/token"
-    ];
-
+    const paths = ["oauth/token", "api/v1/oauth/token", "api/oauth/token"];
     let ultimoErro = null;
 
     for(const path of paths){
         const url = joinUrl(baseUrl, path);
-        for(const formato of ["json", "form"]){
+
+        for(const formato of ["form", "json"]){
             try{
                 const resposta = await axios({
                     method: "post",
@@ -111,7 +108,6 @@ async function autenticarOAuth(config){
 }
 
 async function obterToken(config){
-    // Se existir OAuth completo, prioriza OAuth. Se falhar, tenta token direto se foi informado.
     if(temOAuth(config)){
         try{
             const auth = await autenticarOAuth(config);
@@ -123,7 +119,6 @@ async function obterToken(config){
     }
 
     if(temTokenDireto(config)) return String(config.token || config.access_token || "").trim();
-
     throw new Error("Informe o token Bearer ou as credenciais OAuth da HubSoft.");
 }
 
@@ -152,13 +147,14 @@ function extrairLista(data){
     if(Array.isArray(data?.data)) return data.data;
     if(Array.isArray(data?.data?.data)) return data.data.data;
     if(Array.isArray(data?.data?.clientes)) return data.data.clientes;
+    if(Array.isArray(data?.data?.cliente)) return data.data.cliente;
     if(Array.isArray(data?.resultado)) return data.resultado;
     if(Array.isArray(data?.resultado?.clientes)) return data.resultado.clientes;
     if(Array.isArray(data?.results)) return data.results;
     if(Array.isArray(data?.registros)) return data.registros;
-    if(data?.cliente) return [data.cliente];
-    if(data?.data?.cliente) return [data.data.cliente];
-    if(data && typeof data === "object" && (data.id || data.codigo_cliente || data.nome_razaosocial || data.nome)) return [data];
+    if(data?.cliente && !Array.isArray(data.cliente)) return [data.cliente];
+    if(data?.data?.cliente && !Array.isArray(data.data.cliente)) return [data.data.cliente];
+    if(data && typeof data === "object" && (data.id || data.codigo_cliente || data.nome_razaosocial || data.nome || data.id_cliente)) return [data];
     return [];
 }
 
@@ -196,29 +192,228 @@ function normalizarHubSoft(cliente = {}){
     }, "hubsoft");
 }
 
-async function testarConexao(config){
-    const token = await obterToken(config);
+// =============================
+// GraphQL HubSoft
+// =============================
+const GRAPHQL_ENDPOINTS = ["graphql", "api/graphql", "api/v1/graphql"];
 
-    const tentativas = [
-        { method: "get", path: "api/v1/clientes", params: { per_page: 1, limit: 1 } },
-        { method: "get", path: "api/v1/cliente", params: { per_page: 1, limit: 1 } },
-        { method: "get", path: "api/v1/integracao/clientes", params: { per_page: 1, limit: 1 } },
-        { method: "get", path: "api/v1/integracao/cliente", params: { per_page: 1, limit: 1 } },
-        { method: "get", path: "clientes", params: { per_page: 1, limit: 1 } },
-        { method: "get", path: "cliente", params: { per_page: 1, limit: 1 } }
-    ];
+function unwrapGraphQLType(type){
+    let atual = type;
+    while(atual?.ofType) atual = atual.ofType;
+    return atual || type;
+}
 
+function isScalarGraphQL(type){
+    const t = unwrapGraphQLType(type);
+    return ["SCALAR", "ENUM"].includes(t?.kind);
+}
+
+function ehCampoCliente(nome){
+    const n = String(nome || "").toLowerCase();
+    return n.includes("cliente") || n.includes("assinante");
+}
+
+function argValorParaBusca(argName, busca){
+    const n = String(argName || "").toLowerCase();
+    if(["busca", "search", "termo", "q", "nome", "nome_razaosocial", "cpf_cnpj", "documento", "cpf", "cnpj", "login", "contrato"].includes(n)) return busca;
+    if(["first", "limit", "per_page", "perpage", "take", "quantidade", "page_size"].includes(n)) return 10;
+    if(["page", "pagina", "offset", "skip"].includes(n)) return 1;
+    return undefined;
+}
+
+async function requestGraphQL(config, query, variables = {}, token = null){
+    const baseUrl = limparBaseUrl(config.base_url);
+    const accessToken = token || await obterToken(config);
     let ultimoErro = null;
-    for(const t of tentativas){
+
+    for(const path of GRAPHQL_ENDPOINTS){
         try{
-            const retorno = await request(config, t.method, t.path, { params: t.params, token });
-            return { ok: true, mensagem: "HubSoft conectado com sucesso.", endpoint: t.path, retorno };
+            const resposta = await axios({
+                method: "post",
+                url: joinUrl(baseUrl, path),
+                headers: montarHeaders(config, accessToken),
+                data: { query, variables },
+                timeout: Number(process.env.HUBSOFT_TIMEOUT_MS || 20000),
+                validateStatus: status => status >= 200 && status < 300
+            });
+
+            if(resposta.data?.errors?.length){
+                const err = new Error(resposta.data.errors.map(e => e.message).join(" | "));
+                err.graphqlErrors = resposta.data.errors;
+                err.endpoint = path;
+                err.responseData = resposta.data;
+                throw err;
+            }
+
+            return { endpoint: path, data: resposta.data };
         }catch(err){
             ultimoErro = err;
         }
     }
 
-    throw ultimoErro || new Error("Não foi possível conectar na HubSoft.");
+    throw ultimoErro || new Error("Não foi possível acessar o endpoint GraphQL da HubSoft.");
+}
+
+async function introspectGraphQL(config, token){
+    const query = `
+        query SGOSIntrospection {
+            __schema {
+                queryType { fields { name args { name type { kind name ofType { kind name ofType { kind name } } } } type { kind name ofType { kind name ofType { kind name } } } } }
+                types { name kind fields { name type { kind name ofType { kind name ofType { kind name } } } } }
+            }
+        }
+    `;
+    const resp = await requestGraphQL(config, query, {}, token);
+    return { endpoint: resp.endpoint, schema: resp.data?.data?.__schema };
+}
+
+function selecionarCamposScalar(schema, typeName){
+    const type = schema?.types?.find(t => t.name === typeName);
+    const fields = Array.isArray(type?.fields) ? type.fields : [];
+    const preferidos = [
+        "id", "id_cliente", "codigo_cliente", "cliente_id",
+        "nome", "nome_razaosocial", "razao_social", "nome_fantasia",
+        "cpf_cnpj", "cpf", "cnpj", "documento",
+        "telefone", "celular", "whatsapp", "fone", "telefone_celular",
+        "status", "ativo", "login", "login_pppoe",
+        "endereco", "endereco_completo", "rua", "logradouro", "numero", "bairro", "cidade",
+        "latitude", "longitude"
+    ];
+
+    const nomes = [];
+    for(const p of preferidos){
+        const f = fields.find(c => c.name === p && isScalarGraphQL(c.type));
+        if(f && !nomes.includes(f.name)) nomes.push(f.name);
+    }
+    for(const f of fields){
+        if(nomes.length >= 28) break;
+        if(isScalarGraphQL(f.type) && !nomes.includes(f.name)) nomes.push(f.name);
+    }
+
+    return nomes.length ? nomes : ["id"];
+}
+
+function extrairListasProfundas(obj, saida = []){
+    if(!obj || typeof obj !== "object") return saida;
+    if(Array.isArray(obj)){
+        if(obj.length && obj.some(item => item && typeof item === "object")) saida.push(obj);
+        for(const item of obj) extrairListasProfundas(item, saida);
+        return saida;
+    }
+    for(const value of Object.values(obj)) extrairListasProfundas(value, saida);
+    return saida;
+}
+
+function filtrarClientesPorBusca(lista, busca){
+    const termo = String(busca || "").toLowerCase().replace(/\D/g, "") || String(busca || "").toLowerCase();
+    const textoBusca = String(busca || "").toLowerCase();
+
+    return lista.filter(item => {
+        if(!item || typeof item !== "object") return false;
+        const vals = Object.values(item).map(v => String(v ?? "").toLowerCase()).join(" ");
+        const nums = vals.replace(/\D/g, "");
+        return vals.includes(textoBusca) || (!!termo && nums.includes(termo));
+    });
+}
+
+async function buscarClientesGraphQL(config, busca, token){
+    const info = await introspectGraphQL(config, token);
+    const schema = info.schema;
+    const queryFields = schema?.queryType?.fields || [];
+    const candidatos = queryFields.filter(f => ehCampoCliente(f.name));
+    const debug = [];
+
+    for(const field of candidatos){
+        const tipoRetorno = unwrapGraphQLType(field.type);
+        const campos = selecionarCamposScalar(schema, tipoRetorno?.name).join("\n");
+        const args = [];
+        const variables = {};
+        const varDefs = [];
+
+        for(const arg of field.args || []){
+            const valor = argValorParaBusca(arg.name, busca);
+            if(valor === undefined) continue;
+
+            const tipoBase = unwrapGraphQLType(arg.type);
+            const varName = arg.name.replace(/[^A-Za-z0-9_]/g, "_");
+            variables[varName] = valor;
+            args.push(`${arg.name}: $${varName}`);
+            varDefs.push(`$${varName}: ${tipoBase?.name === "Int" ? "Int" : "String"}`);
+        }
+
+        // Se o campo exige argumentos obrigatórios desconhecidos, pula para evitar erro.
+        const obrigatoriosNaoPreenchidos = (field.args || []).some(arg => arg.type?.kind === "NON_NULL" && !args.some(a => a.startsWith(`${arg.name}:`)));
+        if(obrigatoriosNaoPreenchidos) continue;
+
+        const query = `query SGOSBuscaHubSoft${varDefs.length ? `(${varDefs.join(", ")})` : ""} {
+            ${field.name}${args.length ? `(${args.join(", ")})` : ""} {
+                ${campos}
+            }
+        }`;
+
+        try{
+            const resp = await requestGraphQL(config, query, variables, token);
+            const bruto = resp.data?.data || {};
+            const listas = extrairListasProfundas(bruto);
+            let lista = listas.find(l => l.length) || extrairLista(bruto[field.name]);
+
+            if(Array.isArray(lista) && lista.length){
+                // Quando a query não possui filtro, filtra localmente.
+                if(!args.length) lista = filtrarClientesPorBusca(lista, busca);
+
+                const clientes = lista.map(normalizarHubSoft).filter(c => c && (c.nome || c.id || c.cliente_id));
+                if(clientes.length){
+                    return {
+                        origem_erp: "hubsoft",
+                        total: clientes.length,
+                        clientes,
+                        endpoint: resp.endpoint,
+                        metodo: "graphql",
+                        campo_graphql: field.name,
+                        bruto
+                    };
+                }
+            }
+
+            debug.push({ campo: field.name, args: field.args?.map(a => a.name) || [], total: Array.isArray(lista) ? lista.length : 0 });
+        }catch(err){
+            debug.push({ campo: field.name, erro: err.message });
+        }
+    }
+
+    return { origem_erp: "hubsoft", total: 0, clientes: [], debug_graphql: debug.slice(0, 20), endpoint_graphql: info.endpoint };
+}
+
+async function testarConexao(config){
+    const token = await obterToken(config);
+
+    try{
+        const info = await introspectGraphQL(config, token);
+        const campos = info.schema?.queryType?.fields?.map(f => f.name).filter(ehCampoCliente).slice(0, 20) || [];
+        return {
+            ok: true,
+            mensagem: "HubSoft conectado com sucesso via GraphQL.",
+            endpoint: info.endpoint,
+            retorno: { status: "ok", graphql: true, campos_cliente_encontrados: campos }
+        };
+    }catch(err){
+        // Fallback apenas para confirmar autenticação em ambientes sem GraphQL liberado.
+        const tentativas = [
+            { method: "get", path: "api/v1/clientes", params: { per_page: 1, limit: 1 } },
+            { method: "get", path: "api/v1/cliente", params: { per_page: 1, limit: 1 } }
+        ];
+
+        let ultimoErro = err;
+        for(const t of tentativas){
+            try{
+                const retorno = await request(config, t.method, t.path, { params: t.params, token });
+                return { ok: true, mensagem: "HubSoft autenticou, mas GraphQL não respondeu. Verifique se o usuário está liberado para API GraphQL.", endpoint: t.path, retorno };
+            }catch(e){
+                ultimoErro = e;
+            }
+        }
+        throw ultimoErro || new Error("Não foi possível conectar na HubSoft.");
+    }
 }
 
 async function executarTentativaBusca(config, tentativa, token){
@@ -228,80 +423,37 @@ async function executarTentativaBusca(config, tentativa, token){
     return request(config, "get", tentativa.path, { params: tentativa.params, token });
 }
 
-async function buscarClientes(config, termo){
-    const busca = String(termo || "").trim();
-    if(!busca) return { origem_erp: "hubsoft", total: 0, clientes: [] };
-
-    const token = await obterToken(config);
-
+async function buscarClientesRestLegado(config, busca, token){
     const paramsBusca = [
-        { busca },
-        { search: busca },
-        { termo: busca },
-        { q: busca },
-        { nome: busca },
-        { cpf_cnpj: busca },
-        { documento: busca },
-        { login: busca },
-        { contrato: busca }
+        { busca }, { search: busca }, { termo: busca }, { q: busca }, { nome: busca },
+        { cpf_cnpj: busca }, { documento: busca }, { login: busca }, { contrato: busca }
     ];
 
     const paths = [
-        "api/v1/clientes",
-        "api/v1/cliente",
-        "api/v1/integracao/clientes",
-        "api/v1/integracao/cliente",
-        "clientes",
-        "cliente",
-        "integracao/clientes",
-        "integracao/cliente"
+        "api/v1/clientes", "api/v1/cliente", "api/v1/integracao/clientes", "api/v1/integracao/cliente",
+        "clientes", "cliente", "integracao/clientes", "integracao/cliente"
     ];
 
     const tentativas = [];
-
     for(const path of paths){
-        for(const params of paramsBusca){
-            tentativas.push({ method: "get", path, params });
-        }
+        for(const params of paramsBusca) tentativas.push({ method: "get", path, params });
     }
 
-    for(const path of paths){
-        tentativas.push({ method: "post", path, data: { busca } });
-        tentativas.push({ method: "post", path, data: { termo: busca } });
-        tentativas.push({ method: "post", path, data: { search: busca } });
-        tentativas.push({ method: "post", path, data: { nome: busca } });
-    }
-
-    tentativas.push({ method: "get", path: `api/v1/clientes/${encodeURIComponent(busca)}` });
-    tentativas.push({ method: "get", path: `api/v1/cliente/${encodeURIComponent(busca)}` });
-    tentativas.push({ method: "get", path: `api/v1/integracao/cliente/${encodeURIComponent(busca)}` });
-    tentativas.push({ method: "get", path: `clientes/${encodeURIComponent(busca)}` });
-    tentativas.push({ method: "get", path: `cliente/${encodeURIComponent(busca)}` });
-
-    let ultimoErro = null;
     const debugTentativas = [];
+    let ultimoErro = null;
 
     for(const t of tentativas){
         try{
             const retorno = await executarTentativaBusca(config, t, token);
             const lista = extrairLista(retorno);
-            debugTentativas.push({ endpoint: t.path, method: t.method, params: t.params || null, data: t.data || null, total_extraido: lista.length });
-
+            debugTentativas.push({ endpoint: t.path, method: t.method, params: t.params || null, total_extraido: lista.length });
             const clientes = lista.map(normalizarHubSoft);
             if(clientes.length){
-                return {
-                    origem_erp: "hubsoft",
-                    total: clientes.length,
-                    clientes,
-                    bruto: retorno,
-                    endpoint: t.path,
-                    metodo: t.method
-                };
+                return { origem_erp: "hubsoft", total: clientes.length, clientes, bruto: retorno, endpoint: t.path, metodo: t.method };
             }
         }catch(err){
             ultimoErro = err;
-            const status = err.response?.status;
-            debugTentativas.push({ endpoint: t.path, method: t.method, params: t.params || null, data: t.data || null, erro: status || err.message });
+            debugTentativas.push({ endpoint: t.path, method: t.method, params: t.params || null, erro: err.response?.status || err.message });
         }
     }
 
@@ -310,6 +462,26 @@ async function buscarClientes(config, termo){
     }
 
     return { origem_erp: "hubsoft", total: 0, clientes: [], debug: debugTentativas.slice(0, 20) };
+}
+
+async function buscarClientes(config, termo){
+    const busca = String(termo || "").trim();
+    if(!busca) return { origem_erp: "hubsoft", total: 0, clientes: [] };
+
+    const token = await obterToken(config);
+
+    try{
+        const gql = await buscarClientesGraphQL(config, busca, token);
+        if(gql.clientes?.length) return gql;
+
+        const rest = await buscarClientesRestLegado(config, busca, token);
+        return { ...rest, debug_graphql: gql.debug_graphql, endpoint_graphql: gql.endpoint_graphql };
+    }catch(err){
+        // Se GraphQL estiver sem permissão, ainda tenta REST legado para não bloquear ambientes antigos.
+        const rest = await buscarClientesRestLegado(config, busca, token).catch(() => null);
+        if(rest?.clientes?.length) return rest;
+        throw err;
+    }
 }
 
 async function buscarCliente(config, termo){
@@ -342,9 +514,10 @@ async function buscarPlano(config, clienteOuTermo){
 }
 
 module.exports = {
-    endpointTeste: "/api/v1/clientes",
-    endpointClientes: "/api/v1/clientes",
+    endpointTeste: "/graphql",
+    endpointClientes: "/graphql",
     request,
+    requestGraphQL,
     autenticarOAuth,
     testarConexao,
     buscarClientes,
