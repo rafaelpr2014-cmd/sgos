@@ -2152,8 +2152,8 @@ async function iniciarPush(){
         await PushNotifications.addListener("registration", async (token) => {
             // DEBUG TEMPORÁRIO IOS
             try {
-                alert("TOKEN RECEBIDO");
-                alert("TOKEN: " + String(token.value).substring(0, 35) + "...");
+                alert("TOKEN APNS COMPLETO:\n" + String(token.value));
+                console.log("TOKEN APNS COMPLETO:", token.value);
             } catch(e){}
 
             console.log("✅ Token Push Capacitor:", token.value);
