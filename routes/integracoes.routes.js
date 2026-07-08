@@ -34,8 +34,7 @@ router.get("/status", async (req,res)=>{
     try{
         const empresaId = getEmpresaId(req);
         const [rows] = await pool.query(`
-            SELECT id, empresa_id, tipo_erp, nome, base_url, app, modo, ativo,
-                   ultimo_teste_em, ultimo_status, ultimo_tempo_ms, criado_em, atualizado_em
+            SELECT *
             FROM integracoes_erp
             WHERE empresa_id=?
             ORDER BY tipo_erp ASC, id DESC
@@ -57,7 +56,9 @@ router.get("/status", async (req,res)=>{
                 status: ativa.ultimo_status === "conectado" ? "Conectado" : "Configurado",
                 ultimo_teste_em: ativa.ultimo_teste_em,
                 ultimo_tempo_ms: ativa.ultimo_tempo_ms,
-                token_status: "Protegido / Não exibido"
+                token_status: "Protegido / Não exibido",
+                hubsoft_oauth_configurado: !!(ativa.client_id && ativa.client_secret && ativa.username && ativa.password_api),
+                hubsoft_token_configurado: !!(ativa.token || ativa.access_token)
             } : null,
             lista: rows.map(r => ({
                 id: r.id,
@@ -69,7 +70,9 @@ router.get("/status", async (req,res)=>{
                 ativo: Number(r.ativo) === 1,
                 status: r.ultimo_status === "conectado" ? "Conectado" : "Configurado",
                 ultimo_teste_em: r.ultimo_teste_em,
-                ultimo_tempo_ms: r.ultimo_tempo_ms
+                ultimo_tempo_ms: r.ultimo_tempo_ms,
+                hubsoft_oauth_configurado: !!(r.client_id && r.client_secret && r.username && r.password_api),
+                hubsoft_token_configurado: !!(r.token || r.access_token)
             }))
         });
     }catch(err){ console.error(err); res.status(500).json({erro:"Erro ao carregar status das integrações."}); }
@@ -98,6 +101,15 @@ router.get("/:tipo_erp/configuracao", async (req,res)=>{
             app:config.app || "",
             modo:config.modo || "somente_leitura",
             token_status:"Protegido / Não exibido",
+            client_id_status: config.client_id ? "Cadastrado" : "Não informado",
+            client_secret_status: config.client_secret ? "Cadastrado" : "Não informado",
+            username: config.username || "",
+            password_api_status: config.password_api ? "Cadastrado" : "Não informado",
+            access_token_status: config.access_token ? "Gerado" : "Não gerado",
+            refresh_token_status: config.refresh_token ? "Gerado" : "Não gerado",
+            token_expira_em: config.token_expira_em || null,
+            hubsoft_oauth_configurado: !!(config.client_id && config.client_secret && config.username && config.password_api),
+            hubsoft_token_configurado: !!(config.token || config.access_token),
             ultimo_teste_em:config.ultimo_teste_em,
             ultimo_tempo_ms:config.ultimo_tempo_ms,
             criado_em:config.criado_em,
@@ -110,27 +122,74 @@ router.post("/:tipo_erp/configurar", async (req,res)=>{
     try{
         const empresaId = getEmpresaId(req);
         const tipo = normalizarTipoERP(req.params.tipo_erp);
-        const { nome, base_url, token, app, ativo } = req.body;
+        const { nome, base_url, token, app, ativo, client_id, client_secret, username, password_api } = req.body;
         if(!empresaId) return res.status(401).json({erro:"Empresa não identificada."});
         if(!base_url) return res.status(400).json({erro:"URL Base é obrigatória."});
         if(tipo === "sgp" && !app) return res.status(400).json({erro:"APP é obrigatório para integração SGP."});
         getProvider(tipo);
+
         const atual = await getPorTipo(empresaId, tipo);
-        const tokenFinal = token || atual?.token;
-        if(!tokenFinal) return res.status(400).json({erro:"Token é obrigatório."});
+        const ehHubSoft = tipo === "hubsoft";
+
+        const tokenFinal = token || atual?.token || null;
+        const clientIdFinal = client_id || atual?.client_id || null;
+        const clientSecretFinal = client_secret || atual?.client_secret || null;
+        const usernameFinal = username || atual?.username || null;
+        const passwordApiFinal = password_api || atual?.password_api || null;
+
+        if(ehHubSoft){
+            const temToken = !!String(tokenFinal || "").trim();
+            const temOAuth = !!(
+                String(clientIdFinal || "").trim() &&
+                String(clientSecretFinal || "").trim() &&
+                String(usernameFinal || "").trim() &&
+                String(passwordApiFinal || "").trim()
+            );
+            if(!temToken && !temOAuth){
+                return res.status(400).json({erro:"Para HubSoft, informe um Token Bearer ou Client ID, Client Secret, Username e Password API."});
+            }
+        }else if(!tokenFinal){
+            return res.status(400).json({erro:"Token é obrigatório."});
+        }
+
         const ativar = ativo === true || ativo === "1" || ativo === 1;
         if(ativar){ await pool.query(`UPDATE integracoes_erp SET ativo=0 WHERE empresa_id=?`, [empresaId]); }
+
         if(atual){
             await pool.query(`
                 UPDATE integracoes_erp
-                SET nome=?, base_url=?, app=?, token=?, modo='somente_leitura', ativo=?, atualizado_em=NOW()
+                SET nome=?, base_url=?, app=?, token=?, client_id=?, client_secret=?, username=?, password_api=?, modo='somente_leitura', ativo=?, atualizado_em=NOW()
                 WHERE id=? AND empresa_id=?
-            `, [nome || tipo.toUpperCase(), String(base_url).replace(/\/+$/, ""), app || null, tokenFinal, ativar ? 1 : Number(atual.ativo || 0), atual.id, empresaId]);
+            `, [
+                nome || tipo.toUpperCase(),
+                String(base_url).replace(/\/+$/, ""),
+                app || null,
+                tokenFinal,
+                ehHubSoft ? clientIdFinal : null,
+                ehHubSoft ? clientSecretFinal : null,
+                ehHubSoft ? usernameFinal : null,
+                ehHubSoft ? passwordApiFinal : null,
+                ativar ? 1 : Number(atual.ativo || 0),
+                atual.id,
+                empresaId
+            ]);
         }else{
             await pool.query(`
-                INSERT INTO integracoes_erp (empresa_id, tipo_erp, nome, base_url, app, token, modo, ativo)
-                VALUES (?, ?, ?, ?, ?, ?, 'somente_leitura', ?)
-            `, [empresaId, tipo, nome || tipo.toUpperCase(), String(base_url).replace(/\/+$/, ""), app || null, tokenFinal, ativar ? 1 : 0]);
+                INSERT INTO integracoes_erp (empresa_id, tipo_erp, nome, base_url, app, token, client_id, client_secret, username, password_api, modo, ativo)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'somente_leitura', ?)
+            `, [
+                empresaId,
+                tipo,
+                nome || tipo.toUpperCase(),
+                String(base_url).replace(/\/+$/, ""),
+                app || null,
+                tokenFinal,
+                ehHubSoft ? clientIdFinal : null,
+                ehHubSoft ? clientSecretFinal : null,
+                ehHubSoft ? usernameFinal : null,
+                ehHubSoft ? passwordApiFinal : null,
+                ativar ? 1 : 0
+            ]);
         }
         res.json({sucesso:true, mensagem:`Integração ${tipo.toUpperCase()} salva com sucesso.`});
     }catch(err){ console.error(err); res.status(err.status || 500).json({erro:err.message || "Erro ao salvar integração."}); }

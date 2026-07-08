@@ -999,9 +999,29 @@ tr:hover{ background:#f8fbff; }
                             <input type="text" id="app" placeholder="APP da integração SGP">
                         </div>
 
-                        <div class="campo">
-                            <label>Token</label>
+                        <div class="campo" id="campoToken">
+                            <label id="labelToken">Token</label>
                             <input type="password" id="token" placeholder="Cole aqui o token">
+                        </div>
+
+                        <div class="campo" id="campoHubsoftClientId" style="display:none;">
+                            <label>HubSoft Client ID</label>
+                            <input type="text" id="client_id" placeholder="Client ID gerado na aba API do usuário HubSoft">
+                        </div>
+
+                        <div class="campo" id="campoHubsoftClientSecret" style="display:none;">
+                            <label>HubSoft Client Secret</label>
+                            <input type="password" id="client_secret" placeholder="Client Secret gerado na HubSoft">
+                        </div>
+
+                        <div class="campo" id="campoHubsoftUsername" style="display:none;">
+                            <label>HubSoft Username</label>
+                            <input type="text" id="username" placeholder="Usuário da API HubSoft">
+                        </div>
+
+                        <div class="campo" id="campoHubsoftPassword" style="display:none;">
+                            <label>HubSoft Password API</label>
+                            <input type="password" id="password_api" placeholder="Senha da API HubSoft">
                         </div>
 
                         <div class="campo">
@@ -1251,6 +1271,13 @@ function atualizarCamposERP(){
     const app = document.getElementById("app");
     const baseUrl = document.getElementById("base_url");
     const token = document.getElementById("token");
+    const labelToken = document.getElementById("labelToken");
+    const camposHubSoft = [
+        "campoHubsoftClientId",
+        "campoHubsoftClientSecret",
+        "campoHubsoftUsername",
+        "campoHubsoftPassword"
+    ];
     const nome = document.getElementById("nome");
     const termoBusca = document.getElementById("termoBusca");
 
@@ -1261,6 +1288,15 @@ function atualizarCamposERP(){
 
     if(app && !erpsComApp.includes(tipo)){
         app.value = "";
+    }
+
+    camposHubSoft.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.style.display = tipo === "hubsoft" ? "flex" : "none";
+    });
+
+    if(labelToken){
+        labelToken.innerText = tipo === "hubsoft" ? "Token Bearer (opcional, alternativa ao OAuth)" : "Token";
     }
 
     const nomesERP = ["MikWeb", "SGP", "IXC", "HubSoft", "MK Solutions"];
@@ -1280,8 +1316,8 @@ function atualizarCamposERP(){
         if(termoBusca) termoBusca.placeholder = "Digite nome, ID, CPF/CNPJ, login ou contrato";
     }else if(tipo === "hubsoft"){
         if(nome && deveTrocarNome) nome.value = "HubSoft Produção";
-        if(baseUrl) baseUrl.placeholder = "https://seudominio.hubsoft.com.br/api/v1";
-        if(token) token.placeholder = "Token Bearer da HubSoft";
+        if(baseUrl) baseUrl.placeholder = "https://seudominio.hubsoft.com.br";
+        if(token) token.placeholder = "Opcional: Token Bearer direto, se sua HubSoft fornecer";
         if(termoBusca) termoBusca.placeholder = "Digite nome, ID, CPF/CNPJ, login ou contrato";
     }else{
         if(nome && deveTrocarNome) nome.value = "MikWeb Produção";
@@ -1545,6 +1581,10 @@ async function carregarIntegracaoAtual() {
             if(document.getElementById("app")) document.getElementById("app").value = config.app || "";
             if(document.getElementById("ativoIntegracao")) document.getElementById("ativoIntegracao").value = config.ativo ? "1" : "0";
             document.getElementById("token").value = "";
+            if(document.getElementById("client_id")) document.getElementById("client_id").value = "";
+            if(document.getElementById("client_secret")) document.getElementById("client_secret").value = "";
+            if(document.getElementById("username")) document.getElementById("username").value = config.username || "";
+            if(document.getElementById("password_api")) document.getElementById("password_api").value = "";
         }
 
     } catch (err) {
@@ -1567,12 +1607,23 @@ window.salvarIntegracao = async function(){
             base_url: document.getElementById("base_url").value.trim(),
             token: document.getElementById("token").value.trim(),
             app: document.getElementById("app")?.value.trim() || "",
+            client_id: document.getElementById("client_id")?.value.trim() || "",
+            client_secret: document.getElementById("client_secret")?.value.trim() || "",
+            username: document.getElementById("username")?.value.trim() || "",
+            password_api: document.getElementById("password_api")?.value.trim() || "",
             ativo: document.getElementById("ativoIntegracao")?.value === "1"
         };
 
         if(!body.base_url) return mostrarStatus("erro", "Informe a URL Base da API.");
         if(tipo === "sgp" && !body.app) return mostrarStatus("erro", "Informe o APP do SGP.");
-        if(!body.token) return mostrarStatus("erro", "Informe o token.");
+        if(tipo === "hubsoft"){
+            const temOAuth = body.client_id && body.client_secret && body.username && body.password_api;
+            if(!body.token && !temOAuth){
+                return mostrarStatus("erro", "Para HubSoft, informe o Token Bearer ou Client ID, Client Secret, Username e Password API.");
+            }
+        }else if(!body.token){
+            return mostrarStatus("erro", "Informe o token.");
+        }
 
         const res = await fetchAuth(`/api/integracoes/${getERPSelecionado()}/configurar`, {
             method:"POST",
@@ -1646,6 +1697,10 @@ window.limparFormulario = function(){
     if(document.getElementById("app")) document.getElementById("app").value = "";
     if(document.getElementById("ativoIntegracao")) document.getElementById("ativoIntegracao").value = "0";
     document.getElementById("token").value = "";
+    if(document.getElementById("client_id")) document.getElementById("client_id").value = "";
+    if(document.getElementById("client_secret")) document.getElementById("client_secret").value = "";
+    if(document.getElementById("username")) document.getElementById("username").value = "";
+    if(document.getElementById("password_api")) document.getElementById("password_api").value = "";
     atualizarCamposERP();
     document.getElementById("termoBusca").value = "";
     document.getElementById("resultadoJson").textContent = "Resultado da consulta aparecerá aqui...";
