@@ -41,7 +41,7 @@ body{
     min-height:100vh;
     min-height:100dvh;
     padding-top:0;
-    padding-bottom:env(safe-area-inset-bottom);
+    padding-bottom:calc(env(safe-area-inset-bottom) + 6px);
 }
 
 /* ================= HEADER ================= */
@@ -540,7 +540,7 @@ body{
 .drawer-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1999;opacity:0;pointer-events:none;transition:.25s;}.drawer-overlay.show{opacity:1;pointer-events:auto;}
 .side-drawer{position:fixed;left:0;top:0;height:100dvh;width:280px;max-width:82vw;background:linear-gradient(180deg,#081a31,#061426);z-index:2000;transform:translateX(-100%);transition:.25s ease;color:#fff;padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px);display:flex;flex-direction:column;box-shadow:18px 0 45px rgba(0,0,0,.32);}
 .side-drawer.open{transform:translateX(0);}
-.drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.drawer-head img{width:156px;max-height:62px;object-fit:contain}.drawer-close{width:38px;height:38px;border:none;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-size:22px}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.drawer-head img{width:148px;max-height:58px;object-fit:contain}.drawer-close{width:38px;height:38px;border:none;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-size:22px}
 .drawer-user{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;margin-bottom:14px}.drawer-user strong{display:block;font-size:14px}.drawer-user small{display:block;color:#cbd5e1;font-size:12px;margin-top:3px}
 .drawer-nav{display:flex;flex-direction:column;gap:7px}.drawer-nav a{color:#dbeafe;text-decoration:none;display:flex;align-items:center;gap:12px;padding:13px;border-radius:14px;font-size:15px;font-weight:800}.drawer-nav a.active,.drawer-nav a:hover{background:#2563eb;color:#fff}.drawer-nav .ico{width:28px;height:28px;border-radius:10px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center}.drawer-footer{margin-top:auto}.drawer-logout{width:100%;border:none;background:#ef4444;color:#fff;border-radius:14px;padding:13px;font-weight:900;font-size:14px}
 .header{position:relative;z-index:1;}
@@ -730,6 +730,77 @@ function getPlataformaApp(){
         }
     }catch(e){}
     return "web";
+}
+
+function formatarTelefoneApp(valor){
+    try{
+        if(!valor) return "-";
+
+        if(Array.isArray(valor)){
+            const item = valor.find(v => v && (v.contato || v.telefone || v.numero || v.celular)) || valor[0];
+            return formatarTelefoneApp(item);
+        }
+
+        if(typeof valor === "object"){
+            return valor.contato || valor.telefone || valor.numero || valor.celular || valor.whatsapp || "-";
+        }
+
+        const texto = String(valor).trim();
+        return texto && texto !== "[object Object]" ? texto : "-";
+    }catch(e){
+        return "-";
+    }
+}
+
+function getFirebaseMessagingPlugin(){
+    try{
+        const cap = window.Capacitor;
+        return cap?.Plugins?.FirebaseMessaging ||
+               cap?.Plugins?.CapacitorFirebaseMessaging ||
+               window.FirebaseMessaging ||
+               null;
+    }catch(e){
+        console.warn("Erro ao localizar FirebaseMessaging:", e);
+        return null;
+    }
+}
+
+async function registrarFcmIos(){
+    const plataforma = getPlataformaApp();
+    if(plataforma !== "ios") return false;
+
+    const FirebaseMessaging = getFirebaseMessagingPlugin();
+    if(!FirebaseMessaging){
+        console.warn("FirebaseMessaging não encontrado no iOS; não será salvo token APNs como FCM.");
+        return false;
+    }
+
+    try{
+        if(typeof FirebaseMessaging.requestPermissions === "function"){
+            const perm = await FirebaseMessaging.requestPermissions();
+            console.log("Permissão FirebaseMessaging iOS:", perm);
+        }
+
+        if(typeof FirebaseMessaging.getToken !== "function"){
+            console.warn("FirebaseMessaging.getToken não disponível.");
+            return false;
+        }
+
+        const result = await FirebaseMessaging.getToken();
+        const fcmToken = result?.token || result?.value || result;
+
+        if(!fcmToken){
+            console.warn("FirebaseMessaging não retornou token FCM.", result);
+            return false;
+        }
+
+        console.log("✅ TOKEN FCM IOS RECEBIDO:", String(fcmToken).substring(0, 40) + "...");
+        await salvarTokenPush(String(fcmToken), "ios");
+        return true;
+    }catch(err){
+        console.error("Erro ao obter token FCM iOS:", err);
+        return false;
+    }
 }
 
 function carregarSocketIo(){
@@ -940,6 +1011,8 @@ function normalizarOSNormal(os){
         ...os,
         _tipo: "normal",
         _key: `normal-${os.id}`,
+        telefone: formatarTelefoneApp(os.telefone),
+        _telefone_formatado: formatarTelefoneApp(os.telefone),
         status: normalizarStatusApp(os.status)
     };
 }
@@ -986,26 +1059,6 @@ function enderecoNormal(os){
 
     return partes.join(", ").replace(", (", " (") || "-";
 }
-
-function formatarTelefoneApp(valor){
-    if(!valor) return "-";
-
-    if(typeof valor === "string" || typeof valor === "number"){
-        return String(valor);
-    }
-
-    if(Array.isArray(valor)){
-        const achado = valor.find(v => v && (v.contato || v.numero || v.telefone || v.celular)) || valor[0];
-        return formatarTelefoneApp(achado);
-    }
-
-    if(typeof valor === "object"){
-        return valor.contato || valor.numero || valor.telefone || valor.celular || valor.valor || "-";
-    }
-
-    return String(valor || "-");
-}
-
 
 function svaHTML(os){
     if(!os.aplicativo && !os.url && !os.usuario && !os.senha) return "";
@@ -1291,6 +1344,7 @@ console.log("DEPOIS iniciarPush");
     // =========================
     load();
 }
+
 
 /* ================= LOAD ================= */
 /* ================= LOAD ================= */
@@ -1949,7 +2003,7 @@ async function mostrarNotificacao(qtd = 1){
         // NOTIFICAÇÃO WEB
         // =========================
         if(
-            "Notification" in window
+            getPlataformaApp() === "web" && "Notification" in window
         ){
 
             if(
@@ -2012,7 +2066,7 @@ async function mostrarNotificacaoCustom(titulo, mensagem){
             setTimeout(() => toast.classList.remove("show"), 5000);
         }
 
-        if("Notification" in window){
+        if(getPlataformaApp() === "web" && "Notification" in window){
             if(Notification.permission !== "granted"){
                 await Notification.requestPermission();
             }
@@ -2057,67 +2111,6 @@ function getPushPlugin(){
         return null;
     } catch(e){
         console.error("Erro ao localizar plugin PushNotifications:", e);
-        return null;
-    }
-}
-
-function getFirebaseMessagingPlugin(){
-    try {
-        const cap = window.Capacitor;
-
-        if(cap?.Plugins?.FirebaseMessaging){
-            return cap.Plugins.FirebaseMessaging;
-        }
-
-        if(cap?.Plugins?.FirebaseMessagingPlugin){
-            return cap.Plugins.FirebaseMessagingPlugin;
-        }
-
-        if(window.FirebaseMessaging){
-            return window.FirebaseMessaging;
-        }
-
-        return null;
-    } catch(e){
-        console.error("Erro ao localizar plugin FirebaseMessaging:", e);
-        return null;
-    }
-}
-
-function pareceTokenApns(token){
-    return /^[A-Fa-f0-9]{64}$/.test(String(token || "").trim());
-}
-
-async function obterTokenFcmIos(){
-    const FirebaseMessaging = getFirebaseMessagingPlugin();
-
-    if(!FirebaseMessaging){
-        console.warn("FirebaseMessaging não encontrado no iOS. Verifique @capacitor-firebase/messaging e npx cap sync ios.");
-        return null;
-    }
-
-    try {
-        if(typeof FirebaseMessaging.requestPermissions === "function"){
-            const permFirebase = await FirebaseMessaging.requestPermissions();
-            console.log("Permissão FirebaseMessaging:", permFirebase);
-        }
-    } catch(e){
-        console.warn("Não foi possível solicitar permissão no FirebaseMessaging:", e);
-    }
-
-    try {
-        const result = await FirebaseMessaging.getToken();
-        const token = result?.token || result?.value || result;
-
-        if(token && !pareceTokenApns(token)){
-            console.log("✅ TOKEN FCM IOS RECEBIDO:", String(token).substring(0, 40) + "...");
-            return String(token);
-        }
-
-        console.warn("FirebaseMessaging retornou token vazio ou APNs, não FCM:", token);
-        return null;
-    } catch(err){
-        console.error("Erro ao obter token FCM iOS:", err);
         return null;
     }
 }
@@ -2203,11 +2196,9 @@ async function iniciarPush(){
     }
 
     const plataforma = getPlataformaApp();
-    const isIos = plataforma === "ios";
     const PushNotifications = getPushPlugin();
 
     console.log("PushNotifications plugin:", PushNotifications);
-    console.log("FirebaseMessaging plugin:", getFirebaseMessagingPlugin());
 
     // Se não existir plugin Capacitor mas existir bridge Android, deixa o nativo cuidar do FCM.
     if(!PushNotifications){
@@ -2217,7 +2208,7 @@ async function iniciarPush(){
             return;
         }
 
-        console.warn("Push Capacitor não encontrado. Ficará apenas socket/polling.");
+        console.warn("Push Capacitor não encontrado. Ficará apenas socket/polling + Notification API.");
         return;
     }
 
@@ -2225,20 +2216,19 @@ async function iniciarPush(){
 
     try {
         await PushNotifications.addListener("registration", async (token) => {
-            console.log("TOKEN APNS/CAPACITOR RECEBIDO:", token.value);
+            console.log("TOKEN APNS RECEBIDO:", token.value);
 
-            // No iOS o PushNotifications retorna APNs token. Não salvar como token final.
-            // O token que deve ir para o backend é o FCM gerado pelo FirebaseMessaging.
-            if(isIos){
-                const tokenFcmIos = await obterTokenFcmIos();
-                if(tokenFcmIos){
-                    await salvarTokenPush(tokenFcmIos, "ios");
-                }else{
-                    console.warn("iOS ainda sem token FCM. APNs não será salvo para evitar envio incorreto.");
+            if(plataforma === "ios"){
+                // No iOS, o token do PushNotifications é APNs.
+                // Para enviar via Firebase Admin precisamos salvar o FCM Token.
+                const okFcm = await registrarFcmIos();
+                if(!okFcm){
+                    console.warn("Token APNs recebido, mas FCM iOS não foi obtido. Não salvando APNs como FCM.");
                 }
                 return;
             }
 
+            console.log("✅ Token Push Capacitor:", token.value);
             await salvarTokenPush(token.value, plataforma);
         });
 
@@ -2276,41 +2266,26 @@ async function iniciarPush(){
             }
         });
 
-        const FirebaseMessaging = getFirebaseMessagingPlugin();
-        if(isIos && FirebaseMessaging && typeof FirebaseMessaging.addListener === "function"){
-            try {
-                await FirebaseMessaging.addListener("tokenReceived", async (event) => {
-                    const token = event?.token || event?.value || event;
-                    console.log("FirebaseMessaging tokenReceived:", token);
-                    if(token && !pareceTokenApns(token)){
-                        await salvarTokenPush(token, "ios");
-                    }
-                });
-            } catch(e){
-                console.warn("Não foi possível registrar listener tokenReceived do FirebaseMessaging:", e);
-            }
-        }
-
+        let permissaoAntes = null;
         try {
             if (typeof PushNotifications.checkPermissions === "function") {
-                const permissaoAntes = await PushNotifications.checkPermissions();
+                permissaoAntes = await PushNotifications.checkPermissions();
                 console.log("Permissões antes:", permissaoAntes);
             }
         } catch(e) {
-            console.warn("Erro ao consultar permissões antes:", e);
-        }
+            console.warn("Erro ao consultar permissões antes:", e);        }
 
         const perm = await PushNotifications.requestPermissions();
         console.log("Permissão push:", perm);
 
+        let permissaoDepois = null;
         try {
             if (typeof PushNotifications.checkPermissions === "function") {
-                const permissaoDepois = await PushNotifications.checkPermissions();
+                permissaoDepois = await PushNotifications.checkPermissions();
                 console.log("Permissões depois:", permissaoDepois);
             }
         } catch(e) {
-            console.warn("Erro ao consultar permissões depois:", e);
-        }
+            console.warn("Erro ao consultar permissões depois:", e);        }
 
         if(perm.receive !== "granted"){
             console.warn("Permissão de push negada pelo usuário");
@@ -2321,14 +2296,9 @@ async function iniciarPush(){
         await PushNotifications.register();
         console.log("✅ PushNotifications.register() executado");
 
-        // Tenta buscar o FCM também logo após o register, pois em alguns builds o listener registration chega antes do FirebaseMessaging ficar pronto.
-        if(isIos){
-            setTimeout(async () => {
-                const tokenFcmIos = await obterTokenFcmIos();
-                if(tokenFcmIos){
-                    await salvarTokenPush(tokenFcmIos, "ios");
-                }
-            }, 1200);
+        if(plataforma === "ios"){
+            // Em alguns builds o token FCM fica disponível logo após o register.
+            setTimeout(() => registrarFcmIos(), 1200);
         }
 
     } catch(err){

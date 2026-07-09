@@ -8,10 +8,6 @@ function normalizarPlataforma(plataforma){
     return String(plataforma || "").toLowerCase().trim();
 }
 
-function pareceTokenApns(token){
-    return /^[A-Fa-f0-9]{64}$/.test(String(token || "").replace(/\s+/g, ""));
-}
-
 function getApnConfig() {
     const keyPath = process.env.APNS_KEY_PATH || "/root/sgos/AuthKey_7338N29JMD.p8";
     const keyId = process.env.APNS_KEY_ID || "7338N29JMD";
@@ -178,12 +174,13 @@ module.exports = (pool) => {
             const plataforma = normalizarPlataforma(item.plataforma);
 
             try {
-                // iOS pode ter dois tipos de token na coluna token_fcm:
-                // - APNs puro: 64 caracteres hexadecimais -> envia via APNs direto
-                // - FCM token: maior/diferente -> envia via Firebase Admin
-                if(plataforma === "ios" && pareceTokenApns(item.token_fcm)){
+                const tokenLimpo = String(item.token_fcm || "").trim();
+                const pareceApns = /^[0-9a-fA-F]{64}$/.test(tokenLimpo);
+
+                if(plataforma === "ios" && pareceApns){
                     await enviarApns(item, payload);
                 }else{
+                    // Android, Web e iOS com token FCM entram pelo Firebase Admin.
                     await enviarFcm(item, payload);
                 }
 
