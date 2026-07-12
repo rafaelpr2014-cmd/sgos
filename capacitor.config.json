@@ -16,17 +16,9 @@
         "sound",
         "alert"
       ]
-    },
-    "FirebaseMessaging": {
-      "presentationOptions": [
-        "badge",
-        "sound",
-        "alert"
-      ]
     }
   },
   "packageClassList": [
-    "FirebaseMessagingPlugin",
     "CAPBrowserPlugin",
     "PushNotificationsPlugin"
   ]

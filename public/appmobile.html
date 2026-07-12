@@ -820,56 +820,6 @@ function formatarTelefoneApp(valor){
     }
 }
 
-function getFirebaseMessagingPlugin(){
-    try{
-        const cap = window.Capacitor;
-        return cap?.Plugins?.FirebaseMessaging ||
-               cap?.Plugins?.CapacitorFirebaseMessaging ||
-               window.FirebaseMessaging ||
-               null;
-    }catch(e){
-        console.warn("Erro ao localizar FirebaseMessaging:", e);
-        return null;
-    }
-}
-
-async function registrarFcmIos(){
-    const plataforma = getPlataformaApp();
-    if(plataforma !== "ios") return false;
-
-    const FirebaseMessaging = getFirebaseMessagingPlugin();
-    if(!FirebaseMessaging){
-        console.warn("FirebaseMessaging não encontrado no iOS; não será salvo token APNs como FCM.");
-        return false;
-    }
-
-    try{
-        if(typeof FirebaseMessaging.requestPermissions === "function"){
-            const perm = await FirebaseMessaging.requestPermissions();
-            console.log("Permissão FirebaseMessaging iOS:", perm);
-        }
-
-        if(typeof FirebaseMessaging.getToken !== "function"){
-            console.warn("FirebaseMessaging.getToken não disponível.");
-            return false;
-        }
-
-        const result = await FirebaseMessaging.getToken();
-        const fcmToken = result?.token || result?.value || result;
-
-        if(!fcmToken){
-            console.warn("FirebaseMessaging não retornou token FCM.", result);
-            return false;
-        }
-
-        console.log("✅ TOKEN FCM IOS RECEBIDO:", String(fcmToken).substring(0, 40) + "...");
-        await salvarTokenPush(String(fcmToken), "ios");
-        return true;
-    }catch(err){
-        console.error("Erro ao obter token FCM iOS:", err);
-        return false;
-    }
-}
 
 function carregarSocketIo(){
     return new Promise((resolve) => {
@@ -2153,7 +2103,7 @@ async function mostrarNotificacaoCustom(titulo, mensagem){
     }
 }
 
-/* ================= PUSH NOTIFICATION REAL - CAPACITOR / ANDROID NATIVO ================= */
+/* ================= PUSH NOTIFICATION - APNs iOS / FCM Android ================= */
 let pushRegistrado = false;
 
 function getPushPlugin(){
@@ -2284,20 +2234,21 @@ async function iniciarPush(){
 
     try {
         await PushNotifications.addListener("registration", async (token) => {
-            console.log("TOKEN APNS RECEBIDO:", token.value);
+            const tokenRecebido = String(token?.value || "").trim();
 
-            if(plataforma === "ios"){
-                // No iOS, o token do PushNotifications é APNs.
-                // Para enviar via Firebase Admin precisamos salvar o FCM Token.
-                const okFcm = await registrarFcmIos();
-                if(!okFcm){
-                    console.warn("Token APNs recebido, mas FCM iOS não foi obtido. Não salvando APNs como FCM.");
-                }
+            if(!tokenRecebido){
+                console.warn("Token push vazio recebido no registro");
                 return;
             }
 
-            console.log("✅ Token Push Capacitor:", token.value);
-            await salvarTokenPush(token.value, plataforma);
+            console.log(
+                plataforma === "ios"
+                    ? "✅ TOKEN APNS IOS RECEBIDO:"
+                    : "✅ TOKEN PUSH RECEBIDO:",
+                tokenRecebido
+            );
+
+            await salvarTokenPush(tokenRecebido, plataforma);
         });
 
         await PushNotifications.addListener("registrationError", (err) => {
@@ -2350,10 +2301,6 @@ async function iniciarPush(){
         if(permissaoAtual?.receive === "granted"){
             await PushNotifications.register();
             console.log("✅ Push registrado silenciosamente");
-
-            if(plataforma === "ios"){
-                setTimeout(() => registrarFcmIos(), 1200);
-            }
         }else{
             console.log("Push ainda não autorizado; o app abriu sem solicitar permissão.");
             pushRegistrado = false;
@@ -2384,10 +2331,6 @@ async function ativarNotificacoesManual(){
 
         pushRegistrado = true;
         await PushNotifications.register();
-
-        if(getPlataformaApp() === "ios"){
-            setTimeout(() => registrarFcmIos(), 1200);
-        }
 
         fecharMenu();
         alert("Notificações ativadas com sucesso!");
@@ -2430,7 +2373,7 @@ document.addEventListener("keydown", (e) => {
 /* ================= START CORRIGIDO ================= */
 document.addEventListener("DOMContentLoaded", init);
 // Backup leve apenas quando o app estiver aberto.
-// A notificação principal agora é via Firebase Push.
+// A notificação principal usa APNs no iOS e Firebase no Android.
 setInterval(() => {
     if(document.visibilityState === "visible"){
         load();
