@@ -646,6 +646,137 @@ body{
     .card span{font-size:27px}
     .user-box{font-size:12px;max-width:220px}
 }
+
+/* ===== MODELO PROFISSIONAL SGOS 2026 ===== */
+:root{
+    --sidebar:200px;
+    --ink:#07152c;
+    --line:#dfe6f0;
+}
+button,input,textarea{font-family:inherit}
+button{touch-action:manipulation}
+.topbar-brand{
+    width:142px;
+    max-height:52px;
+    object-fit:contain;
+    flex:0 0 auto;
+}
+.drawer-avatar{
+    width:74px;height:74px;margin:0 auto 10px;border-radius:50%;
+    display:grid;place-items:center;font-size:38px;
+    background:linear-gradient(145deg,#fff,#d8e2f0);color:#52627a;
+    box-shadow:0 10px 30px rgba(0,0,0,.22);
+}
+.drawer-user{text-align:center;background:transparent;border:0;padding:8px 6px 14px}
+.drawer-user strong{font-size:16px}
+.drawer-user small{font-size:12px;margin-top:5px}
+.drawer-user-logout{
+    margin:14px auto 0;min-width:128px;padding:11px 16px;border-radius:13px;
+    border:1px solid #ef4444;background:transparent;color:#ff5a5f;font-weight:900;
+}
+.busca{display:flex;gap:12px;align-items:center;padding:22px 22px 12px}
+.busca-box{position:relative;flex:1}
+.busca-icone{
+    position:absolute;left:18px;top:50%;transform:translateY(-50%);
+    font-size:27px;color:#60708b;line-height:1;z-index:2
+}
+.busca input{padding:17px 18px 17px 54px;border-radius:18px;box-shadow:0 7px 22px rgba(15,23,42,.05)}
+.btn-filtro{
+    width:58px;height:58px;border:1px solid var(--line);border-radius:17px;
+    background:#fff;color:var(--ink);font-size:25px;box-shadow:var(--shadow-soft)
+}
+.cards{padding:12px 22px 18px;gap:18px}
+.card{min-height:166px;border-radius:24px;font-size:16px;gap:12px}
+.card span{font-size:38px}
+.card br{display:none}
+.lista-cabecalho{
+    display:flex;align-items:center;justify-content:space-between;padding:0 22px 15px;
+}
+.lista-cabecalho strong{font-size:19px;color:var(--ink)}
+.lista-cabecalho button{border:0;background:transparent;color:#075cf6;font-weight:900;font-size:14px}
+.container{padding:0 22px 28px}
+.os{
+    padding:20px 52px 20px 22px;border-radius:22px;margin-bottom:13px;
+    min-height:152px;line-height:1.55;box-shadow:0 7px 22px rgba(15,23,42,.055)
+}
+.os:before{display:none}
+.os > b:first-of-type{
+    background:transparent;color:var(--ink);padding:0;border-radius:0;
+    font-size:19px;margin-bottom:8px
+}
+.os-linha{
+    display:flex;align-items:center;gap:10px;color:#566783;margin-top:7px;font-size:14px
+}
+.os-linha .mini-ico{width:20px;text-align:center;color:#65758f}
+.os-status{
+    position:absolute;right:52px;top:20px;padding:7px 15px;border-radius:999px;
+    background:#fff3e4;color:#f07a00;font-weight:900;font-size:12px
+}
+.os-hora{position:absolute;right:20px;bottom:45px;color:#566783;font-size:13px}
+.os-seta{position:absolute;right:19px;top:50%;transform:translateY(-50%);font-size:28px;color:#5c6d88}
+.btn-whatsapp{display:none}
+.badge-avulsa{vertical-align:middle}
+.header{display:none}
+.mobile-topbar-app{padding-left:22px;padding-right:22px;min-height:86px}
+.topbar-title strong{font-size:27px}
+.topbar-title small{display:none}
+.modal{padding:0;background:rgba(6,20,38,.52)}
+.modal-content{
+    max-width:760px;border-radius:34px 34px 0 0;padding:28px 30px calc(30px + env(safe-area-inset-bottom));
+}
+.modal-content h3{text-align:left;font-size:18px}
+.resumo-modal-os{background:#fff;border-radius:20px;padding:20px}
+.detalhes-grid{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:22px}
+.detalhes-info{min-width:0}
+.detalhes-acoes{display:flex;flex-direction:column}
+.detalhes-acoes button{min-height:48px}
+.modal input[type=file],.modal textarea{background:#f8fafc}
+.modal-acoes-status{display:contents}
+.botao-carregando{opacity:.65;pointer-events:none}
+.modal-anexo{padding:12px}
+.anexo-viewer img{width:auto;height:auto}
+.mobile-only{display:none}
+
+@media(min-width:760px){
+    body{max-width:none;margin:0;padding-left:var(--sidebar);background:#f7f9fc}
+    .side-drawer{
+        transform:none;width:var(--sidebar);max-width:none;box-shadow:none;
+        padding:22px 14px;background:linear-gradient(180deg,#061a31,#031426)
+    }
+    .drawer-overlay,.drawer-close,.drawer-head{display:none}
+    .drawer-user{margin-top:68px}
+    .drawer-nav a{font-size:14px;padding:14px 12px}
+    .drawer-footer .drawer-logout{display:none}
+    .mobile-topbar-app{
+        left:var(--sidebar);width:calc(100% - var(--sidebar));
+        justify-content:space-between;position:sticky;top:0
+    }
+    .menu-btn{display:none}
+    .topbar-title{flex:1}
+    .topbar-title strong{font-size:30px}
+    .cards,.container,.lista-cabecalho,.busca{max-width:980px;margin-left:auto;margin-right:auto}
+}
+@media(max-width:759px){
+    .topbar-brand{width:112px}
+    .topbar-title strong{font-size:19px}
+    .mobile-topbar-app{padding-left:14px;padding-right:14px}
+    .cards{gap:9px;padding-left:12px;padding-right:12px}
+    .card{min-height:114px;font-size:12px;border-radius:20px}
+    .card span{font-size:31px}
+    .busca{padding:14px 12px 10px}
+    .lista-cabecalho{padding-left:12px;padding-right:12px}
+    .container{padding-left:12px;padding-right:12px}
+    .detalhes-grid{grid-template-columns:1fr}
+    .modal-content{padding:22px 16px calc(22px + env(safe-area-inset-bottom))}
+}
+@media(max-width:390px){
+    .topbar-brand{width:94px}
+    .topbar-title strong{font-size:17px}
+    .btn-filtro{width:52px;height:52px}
+    .busca input{padding-top:15px;padding-bottom:15px}
+    .os-status{position:static;display:inline-block;margin:5px 0 3px}
+}
+
 </style>
 
 
@@ -660,8 +791,10 @@ body{
         <button class="drawer-close" onclick="fecharMenu()" type="button">×</button>
     </div>
     <div class="drawer-user">
+        <div class="drawer-avatar" aria-hidden="true">👤</div>
         <strong id="drawerUser">Carregando...</strong>
         <small id="drawerEmpresa">Empresa</small>
+        <button class="drawer-user-logout" onclick="logout()" type="button">↪ Sair</button>
     </div>
     <nav class="drawer-nav">
         <a class="active" href="appmobile.html"><span class="ico">🧾</span>Ordens de Serviço</a>
@@ -678,6 +811,7 @@ body{
         <strong>Ordens de Serviço</strong>
         <small id="drawerEmpresaTop">SGOS Técnico</small>
     </div>
+    <img class="topbar-brand" src="https://iili.io/C5XGAnp.png" alt="SGOS">
 </div>
 
 
@@ -700,7 +834,11 @@ body{
 </div>
 
 <div class="busca">
-    <input type="text" id="busca" placeholder="🔎 Buscar OS ou cliente...">
+    <div class="busca-box">
+        <span class="busca-icone" aria-hidden="true">⌕</span>
+        <input type="search" id="busca" placeholder="Buscar OS ou cliente..." autocomplete="off">
+    </div>
+    <button class="btn-filtro" type="button" onclick="alternarFiltros()" aria-label="Filtrar ordens">▽</button>
 </div>
 
 <div class="cards">
@@ -715,6 +853,10 @@ body{
     </div>
 </div>
 
+<div class="lista-cabecalho">
+    <strong id="tituloLista">Ordens em andamento</strong>
+    <button type="button" onclick="mostrarTodas()">Ver todas</button>
+</div>
 <div class="container" id="lista"></div>
 
 <div class="modal" id="modal">
@@ -724,17 +866,17 @@ body{
         <div id="resumoModalOS" class="resumo-modal-os"></div>
 
         <textarea id="obs" placeholder="Observação..."></textarea>
-        <input type="file" id="foto">
+        <input type="file" id="foto" accept="image/*,.pdf,application/pdf">
 
-        <button class="btn-loc" onclick="verAnexo()">📎 Ver Anexo</button>
-        <button class="btn-ausente" onclick="enviarAcao('ausente')">Cliente Ausente</button>
-        <button class="btn-inv" onclick="enviarAcao('inviabilidade')">Inviabilidade</button>
-        <button class="btn-ok" onclick="enviarAcao('concluir')">Concluir</button>
+        <button type="button" class="btn-loc" onclick="verAnexo()">📎 Ver Anexo</button>
+        <button type="button" class="btn-ausente" onclick="enviarAcao('ausente', this)">Cliente Ausente</button>
+        <button type="button" class="btn-inv" onclick="enviarAcao('inviabilidade', this)">Inviabilidade</button>
+        <button type="button" class="btn-ok" onclick="enviarAcao('concluir', this)">Concluir</button>
 
-        <button class="btn-loc" onclick="pegarLocalizacao()">📍 Enviar Localização</button>
-        <button class="btn-loc" onclick="visualizarLocalizacao()">🗺️ Ver Localização</button>
+        <button type="button" class="btn-loc" onclick="pegarLocalizacao(this)">📍 Enviar Localização</button>
+        <button type="button" class="btn-loc" onclick="visualizarLocalizacao()">🗺️ Ver Localização</button>
 
-        <button onclick="fecharModal()">Fechar</button>
+        <button type="button" onclick="fecharModal()">Fechar</button>
     </div>
 </div>
 
@@ -2299,12 +2441,42 @@ async function iniciarPush(){
         // Não exibe solicitação automática ao abrir o app.
         // Se a permissão já estiver concedida, registra normalmente.
         if(permissaoAtual?.receive === "granted"){
-            await PushNotifications.register();
-            console.log("✅ Push registrado silenciosamente");
-        }else{
-            console.log("Push ainda não autorizado; o app abriu sem solicitar permissão.");
+    await PushNotifications.register();
+    console.log("✅ Push registrado silenciosamente");
+    return;
+}
+
+if(
+    permissaoAtual?.receive === "prompt" ||
+    permissaoAtual?.receive === "prompt-with-rationale"
+){
+    console.log("Permissão ainda não solicitada. Aguardando abertura da tela...");
+
+    setTimeout(async () => {
+        try{
+            const perm = await PushNotifications.requestPermissions();
+
+            console.log("Resultado da permissão push:", perm);
+
+            if(perm.receive === "granted"){
+                pushRegistrado = true;
+                await PushNotifications.register();
+                console.log("✅ Push autorizado e registrado");
+            }else{
+                pushRegistrado = false;
+                console.warn("Permissão de notificações não concedida");
+            }
+        }catch(err){
             pushRegistrado = false;
+            console.error("Erro ao solicitar permissão push:", err);
         }
+    }, 1800);
+
+    return;
+}
+
+console.warn("Permissão de notificações negada ou bloqueada");
+pushRegistrado = false;
 
     } catch(err){
         console.error("Erro ao iniciar push:", err);
@@ -2379,6 +2551,326 @@ setInterval(() => {
         load();
     }
 }, 30000);
+
+
+/* ===== CORREÇÕES IOS + INTERFACE PROFISSIONAL ===== */
+function escapeHTML(valor){
+    return String(valor ?? "")
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+function valorSeguro(v, fallback="-"){
+    const t = String(v ?? "").trim();
+    return t && t !== "[object Object]" ? escapeHTML(t) : fallback;
+}
+function tituloStatusAtual(){
+    return tab === "concluido" ? "Ordens finalizadas" :
+           tab === "ausente" ? "Clientes ausentes" : "Ordens em andamento";
+}
+const setTabOriginal = setTab;
+setTab = function(novaTab){
+    tab = novaTab;
+    const titulo = document.getElementById("tituloLista");
+    if(titulo) titulo.textContent = tituloStatusAtual();
+    render();
+};
+function mostrarTodas(){
+    const busca = document.getElementById("busca");
+    if(busca) busca.value = "";
+    render();
+}
+function alternarFiltros(){
+    const ordem = ["andamento","ausente","concluido"];
+    const atual = Math.max(0, ordem.indexOf(tab));
+    setTab(ordem[(atual + 1) % ordem.length]);
+}
+function horarioCurto(data){
+    if(!data) return "";
+    const d = new Date(data);
+    if(Number.isNaN(d.getTime())) return "";
+    return d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+}
+function statusRotulo(status){
+    const s = normalizarStatusApp(status);
+    if(s === "cliente_ausente") return "Cliente ausente";
+    if(s === "concluido") return "Finalizada";
+    return "Em andamento";
+}
+function obterAnexoOS(os){
+    if(!os) return "";
+    return os.anexo_path || os.anexo || os.foto || os.foto_path ||
+           os.comprovante || os.comprovante_path || os.arquivo || "";
+}
+function obterCoordenadasOS(os){
+    if(!os) return null;
+    const lat = os.latitude ?? os.lat ?? os.latitude_tecnico;
+    const lng = os.longitude ?? os.lng ?? os.lon ?? os.longitude_tecnico;
+    const latitude = Number(String(lat ?? "").replace(",", "."));
+    const longitude = Number(String(lng ?? "").replace(",", "."));
+    return Number.isFinite(latitude) && Number.isFinite(longitude)
+        ? {latitude, longitude} : null;
+}
+function render(){
+    const inputBusca = document.getElementById("busca");
+    const busca = (inputBusca?.value || "").toLowerCase().trim();
+    const norm = s => String(s || "").toLowerCase();
+
+    const filtrado = OS.filter(o => {
+        const texto = [
+            o.id,o.nome,o.login,o.id_cliente,o.vlan,o.localidade_nome,
+            o.rua,o.bairro,o.tipo_servico_nome,o.tecnicos_nomes
+        ].join(" ").toLowerCase();
+        const matchBusca = !busca || texto.includes(busca);
+        const st = norm(o.status);
+        const matchStatus =
+            (tab === "andamento" && st.includes("andamento")) ||
+            (tab === "concluido" && st.includes("concluido")) ||
+            (tab === "ausente" && st.includes("ausente"));
+        return matchBusca && matchStatus;
+    });
+
+    document.getElementById("cA").innerText = OS.filter(o => norm(o.status).includes("andamento")).length;
+    document.getElementById("cC").innerText = OS.filter(o => norm(o.status).includes("concluido")).length;
+    document.getElementById("cX").innerText = OS.filter(o => norm(o.status).includes("ausente")).length;
+
+    document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
+    document.querySelector("." + tab)?.classList.add("active");
+    const titulo = document.getElementById("tituloLista");
+    if(titulo) titulo.textContent = tituloStatusAtual();
+
+    const el = document.getElementById("lista");
+    if(!filtrado.length){
+        el.innerHTML = "<p>Nenhuma OS encontrada</p>";
+        return;
+    }
+
+    el.innerHTML = filtrado.map(o => {
+        const chave = escapeHTML(chaveOS(o));
+        const tituloOS = o._tipo === "avulsa" ? `OS AVULSA #${o.id}` : `OS #${o.id}`;
+        const endereco = o._tipo === "avulsa" ? enderecoAvulsaLimpo(o) : enderecoNormal(o);
+        const data = tab === "concluido" ? o.finalizado_em : (o.iniciado_em || o.agendamento);
+        const subtipo = o._tipo === "avulsa"
+            ? `<div class="os-linha"><span class="mini-ico">🛠</span><span>${valorSeguro(o.tipo_servico_nome)}</span></div>`
+            : `<div class="os-linha"><span class="mini-ico">👤</span><span>Login: ${valorSeguro(o.login)}</span></div>
+               <div class="os-linha"><span class="mini-ico">▦</span><span>ID: ${valorSeguro(o.id_cliente)} · VLAN: ${valorSeguro(o.vlan)}</span></div>`;
+        return `
+        <article class="os" role="button" tabindex="0"
+            onclick="abrirModal('${chave}')"
+            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirModal('${chave}')}">
+            <b>${escapeHTML(tituloOS)}</b>
+            <span class="os-status">${escapeHTML(statusRotulo(o.status))}</span>
+            ${subtipo}
+            <div class="os-linha"><span class="mini-ico">⌖</span><span>${valorSeguro(endereco)}</span></div>
+            <span class="os-hora">${escapeHTML(horarioCurto(data))}</span>
+            <span class="os-seta">›</span>
+        </article>`;
+    }).join("");
+}
+function resumoModalHTML(os){
+    const tipo = os._tipo === "avulsa" ? "OS Avulsa" : "OS";
+    const anexo = obterAnexoOS(os);
+    const coord = obterCoordenadasOS(os);
+    const detalhe = os._tipo === "avulsa" ? `
+        <h4>${tipo} #${valorSeguro(os.id)}</h4>
+        <b>Localidade:</b> ${valorSeguro(os.localidade_nome)}<br>
+        <b>Tipo:</b> ${valorSeguro(os.tipo_servico_nome)}<br>
+        <b>Endereço:</b> ${valorSeguro(enderecoAvulsaLimpo(os))}<br>
+        <b>Descrição:</b> ${valorSeguro(descricaoAvulsaLimpa(os))}<br>
+        <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
+    ` : `
+        <h4>${tipo} #${valorSeguro(os.id)}</h4>
+        <b>Cliente:</b> ${valorSeguro(os.nome)}<br>
+        <b>Login:</b> ${valorSeguro(os.login)}<br>
+        <b>ID Cliente:</b> ${valorSeguro(os.id_cliente)}<br>
+        <b>Telefone:</b> ${valorSeguro(formatarTelefoneApp(os.telefone))}<br>
+        <b>Localidade:</b> ${valorSeguro(os.localidade_nome)}<br>
+        <b>Tipo:</b> ${valorSeguro(os.tipo_servico_nome)}<br>
+        <b>Plano:</b> ${valorSeguro(os.plano_nome)}<br>
+        <b>VLAN:</b> ${valorSeguro(os.vlan)}<br>
+        <b>Endereço:</b> ${valorSeguro(enderecoNormal(os))}<br>
+        <b>Referência:</b> ${valorSeguro(os.referencia)}<br>
+        <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
+        <b>Agendado para:</b> ${valorSeguro(format(os.agendamento))}<br>
+        <b>Criado em:</b> ${valorSeguro(format(os.criado_em))}<br>
+        ${(os.observacao || os.descricao) ? `<b>Observações:</b> ${valorSeguro(os.observacao || os.descricao)}<br>` : ""}
+        ${svaHTML(os)}
+    `;
+    return `<div class="detalhes-info">${detalhe}</div>`;
+}
+const abrirModalBase = abrirModal;
+abrirModal = function(chave){
+    if(tab !== "andamento") return;
+    const os = encontrarOS(chave);
+    if(!os){ alert("OS não encontrada"); return; }
+    osSelecionada = chaveOS(os);
+    document.getElementById("resumoModalOS").innerHTML = resumoModalHTML(os);
+    document.getElementById("obs").value = "";
+    document.getElementById("foto").value = "";
+    const btnAnexo = document.querySelector('#modal button[onclick="verAnexo()"]');
+    const btnVerLoc = document.querySelector('#modal button[onclick="visualizarLocalizacao()"]');
+    if(btnAnexo){
+        btnAnexo.disabled = !obterAnexoOS(os);
+        btnAnexo.style.opacity = obterAnexoOS(os) ? "1" : ".45";
+    }
+    if(btnVerLoc){
+        btnVerLoc.disabled = !obterCoordenadasOS(os);
+        btnVerLoc.style.opacity = obterCoordenadasOS(os) ? "1" : ".45";
+    }
+    document.getElementById("modal").style.display = "flex";
+};
+function bloquearBotao(btn, bloqueado, textoTemporario="Enviando..."){
+    if(!btn) return;
+    if(bloqueado){
+        btn.dataset.textoOriginal = btn.innerHTML;
+        btn.innerHTML = textoTemporario;
+        btn.classList.add("botao-carregando");
+        btn.disabled = true;
+    }else{
+        btn.innerHTML = btn.dataset.textoOriginal || btn.innerHTML;
+        btn.classList.remove("botao-carregando");
+        btn.disabled = false;
+    }
+}
+async function lerRespostaSegura(res){
+    const texto = await res.text();
+    if(!texto) return {};
+    try{return JSON.parse(texto)}catch(e){return {mensagem:texto}}
+}
+async function enviarAcao(tipo, botao){
+    if(!osSelecionada){ alert("Nenhuma OS selecionada"); return; }
+    const osAtual = encontrarOS(osSelecionada);
+    if(!osAtual){ alert("OS não encontrada"); return; }
+
+    if(osAtual._tipo === "avulsa"){
+        if(tipo !== "concluir"){ alert("Para OS Avulsa, use apenas Concluir."); return; }
+        bloquearBotao(botao, true);
+        try{
+            const res = await apiFetch(`/api/os-avulsas/${osAtual.id}/status`,{
+                method:"PUT",headers:{"Content-Type":"application/json","x-usuario-id":user.id},
+                body:JSON.stringify({status:"concluido"}),credentials:"include"
+            });
+            const data = await lerRespostaSegura(res);
+            if(!res.ok) throw new Error(data.erro || data.mensagem || `Erro HTTP ${res.status}`);
+            alert("OS Avulsa concluída com sucesso");
+            fecharModal(); await load();
+        }catch(err){console.error(err);alert(err.message || "Erro ao concluir OS Avulsa")}
+        finally{bloquearBotao(botao,false)}
+        return;
+    }
+
+    const rotas = {
+        ausente:`/api/ordens_servico/ausente/${osAtual.id}`,
+        inviabilidade:`/api/ordens_servico/inviabilidade/${osAtual.id}`,
+        concluir:`/api/ordens_servico/concluir/${osAtual.id}`
+    };
+    if(!rotas[tipo]) return;
+
+    bloquearBotao(botao,true);
+    try{
+        const formData = new FormData();
+        formData.append("observacao", document.getElementById("obs").value || "");
+        const arquivo = document.getElementById("foto")?.files?.[0];
+        if(arquivo){
+            if(arquivo.size > 20 * 1024 * 1024) throw new Error("O anexo deve ter no máximo 20 MB.");
+            formData.append("foto", arquivo, arquivo.name || `anexo-${Date.now()}`);
+        }
+        const controller = new AbortController();
+        const timer = setTimeout(()=>controller.abort(), 60000);
+        const res = await apiFetch(rotas[tipo],{
+            method:"POST",
+            headers:{"x-usuario-id":String(user.id),"Accept":"application/json"},
+            body:formData,
+            credentials:"include",
+            cache:"no-store",
+            signal:controller.signal
+        });
+        clearTimeout(timer);
+        const data = await lerRespostaSegura(res);
+        if(!res.ok) throw new Error(data.erro || data.mensagem || `Erro HTTP ${res.status}`);
+        alert("OS atualizada com sucesso");
+        fecharModal(); await load();
+    }catch(err){
+        console.error("Falha na ação da OS:",err);
+        alert(err.name === "AbortError" ? "A operação demorou demais. Tente novamente." : (err.message || "Erro ao executar ação"));
+    }finally{bloquearBotao(botao,false)}
+}
+async function abrirUrlExterna(url){
+    try{
+        const Browser = window.Capacitor?.Plugins?.Browser;
+        if(Browser && typeof Browser.open === "function"){
+            await Browser.open({url, presentationStyle:"popover"});
+            return;
+        }
+    }catch(e){console.warn("Browser nativo indisponível",e)}
+    const nova = window.open(url,"_blank","noopener,noreferrer");
+    if(!nova) window.location.href = url;
+}
+function verAnexo(){
+    const os = encontrarOS(osSelecionada);
+    const caminho = obterAnexoOS(os);
+    if(!os || !caminho){alert("Nenhum anexo encontrado");return}
+    const url = /^https?:\/\//i.test(caminho) ? caminho : apiUrl(caminho);
+    const limpa = url.split("?")[0].toLowerCase();
+    const imagem = /\.(jpg|jpeg|png|gif|webp|bmp|svg|heic|heif)$/.test(limpa);
+    if(getPlataformaApp() === "ios" && !imagem){
+        abrirUrlExterna(url);
+        return;
+    }
+    abrirModalAnexo(url,os.id);
+}
+async function obterPosicaoAtual(){
+    const Geo = window.Capacitor?.Plugins?.Geolocation;
+    if(Geo && typeof Geo.getCurrentPosition === "function"){
+        try{
+            const perm = typeof Geo.requestPermissions === "function" ? await Geo.requestPermissions() : null;
+            if(perm && !["granted","limited"].includes(perm.location || perm.coarseLocation)){
+                throw new Error("Permissão de localização não concedida.");
+            }
+            const p = await Geo.getCurrentPosition({enableHighAccuracy:true,timeout:20000,maximumAge:0});
+            return {latitude:p.coords.latitude,longitude:p.coords.longitude};
+        }catch(e){console.warn("Geolocation Capacitor falhou; usando navegador",e)}
+    }
+    return await new Promise((resolve,reject)=>{
+        if(!navigator.geolocation) return reject(new Error("GPS não suportado neste dispositivo."));
+        navigator.geolocation.getCurrentPosition(
+            p=>resolve({latitude:p.coords.latitude,longitude:p.coords.longitude}),
+            e=>reject(new Error(e.code===1 ? "Permita o acesso à localização nos Ajustes do iPhone." : "Não foi possível obter a localização.")),
+            {enableHighAccuracy:true,timeout:20000,maximumAge:0}
+        );
+    });
+}
+async function pegarLocalizacao(botao){
+    if(!osSelecionada){alert("Nenhuma OS selecionada");return}
+    const osAtual = encontrarOS(osSelecionada);
+    if(!osAtual){alert("OS não encontrada");return}
+    if(osAtual._tipo === "avulsa"){alert("Localização para OS Avulsa ainda não está disponível.");return}
+    bloquearBotao(botao,true,"Obtendo localização...");
+    try{
+        const coords = await obterPosicaoAtual();
+        const res = await apiFetch(`/api/ordens_servico/localizacao/${osAtual.id}`,{
+            method:"POST",
+            headers:{"Content-Type":"application/json","Accept":"application/json","x-usuario-id":String(user.id)},
+            body:JSON.stringify(coords),credentials:"include",cache:"no-store"
+        });
+        const data = await lerRespostaSegura(res);
+        if(!res.ok) throw new Error(data.erro || data.mensagem || `Erro HTTP ${res.status}`);
+        osAtual.latitude = coords.latitude;
+        osAtual.longitude = coords.longitude;
+        alert("📍 Localização enviada com sucesso!");
+        abrirModal(osSelecionada);
+    }catch(err){console.error(err);alert(err.message || "Erro ao enviar localização")}
+    finally{bloquearBotao(botao,false)}
+}
+function visualizarLocalizacao(){
+    const os = encontrarOS(osSelecionada);
+    const c = obterCoordenadasOS(os);
+    if(!c){alert("Sem localização registrada");return}
+    abrirUrlExterna(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.latitude+","+c.longitude)}`);
+}
+document.addEventListener("touchend",function(e){
+    const btn = e.target.closest("button");
+    if(btn) btn.blur();
+},{passive:true});
 
 </script>
 
