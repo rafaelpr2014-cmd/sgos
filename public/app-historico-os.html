@@ -1,15 +1,49 @@
-<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>SGOS Técnico - Histórico</title><link rel="icon" type="image/png" href="/img/favicon.png"><style>
+<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>SGOS Técnico - Histórico</title><link rel="icon" type="image/png" href="/img/favicon.png"><style>
 :root{
     --azul:#2563eb;--azul-dark:#081a31;--fundo:#f5f7fb;--card:#fff;--texto:#0f172a;--muted:#64748b;--borda:#e5e7eb;--verde:#16a34a;--laranja:#f59e0b;--vermelho:#ef4444;--whatsapp:#25D366;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);color:var(--texto);min-height:100vh;}
 .mobile-shell{max-width:520px;margin:0 auto;min-height:100vh;background:var(--fundo);position:relative;overflow-x:hidden;}
-.mobile-topbar{height:64px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;gap:12px;padding:10px 14px;position:sticky;top:0;z-index:1000;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.mobile-topbar{min-height:84px;height:auto;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top) + 12px) 14px 10px;position:sticky;top:0;z-index:1000;box-shadow:0 2px 12px rgba(0,0,0,.06)}
 .menu-btn{width:42px;height:42px;border:none;border-radius:12px;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.18);flex:0 0 auto}.menu-btn span{display:block;width:20px;height:2px;background:#fff;position:relative;border-radius:99px}.menu-btn span:before,.menu-btn span:after{content:"";position:absolute;left:0;width:20px;height:2px;background:#fff;border-radius:99px}.menu-btn span:before{top:-7px}.menu-btn span:after{top:7px}
-.top-logo{height:38px;max-width:120px;object-fit:contain}.top-title{min-width:0;flex:1}.top-title strong{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.top-title small{display:block;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.top-user{font-size:20px;border:none;background:#f1f5f9;border-radius:12px;width:40px;height:40px;flex:0 0 auto}.drawer-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1999;opacity:0;pointer-events:none;transition:.25s}.drawer-overlay.show{opacity:1;pointer-events:auto}.side-drawer{position:fixed;left:0;top:0;height:100vh;width:280px;max-width:82vw;background:linear-gradient(180deg,#081a31,#061426);z-index:2000;transform:translateX(-100%);transition:.25s ease;color:#fff;padding:16px;display:flex;flex-direction:column;box-shadow:18px 0 45px rgba(0,0,0,.32)}.side-drawer.open{transform:translateX(0)}.drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.drawer-head img{width:148px;max-height:58px;object-fit:contain}.drawer-close{width:38px;height:38px;border:none;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-size:22px}.drawer-user{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;margin-bottom:14px}.drawer-user strong{display:block;font-size:14px}.drawer-user small{display:block;color:#cbd5e1;font-size:12px;margin-top:3px}.drawer-nav{display:flex;flex-direction:column;gap:7px}.drawer-nav a{color:#dbeafe;text-decoration:none;display:flex;align-items:center;gap:12px;padding:13px;border-radius:14px;font-size:15px;font-weight:800}.drawer-nav a.active,.drawer-nav a:hover{background:#2563eb;color:#fff}.drawer-nav .ico{width:28px;height:28px;border-radius:10px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center}.drawer-footer{margin-top:auto}.drawer-logout{width:100%;border:none;background:#ef4444;color:#fff;border-radius:14px;padding:13px;font-weight:900;font-size:14px}.content{padding:14px 12px 22px}.card-box{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 10px 24px rgba(15,23,42,.06)}.section-title{font-size:17px;font-weight:900;margin:0 0 12px}.input,.select{width:100%;padding:12px 13px;border:1px solid var(--borda);border-radius:13px;background:#fff;outline:none;font-size:14px}.input:focus,.select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12)}.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.muted{color:var(--muted)}.mini-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px}.mini-card{background:#fff;border:1px solid var(--borda);border-radius:16px;padding:12px 8px;text-align:center;box-shadow:0 8px 20px rgba(15,23,42,.05)}.mini-card strong{font-size:22px;display:block;color:#0f172a}.mini-card span{font-size:11px;color:#64748b;font-weight:800}.pill{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:900}.pill.green{background:#dcfce7;color:#15803d}.pill.orange{background:#ffedd5;color:#c2410c}.pill.blue{background:#dbeafe;color:#1d4ed8}.pill.red{background:#fee2e2;color:#dc2626}.empty{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:26px 14px;text-align:center;color:#64748b;font-weight:800}.list-card{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:14px;margin-bottom:10px;box-shadow:0 10px 24px rgba(15,23,42,.06);font-size:13px;line-height:1.55;position:relative;overflow:hidden}.list-card:before{content:"";position:absolute;left:0;top:0;width:5px;height:100%;background:#2563eb}.list-card h3{margin:0 0 8px;padding-left:6px;font-size:15px}.list-card p{margin:3px 0;padding-left:6px}.btn{border:none;border-radius:13px;padding:12px 14px;font-weight:900;color:#fff;background:#2563eb;cursor:pointer}.btn.block{width:100%}.btn-row{display:flex;gap:8px;margin-top:12px}.btn-light{background:#f1f5f9;color:#0f172a}.btn-green{background:#16a34a}.btn-red{background:#ef4444}.table-scroll{overflow-x:auto}.small-table{width:100%;border-collapse:collapse;min-width:520px}.small-table th{background:#f8fafc;font-size:12px;text-align:left;padding:11px;border-bottom:1px solid var(--borda)}.small-table td{font-size:13px;padding:11px;border-bottom:1px solid var(--borda)}
+.top-logo{height:38px;max-width:120px;object-fit:contain}.top-title{min-width:0;flex:1}.top-title strong{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.top-title small{display:block;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.top-user{font-size:20px;border:none;background:#f1f5f9;border-radius:12px;width:40px;height:40px;flex:0 0 auto}.drawer-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1999;opacity:0;pointer-events:none;transition:.25s}.drawer-overlay.show{opacity:1;pointer-events:auto}.side-drawer{position:fixed;left:0;top:0;height:100dvh;width:280px;max-width:82vw;background:linear-gradient(180deg,#081a31,#061426);z-index:2000;transform:translateX(-100%);transition:.25s ease;color:#fff;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 16px);display:flex;flex-direction:column;box-shadow:18px 0 45px rgba(0,0,0,.32)}.side-drawer.open{transform:translateX(0)}.drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.drawer-head img{width:148px;max-height:58px;object-fit:contain}.drawer-close{width:38px;height:38px;border:none;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-size:22px}.drawer-user{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;margin-bottom:14px}.drawer-user strong{display:block;font-size:14px}.drawer-user small{display:block;color:#cbd5e1;font-size:12px;margin-top:3px}.drawer-nav{display:flex;flex-direction:column;gap:7px}.drawer-nav a{color:#dbeafe;text-decoration:none;display:flex;align-items:center;gap:12px;padding:13px;border-radius:14px;font-size:15px;font-weight:800}.drawer-nav a.active,.drawer-nav a:hover{background:#2563eb;color:#fff}.drawer-nav .ico{width:28px;height:28px;border-radius:10px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center}.drawer-footer{margin-top:auto}.drawer-logout{width:100%;border:none;background:#ef4444;color:#fff;border-radius:14px;padding:13px;font-weight:900;font-size:14px}.content{padding:14px 12px 22px}.card-box{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 10px 24px rgba(15,23,42,.06)}.section-title{font-size:17px;font-weight:900;margin:0 0 12px}.input,.select{width:100%;padding:12px 13px;border:1px solid var(--borda);border-radius:13px;background:#fff;outline:none;font-size:14px}.input:focus,.select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12)}.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.muted{color:var(--muted)}.mini-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px}.mini-card{background:#fff;border:1px solid var(--borda);border-radius:16px;padding:12px 8px;text-align:center;box-shadow:0 8px 20px rgba(15,23,42,.05)}.mini-card strong{font-size:22px;display:block;color:#0f172a}.mini-card span{font-size:11px;color:#64748b;font-weight:800}.pill{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:900}.pill.green{background:#dcfce7;color:#15803d}.pill.orange{background:#ffedd5;color:#c2410c}.pill.blue{background:#dbeafe;color:#1d4ed8}.pill.red{background:#fee2e2;color:#dc2626}.empty{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:26px 14px;text-align:center;color:#64748b;font-weight:800}.list-card{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:14px;margin-bottom:10px;box-shadow:0 10px 24px rgba(15,23,42,.06);font-size:13px;line-height:1.55;position:relative;overflow:hidden}.list-card:before{content:"";position:absolute;left:0;top:0;width:5px;height:100%;background:#2563eb}.list-card h3{margin:0 0 8px;padding-left:6px;font-size:15px}.list-card p{margin:3px 0;padding-left:6px}.btn{border:none;border-radius:13px;padding:12px 14px;font-weight:900;color:#fff;background:#2563eb;cursor:pointer}.btn.block{width:100%}.btn-row{display:flex;gap:8px;margin-top:12px}.btn-light{background:#f1f5f9;color:#0f172a}.btn-green{background:#16a34a}.btn-red{background:#ef4444}.table-scroll{overflow-x:auto}.small-table{width:100%;border-collapse:collapse;min-width:520px}.small-table th{background:#f8fafc;font-size:12px;text-align:left;padding:11px;border-bottom:1px solid var(--borda)}.small-table td{font-size:13px;padding:11px;border-bottom:1px solid var(--borda)}
 @media(min-width:760px){body{background:#e5e7eb}.mobile-shell{margin:10px auto;border-radius:24px;overflow:hidden;box-shadow:0 18px 60px rgba(15,23,42,.18)}}
 </style></head><body><script>
+function getApiBase(){
+    const salvo = localStorage.getItem("api_base");
+    if(salvo) return String(salvo).replace(/\/$/, "");
+
+    const provedor = localStorage.getItem("provedor");
+    if(provedor) return `https://${provedor}.sgos.net.br`;
+
+    if(location.protocol.startsWith("http")){
+        return location.origin;
+    }
+
+    return "";
+}
+
+function apiUrl(path){
+    if(!path) return getApiBase();
+    if(/^https?:\/\//i.test(path)) return path;
+
+    const base = getApiBase();
+    if(!base) return path;
+
+    return base + (path.startsWith("/") ? path : "/" + path);
+}
+
+function apiFetch(path, options = {}){
+    return fetch(apiUrl(path), options);
+}
+
+function resolverUrlArquivo(url){
+    if(!url) return "";
+    if(/^https?:\/\//i.test(url)) return url;
+    return apiUrl(url.startsWith("/") ? url : "/" + url);
+}
+
 function getUsuarioLocal(){try{return JSON.parse(localStorage.getItem("usuario")||"{}")}catch(e){return {}}}
 function getTecnicoId(user){return user.tecnico_id||user.tecnicoId||user.id_tecnico||user.idTecnico||user.id}
 function getNomeTecnico(user){return (user.tecnico_nome||user.nome||user.usuario||"").toString().toLowerCase()}
@@ -20,7 +54,7 @@ async function prepararTopo(active){
  const user=getUsuarioLocal();
  if(!user.id){window.location.href="index.html";return null}
  let completo={};
- try{const r=await fetch("/api/me",{headers:{"x-usuario-id":user.id}});completo=await r.json()}catch(e){}
+ try{const r=await apiFetch("/api/me",{headers:{"x-usuario-id":user.id}});completo=await r.json()}catch(e){}
  const u={...user,...(completo||{})};localStorage.setItem("usuario",JSON.stringify(u));
  const nome=u.usuario||u.nome||("ID "+u.id); const emp=u.empresa_nome||"SGOS Técnico";
  ["topUser","drawerUser"].forEach(id=>{const el=document.getElementById(id);if(el)el.innerText=nome});
@@ -28,8 +62,8 @@ async function prepararTopo(active){
 
  let logoEmpresa = u.empresa_logo || "https://iili.io/CujQzXa.png";
 
-if (logoEmpresa && !logoEmpresa.startsWith("http") && !logoEmpresa.startsWith("/")) {
-    logoEmpresa = "/" + logoEmpresa;
+if (logoEmpresa) {
+    logoEmpresa = resolverUrlArquivo(logoEmpresa);
 }
 
 // Logo da empresa (topo)
@@ -45,7 +79,7 @@ function mobileLayout(title, subtitle, active){return `
 <div class="mobile-shell">
 <div class="drawer-overlay" id="drawerOverlay" onclick="fecharMenu()"></div>
 <aside class="side-drawer" id="sideDrawer">
- <div class="drawer-head"><img id="drawerLogo" src="https://iili.io/CujQzXa.png"><button class="drawer-close" onclick="fecharMenu()">×</button></div>
+ <div class="drawer-head"><img id="drawerLogo" src="https://iili.io/C5XGAnp.png"><button class="drawer-close" onclick="fecharMenu()">×</button></div>
  <div class="drawer-user"><strong id="drawerUser">Carregando...</strong><small id="drawerEmpresa">Empresa</small></div>
  <nav class="drawer-nav">
   <a data-page="os" href="appmobile.html"><span class="ico">🧾</span>Ordens de Serviço</a>
@@ -66,7 +100,7 @@ function formatarData(v){if(!v)return"-";const d=new Date((String(v).split("T")[
 let usuarioAtual=null, historico=[];
 function pertenceAoTecnico(os,u){const tid=String(getTecnicoId(u)||""); const nome=getNomeTecnico(u); const campos=`${os.tecnico_id||''} ${os.id_tecnico||''} ${os.tecnicos_ids||''} ${os.tecnico||''} ${os.tecnicos_nomes||''} ${os.finalizado_por_nome||''} ${os.iniciado_por_nome||''}`.toLowerCase(); return campos.includes(tid) || (nome&&campos.includes(nome));}
 function aplicarPeriodo(){const periodo=document.getElementById('filtroPeriodo').value; document.getElementById('cardPeriodo').innerText=periodo||'Tudo'; if(!periodo){document.getElementById('dataInicio').value='';document.getElementById('dataFim').value=''; renderHistorico();return} const hoje=new Date(); const ini=new Date(); ini.setDate(hoje.getDate()-Number(periodo)); document.getElementById('dataInicio').value=ini.toISOString().slice(0,10); document.getElementById('dataFim').value=hoje.toISOString().slice(0,10); renderHistorico();}
-async function carregarHistorico(){const el=document.getElementById('listaHistorico'); el.innerHTML='<div class="empty">Carregando histórico...</div>'; try{const r=await fetch('/api/ordens_servico/historico?page=1&limit=500',{headers:{'x-usuario-id':usuarioAtual.id}}); const data=await r.json(); const lista=Array.isArray(data)?data:(data.dados||data.historico||[]); historico=lista.filter(os=>pertenceAoTecnico(os,usuarioAtual)); renderHistorico();}catch(err){console.error(err); el.innerHTML='<div class="empty">Erro ao carregar histórico.</div>'}}
+async function carregarHistorico(){const el=document.getElementById('listaHistorico'); el.innerHTML='<div class="empty">Carregando histórico...</div>'; try{const r=await apiFetch('/api/ordens_servico/historico?page=1&limit=500',{headers:{'x-usuario-id':usuarioAtual.id}}); const data=await r.json(); const lista=Array.isArray(data)?data:(data.dados||data.historico||[]); historico=lista.filter(os=>pertenceAoTecnico(os,usuarioAtual)); renderHistorico();}catch(err){console.error(err); el.innerHTML='<div class="empty">Erro ao carregar histórico.</div>'}}
 function renderHistorico(){const ini=document.getElementById('dataInicio').value; const fim=document.getElementById('dataFim').value; const busca=(document.getElementById('buscaHistorico').value||'').toLowerCase(); let lista=historico.filter(os=>{const d=String(os.finalizado_em||os.concluido_em||os.updated_at||'').slice(0,10); if(ini&&d<ini)return false; if(fim&&d>fim)return false; const txt=`${os.nome||''} ${os.localidade_nome||''} ${os.rua||os.endereco||''} ${os.bairro||''} ${os.tipo_servico_nome||''} ${os.status||''}`.toLowerCase(); return !busca||txt.includes(busca);}); document.getElementById('cardTotal').innerText=historico.length; document.getElementById('cardFiltro').innerText=lista.length; const el=document.getElementById('listaHistorico'); if(!lista.length){el.innerHTML='<div class="empty">Nenhuma OS encontrada para este técnico no período.</div>';return} el.innerHTML=lista.map(os=>`<div class="list-card"><h3>OS #${os.id} <span class="pill green">${os.status||'Finalizada'}</span></h3><p><b>Cliente:</b> ${os.nome||'-'}</p><p><b>Localidade:</b> ${os.localidade_nome||'-'}</p><p><b>Serviço:</b> ${os.tipo_servico_nome||os.tipo_servico||'-'}</p><p><b>Endereço:</b> ${os.rua||os.endereco||'-'} ${os.bairro?'('+os.bairro+')':''}</p><p><b>Finalizado em:</b> ${formatarDataHora(os.finalizado_em||os.concluido_em)}</p><p><b>Técnico:</b> ${os.tecnicos_nomes||os.tecnico||os.finalizado_por_nome||'-'}</p></div>`).join('')}
 document.addEventListener('DOMContentLoaded',async()=>{usuarioAtual=await prepararTopo('historico'); if(!usuarioAtual)return; aplicarPeriodo(); carregarHistorico();});
 </script></body></html>
