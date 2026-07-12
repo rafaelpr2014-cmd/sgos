@@ -4,27 +4,71 @@ const fs = require("fs");
 
 let apnProvider = null;
 
-function normalizarPlataforma(plataforma){
-    return String(plataforma || "").toLowerCase().trim();
+function normalizarPlataforma(plataforma) {
+    return String(plataforma || "")
+        .toLowerCase()
+        .trim();
+}
+
+function normalizarBooleano(valor, padrao = true) {
+    if (valor === undefined || valor === null || valor === "") {
+        return padrao;
+    }
+
+    return ["true", "1", "yes", "sim", "production", "producao"].includes(
+        String(valor).toLowerCase().trim()
+    );
 }
 
 function getApnConfig() {
-    const keyPath = process.env.APNS_KEY_PATH || "/root/sgos/AuthKey_7338N29JMD.p8";
-    const keyId = process.env.APNS_KEY_ID || "7338N29JMD";
-    const teamId = process.env.APNS_TEAM_ID || "T7VMAXZY78";
-    const bundleId = process.env.APNS_BUNDLE_ID || "com.sgos.mobile";
-    const production = String(process.env.APNS_PRODUCTION || "true").toLowerCase() !== "false";
+    const keyPath =
+        process.env.APNS_KEY_PATH ||
+        "/root/sgos/AuthKey_6C6YKTG24P.p8";
 
-    return { keyPath, keyId, teamId, bundleId, production };
+    const keyId =
+        process.env.APNS_KEY_ID ||
+        "6C6YKTG24P";
+
+    const teamId =
+        process.env.APNS_TEAM_ID ||
+        "T7VMAXZY78";
+
+    const bundleId =
+        process.env.APNS_BUNDLE_ID ||
+        "com.sgos.mobile";
+
+    /*
+     * TestFlight e App Store usam APNs Production.
+     *
+     * A nova chave foi configurada para Sandbox & Production,
+     * mas o token atual do TestFlight deve ser enviado pelo
+     * endpoint de produção.
+     */
+    const production = normalizarBooleano(
+        process.env.APNS_PRODUCTION,
+        true
+    );
+
+    return {
+        keyPath,
+        keyId,
+        teamId,
+        bundleId,
+        production
+    };
 }
 
-function getApnProvider(){
-    if(apnProvider) return apnProvider;
+function getApnProvider() {
+    if (apnProvider) {
+        return apnProvider;
+    }
 
     const cfg = getApnConfig();
 
-    if(!fs.existsSync(cfg.keyPath)){
-        throw new Error(`Arquivo APNs .p8 não encontrado em ${cfg.keyPath}`);
+    if (!fs.existsSync(cfg.keyPath)) {
+        throw new Error(
+            `Arquivo APNs .p8 não encontrado em ${cfg.keyPath}`
+        );
     }
 
     apnProvider = new apn.Provider({
@@ -36,48 +80,95 @@ function getApnProvider(){
         production: cfg.production
     });
 
+    console.log("APNs inicializado:", {
+        keyPath: cfg.keyPath,
+        keyId: cfg.keyId,
+        teamId: cfg.teamId,
+        bundleId: cfg.bundleId,
+        ambiente: cfg.production ? "production" : "sandbox"
+    });
+
     return apnProvider;
 }
 
-module.exports = (pool) => {
+function limparToken(token) {
+    return String(token || "")
+        .replace(/[<>\s]/g, "")
+        .trim();
+}
 
-    async function buscarTokens(usuarioId, empresaId){
-        const [rows] = await pool.query(`
-            SELECT id, token_fcm, plataforma
+function pareceTokenApns(token) {
+    return /^[0-9a-fA-F]{64}$/.test(limparToken(token));
+}
+
+module.exports = (pool) => {
+    async function buscarTokens(usuarioId, empresaId) {
+        const [rows] = await pool.query(
+            `
+            SELECT
+                id,
+                token_fcm,
+                plataforma
             FROM usuarios_push_tokens
             WHERE usuario_id = ?
               AND empresa_id = ?
               AND ativo = 1
-        `, [usuarioId, empresaId]);
+            `,
+            [usuarioId, empresaId]
+        );
 
         return rows;
     }
 
-    async function buscarTokensEmpresa(empresaId){
-        const [rows] = await pool.query(`
-            SELECT id, token_fcm, plataforma
+    async function buscarTokensEmpresa(empresaId) {
+        const [rows] = await pool.query(
+            `
+            SELECT
+                id,
+                token_fcm,
+                plataforma
             FROM usuarios_push_tokens
             WHERE empresa_id = ?
               AND ativo = 1
-        `, [empresaId]);
+            `,
+            [empresaId]
+        );
 
         return rows;
     }
 
-    async function desativarToken(id){
-        await pool.query(`
+    async function desativarToken(id) {
+        await pool.query(
+            `
             UPDATE usuarios_push_tokens
-            SET ativo = 0,
+            SET
+                ativo = 0,
                 atualizado_em = NOW()
             WHERE id = ?
-        `, [id]);
+            `,
+            [id]
+        );
     }
 
-    function montarPayloadOS({ osId, cliente, localidade, tipoServico }){
+    function montarPayloadOS({
+        osId,
+        cliente,
+        localidade,
+        tipoServico
+    }) {
         const bodyParts = [];
-        if(cliente) bodyParts.push(`Cliente: ${cliente}`);
-        if(localidade) bodyParts.push(`Localidade: ${localidade}`);
-        if(tipoServico) bodyParts.push(`Serviço: ${tipoServico}`);
+
+        if (cliente) {
+            bodyParts.push(`Cliente: ${cliente}`);
+        }
+
+        if (localidade) {
+            bodyParts.push(`Localidade: ${localidade}`);
+        }
+
+        if (tipoServico) {
+            bodyParts.push(`Serviço: ${tipoServico}`);
+        }
 
         const body = bodyParts.length
             ? bodyParts.join(" • ")
@@ -97,11 +188,18 @@ module.exports = (pool) => {
             title,
             body,
             data,
+
             fcm: {
-                notification: { title, body },
+                notification: {
+                    title,
+                    body
+                },
+
                 data,
+
                 android: {
                     priority: "high",
+
                     notification: {
                         channelId: "sgos_os_channel",
                         sound: "default",
@@ -114,119 +212,297 @@ module.exports = (pool) => {
         };
     }
 
-    async function enviarFcm(item, payload){
+    async function enviarFcm(item, payload) {
         const admin = iniciarFirebase();
 
-        if(!admin){
-            throw Object.assign(new Error("Firebase ainda não configurado"), { code:"firebase_nao_configurado" });
+        if (!admin) {
+            const erro = new Error(
+                "Firebase ainda não configurado"
+            );
+
+            erro.code = "firebase_nao_configurado";
+            throw erro;
         }
 
-        await admin.messaging().send({
-            token: item.token_fcm,
+        const tokenFcm = limparToken(item.token_fcm);
+
+        if (!tokenFcm) {
+            const erro = new Error("Token FCM vazio");
+            erro.code = "token_fcm_vazio";
+            throw erro;
+        }
+
+        const resposta = await admin.messaging().send({
+            token: tokenFcm,
             ...payload.fcm
         });
+
+        return resposta;
     }
 
-    async function enviarApns(item, payload){
+    async function enviarApns(item, payload) {
         const cfg = getApnConfig();
         const provider = getApnProvider();
 
+        const tokenApns = limparToken(item.token_fcm);
+
+        if (!pareceTokenApns(tokenApns)) {
+            const erro = new Error(
+                "Token APNs inválido: esperado token hexadecimal de 64 caracteres"
+            );
+
+            erro.code = "apns/token_invalido";
+            throw erro;
+        }
+
         const note = new apn.Notification();
+
         note.topic = cfg.bundleId;
         note.expiry = Math.floor(Date.now() / 1000) + 3600;
         note.priority = 10;
+        note.pushType = "alert";
         note.sound = "default";
         note.badge = 1;
+
         note.alert = {
             title: payload.title,
             body: payload.body
         };
-        note.payload = payload.data;
+
+        note.payload = {
+            ...payload.data
+        };
+
         note.category = "OPEN_OS";
 
-        // token_fcm mantém o nome da coluna atual, mas no iOS ele guarda o token APNs.
-        const tokenApns = String(item.token_fcm || "").replace(/\s+/g, "");
-        const resultado = await provider.send(note, tokenApns);
+        const resultado = await provider.send(
+            note,
+            tokenApns
+        );
 
-        if(resultado.sent && resultado.sent.length > 0){
-            return;
+        if (
+            resultado.sent &&
+            resultado.sent.length > 0
+        ) {
+            return {
+                enviado: true,
+                ambiente: cfg.production
+                    ? "production"
+                    : "sandbox"
+            };
         }
 
-        const falha = resultado.failed && resultado.failed[0];
-        const motivo = falha?.response?.reason || falha?.error?.message || "Falha APNs";
-        const status = falha?.status || falha?.response?.statusCode || null;
+        const falha =
+            resultado.failed &&
+            resultado.failed.length
+                ? resultado.failed[0]
+                : null;
+
+        const motivo =
+            falha?.response?.reason ||
+            falha?.error?.message ||
+            "Falha APNs";
+
+        const status =
+            falha?.status ||
+            falha?.response?.statusCode ||
+            null;
+
         const erro = new Error(motivo);
+
         erro.code = `apns/${motivo}`;
         erro.status = status;
+        erro.apns = falha;
+
         throw erro;
     }
 
-    async function enviarParaTokens(tokens, payload){
-        if(!tokens.length){
-            return { enviados: 0, falhas: 0, erro: "sem_tokens", detalhes: [] };
+    async function enviarParaTokens(tokens, payload) {
+        if (!Array.isArray(tokens) || !tokens.length) {
+            return {
+                enviados: 0,
+                falhas: 0,
+                erro: "sem_tokens",
+                detalhes: []
+            };
         }
 
         let enviados = 0;
         let falhas = 0;
+
         const detalhes = [];
 
-        for(const item of tokens){
-            const plataforma = normalizarPlataforma(item.plataforma);
+        for (const item of tokens) {
+            const plataforma =
+                normalizarPlataforma(item.plataforma);
+
+            const tokenLimpo =
+                limparToken(item.token_fcm);
+
+            const tokenEhApns =
+                pareceTokenApns(tokenLimpo);
 
             try {
-                const tokenLimpo = String(item.token_fcm || "").trim();
-                const pareceApns = /^[0-9a-fA-F]{64}$/.test(tokenLimpo);
-
-                if(plataforma === "ios" && pareceApns){
+                if (
+                    plataforma === "ios" &&
+                    tokenEhApns
+                ) {
                     await enviarApns(item, payload);
-                }else{
-                    // Android, Web e iOS com token FCM entram pelo Firebase Admin.
+                } else {
+                    /*
+                     * Android, Web e eventual iOS com token FCM
+                     * continuam sendo enviados pelo Firebase Admin.
+                     */
                     await enviarFcm(item, payload);
                 }
 
                 enviados++;
-                detalhes.push({ token_id: item.id, plataforma: item.plataforma, ok: true });
-            } catch(err){
+
+                detalhes.push({
+                    token_id: item.id,
+                    plataforma: item.plataforma,
+                    provedor:
+                        plataforma === "ios" &&
+                        tokenEhApns
+                            ? "apns"
+                            : "firebase",
+                    ok: true
+                });
+            } catch (err) {
                 falhas++;
+
                 const detalhe = {
                     token_id: item.id,
                     plataforma: item.plataforma,
+                    provedor:
+                        plataforma === "ios" &&
+                        tokenEhApns
+                            ? "apns"
+                            : "firebase",
                     ok: false,
-                    code: err.code || "erro_push",
-                    message: err.message
+                    code:
+                        err.code ||
+                        "erro_push",
+                    message:
+                        err.message ||
+                        "Erro desconhecido no push"
                 };
 
-                if(err.status) detalhe.status = err.status;
+                if (err.status) {
+                    detalhe.status = err.status;
+                }
+
                 detalhes.push(detalhe);
 
-                console.error("Erro ao enviar push:", detalhe);
+                console.error(
+                    "Erro ao enviar push:",
+                    detalhe
+                );
 
-                const code = String(err.code || "");
-                const message = String(err.message || "");
+                const code = String(
+                    err.code || ""
+                );
 
-                if(
-                    code === "messaging/registration-token-not-registered" ||
-                    code === "messaging/invalid-registration-token" ||
-                    message === "BadDeviceToken" ||
-                    message === "Unregistered" ||
-                    err.status === 410
-                ){
-                    await desativarToken(item.id);
+                const message = String(
+                    err.message || ""
+                );
+
+                const deveDesativar =
+                    code ===
+                        "messaging/registration-token-not-registered" ||
+                    code ===
+                        "messaging/invalid-registration-token" ||
+                    code ===
+                        "messaging/invalid-argument" ||
+                    message ===
+                        "BadDeviceToken" ||
+                    message ===
+                        "Unregistered" ||
+                    err.status === 410;
+
+                if (deveDesativar) {
+                    try {
+                        await desativarToken(item.id);
+
+                        console.warn(
+                            `Token push ${item.id} desativado por ser inválido ou não registrado`
+                        );
+                    } catch (erroDesativacao) {
+                        console.error(
+                            `Erro ao desativar token ${item.id}:`,
+                            erroDesativacao
+                        );
+                    }
                 }
             }
         }
 
-        return { enviados, falhas, detalhes };
+        return {
+            enviados,
+            falhas,
+            detalhes
+        };
     }
 
-    async function enviarPushOSAndamento({ usuarioId, empresaId, osId, cliente, localidade, tipoServico }){
-        const tokens = await buscarTokens(usuarioId, empresaId);
-        return enviarParaTokens(tokens, montarPayloadOS({ osId, cliente, localidade, tipoServico }));
+    async function enviarPushOSAndamento({
+        usuarioId,
+        empresaId,
+        osId,
+        cliente,
+        localidade,
+        tipoServico
+    }) {
+        const tokens = await buscarTokens(
+            usuarioId,
+            empresaId
+        );
+
+        const payload = montarPayloadOS({
+            osId,
+            cliente,
+            localidade,
+            tipoServico
+        });
+
+        return enviarParaTokens(
+            tokens,
+            payload
+        );
     }
 
-    async function enviarPushOSEmpresa({ empresaId, osId, cliente, localidade, tipoServico }){
-        const tokens = await buscarTokensEmpresa(empresaId);
-        return enviarParaTokens(tokens, montarPayloadOS({ osId, cliente, localidade, tipoServico }));
+    async function enviarPushOSEmpresa({
+        empresaId,
+        osId,
+        cliente,
+        localidade,
+        tipoServico
+    }) {
+        const tokens =
+            await buscarTokensEmpresa(empresaId);
+
+        const payload = montarPayloadOS({
+            osId,
+            cliente,
+            localidade,
+            tipoServico
+        });
+
+        return enviarParaTokens(
+            tokens,
+            payload
+        );
+    }
+
+    async function encerrarApns() {
+        if (!apnProvider) {
+            return;
+        }
+
+        try {
+            apnProvider.shutdown();
+        } finally {
+            apnProvider = null;
+        }
     }
 
     return {
@@ -234,6 +510,8 @@ module.exports = (pool) => {
         buscarTokensEmpresa,
         enviarPushOSAndamento,
         enviarPushOSEmpresa,
-        enviarPushNovaOS: enviarPushOSAndamento
+        enviarPushNovaOS:
+            enviarPushOSAndamento,
+        encerrarApns
     };
 };
