@@ -738,23 +738,12 @@ button{touch-action:manipulation}
 .mobile-only{display:none}
 
 @media(min-width:760px){
-    body{max-width:none;margin:0;padding-left:var(--sidebar);background:#f7f9fc}
-    .side-drawer{
-        transform:none;width:var(--sidebar);max-width:none;box-shadow:none;
-        padding:22px 14px;background:linear-gradient(180deg,#061a31,#031426)
-    }
-    .drawer-overlay,.drawer-close,.drawer-head{display:none}
-    .drawer-user{margin-top:68px}
-    .drawer-nav a{font-size:14px;padding:14px 12px}
-    .drawer-footer .drawer-logout{display:none}
-    .mobile-topbar-app{
-        left:var(--sidebar);width:calc(100% - var(--sidebar));
-        justify-content:space-between;position:sticky;top:0
-    }
-    .menu-btn{display:none}
+    body{max-width:980px;margin:0 auto;background:#f7f9fc}
+    .mobile-topbar-app{justify-content:space-between;position:sticky;top:0}
     .topbar-title{flex:1}
     .topbar-title strong{font-size:30px}
     .cards,.container,.lista-cabecalho,.busca{max-width:980px;margin-left:auto;margin-right:auto}
+    .side-drawer{width:320px;max-width:86vw}
 }
 @media(max-width:759px){
     .topbar-brand{width:112px}
@@ -775,6 +764,40 @@ button{touch-action:manipulation}
     .btn-filtro{width:52px;height:52px}
     .busca input{padding-top:15px;padding-bottom:15px}
     .os-status{position:static;display:inline-block;margin:5px 0 3px}
+}
+
+
+.refresh-btn{
+    width:46px;
+    height:46px;
+    border:none;
+    border-radius:15px;
+    background:#eef4ff;
+    color:#0f52d9;
+    font-size:28px;
+    font-weight:900;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    flex:0 0 auto;
+    box-shadow:0 8px 20px rgba(15,82,217,.10);
+}
+.refresh-btn.atualizando{
+    animation:girarAtualizacao .8s linear infinite;
+    pointer-events:none;
+    opacity:.7;
+}
+@keyframes girarAtualizacao{
+    to{transform:rotate(360deg)}
+}
+@media(max-width:759px){
+    .refresh-btn{
+        width:42px;
+        height:42px;
+        border-radius:13px;
+        font-size:25px;
+    }
 }
 
 </style>
@@ -811,7 +834,10 @@ button{touch-action:manipulation}
         <strong>Ordens de Serviço</strong>
         <small id="drawerEmpresaTop">SGOS Técnico</small>
     </div>
-    <img class="topbar-brand" src="https://iili.io/C5XGAnp.png" alt="SGOS">
+    <button class="refresh-btn" onclick="atualizarOrdens(this)" type="button" aria-label="Atualizar ordens" title="Atualizar">
+        ↻
+    </button>
+    <img id="topbarLogoEmpresa" class="topbar-brand" src="" alt="Logo da empresa">
 </div>
 
 
@@ -1239,26 +1265,36 @@ function resumoModalHTML(os){
 
     if(os._tipo === "avulsa"){
         return `
-            <h4>${tipo} #${os.id}</h4>
-            <b>Localidade:</b> ${os.localidade_nome || "-"}<br>
-            <b>Tipo:</b> ${os.tipo_servico_nome || "-"}<br>
-            <b>Endereço:</b> ${enderecoAvulsaLimpo(os)}<br>
-            <b>Descrição:</b> ${descricaoAvulsaLimpa(os)}<br>
-            <b>Técnicos:</b> ${os.tecnicos_nomes || "-"}<br>
+            <div class="detalhes-info">
+                <h4>${tipo} #${valorSeguro(os.id)}</h4>
+                <b>Tipo de serviço:</b> ${valorSeguro(os.tipo_servico_nome)}<br>
+                <b>Endereço:</b> ${valorSeguro(enderecoAvulsaLimpo(os))}<br>
+                <b>Localidade:</b> ${valorSeguro(os.localidade_nome)}<br>
+                <b>Descrição:</b> ${valorSeguro(descricaoAvulsaLimpa(os))}<br>
+                <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
+            </div>
         `;
     }
 
     return `
-        <h4>${tipo} #${os.id}</h4>
-        <b>Cliente:</b> ${os.nome || "-"}<br>
-        <b>Localidade:</b> ${os.localidade_nome || "-"}<br>
-        <b>Tipo:</b> ${os.tipo_servico_nome || "-"}<br>
-        <b>Plano:</b> ${os.plano_nome || "-"}<br>
-        <b>VLAN:</b> ${os.vlan || "-"}<br>
-        <b>Endereço:</b> ${enderecoNormal(os)}<br>
-        <b>Técnicos:</b> ${os.tecnicos_nomes || "-"}<br>
-        ${os.observacao || os.descricao ? `<b>Observação:</b> ${os.observacao || os.descricao}<br>` : ""}
-        ${svaHTML(os)}
+        <div class="detalhes-info">
+            <h4>${tipo} #${valorSeguro(os.id)}</h4>
+            <b>Cliente:</b> ${valorSeguro(os.nome)}<br>
+            <b>Tipo de serviço:</b> ${valorSeguro(os.tipo_servico_nome)}<br>
+            <b>Endereço:</b> ${valorSeguro(enderecoNormal(os))}<br>
+            <b>Login:</b> ${valorSeguro(os.login)}<br>
+            <b>ID Cliente:</b> ${valorSeguro(os.id_cliente)}<br>
+            <b>Telefone:</b> ${valorSeguro(formatarTelefoneApp(os.telefone))}<br>
+            <b>Localidade:</b> ${valorSeguro(os.localidade_nome)}<br>
+            <b>Plano:</b> ${valorSeguro(os.plano_nome)}<br>
+            <b>VLAN:</b> ${valorSeguro(os.vlan)}<br>
+            <b>Referência:</b> ${valorSeguro(os.referencia)}<br>
+            <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
+            <b>Agendado para:</b> ${valorSeguro(format(os.agendamento))}<br>
+            <b>Criado em:</b> ${valorSeguro(format(os.criado_em))}<br>
+            ${(os.observacao || os.descricao) ? `<b>Observações:</b> ${valorSeguro(os.observacao || os.descricao)}<br>` : ""}
+            ${svaHTML(os)}
+        </div>
     `;
 }
 
@@ -1475,13 +1511,18 @@ console.log("DEPOIS iniciarPush");
 
     }
 
-    const elLogo =
-    document.getElementById("logoEmpresa");
+    const elLogo = document.getElementById("logoEmpresa");
+    const topbarLogoEmpresa = document.getElementById("topbarLogoEmpresa");
 
     if(elLogo){
-
         elLogo.src = logo;
+    }
 
+    if(topbarLogoEmpresa){
+        topbarLogoEmpresa.src = logo;
+        topbarLogoEmpresa.onerror = () => {
+            topbarLogoEmpresa.src = "https://iili.io/CRh1TlV.png";
+        };
     }
 
     // =========================
@@ -2867,6 +2908,19 @@ function visualizarLocalizacao(){
     if(!c){alert("Sem localização registrada");return}
     abrirUrlExterna(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.latitude+","+c.longitude)}`);
 }
+
+async function atualizarOrdens(botao){
+    if(botao) botao.classList.add("atualizando");
+    try{
+        await load();
+    }catch(err){
+        console.error("Erro ao atualizar ordens:", err);
+        alert("Não foi possível atualizar as ordens.");
+    }finally{
+        if(botao) setTimeout(() => botao.classList.remove("atualizando"), 250);
+    }
+}
+
 document.addEventListener("touchend",function(e){
     const btn = e.target.closest("button");
     if(btn) btn.blur();
