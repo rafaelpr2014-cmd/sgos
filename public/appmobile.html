@@ -2872,7 +2872,7 @@ function dentroDoPeriodo(os){
 }
 
 function alterarPeriodo(valor){
-    periodoSelecionado = valor || "30dias";
+    periodoSelecionado = valor || "hoje";
     localStorage.setItem("app_periodo_os", periodoSelecionado);
     render();
 }
