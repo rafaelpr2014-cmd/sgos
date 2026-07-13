@@ -800,6 +800,140 @@ button{touch-action:manipulation}
     }
 }
 
+
+.filtro-periodo{
+    height:58px;
+    min-width:118px;
+    padding:0 38px 0 16px;
+    border:1px solid var(--line);
+    border-radius:17px;
+    background:#fff;
+    color:var(--ink);
+    font-size:14px;
+    font-weight:900;
+    outline:none;
+    box-shadow:var(--shadow-soft);
+    appearance:auto;
+    -webkit-appearance:menulist;
+}
+@media(max-width:520px){
+    .filtro-periodo{
+        min-width:96px;
+        height:52px;
+        padding-left:10px;
+        padding-right:8px;
+        font-size:12px;
+    }
+}
+
+
+.os-cliente{
+    margin-top:6px;
+    font-size:17px;
+    font-weight:900;
+    color:var(--ink);
+    line-height:1.3;
+}
+.os-endereco{
+    margin-top:9px;
+    color:#4f607b;
+    font-size:14px;
+    line-height:1.45;
+    word-break:break-word;
+}
+.os-dados-rodape{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px 14px;
+    margin-top:12px;
+    padding-top:11px;
+    border-top:1px solid #edf1f6;
+    color:#5a6a84;
+    font-size:13px;
+}
+.os-dados-rodape span{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+}
+.os-telefone{
+    color:#0b63f6;
+    font-weight:900;
+    text-decoration:none;
+}
+.os-telefone:active{
+    opacity:.65;
+}
+@media(max-width:520px){
+    .os-cliente{font-size:16px}
+    .os-endereco{font-size:13px}
+    .os-dados-rodape{gap:7px 10px;font-size:12px}
+}
+
+
+.modal-topo{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+}
+.modal-topo h3{
+    margin:0;
+    text-align:left;
+}
+.modal-fechar-topo{
+    width:42px !important;
+    height:42px;
+    min-width:42px;
+    margin:0 !important;
+    padding:0 !important;
+    border:none;
+    border-radius:13px;
+    background:#eef2f7 !important;
+    color:#0f172a !important;
+    font-size:28px !important;
+    line-height:1;
+    font-weight:500 !important;
+}
+.os-cliente-linha{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:8px;
+}
+.os-cliente-nome{
+    font-size:17px;
+    font-weight:900;
+    color:var(--ink);
+    line-height:1.3;
+}
+.os-tipo-servico{
+    display:inline-flex;
+    align-items:center;
+    padding:5px 10px;
+    border-radius:999px;
+    background:#fff3e4;
+    color:#f07a00;
+    font-size:12px;
+    font-weight:900;
+    line-height:1.2;
+}
+.resumo-telefone{
+    color:#0b63f6;
+    font-weight:900;
+    text-decoration:none;
+}
+.resumo-telefone:active{
+    opacity:.65;
+}
+@media(max-width:520px){
+    .os-cliente-nome{font-size:16px}
+    .os-tipo-servico{font-size:11px}
+}
+
 </style>
 
 
@@ -864,7 +998,12 @@ button{touch-action:manipulation}
         <span class="busca-icone" aria-hidden="true">⌕</span>
         <input type="search" id="busca" placeholder="Buscar OS ou cliente..." autocomplete="off">
     </div>
-    <button class="btn-filtro" type="button" onclick="alternarFiltros()" aria-label="Filtrar ordens">▽</button>
+    <select id="filtroPeriodo" class="filtro-periodo" onchange="alterarPeriodo(this.value)" aria-label="Filtrar período">
+        <option value="hoje">Hoje</option>
+        <option value="ontem">Ontem</option>
+        <option value="7dias">7 dias</option>
+        <option value="30dias" selected>30 dias</option>
+    </select>
 </div>
 
 <div class="cards">
@@ -887,7 +1026,10 @@ button{touch-action:manipulation}
 
 <div class="modal" id="modal">
     <div class="modal-content">
-        <h3>Ações da OS</h3>
+        <div class="modal-topo">
+            <h3>Detalhes da OS</h3>
+            <button class="modal-fechar-topo" type="button" onclick="fecharModal()" aria-label="Fechar">×</button>
+        </div>
 
         <div id="resumoModalOS" class="resumo-modal-os"></div>
 
@@ -1132,6 +1274,7 @@ let socketConectado = false;
 let user = {};
 let OS = [];
 let tab = "andamento";
+let periodoSelecionado = localStorage.getItem("app_periodo_os") || "30dias";
 function setTab(novaTab){
 
     tab = novaTab;
@@ -1532,12 +1675,12 @@ console.log("DEPOIS iniciarPush");
     document.getElementById("busca");
 
     if(inputBusca){
+        inputBusca.addEventListener("input", render);
+    }
 
-        inputBusca.addEventListener(
-            "input",
-            render
-        );
-
+    const filtroPeriodo = document.getElementById("filtroPeriodo");
+    if(filtroPeriodo){
+        filtroPeriodo.value = periodoSelecionado;
     }
 
     // =========================
@@ -1680,7 +1823,7 @@ function render(){
             (tab === "concluido" && norm(o.status).includes("concluido")) ||
             (tab === "ausente" && norm(o.status).includes("ausente"));
 
-        return matchBusca && matchStatus;
+        return matchBusca && matchStatus && dentroDoPeriodo(o);
     });
 
     // CONTADORES
@@ -2651,6 +2794,89 @@ function obterCoordenadasOS(os){
     return Number.isFinite(latitude) && Number.isFinite(longitude)
         ? {latitude, longitude} : null;
 }
+
+
+function telefoneHref(valor){
+    const numero = formatarTelefoneApp(valor);
+    const digitos = String(numero || "").replace(/\D/g,"");
+    return digitos ? `tel:${digitos}` : "";
+}
+
+function nomeClienteOS(os){
+    if(!os) return "-";
+    return os.nome ||
+           os.cliente_nome ||
+           os.nome_cliente ||
+           os.cliente ||
+           os.razao_social ||
+           os.assinante ||
+           os.nome_assinante ||
+           "-";
+}
+
+function dataReferenciaOS(os){
+    if(!os) return null;
+
+    let valor = null;
+
+    if(tab === "concluido"){
+        valor = os.finalizado_em || os.concluido_em || os.atualizado_em || os.criado_em;
+    }else if(tab === "ausente"){
+        valor = os.finalizado_em || os.atualizado_em || os.iniciado_em || os.criado_em;
+    }else{
+        valor = os.iniciado_em || os.agendamento || os.atualizado_em || os.criado_em;
+    }
+
+    if(!valor) return null;
+
+    const d = new Date(valor);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function inicioDoDia(data){
+    const d = new Date(data);
+    d.setHours(0,0,0,0);
+    return d;
+}
+
+function fimDoDia(data){
+    const d = new Date(data);
+    d.setHours(23,59,59,999);
+    return d;
+}
+
+function dentroDoPeriodo(os){
+    const data = dataReferenciaOS(os);
+    if(!data) return periodoSelecionado === "30dias";
+
+    const agora = new Date();
+    let inicio;
+    let fim = fimDoDia(agora);
+
+    if(periodoSelecionado === "hoje"){
+        inicio = inicioDoDia(agora);
+    }else if(periodoSelecionado === "ontem"){
+        const ontem = new Date(agora);
+        ontem.setDate(ontem.getDate() - 1);
+        inicio = inicioDoDia(ontem);
+        fim = fimDoDia(ontem);
+    }else if(periodoSelecionado === "7dias"){
+        inicio = inicioDoDia(agora);
+        inicio.setDate(inicio.getDate() - 6);
+    }else{
+        inicio = inicioDoDia(agora);
+        inicio.setDate(inicio.getDate() - 29);
+    }
+
+    return data >= inicio && data <= fim;
+}
+
+function alterarPeriodo(valor){
+    periodoSelecionado = valor || "30dias";
+    localStorage.setItem("app_periodo_os", periodoSelecionado);
+    render();
+}
+
 function render(){
     const inputBusca = document.getElementById("busca");
     const busca = (inputBusca?.value || "").toLowerCase().trim();
@@ -2658,7 +2884,7 @@ function render(){
 
     const filtrado = OS.filter(o => {
         const texto = [
-            o.id,o.nome,o.login,o.id_cliente,o.vlan,o.localidade_nome,
+            o.id,nomeClienteOS(o),o.login,o.id_cliente,o.vlan,o.localidade_nome,
             o.rua,o.bairro,o.tipo_servico_nome,o.tecnicos_nomes
         ].join(" ").toLowerCase();
         const matchBusca = !busca || texto.includes(busca);
@@ -2670,9 +2896,10 @@ function render(){
         return matchBusca && matchStatus;
     });
 
-    document.getElementById("cA").innerText = OS.filter(o => norm(o.status).includes("andamento")).length;
-    document.getElementById("cC").innerText = OS.filter(o => norm(o.status).includes("concluido")).length;
-    document.getElementById("cX").innerText = OS.filter(o => norm(o.status).includes("ausente")).length;
+    const osPeriodo = OS.filter(dentroDoPeriodo);
+    document.getElementById("cA").innerText = osPeriodo.filter(o => norm(o.status).includes("andamento")).length;
+    document.getElementById("cC").innerText = osPeriodo.filter(o => norm(o.status).includes("concluido")).length;
+    document.getElementById("cX").innerText = osPeriodo.filter(o => norm(o.status).includes("ausente")).length;
 
     document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
     document.querySelector("." + tab)?.classList.add("active");
@@ -2698,10 +2925,33 @@ function render(){
         <article class="os" role="button" tabindex="0"
             onclick="abrirModal('${chave}')"
             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirModal('${chave}')}">
-            <b>${escapeHTML(tituloOS)}</b>
             <span class="os-status">${escapeHTML(statusRotulo(o.status))}</span>
-            ${subtipo}
-            <div class="os-linha"><span class="mini-ico">⌖</span><span>${valorSeguro(endereco)}</span></div>
+
+            ${o._tipo === "avulsa" ? `
+                <div class="os-cliente-linha">
+                    <strong class="os-cliente-nome">${valorSeguro(o.localidade_nome || "OS Avulsa")}</strong>
+                    <span class="os-tipo-servico">${valorSeguro(o.tipo_servico_nome || "OS Avulsa")}</span>
+                </div>
+                <div class="os-endereco">⌖ ${valorSeguro(endereco)}</div>
+                <div class="os-dados-rodape">
+                    <span>👨‍🔧 ${valorSeguro(o.tecnicos_nomes)}</span>
+                </div>
+            ` : `
+                <div class="os-cliente-linha">
+                    <strong class="os-cliente-nome">${valorSeguro(nomeClienteOS(o))}</strong>
+                    <span class="os-tipo-servico">${valorSeguro(o.tipo_servico_nome || o.tipo_servico)}</span>
+                </div>
+                <div class="os-endereco">⌖ ${valorSeguro(endereco)}</div>
+                <div class="os-dados-rodape">
+                    <span>👤 Login: ${valorSeguro(o.login)}</span>
+                    <span>🆔 ID: ${valorSeguro(o.id_cliente || o.cliente_id)}</span>
+                    ${telefoneHref(o.telefone)
+                        ? `<a class="os-telefone" href="${telefoneHref(o.telefone)}" onclick="event.stopPropagation()">📞 ${valorSeguro(formatarTelefoneApp(o.telefone))}</a>`
+                        : `<span>📞 ${valorSeguro(formatarTelefoneApp(o.telefone))}</span>`
+                    }
+                </div>
+            `}
+
             <span class="os-hora">${escapeHTML(horarioCurto(data))}</span>
             <span class="os-seta">›</span>
         </article>`;
@@ -2709,34 +2959,47 @@ function render(){
 }
 function resumoModalHTML(os){
     const tipo = os._tipo === "avulsa" ? "OS Avulsa" : "OS";
-    const anexo = obterAnexoOS(os);
-    const coord = obterCoordenadasOS(os);
-    const detalhe = os._tipo === "avulsa" ? `
-        <h4>${tipo} #${valorSeguro(os.id)}</h4>
-        <b>Localidade:</b> ${valorSeguro(os.localidade_nome)}<br>
-        <b>Tipo:</b> ${valorSeguro(os.tipo_servico_nome)}<br>
-        <b>Endereço:</b> ${valorSeguro(enderecoAvulsaLimpo(os))}<br>
-        <b>Descrição:</b> ${valorSeguro(descricaoAvulsaLimpa(os))}<br>
-        <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
-    ` : `
-        <h4>${tipo} #${valorSeguro(os.id)}</h4>
-        <b>Cliente:</b> ${valorSeguro(os.nome)}<br>
-        <b>Login:</b> ${valorSeguro(os.login)}<br>
-        <b>ID Cliente:</b> ${valorSeguro(os.id_cliente)}<br>
-        <b>Telefone:</b> ${valorSeguro(formatarTelefoneApp(os.telefone))}<br>
-        <b>Localidade:</b> ${valorSeguro(os.localidade_nome)}<br>
-        <b>Tipo:</b> ${valorSeguro(os.tipo_servico_nome)}<br>
-        <b>Plano:</b> ${valorSeguro(os.plano_nome)}<br>
-        <b>VLAN:</b> ${valorSeguro(os.vlan)}<br>
-        <b>Endereço:</b> ${valorSeguro(enderecoNormal(os))}<br>
-        <b>Referência:</b> ${valorSeguro(os.referencia)}<br>
-        <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
-        <b>Agendado para:</b> ${valorSeguro(format(os.agendamento))}<br>
-        <b>Criado em:</b> ${valorSeguro(format(os.criado_em))}<br>
-        ${(os.observacao || os.descricao) ? `<b>Observações:</b> ${valorSeguro(os.observacao || os.descricao)}<br>` : ""}
-        ${svaHTML(os)}
+
+    if(os._tipo === "avulsa"){
+        return `
+            <div class="detalhes-info">
+                <h4>${tipo}</h4>
+                <b>Tipo de serviço:</b> ${valorSeguro(os.tipo_servico_nome)}<br>
+                <b>Endereço:</b> ${valorSeguro(enderecoAvulsaLimpo(os))}<br>
+                <b>Localidade:</b> ${valorSeguro(os.localidade_nome)}<br>
+                <b>Descrição:</b> ${valorSeguro(descricaoAvulsaLimpa(os))}<br>
+                <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
+            </div>
+        `;
+    }
+
+    const telefone = formatarTelefoneApp(os.telefone);
+    const hrefTelefone = telefoneHref(os.telefone);
+
+    return `
+        <div class="detalhes-info">
+            <h4>Detalhes do atendimento</h4>
+            <b>Cliente:</b> ${valorSeguro(nomeClienteOS(os))}<br>
+            <b>Tipo de serviço:</b> ${valorSeguro(os.tipo_servico_nome || os.tipo_servico)}<br>
+            <b>Endereço:</b> ${valorSeguro(enderecoNormal(os))}<br>
+            <b>Login:</b> ${valorSeguro(os.login)}<br>
+            <b>ID Cliente:</b> ${valorSeguro(os.id_cliente || os.cliente_id)}<br>
+            <b>Telefone:</b> ${
+                hrefTelefone
+                    ? `<a class="resumo-telefone" href="${hrefTelefone}" onclick="event.stopPropagation()">${valorSeguro(telefone)}</a>`
+                    : valorSeguro(telefone)
+            }<br>
+            <b>Localidade:</b> ${valorSeguro(os.localidade_nome || os.localidade)}<br>
+            <b>Plano:</b> ${valorSeguro(os.plano_nome || os.plano)}<br>
+            <b>VLAN:</b> ${valorSeguro(os.vlan)}<br>
+            <b>Referência:</b> ${valorSeguro(os.referencia)}<br>
+            <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
+            <b>Agendado para:</b> ${valorSeguro(format(os.agendamento))}<br>
+            <b>Criado em:</b> ${valorSeguro(format(os.criado_em))}<br>
+            ${(os.observacao || os.observacoes || os.descricao) ? `<b>Observações:</b> ${valorSeguro(os.observacao || os.observacoes || os.descricao)}<br>` : ""}
+            ${svaHTML(os)}
+        </div>
     `;
-    return `<div class="detalhes-info">${detalhe}</div>`;
 }
 const abrirModalBase = abrirModal;
 abrirModal = function(chave){
