@@ -242,47 +242,63 @@ body{
 .cards{
     display:grid;
     grid-template-columns:repeat(3,1fr);
-    gap:10px;
-    padding:10px 12px 14px;
+    gap:6px;
+    padding:6px 12px 10px;
 }
 
 .card{
-    min-height:98px;
-    padding:14px 8px;
-    border-radius:22px;
+    min-height:68px;
+    padding:6px 4px;
+    border-radius:14px;
     color:#fff;
     text-align:center;
     cursor:pointer;
     transition:.2s ease;
-    box-shadow:0 12px 26px rgba(15,23,42,.12);
+    box-shadow:0 4px 10px rgba(15,23,42,.08);
     display:flex;
     flex-direction:column;
     align-items:center;
     justify-content:center;
-    gap:7px;
-    font-size:12px;
-    font-weight:900;
-    border:1px solid rgba(255,255,255,.18);
+    gap:2px;
+    font-size:13px;
+    font-weight:700;
+    border:1px solid rgba(255,255,255,.12);
+}
+
+.card small{
+    font-size:11px;
+    font-weight:700;
+    line-height:1;
+    white-space:nowrap;
 }
 
 .card span{
-    font-size:30px;
+    font-size:29px;
+    font-weight:900;
     line-height:1;
     letter-spacing:-1px;
 }
 
-.andamento{background:linear-gradient(145deg,#f59e0b,#f97316)}
-.ausente{background:linear-gradient(145deg,#ef4444,#dc2626)}
-.concluido{background:linear-gradient(145deg,#16a34a,#22c55e)}
+.andamento{
+    background:linear-gradient(145deg,#f59e0b,#f97316);
+}
+
+.ausente{
+    background:linear-gradient(145deg,#ef4444,#dc2626);
+}
+
+.concluido{
+    background:linear-gradient(145deg,#16a34a,#22c55e);
+}
 
 .active{
-    transform:translateY(-3px);
-    outline:3px solid rgba(23,105,255,.12);
+    transform:translateY(-1px);
+    outline:2px solid rgba(23,105,255,.12);
 }
 
 /* ===== OS LIST ===== */
 .container{
-    padding:2px 12px 22px;
+    padding:0 12px 18px;
 }
 
 .container > p{
@@ -990,6 +1006,335 @@ button{touch-action:manipulation}
     }
 }
 
+
+.anexo-viewer video{
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
+}
+
+
+/* ===== AJUSTE FINAL — CARDS AZUL SGOS ===== */
+.cards{
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:7px !important;
+    padding:7px 12px 11px !important;
+    max-width:980px;
+    margin-left:auto;
+    margin-right:auto;
+}
+
+.card{
+    min-height:76px !important;
+    padding:8px 5px !important;
+    border-radius:15px !important;
+    background:linear-gradient(145deg,#1769ff,#0f52d9) !important;
+    color:#fff !important;
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:3px !important;
+    text-align:center !important;
+    font-size:10px !important;
+    font-weight:800 !important;
+    border:1px solid rgba(255,255,255,.18) !important;
+    box-shadow:0 6px 16px rgba(23,105,255,.22) !important;
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+
+.card:hover{
+    filter:brightness(1.03);
+}
+
+.card:active{
+    transform:scale(.98);
+}
+
+.card.active{
+    transform:translateY(-2px) !important;
+    outline:2px solid rgba(23,105,255,.20) !important;
+    box-shadow:0 9px 20px rgba(23,105,255,.28) !important;
+}
+
+.card span{
+    font-size:24px !important;
+    line-height:1 !important;
+    font-weight:900 !important;
+    letter-spacing:-1px !important;
+    margin:0 !important;
+}
+
+.card small{
+    display:block !important;
+    font-size:10px !important;
+    line-height:1.05 !important;
+    font-weight:800 !important;
+    white-space:nowrap !important;
+    color:#fff !important;
+}
+
+.card br{
+    display:none !important;
+}
+
+.card-icon{
+    width:22px;
+    height:22px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin-bottom:1px;
+    color:#fff;
+}
+
+.card-icon svg{
+    width:18px;
+    height:18px;
+    display:block;
+    fill:currentColor;
+}
+
+.andamento,
+.ausente,
+.concluido{
+    background:linear-gradient(145deg,#1769ff,#0f52d9) !important;
+}
+
+@media(max-width:759px){
+    .cards{
+        gap:7px !important;
+        padding:7px 12px 11px !important;
+    }
+
+    .card{
+        min-height:76px !important;
+        padding:8px 5px !important;
+        border-radius:15px !important;
+        gap:3px !important;
+        font-size:10px !important;
+    }
+
+    .card span{
+        font-size:24px !important;
+    }
+
+    .card small{
+        font-size:10px !important;
+    }
+
+    .card-icon{
+        width:21px;
+        height:21px;
+    }
+
+    .card-icon svg{
+        width:17px;
+        height:17px;
+    }
+}
+
+@media(max-width:360px){
+    .cards{
+        gap:5px !important;
+        padding-left:9px !important;
+        padding-right:9px !important;
+    }
+
+    .card{
+        min-height:72px !important;
+        padding:7px 3px !important;
+        border-radius:13px !important;
+    }
+
+    .card span{
+        font-size:22px !important;
+    }
+
+    .card small{
+        font-size:9px !important;
+    }
+
+    .card-icon svg{
+        width:16px;
+        height:16px;
+    }
+}
+
+
+/* ===== AJUSTE FINAL — CARDS SGOS COM ÍCONE À DIREITA ===== */
+.cards{
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:8px !important;
+    padding:8px 12px 12px !important;
+    max-width:980px;
+    margin-left:auto;
+    margin-right:auto;
+}
+
+.card{
+    min-height:82px !important;
+    padding:11px 12px !important;
+    border-radius:16px !important;
+    background:linear-gradient(145deg,#1769ff,#0f52d9) !important;
+    color:#fff !important;
+
+    display:flex !important;
+    flex-direction:row !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+
+    gap:10px !important;
+    text-align:left !important;
+
+    border:1px solid rgba(255,255,255,.18) !important;
+    box-shadow:0 7px 18px rgba(23,105,255,.24) !important;
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+
+.card:hover{
+    filter:brightness(1.03);
+}
+
+.card:active{
+    transform:scale(.98);
+}
+
+.card.active{
+    transform:translateY(-2px) !important;
+    outline:2px solid rgba(23,105,255,.20) !important;
+    box-shadow:0 10px 22px rgba(23,105,255,.30) !important;
+}
+
+.card-conteudo{
+    min-width:0;
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:center;
+    gap:5px;
+}
+
+.card span{
+    font-size:34px !important;
+    line-height:1 !important;
+    font-weight:900 !important;
+    letter-spacing:-1.2px !important;
+    margin:0 !important;
+    color:#fff !important;
+}
+
+.card small{
+    display:block !important;
+    font-size:14px !important;
+    line-height:1.1 !important;
+    font-weight:900 !important;
+    white-space:nowrap !important;
+    color:#fff !important;
+}
+
+.card br{
+    display:none !important;
+}
+
+.card-icon{
+    width:38px !important;
+    height:38px !important;
+    flex:0 0 38px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    margin:0 !important;
+    border-radius:12px;
+    background:rgba(255,255,255,.16);
+    color:#fff;
+}
+
+.card-icon svg{
+    width:22px !important;
+    height:22px !important;
+    display:block;
+    fill:currentColor;
+}
+
+.andamento,
+.ausente,
+.concluido{
+    background:linear-gradient(145deg,#1769ff,#0f52d9) !important;
+}
+
+@media(max-width:759px){
+    .cards{
+        gap:7px !important;
+        padding:7px 12px 11px !important;
+    }
+
+    .card{
+        min-height:78px !important;
+        padding:10px 9px !important;
+        border-radius:15px !important;
+        gap:7px !important;
+    }
+
+    .card span{
+        font-size:31px !important;
+    }
+
+    .card small{
+        font-size:12px !important;
+    }
+
+    .card-icon{
+        width:33px !important;
+        height:33px !important;
+        flex-basis:33px !important;
+    }
+
+    .card-icon svg{
+        width:19px !important;
+        height:19px !important;
+    }
+}
+
+@media(max-width:390px){
+    .cards{
+        gap:5px !important;
+        padding-left:9px !important;
+        padding-right:9px !important;
+    }
+
+    .card{
+        min-height:74px !important;
+        padding:9px 7px !important;
+        gap:5px !important;
+        border-radius:14px !important;
+    }
+
+    .card span{
+        font-size:28px !important;
+    }
+
+    .card small{
+        font-size:10px !important;
+    }
+
+    .card-icon{
+        width:29px !important;
+        height:29px !important;
+        flex-basis:29px !important;
+    }
+
+    .card-icon svg{
+        width:17px !important;
+        height:17px !important;
+    }
+}
+
 </style>
 
 
@@ -1063,15 +1408,47 @@ button{touch-action:manipulation}
 </div>
 
 <div class="cards">
-    <div class="card andamento" onclick="setTab('andamento')">
-         <span id="cA">0</span><br>Andamento
+
+    <div class="card andamento" onclick="setTab('andamento')" role="button" tabindex="0">
+        <div class="card-conteudo">
+            <span id="cA">0</span>
+            <small>Em andamento</small>
+        </div>
+
+        <div class="card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M8 5v14l11-7z"></path>
+            </svg>
+        </div>
     </div>
-<div class="card ausente" onclick="setTab('ausente')">
-         <span id="cX">0</span><br>Ausentes
+
+    <div class="card ausente" onclick="setTab('ausente')" role="button" tabindex="0">
+        <div class="card-conteudo">
+            <span id="cX">0</span>
+            <small>Ausentes</small>
+        </div>
+
+        <div class="card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+                <rect x="6" y="5" width="4" height="14" rx="1"></rect>
+                <rect x="14" y="5" width="4" height="14" rx="1"></rect>
+            </svg>
+        </div>
     </div>
-    <div class="card concluido" onclick="setTab('concluido')">
-         <span id="cC">0</span><br>Concluídas
+
+    <div class="card concluido" onclick="setTab('concluido')" role="button" tabindex="0">
+        <div class="card-conteudo">
+            <span id="cC">0</span>
+            <small>Finalizadas</small>
+        </div>
+
+        <div class="card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M9.2 16.2 4.8 11.8 3.4 13.2 9.2 19 21 7.2 19.6 5.8z"></path>
+            </svg>
+        </div>
     </div>
+
 </div>
 
 <div class="lista-cabecalho">
@@ -1090,10 +1467,10 @@ button{touch-action:manipulation}
         <div id="resumoModalOS" class="resumo-modal-os"></div>
 
         <textarea id="obs" placeholder="Observação..."></textarea>
-        <input type="file" id="foto" accept="image/*,.pdf,application/pdf" hidden onchange="arquivoSelecionado(this)">
+        <input type="file" id="foto" accept="image/*,video/*,.pdf,application/pdf" hidden onchange="arquivoSelecionado(this)">
         <div class="anexo-acoes">
-            <button type="button" class="btn-anexo-escolher" onclick="escolherAnexo()">📎 Selecionar anexo</button>
-            <button type="button" class="btn-camera" onclick="tirarFotoAgora()">📷 Tirar foto</button>
+            <button type="button" class="btn-anexo-escolher" onclick="escolherAnexo()">📎 Anexar foto, vídeo ou PDF</button>
+            <button type="button" class="btn-camera" onclick="tirarFotoAgora()">📷 Foto / Vídeo</button>
         </div>
         <div id="arquivoSelecionadoInfo" class="arquivo-selecionado-info">Nenhum arquivo selecionado</div>
 
@@ -2185,18 +2562,18 @@ function verAnexo(){
 }
 
 function abrirModalAnexo(url, osId){
-
     const modalAnexo = document.getElementById("modalAnexo");
     const viewer = document.getElementById("anexoViewer");
     const titulo = document.getElementById("tituloAnexo");
 
     if(!modalAnexo || !viewer){
-        window.open(url, "_blank");
+        abrirUrlExterna(url);
         return;
     }
 
     const urlLimpa = url.split("?")[0].toLowerCase();
-    const isImagem = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/.test(urlLimpa);
+    const isImagem = /\.(jpg|jpeg|png|gif|webp|bmp|svg|heic|heif)$/.test(urlLimpa);
+    const isVideo = /\.(mp4|mov|m4v|webm|avi|mpeg|mpg|3gp)$/.test(urlLimpa);
 
     if(titulo){
         titulo.innerText = osId ? `📎 Anexo da OS #${osId}` : "📎 Visualizar Anexo";
@@ -2204,6 +2581,12 @@ function abrirModalAnexo(url, osId){
 
     if(isImagem){
         viewer.innerHTML = `<img src="${url}" alt="Anexo da OS" onerror="this.outerHTML='<div class=&quot;anexo-msg&quot;>Não foi possível carregar este anexo.</div>'">`;
+    }else if(isVideo){
+        viewer.innerHTML = `
+            <video controls playsinline preload="metadata" style="width:100%;height:100%;background:#000">
+                <source src="${url}">
+                Seu dispositivo não conseguiu reproduzir este vídeo.
+            </video>`;
     }else{
         viewer.innerHTML = `<iframe src="${url}" title="Anexo da OS"></iframe>`;
     }
@@ -3073,13 +3456,14 @@ function escolherAnexo(){
     const input = document.getElementById("foto");
     if(!input) return;
     input.removeAttribute("capture");
-    input.accept = "image/*,.pdf,application/pdf";
+    input.accept = "image/*,video/*,.pdf,application/pdf";
     input.value = "";
     input.click();
 }
 
 function arquivoSelecionado(input){
     arquivoFotoPreparado = null;
+
     const info = document.getElementById("arquivoSelecionadoInfo");
     const arquivo = input?.files?.[0];
 
@@ -3088,9 +3472,23 @@ function arquivoSelecionado(input){
         return;
     }
 
+    const tipo = String(arquivo.type || "").toLowerCase();
+    const ehVideo = tipo.startsWith("video/");
+    const limite = ehVideo ? 30 * 1024 * 1024 : 20 * 1024 * 1024;
+    const limiteMb = ehVideo ? 30 : 20;
+
+    if(arquivo.size > limite){
+        input.value = "";
+        if(info) info.textContent = "Nenhum arquivo selecionado";
+        alert(`O ${ehVideo ? "vídeo" : "arquivo"} deve ter no máximo ${limiteMb} MB.`);
+        return;
+    }
+
     const tamanhoMb = arquivo.size / (1024 * 1024);
+    const rotulo = ehVideo ? "Vídeo" : (tipo.startsWith("image/") ? "Foto" : "Arquivo");
+
     if(info){
-        info.textContent = `${arquivo.name || "Arquivo"} • ${tamanhoMb.toFixed(1)} MB`;
+        info.textContent = `${rotulo}: ${arquivo.name || "sem nome"} • ${tamanhoMb.toFixed(1)} MB`;
     }
 }
 
@@ -3136,45 +3534,30 @@ async function blobParaJpeg(blob, nomeBase="foto"){
 }
 
 async function tirarFotoAgora(){
+    arquivoFotoPreparado = null;
+
+    const input = document.getElementById("foto");
     const info = document.getElementById("arquivoSelecionadoInfo");
 
-    try{
-        const Camera = window.Capacitor?.Plugins?.Camera;
-
-        if(!Camera || typeof Camera.getPhoto !== "function"){
-            alert("A câmera nativa ainda não está disponível neste build. Use Selecionar anexo ou gere um novo build com o plugin Camera e as permissões do iOS.");
-            return;
-        }
-
-        const foto = await Camera.getPhoto({
-            quality:72,
-            allowEditing:false,
-            resultType:"uri",
-            source:"camera",
-            saveToGallery:false,
-            correctOrientation:true
-        });
-
-        const caminho = foto?.webPath || foto?.path;
-        if(!caminho){
-            throw new Error("A câmera não retornou a foto.");
-        }
-
-        const resposta = await fetch(caminho);
-        const blob = await resposta.blob();
-        arquivoFotoPreparado = await blobParaJpeg(blob, `foto-os-${Date.now()}.jpg`);
-
-        const tamanhoMb = arquivoFotoPreparado.size / (1024 * 1024);
-        if(info){
-            info.textContent = `Foto pronta • ${tamanhoMb.toFixed(1)} MB`;
-        }
-    }catch(err){
-        console.error("Erro ao tirar foto:", err);
-        const mensagem = String(err?.message || err || "");
-        if(!/cancel|cancelled|canceled/i.test(mensagem)){
-            alert("Não foi possível abrir ou preparar a câmera. Verifique as permissões do iPhone e atualize o build.");
-        }
+    if(!input){
+        alert("Campo de câmera não encontrado.");
+        return;
     }
+
+    /*
+      O plugin @capacitor/camera captura apenas fotos.
+      Para permitir foto OU vídeo com o seletor nativo do iOS/Android,
+      usamos input file com capture=environment e accept image/video.
+    */
+    input.value = "";
+    input.accept = "image/*,video/*";
+    input.setAttribute("capture", "environment");
+
+    if(info){
+        info.textContent = "Abra a câmera e escolha foto ou vídeo.";
+    }
+
+    input.click();
 }
 
 async function prepararArquivoParaEnvio(){
@@ -3185,12 +3568,23 @@ async function prepararArquivoParaEnvio(){
     const arquivo = document.getElementById("foto")?.files?.[0];
     if(!arquivo) return null;
 
-    if(arquivo.size > 20 * 1024 * 1024){
-        throw new Error("O anexo deve ter no máximo 20 MB.");
+    const tipo = String(arquivo.type || "").toLowerCase();
+    const ehVideo = tipo.startsWith("video/");
+    const limite = ehVideo ? 30 * 1024 * 1024 : 20 * 1024 * 1024;
+
+    if(arquivo.size > limite){
+        throw new Error(
+            ehVideo
+                ? "O vídeo deve ter no máximo 30 MB."
+                : "O anexo deve ter no máximo 20 MB."
+        );
     }
 
-    if(String(arquivo.type || "").startsWith("image/")){
-        return await blobParaJpeg(arquivo, arquivo.name || `foto-${Date.now()}.jpg`);
+    if(tipo.startsWith("image/")){
+        return await blobParaJpeg(
+            arquivo,
+            arquivo.name || `foto-${Date.now()}.jpg`
+        );
     }
 
     return arquivo;
@@ -3332,15 +3726,23 @@ async function abrirUrlExterna(url){
 function verAnexo(){
     const os = encontrarOS(osSelecionada);
     const caminho = obterAnexoOS(os);
-    if(!os || !caminho){alert("Nenhum anexo encontrado");return}
+
+    if(!os || !caminho){
+        alert("Nenhum anexo encontrado");
+        return;
+    }
+
     const url = /^https?:\/\//i.test(caminho) ? caminho : apiUrl(caminho);
     const limpa = url.split("?")[0].toLowerCase();
     const imagem = /\.(jpg|jpeg|png|gif|webp|bmp|svg|heic|heif)$/.test(limpa);
-    if(getPlataformaApp() === "ios" && !imagem){
+    const video = /\.(mp4|mov|m4v|webm|avi|mpeg|mpg|3gp)$/.test(limpa);
+
+    if(getPlataformaApp() === "ios" && !imagem && !video){
         abrirUrlExterna(url);
         return;
     }
-    abrirModalAnexo(url,os.id);
+
+    abrirModalAnexo(url, os.id);
 }
 async function obterPosicaoAtual(){
     const plataforma = getPlataformaApp();
