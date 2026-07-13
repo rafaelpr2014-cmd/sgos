@@ -2,42 +2,58 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+
 	<key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
+
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+
 	<key>CFBundleDisplayName</key>
 	<string>SGOS Mobile</string>
+
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
+
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
+
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>armv7</string>
 	</array>
+
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -45,13 +61,33 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
 	</array>
+
+	<!-- PERMISSÃO PARA USAR A CÂMERA -->
+	<key>NSCameraUsageDescription</key>
+	<string>O SGOS utiliza a câmera para registrar e anexar fotos às ordens de serviço.</string>
+
+	<!-- PERMISSÃO PARA LER FOTOS DA GALERIA -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>O SGOS utiliza a galeria para selecionar imagens e anexos das ordens de serviço.</string>
+
+	<!-- PERMISSÃO PARA SALVAR FOTOS NA GALERIA -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>O SGOS pode salvar fotos relacionadas às ordens de serviço na galeria.</string>
+
+	<!-- PERMISSÃO PARA OBTER LOCALIZAÇÃO -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>O SGOS utiliza sua localização durante o atendimento para registrar a posição da ordem de serviço.</string>
+
 </dict>
 </plist>
