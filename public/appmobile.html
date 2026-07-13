@@ -934,6 +934,62 @@ button{touch-action:manipulation}
     .os-tipo-servico{font-size:11px}
 }
 
+
+.anexo-acoes{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin:8px 0 6px;
+}
+.anexo-acoes button{
+    margin:0 !important;
+    min-height:48px;
+}
+.btn-anexo-escolher{background:#0f52d9 !important}
+.btn-camera{background:#0f766e !important}
+.arquivo-selecionado-info{
+    min-height:42px;
+    display:flex;
+    align-items:center;
+    padding:10px 12px;
+    margin-bottom:10px;
+    border:1px dashed #cbd5e1;
+    border-radius:12px;
+    background:#f8fafc;
+    color:#64748b;
+    font-size:12px;
+    font-weight:700;
+    word-break:break-word;
+}
+.modal-modo-leitura .anexo-acoes,
+.modal-modo-leitura #arquivoSelecionadoInfo,
+.modal-modo-leitura #obs,
+.modal-modo-leitura #btnAusente,
+.modal-modo-leitura #btnInviabilidade,
+.modal-modo-leitura #btnConcluir,
+.modal-modo-leitura #btnEnviarLocalizacao{
+    display:none !important;
+}
+@media(max-width:390px){
+    .anexo-acoes{grid-template-columns:1fr}
+}
+
+
+.os-status{
+    padding:4px 9px !important;
+    font-size:10px !important;
+    border-radius:999px !important;
+    right:44px !important;
+    top:16px !important;
+}
+@media(max-width:390px){
+    .os-status{
+        padding:3px 8px !important;
+        font-size:9px !important;
+        margin:3px 0 2px !important;
+    }
+}
+
 </style>
 
 
@@ -1034,15 +1090,20 @@ button{touch-action:manipulation}
         <div id="resumoModalOS" class="resumo-modal-os"></div>
 
         <textarea id="obs" placeholder="Observação..."></textarea>
-        <input type="file" id="foto" accept="image/*,.pdf,application/pdf">
+        <input type="file" id="foto" accept="image/*,.pdf,application/pdf" hidden onchange="arquivoSelecionado(this)">
+        <div class="anexo-acoes">
+            <button type="button" class="btn-anexo-escolher" onclick="escolherAnexo()">📎 Selecionar anexo</button>
+            <button type="button" class="btn-camera" onclick="tirarFotoAgora()">📷 Tirar foto</button>
+        </div>
+        <div id="arquivoSelecionadoInfo" class="arquivo-selecionado-info">Nenhum arquivo selecionado</div>
 
-        <button type="button" class="btn-loc" onclick="verAnexo()">📎 Ver Anexo</button>
-        <button type="button" class="btn-ausente" onclick="enviarAcao('ausente', this)">Cliente Ausente</button>
-        <button type="button" class="btn-inv" onclick="enviarAcao('inviabilidade', this)">Inviabilidade</button>
-        <button type="button" class="btn-ok" onclick="enviarAcao('concluir', this)">Concluir</button>
+        <button id="btnVerAnexo" type="button" class="btn-loc" onclick="verAnexo()">📎 Ver Anexo</button>
+        <button id="btnAusente" type="button" class="btn-ausente" onclick="enviarAcao('ausente', this)">Cliente Ausente</button>
+        <button id="btnInviabilidade" type="button" class="btn-inv" onclick="enviarAcao('inviabilidade', this)">Inviabilidade</button>
+        <button id="btnConcluir" type="button" class="btn-ok" onclick="enviarAcao('concluir', this)">Concluir</button>
 
-        <button type="button" class="btn-loc" onclick="pegarLocalizacao(this)">📍 Enviar Localização</button>
-        <button type="button" class="btn-loc" onclick="visualizarLocalizacao()">🗺️ Ver Localização</button>
+        <button id="btnEnviarLocalizacao" type="button" class="btn-loc" onclick="pegarLocalizacao(this)">📍 Enviar Localização</button>
+        <button id="btnVerLocalizacao" type="button" class="btn-loc" onclick="visualizarLocalizacao()">🗺️ Ver Localização</button>
 
         <button type="button" onclick="fecharModal()">Fechar</button>
     </div>
@@ -2053,6 +2114,9 @@ function abrirModal(chave){
 function fecharModal(){
     const modal = document.getElementById("modal");
     if(modal) modal.style.display = "none";
+    arquivoFotoPreparado = null;
+    const foto = document.getElementById("foto");
+    if(foto) foto.value = "";
 }
 
 /* ================= UTIL ================= */
@@ -2872,7 +2936,7 @@ function dentroDoPeriodo(os){
 }
 
 function alterarPeriodo(valor){
-    periodoSelecionado = valor || "hoje";
+    periodoSelecionado = valor || "30dias";
     localStorage.setItem("app_periodo_os", periodoSelecionado);
     render();
 }
@@ -2893,7 +2957,7 @@ function render(){
             (tab === "andamento" && st.includes("andamento")) ||
             (tab === "concluido" && st.includes("concluido")) ||
             (tab === "ausente" && st.includes("ausente"));
-        return matchBusca && matchStatus;
+        return matchBusca && matchStatus && dentroDoPeriodo(o);
     });
 
     const osPeriodo = OS.filter(dentroDoPeriodo);
@@ -3001,26 +3065,183 @@ function resumoModalHTML(os){
         </div>
     `;
 }
+
+let arquivoFotoPreparado = null;
+
+function escolherAnexo(){
+    arquivoFotoPreparado = null;
+    const input = document.getElementById("foto");
+    if(!input) return;
+    input.removeAttribute("capture");
+    input.accept = "image/*,.pdf,application/pdf";
+    input.value = "";
+    input.click();
+}
+
+function arquivoSelecionado(input){
+    arquivoFotoPreparado = null;
+    const info = document.getElementById("arquivoSelecionadoInfo");
+    const arquivo = input?.files?.[0];
+
+    if(!arquivo){
+        if(info) info.textContent = "Nenhum arquivo selecionado";
+        return;
+    }
+
+    const tamanhoMb = arquivo.size / (1024 * 1024);
+    if(info){
+        info.textContent = `${arquivo.name || "Arquivo"} • ${tamanhoMb.toFixed(1)} MB`;
+    }
+}
+
+async function blobParaJpeg(blob, nomeBase="foto"){
+    if(!blob || !String(blob.type || "").startsWith("image/")){
+        return new File([blob], nomeBase, {type: blob?.type || "application/octet-stream"});
+    }
+
+    try{
+        const bitmap = await createImageBitmap(blob);
+        const limite = 1920;
+        let largura = bitmap.width;
+        let altura = bitmap.height;
+
+        if(largura > limite || altura > limite){
+            const escala = Math.min(limite / largura, limite / altura);
+            largura = Math.round(largura * escala);
+            altura = Math.round(altura * escala);
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = largura;
+        canvas.height = altura;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(bitmap, 0, 0, largura, altura);
+
+        const jpegBlob = await new Promise((resolve, reject) => {
+            canvas.toBlob(
+                b => b ? resolve(b) : reject(new Error("Falha ao preparar imagem")),
+                "image/jpeg",
+                0.78
+            );
+        });
+
+        return new File([jpegBlob], `${nomeBase.replace(/\.[^.]+$/, "")}.jpg`, {
+            type:"image/jpeg",
+            lastModified:Date.now()
+        });
+    }catch(err){
+        console.warn("Não foi possível converter a imagem; enviando original.", err);
+        return new File([blob], nomeBase, {type:blob.type || "application/octet-stream"});
+    }
+}
+
+async function tirarFotoAgora(){
+    const info = document.getElementById("arquivoSelecionadoInfo");
+
+    try{
+        const Camera = window.Capacitor?.Plugins?.Camera;
+
+        if(!Camera || typeof Camera.getPhoto !== "function"){
+            alert("A câmera nativa ainda não está disponível neste build. Use Selecionar anexo ou gere um novo build com o plugin Camera e as permissões do iOS.");
+            return;
+        }
+
+        const foto = await Camera.getPhoto({
+            quality:72,
+            allowEditing:false,
+            resultType:"uri",
+            source:"camera",
+            saveToGallery:false,
+            correctOrientation:true
+        });
+
+        const caminho = foto?.webPath || foto?.path;
+        if(!caminho){
+            throw new Error("A câmera não retornou a foto.");
+        }
+
+        const resposta = await fetch(caminho);
+        const blob = await resposta.blob();
+        arquivoFotoPreparado = await blobParaJpeg(blob, `foto-os-${Date.now()}.jpg`);
+
+        const tamanhoMb = arquivoFotoPreparado.size / (1024 * 1024);
+        if(info){
+            info.textContent = `Foto pronta • ${tamanhoMb.toFixed(1)} MB`;
+        }
+    }catch(err){
+        console.error("Erro ao tirar foto:", err);
+        const mensagem = String(err?.message || err || "");
+        if(!/cancel|cancelled|canceled/i.test(mensagem)){
+            alert("Não foi possível abrir ou preparar a câmera. Verifique as permissões do iPhone e atualize o build.");
+        }
+    }
+}
+
+async function prepararArquivoParaEnvio(){
+    if(arquivoFotoPreparado){
+        return arquivoFotoPreparado;
+    }
+
+    const arquivo = document.getElementById("foto")?.files?.[0];
+    if(!arquivo) return null;
+
+    if(arquivo.size > 20 * 1024 * 1024){
+        throw new Error("O anexo deve ter no máximo 20 MB.");
+    }
+
+    if(String(arquivo.type || "").startsWith("image/")){
+        return await blobParaJpeg(arquivo, arquivo.name || `foto-${Date.now()}.jpg`);
+    }
+
+    return arquivo;
+}
+
 const abrirModalBase = abrirModal;
 abrirModal = function(chave){
-    if(tab !== "andamento") return;
     const os = encontrarOS(chave);
     if(!os){ alert("OS não encontrada"); return; }
+
     osSelecionada = chaveOS(os);
-    document.getElementById("resumoModalOS").innerHTML = resumoModalHTML(os);
-    document.getElementById("obs").value = "";
-    document.getElementById("foto").value = "";
-    const btnAnexo = document.querySelector('#modal button[onclick="verAnexo()"]');
-    const btnVerLoc = document.querySelector('#modal button[onclick="visualizarLocalizacao()"]');
+    arquivoFotoPreparado = null;
+
+    const resumo = document.getElementById("resumoModalOS");
+    if(resumo) resumo.innerHTML = resumoModalHTML(os);
+
+    const obs = document.getElementById("obs");
+    if(obs) obs.value = "";
+
+    const foto = document.getElementById("foto");
+    if(foto) foto.value = "";
+
+    const info = document.getElementById("arquivoSelecionadoInfo");
+    if(info) info.textContent = "Nenhum arquivo selecionado";
+
+    const modal = document.getElementById("modal");
+    const content = modal?.querySelector(".modal-content");
+    const somenteLeitura = tab !== "andamento";
+
+    if(content){
+        content.classList.toggle("modal-modo-leitura", somenteLeitura);
+    }
+
+    const btnAnexo = document.getElementById("btnVerAnexo");
+    const btnVerLoc = document.getElementById("btnVerLocalizacao");
+
     if(btnAnexo){
-        btnAnexo.disabled = !obterAnexoOS(os);
-        btnAnexo.style.opacity = obterAnexoOS(os) ? "1" : ".45";
+        const temAnexo = !!obterAnexoOS(os);
+        btnAnexo.disabled = !temAnexo;
+        btnAnexo.style.opacity = temAnexo ? "1" : ".45";
+        btnAnexo.style.display = "block";
     }
+
     if(btnVerLoc){
-        btnVerLoc.disabled = !obterCoordenadasOS(os);
-        btnVerLoc.style.opacity = obterCoordenadasOS(os) ? "1" : ".45";
+        const temLocalizacao = !!obterCoordenadasOS(os);
+        btnVerLoc.disabled = !temLocalizacao;
+        btnVerLoc.style.opacity = temLocalizacao ? "1" : ".45";
+        btnVerLoc.style.display = "block";
     }
-    document.getElementById("modal").style.display = "flex";
+
+    if(modal) modal.style.display = "flex";
 };
 function bloquearBotao(btn, bloqueado, textoTemporario="Enviando..."){
     if(!btn) return;
@@ -3073,9 +3294,8 @@ async function enviarAcao(tipo, botao){
     try{
         const formData = new FormData();
         formData.append("observacao", document.getElementById("obs").value || "");
-        const arquivo = document.getElementById("foto")?.files?.[0];
+        const arquivo = await prepararArquivoParaEnvio();
         if(arquivo){
-            if(arquivo.size > 20 * 1024 * 1024) throw new Error("O anexo deve ter no máximo 20 MB.");
             formData.append("foto", arquivo, arquivo.name || `anexo-${Date.now()}`);
         }
         const controller = new AbortController();
@@ -3123,47 +3343,189 @@ function verAnexo(){
     abrirModalAnexo(url,os.id);
 }
 async function obterPosicaoAtual(){
-    const Geo = window.Capacitor?.Plugins?.Geolocation;
-    if(Geo && typeof Geo.getCurrentPosition === "function"){
-        try{
-            const perm = typeof Geo.requestPermissions === "function" ? await Geo.requestPermissions() : null;
-            if(perm && !["granted","limited"].includes(perm.location || perm.coarseLocation)){
-                throw new Error("Permissão de localização não concedida.");
+    const plataforma = getPlataformaApp();
+
+    try{
+        const Geo = window.Capacitor?.Plugins?.Geolocation;
+
+        if(Geo && typeof Geo.getCurrentPosition === "function"){
+            let permissao = null;
+
+            if(typeof Geo.checkPermissions === "function"){
+                try{
+                    permissao = await Geo.checkPermissions();
+                }catch(e){
+                    console.warn("Falha ao consultar permissão de localização:", e);
+                }
             }
-            const p = await Geo.getCurrentPosition({enableHighAccuracy:true,timeout:20000,maximumAge:0});
-            return {latitude:p.coords.latitude,longitude:p.coords.longitude};
-        }catch(e){console.warn("Geolocation Capacitor falhou; usando navegador",e)}
+
+            const estadoAtual =
+                permissao?.location ||
+                permissao?.coarseLocation ||
+                permissao?.permissions?.location;
+
+            if(
+                typeof Geo.requestPermissions === "function" &&
+                estadoAtual !== "granted" &&
+                estadoAtual !== "limited"
+            ){
+                permissao = await Geo.requestPermissions({
+                    permissions:["location","coarseLocation"]
+                });
+            }
+
+            const estadoFinal =
+                permissao?.location ||
+                permissao?.coarseLocation ||
+                permissao?.permissions?.location;
+
+            if(
+                estadoFinal &&
+                !["granted","limited"].includes(String(estadoFinal))
+            ){
+                throw new Error(
+                    plataforma === "ios"
+                        ? "Permita a localização em Ajustes > SGOS > Localização > Durante o Uso."
+                        : "Permissão de localização não concedida."
+                );
+            }
+
+            const posicao = await Geo.getCurrentPosition({
+                enableHighAccuracy:true,
+                timeout:30000,
+                maximumAge:0
+            });
+
+            const latitude = Number(posicao?.coords?.latitude);
+            const longitude = Number(posicao?.coords?.longitude);
+
+            if(!Number.isFinite(latitude) || !Number.isFinite(longitude)){
+                throw new Error("O GPS não retornou coordenadas válidas.");
+            }
+
+            return {latitude, longitude};
+        }
+    }catch(err){
+        console.warn("Geolocalização nativa falhou:", err);
+
+        if(
+            /Ajustes|Permiss|permission/i.test(String(err?.message || err))
+        ){
+            throw err;
+        }
     }
+
     return await new Promise((resolve,reject)=>{
-        if(!navigator.geolocation) return reject(new Error("GPS não suportado neste dispositivo."));
+        if(!navigator.geolocation){
+            reject(new Error("GPS não suportado neste dispositivo."));
+            return;
+        }
+
         navigator.geolocation.getCurrentPosition(
-            p=>resolve({latitude:p.coords.latitude,longitude:p.coords.longitude}),
-            e=>reject(new Error(e.code===1 ? "Permita o acesso à localização nos Ajustes do iPhone." : "Não foi possível obter a localização.")),
-            {enableHighAccuracy:true,timeout:20000,maximumAge:0}
+            pos=>{
+                const latitude = Number(pos.coords.latitude);
+                const longitude = Number(pos.coords.longitude);
+
+                if(!Number.isFinite(latitude) || !Number.isFinite(longitude)){
+                    reject(new Error("O GPS não retornou coordenadas válidas."));
+                    return;
+                }
+
+                resolve({latitude,longitude});
+            },
+            erro=>{
+                let mensagem = "Não foi possível obter a localização.";
+
+                if(erro.code === 1){
+                    mensagem = plataforma === "ios"
+                        ? "Permita a localização em Ajustes > SGOS > Localização > Durante o Uso."
+                        : "Permissão de localização não concedida.";
+                }else if(erro.code === 2){
+                    mensagem = "Sinal de GPS indisponível. Ative a localização e tente em local aberto.";
+                }else if(erro.code === 3){
+                    mensagem = "O GPS demorou para responder. Tente novamente.";
+                }
+
+                reject(new Error(mensagem));
+            },
+            {
+                enableHighAccuracy:true,
+                timeout:30000,
+                maximumAge:0
+            }
         );
     });
 }
 async function pegarLocalizacao(botao){
-    if(!osSelecionada){alert("Nenhuma OS selecionada");return}
+    if(!osSelecionada){
+        alert("Nenhuma OS selecionada");
+        return;
+    }
+
     const osAtual = encontrarOS(osSelecionada);
-    if(!osAtual){alert("OS não encontrada");return}
-    if(osAtual._tipo === "avulsa"){alert("Localização para OS Avulsa ainda não está disponível.");return}
+
+    if(!osAtual){
+        alert("OS não encontrada");
+        return;
+    }
+
+    if(osAtual._tipo === "avulsa"){
+        alert("Localização para OS Avulsa ainda não está disponível.");
+        return;
+    }
+
     bloquearBotao(botao,true,"Obtendo localização...");
+
     try{
         const coords = await obterPosicaoAtual();
+
+        bloquearBotao(botao,true,"Enviando localização...");
+
         const res = await apiFetch(`/api/ordens_servico/localizacao/${osAtual.id}`,{
             method:"POST",
-            headers:{"Content-Type":"application/json","Accept":"application/json","x-usuario-id":String(user.id)},
-            body:JSON.stringify(coords),credentials:"include",cache:"no-store"
+            headers:{
+                "Content-Type":"application/json",
+                "Accept":"application/json",
+                "x-usuario-id":String(user.id)
+            },
+            body:JSON.stringify({
+                latitude:coords.latitude,
+                longitude:coords.longitude,
+                lat:coords.latitude,
+                lng:coords.longitude
+            }),
+            credentials:"include",
+            cache:"no-store"
         });
+
         const data = await lerRespostaSegura(res);
-        if(!res.ok) throw new Error(data.erro || data.mensagem || `Erro HTTP ${res.status}`);
+
+        if(!res.ok){
+            throw new Error(
+                data.erro ||
+                data.mensagem ||
+                data.message ||
+                `Erro HTTP ${res.status}`
+            );
+        }
+
         osAtual.latitude = coords.latitude;
         osAtual.longitude = coords.longitude;
+
         alert("📍 Localização enviada com sucesso!");
-        abrirModal(osSelecionada);
-    }catch(err){console.error(err);alert(err.message || "Erro ao enviar localização")}
-    finally{bloquearBotao(botao,false)}
+
+        const btnVerLoc = document.getElementById("btnVerLocalizacao");
+        if(btnVerLoc){
+            btnVerLoc.disabled = false;
+            btnVerLoc.style.opacity = "1";
+        }
+
+    }catch(err){
+        console.error("Erro ao obter/enviar localização:", err);
+        alert(err?.message || "Erro ao enviar localização");
+    }finally{
+        bloquearBotao(botao,false);
+    }
 }
 function visualizarLocalizacao(){
     const os = encontrarOS(osSelecionada);
