@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SGOS - Informativos com IA</title>
+<link rel="icon" type="image/png" href="/img/favicon.png">
+<script src="/js/auth.js" defer></script>
+<script src="/js/init.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{
+    --azul:#2563eb;
+    --azul-hover:#1d4ed8;
+    --texto:#0f172a;
+    --muted:#64748b;
+    --borda:#e5e7eb;
+    --fundo:#f5f7fb;
+    --verde:#16a34a;
+    --laranja:#f59e0b;
+    --vermelho:#ef4444;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);color:var(--texto)}
+button,input,select,textarea{font-family:Arial,Helvetica,sans-serif}
+
+.sidebar{position:fixed;left:0;top:0;width:230px;height:100vh;background:linear-gradient(180deg,#081a31,#061426);color:#fff;padding:12px 18px 18px;display:flex;flex-direction:column;z-index:20;overflow-y:auto}
+.sidebar-logo{display:flex;align-items:center;margin-bottom:14px}.sidebar-logo img{width:190px;height:auto;display:block}
+.menu-titulo{margin:14px 10px 6px;font-size:12px;color:#94a3b8;text-transform:uppercase}
+.sidebar a{color:#dbeafe;text-decoration:none;padding:11px 13px;border-radius:9px;display:flex;align-items:center;gap:12px;font-size:14px;margin-bottom:2px;transition:.2s}
+.sidebar a:hover,.sidebar a.ativo{background:var(--azul);color:#fff}
+.menu-icon{width:18px;height:18px;min-width:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sidebar-footer{margin-top:auto}.btn-recolher{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#e5efff;padding:13px;border-radius:10px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;font-size:14px}
+.sidebar.recolhida{width:82px;padding:14px 12px 18px;align-items:center}.sidebar.recolhida .sidebar-logo{justify-content:center}.sidebar.recolhida .sidebar-logo img{width:48px}.sidebar.recolhida .menu-titulo{display:none}.sidebar.recolhida a{justify-content:center;width:52px;padding:13px;gap:0}.sidebar.recolhida a span,.sidebar.recolhida .btn-recolher span{display:none}.sidebar.recolhida .btn-recolher{justify-content:center;width:52px}.sidebar.recolhida + .main{margin-left:82px}
+.main{margin-left:230px;min-height:100vh;transition:.25s}
+.header{height:92px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;justify-content:space-between;padding:0 34px;position:sticky;top:0;z-index:10}
+.header-left,.header-actions{display:flex;align-items:center;gap:22px}.header-logo img{height:60px;max-width:190px;object-fit:contain}.divisor{height:34px;width:1px;background:var(--borda)}.header-title{font-weight:800;font-size:18px}
+.notificacao{position:relative;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#1e3a8a}.notificacao svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8}.notificacao span{position:absolute;top:3px;right:4px;background:#2563eb;color:#fff;border-radius:999px;font-size:10px;min-width:17px;height:17px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+.usuario-dropdown{position:relative}.usuario-btn{border:0;background:transparent;display:flex;align-items:center;gap:10px;cursor:pointer;padding:0}.avatar{width:44px;height:44px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;overflow:hidden}.avatar svg{width:28px;height:28px;fill:#cbd5e1}.usuario-info{text-align:left}.usuario-info strong{font-size:13px;display:block}.usuario-info small{font-size:11px;color:#64748b}.seta{width:18px;height:18px;color:#1e3a8a;transition:.2s}.usuario-dropdown.aberto .seta{transform:rotate(180deg)}
+.usuario-menu{display:none;position:absolute;right:0;top:58px;width:260px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 18px 40px rgba(15,23,42,.16);padding:14px;z-index:9999}.usuario-menu.ativo{display:block}.usuario-menu-titulo{font-size:12px;font-weight:800;color:#64748b;margin-bottom:10px;text-transform:uppercase}.usuario-menu hr{border:0;border-top:1px solid #e5e7eb;margin:12px 0}.usuario-menu a{display:block;color:#ef4444;text-decoration:none;font-weight:800;font-size:14px}
+.content{padding:28px 18px 38px}.page-title{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:18px}.page-title h2{margin:0;font-size:24px;font-weight:800}.page-title p{margin:6px 0 0;color:var(--muted);font-size:14px}
+.badge-ia{display:inline-flex;align-items:center;gap:8px;background:#eef2ff;color:#1e40af;border:1px solid #c7d2fe;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:800}
+.layout{display:grid;grid-template-columns:minmax(360px,.92fr) minmax(460px,1.35fr);gap:18px;align-items:start}.card{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:22px;box-shadow:0 8px 20px rgba(15,23,42,.04)}.card-title{margin:0 0 6px;font-size:18px;font-weight:800}.card-subtitle{margin:0 0 20px;color:var(--muted);font-size:13px;line-height:1.5}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.campo{display:flex;flex-direction:column;gap:7px}.campo.full{grid-column:1/-1}.campo label{font-size:13px;font-weight:800;color:#334155}.campo small{font-size:11px;color:var(--muted)}
+input,select,textarea{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--borda);background:#fff;outline:none;font-size:14px;color:var(--texto);transition:.2s}input:focus,select:focus,textarea:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.10)}textarea{min-height:92px;resize:vertical}.hidden{display:none!important}
+.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:800;font-size:14px;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;justify-content:center;gap:8px}.btn:hover{transform:translateY(-1px);opacity:.94}.btn-primary{background:linear-gradient(135deg,#2563eb,#1263ff);color:#fff;box-shadow:0 8px 18px rgba(37,99,235,.18)}.btn-light{background:#eef2ff;color:#1e40af}.btn-green{background:#dcfce7;color:#15803d}.btn-red{background:#fee2e2;color:#dc2626}.btn-dark{background:#0f172a;color:#fff}.acoes-form{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.acoes-form .btn-primary{flex:1;min-width:190px}
+.loading{display:none;margin-top:14px;padding:12px;border-radius:10px;background:#eff6ff;color:#1e40af;font-size:13px;font-weight:700}.loading.ativo{display:block}
+.resultado-vazio{min-height:250px;border:1px dashed #cbd5e1;border-radius:14px;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;color:#64748b;background:#f8fafc}.resultado-vazio svg{width:52px;height:52px;display:block;margin:0 auto 12px;stroke:#94a3b8;fill:none;stroke-width:1.5}
+.opcoes{display:grid;grid-template-columns:1fr 1fr;gap:14px}.opcao{border:1px solid var(--borda);border-radius:14px;padding:16px;cursor:pointer;transition:.2s;background:#fff}.opcao:hover{border-color:#93c5fd;box-shadow:0 8px 20px rgba(37,99,235,.08)}.opcao.selecionada{border:2px solid var(--azul);background:#eff6ff}.opcao-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.opcao-topo strong{font-size:14px}.opcao-tag{font-size:10px;font-weight:800;color:#1e40af;background:#dbeafe;padding:5px 8px;border-radius:999px}.opcao p{margin:0;white-space:pre-wrap;font-size:13px;line-height:1.55;color:#334155}.editor-wrap{margin-top:16px}.editor-wrap textarea{min-height:165px;line-height:1.55}
+.editor-acoes,.arte-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.status-msg{min-height:20px;margin-top:8px;color:#15803d;font-size:12px;font-weight:700}
+.arte-section{margin-top:18px;border-top:1px solid var(--borda);padding-top:18px}.arte-titulo{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}.arte-titulo h3{margin:0;font-size:16px}.arte-titulo small{color:var(--muted)}
+.arte-preview-wrap{background:#e2e8f0;border-radius:14px;padding:14px;overflow:auto}.arte-preview{width:1080px;height:1080px;position:relative;overflow:hidden;background:linear-gradient(145deg,#061426 0%,#0b2a52 48%,#2563eb 100%);color:#fff;padding:76px;display:flex;flex-direction:column;justify-content:space-between;transform-origin:top left}.arte-preview::before{content:"";position:absolute;width:570px;height:570px;border-radius:50%;background:rgba(255,255,255,.08);right:-180px;top:-160px}.arte-preview::after{content:"";position:absolute;width:420px;height:420px;border-radius:50%;border:55px solid rgba(255,255,255,.06);left:-190px;bottom:-170px}.arte-topo,.arte-conteudo,.arte-rodape{position:relative;z-index:2}.arte-topo{display:flex;align-items:center;justify-content:space-between;gap:30px}.arte-logo-box{height:125px;max-width:420px;background:#fff;border-radius:22px;padding:20px 28px;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 35px rgba(0,0,0,.20)}.arte-logo-box img{max-width:360px;max-height:90px;object-fit:contain}.arte-selo{display:flex;align-items:center;gap:12px;border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.10);border-radius:999px;padding:15px 22px;font-size:22px;font-weight:800;text-transform:uppercase;letter-spacing:1px}.arte-conteudo{margin-top:35px}.arte-tipo{font-size:31px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#bfdbfe}.arte-titulo-principal{font-size:68px;line-height:1.05;margin:20px 0 28px;font-weight:900;max-width:850px}.arte-texto{font-size:31px;line-height:1.42;white-space:pre-wrap;max-width:900px}.arte-rodape{display:flex;justify-content:space-between;align-items:flex-end;border-top:2px solid rgba(255,255,255,.25);padding-top:28px}.arte-dados{font-size:24px;line-height:1.45}.arte-marca{font-size:22px;font-weight:800;text-align:right}.arte-marca small{display:block;font-size:17px;font-weight:400;color:#bfdbfe;margin-top:7px}
+.footer{display:flex;justify-content:space-between;padding:20px 34px;color:#475569;font-size:12px;border-top:1px solid var(--borda)}
+.toast{position:fixed;right:24px;bottom:24px;background:#0f172a;color:#fff;padding:13px 16px;border-radius:10px;box-shadow:0 16px 30px rgba(15,23,42,.25);font-size:13px;font-weight:700;opacity:0;pointer-events:none;transform:translateY(12px);transition:.25s;z-index:99999}.toast.ativo{opacity:1;transform:translateY(0)}
+@media(max-width:1250px){.layout{grid-template-columns:1fr}.arte-preview{transform:scale(.62);margin-bottom:-410px}.arte-preview-wrap{min-height:670px}}
+@media(max-width:900px){.sidebar{display:none}.main{margin-left:0}.header{height:auto;align-items:flex-start;flex-direction:column;gap:15px;padding:20px}.header-actions{width:100%;justify-content:space-between}.content{padding:20px}.form-grid,.opcoes{grid-template-columns:1fr}.arte-preview{transform:scale(.40);margin-bottom:-635px}.arte-preview-wrap{min-height:445px}}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+    <div class="sidebar-logo"><img id="logoSidebar" src="https://iili.io/CujQzXa.png" data-logo-aberta="https://iili.io/CujQzXa.png" data-logo-fechada="https://iili.io/CuwvauR.png" alt="SGOS"></div>
+    <a href="painel.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg><span>Painel Inicial</span></a>
+    <div class="menu-titulo">Operação</div>
+    <a href="agendamentos.html"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg><span>Agendamentos</span></a>
+    <a href="relatorios.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg><span>Relatórios</span></a>
+    <a href="informativos-ia.html" class="ativo"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg><span>Informativos IA</span></a>
+    <a href="escala.html"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 14h6"/></svg><span>Escala</span></a>
+    <a href="cronograma.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg><span>Cronograma</span></a>
+    <a href="viabilidade.html"><svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg><span>Viabilidades</span></a>
+    <a href="inviabilidade.html"><svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg><span>Inviabilidades</span></a>
+    <div class="menu-titulo">Cadastros</div>
+    <a href="planos.html"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span>Planos</span></a>
+    <a href="localidades.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Localidades</span></a>
+    <a href="tecnicos.html"><svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg><span>Técnicos</span></a>
+    <a href="tipos_servicos.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.5 2.5-3-3z"/></svg><span>Tipos de Serviços</span></a>
+    <div class="menu-titulo">Configurações</div>
+    <a href="usuarios.html"><svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg><span>Usuários</span></a>
+    <a href="historico-os.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/><path d="M12 8v5l3 2"/></svg><span>Histórico de OS</span></a>
+    <div class="sidebar-footer"><button class="btn-recolher" onclick="toggleSidebar()" type="button"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M2 12h20"/></svg><span>Recolher menu</span></button></div>
+</aside>
+
+<main class="main">
+<header class="header">
+    <div class="header-left"><div class="header-logo"><img id="logoEmpresa" src="/img/logo-default.png" alt="Logo Empresa"></div><div class="divisor"></div><div class="header-title">Informativos com IA</div></div>
+    <div class="header-actions">
+        <div class="notificacao"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span>5</span></div>
+        <div class="usuario-dropdown" id="usuarioDropdown">
+            <button class="usuario-btn" onclick="toggleUserDropdown()" type="button"><div class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22c1.6-5 14.4-5 16 0"/></svg></div><div class="usuario-info"><strong id="userEmpresa">Carregando...</strong><small id="empresaLogada">Empresa</small></div><svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+            <div class="usuario-menu" id="usuarioMenuDropdown"><div class="usuario-menu-titulo">Usuários online</div><div id="usuariosOnline">Carregando...</div><hr><a href="#" onclick="logout()">Sair</a></div>
+        </div>
+    </div>
+</header>
+
+<section class="content">
+    <div class="page-title"><div><h2>Gerador rápido de informativos</h2><p>Preencha os dados da ocorrência, escolha uma das sugestões e gere uma arte pronta para divulgação.</p></div><span class="badge-ia">✦ Inteligência Artificial</span></div>
+
+    <div class="layout">
+        <div class="card">
+            <h3 class="card-title">Dados do informativo</h3><p class="card-subtitle">As informações serão usadas para gerar duas versões de texto.</p>
+            <div class="form-grid">
+                <div class="campo full"><label for="tipo">Tipo de ocorrência *</label><select id="tipo"><option value="">Selecione</option><option value="manutencao_preventiva">Manutenção preventiva</option><option value="manutencao_emergencial">Manutenção emergencial</option><option value="sem_conexao">Sem conexão</option><option value="oscilacao">Oscilação</option><option value="rompimento">Rompimento</option><option value="outro">Outro</option></select></div>
+                <div class="campo full hidden" id="campoOutro"><label for="tipoOutro">Descreva o tipo *</label><input id="tipoOutro" type="text" placeholder="Ex.: Falha em equipamento de distribuição"></div>
+                <div class="campo"><label for="inicio">Data e hora de início *</label><input id="inicio" type="datetime-local"></div>
+                <div class="campo"><label for="previsao">Previsão de finalização</label><input id="previsao" type="datetime-local"><small>Deixe vazio caso ainda não exista previsão.</small></div>
+                <div class="campo full"><label for="localidade">Localidade <span style="font-weight:400;color:#64748b;">(opcional)</span></label><input id="localidade" list="listaLocalidades" type="text" placeholder="Digite ou selecione a localidade, se necessário"><datalist id="listaLocalidades"></datalist></div>
+                <div class="campo full"><label for="detalhes">Detalhes adicionais</label><textarea id="detalhes" placeholder="Digite as informações do seu jeito. A IA irá corrigir, organizar e transformar em um texto profissional, com ortografia e capitalização adequadas."></textarea><small>Você pode escrever palavras soltas ou frases simples. A IA fará a revisão antes de incluir no informativo.</small></div>
+                <div class="campo full"><label for="tom">Tom do comunicado</label><select id="tom"><option value="profissional">Profissional e objetivo</option><option value="acolhedor">Acolhedor e transparente</option><option value="urgente">Urgente e direto</option></select></div>
+            </div>
+            <div class="acoes-form"><button class="btn btn-primary" type="button" onclick="gerarInformativos()">✦ Gerar informativo</button><button class="btn btn-light" type="button" onclick="limparTudo()">Limpar</button></div>
+            <div class="loading" id="loading">Gerando duas sugestões de informativo...</div>
+        </div>
+
+        <div class="card">
+            <div id="resultadoVazio" class="resultado-vazio"><div><svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M5 15l1 2.4L8.5 18 6 19l-1 2.5L4 19l-2.5-1L4 17.4z"/></svg><strong>O informativo aparecerá aqui</strong><p>Preencha os dados ao lado e clique em “Gerar informativo”.</p></div></div>
+            <div id="resultado" class="hidden">
+                <h3 class="card-title">Escolha uma opção</h3><p class="card-subtitle">Clique em uma sugestão para editar e usar na imagem.</p>
+                <div class="opcoes"><div class="opcao" id="opcao1" onclick="selecionarOpcao(0)"><div class="opcao-topo"><strong>Opção 1</strong><span class="opcao-tag">Objetiva</span></div><p id="textoOpcao1"></p></div><div class="opcao" id="opcao2" onclick="selecionarOpcao(1)"><div class="opcao-topo"><strong>Opção 2</strong><span class="opcao-tag">Humanizada</span></div><p id="textoOpcao2"></p></div></div>
+                <div class="editor-wrap"><div class="campo"><label for="textoEditavel">Texto selecionado e editável</label><textarea id="textoEditavel" oninput="atualizarArte()"></textarea></div><div class="editor-acoes"><button class="btn btn-light" onclick="copiarTexto()">Copiar texto</button><button class="btn btn-green" onclick="atualizarArte()">Atualizar imagem</button></div><div class="status-msg" id="statusTexto"></div></div>
+                <div class="arte-section"><div class="arte-titulo"><div><h3>Imagem do informativo</h3><small>A arte usa automaticamente a logo da empresa logada.</small></div></div><div class="arte-preview-wrap"><div class="arte-preview" id="artePreview"><div class="arte-topo"><div class="arte-logo-box"><img id="arteLogo" src="/img/logo-default.png" alt="Logo da empresa"></div><div class="arte-selo">Aviso importante</div></div><div class="arte-conteudo"><div class="arte-tipo" id="arteTipo">INFORMATIVO</div><div class="arte-titulo-principal" id="arteTitulo">Comunicado aos clientes</div><div class="arte-texto" id="arteTexto"></div></div><div class="arte-rodape"><div class="arte-dados" id="arteDados"></div><div class="arte-marca"><span id="arteEmpresa">Empresa</span><small>Informativo gerado pelo SGOS</small></div></div></div></div><div class="arte-acoes"><button class="btn btn-dark" onclick="copiarImagem()">Copiar imagem</button><button class="btn btn-primary" onclick="baixarImagem()">Baixar PNG</button></div><div class="status-msg" id="statusImagem"></div></div>
+            </div>
+        </div>
+    </div>
+</section>
+<footer class="footer"><span>SGOS - Sistema de Gestão de Ordens de Serviço</span><span>Versão 1.0.0</span></footer>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+let sugestoes=[];let empresaAtual={};
+const nomesTipos={manutencao_preventiva:"Manutenção preventiva",manutencao_emergencial:"Manutenção emergencial",sem_conexao:"Sem conexão",oscilacao:"Oscilação",rompimento:"Rompimento",outro:"Outro"};
+function usuarioLocal(){return JSON.parse(localStorage.getItem("usuario")||"{}")}function esc(v){return String(v||"").trim()}
+function formatarDataHora(valor){if(!valor)return "Sem previsão informada";const d=new Date(valor);if(isNaN(d))return valor;return d.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}
+function dadosFormulario(){const tipo=document.getElementById("tipo").value;return{tipo,tipo_label:tipo==="outro"?esc(document.getElementById("tipoOutro").value):nomesTipos[tipo],inicio:document.getElementById("inicio").value,previsao:document.getElementById("previsao").value,localidade:esc(document.getElementById("localidade").value),detalhes:esc(document.getElementById("detalhes").value),tom:document.getElementById("tom").value}}
+function validar(d){if(!d.tipo){alert("Selecione o tipo de ocorrência.");return false}if(d.tipo==="outro"&&!d.tipo_label){alert("Descreva o tipo da ocorrência.");return false}if(!d.inicio){alert("Informe a data e hora de início.");return false}return true}
+function previsaoTexto(d){return d.previsao?`A previsão de normalização é ${formatarDataHora(d.previsao)}.`:"Neste momento, ainda não há previsão confirmada para a normalização."}
+function corrigirTextoBasico(texto){let t=String(texto||"").trim().replace(/\s+/g," ");if(!t)return "";t=t.toLocaleLowerCase("pt-BR");t=t.charAt(0).toLocaleUpperCase("pt-BR")+t.slice(1);if(!/[.!?]$/.test(t))t+=".";return t}
+function normalizarInformativo(texto){return String(texto||"").split("\n").map(linha=>{const t=linha.trim();if(!t)return "";if(t.length<=45&&t===t.toUpperCase())return t.charAt(0).toLocaleUpperCase("pt-BR")+t.slice(1).toLocaleLowerCase("pt-BR");return t.charAt(0).toLocaleUpperCase("pt-BR")+t.slice(1)}).join("\n").replace(/\n{3,}/g,"\n\n").trim()}
+function gerarFallback(d){const inicio=formatarDataHora(d.inicio);const extra=d.detalhes?` ${corrigirTextoBasico(d.detalhes)}`:"";const tipo=String(d.tipo_label||"").toLocaleLowerCase("pt-BR");const local1=d.localidade?` na localidade ${d.localidade}`:"";const titulo2=d.localidade?`Atenção, clientes de ${d.localidade}`:"Atenção, clientes";return[
+`Informativo\n\nInformamos que identificamos uma ocorrência de ${tipo}${local1}, com início em ${inicio}. ${previsaoTexto(d)}${extra}\n\nNossa equipe está atuando para restabelecer os serviços o mais breve possível. Agradecemos a compreensão.`,
+`${titulo2}\n\nDesde ${inicio}, os serviços podem apresentar impactos devido a ${tipo}. ${previsaoTexto(d)}${extra}\n\nAs equipes responsáveis já estão trabalhando na ocorrência. Pedimos desculpas pelos transtornos e manteremos todos informados sobre novas atualizações.`
+].map(normalizarInformativo)}
+async function gerarInformativos(){const d=dadosFormulario();if(!validar(d))return;const loading=document.getElementById("loading");loading.classList.add("ativo");try{const u=usuarioLocal();let resposta=null;const payload={...d,instrucoes_ia:{quantidade_opcoes:2,idioma:"pt-BR",corrigir_ortografia:true,corrigir_gramatica:true,reescrever_detalhes_adicionais:true,usar_detalhes_como_contexto:true,capitalizacao:"Texto normal, com letras maiúsculas e minúsculas corretamente; não escrever títulos ou parágrafos inteiros em caixa alta.",estilo:"Comunicado profissional, claro, objetivo e natural.",localidade_opcional:true,regra_localidade:"Quando a localidade estiver vazia, não mencionar localidade e não criar informação."}};try{const r=await fetch("/api/ia/informativos/gerar",{method:"POST",headers:{"Content-Type":"application/json","x-usuario-id":u.id||""},body:JSON.stringify(payload)});if(r.ok)resposta=await r.json()}catch(e){console.warn("API de IA indisponível; usando modelos locais.",e)}
+const lista=resposta?.opcoes||resposta?.informativos||resposta?.textos;sugestoes=Array.isArray(lista)&&lista.length>=2?lista.slice(0,2).map(normalizarInformativo):gerarFallback(d);document.getElementById("textoOpcao1").innerText=sugestoes[0];document.getElementById("textoOpcao2").innerText=sugestoes[1];document.getElementById("resultadoVazio").classList.add("hidden");document.getElementById("resultado").classList.remove("hidden");selecionarOpcao(0);mostrarToast(resposta?"Informativos revisados e gerados com IA.":"Informativos gerados com revisão local.")}catch(e){console.error(e);alert("Não foi possível gerar o informativo.")}finally{loading.classList.remove("ativo")}}
+function selecionarOpcao(i){document.querySelectorAll(".opcao").forEach((el,idx)=>el.classList.toggle("selecionada",idx===i));document.getElementById("textoEditavel").value=sugestoes[i]||"";atualizarArte()}
+function tituloArte(d){const mapa={manutencao_preventiva:"Manutenção programada",manutencao_emergencial:"Manutenção emergencial",sem_conexao:"Indisponibilidade de conexão",oscilacao:"Oscilação no serviço",rompimento:"Rompimento de rede",outro:d.tipo_label};return mapa[d.tipo]||"Comunicado aos clientes"}
+function atualizarArte(){const d=dadosFormulario();document.getElementById("arteTipo").innerText=(d.tipo_label||"INFORMATIVO").toUpperCase();document.getElementById("arteTitulo").innerText=tituloArte(d);document.getElementById("arteTexto").innerText=document.getElementById("textoEditavel").value||"";document.getElementById("arteDados").innerText=`${d.localidade?`Localidade: ${d.localidade}\n`:""}Início: ${formatarDataHora(d.inicio)}\nPrevisão: ${d.previsao?formatarDataHora(d.previsao):"A confirmar"}`;document.getElementById("arteEmpresa").innerText=empresaAtual.nome_provedor||empresaAtual.nome_fantasia||empresaAtual.nome||document.getElementById("empresaLogada").innerText||"Empresa"}
+async function copiarTexto(){const txt=document.getElementById("textoEditavel").value;await navigator.clipboard.writeText(txt);document.getElementById("statusTexto").innerText="Texto copiado para a área de transferência.";mostrarToast("Texto copiado.")}
+async function canvasArte(){atualizarArte();return await html2canvas(document.getElementById("artePreview"),{backgroundColor:null,scale:1,useCORS:true,allowTaint:false,logging:false})}
+async function baixarImagem(){try{const c=await canvasArte();const a=document.createElement("a");a.download=`informativo-${Date.now()}.png`;a.href=c.toDataURL("image/png");a.click();document.getElementById("statusImagem").innerText="Imagem gerada em PNG."}catch(e){console.error(e);alert("Não foi possível gerar a imagem. Verifique se a logo permite carregamento externo.")}}
+async function copiarImagem(){try{if(!navigator.clipboard||!window.ClipboardItem)throw new Error("Navegador sem suporte");const c=await canvasArte();const blob=await new Promise(resolve=>c.toBlob(resolve,"image/png"));await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);document.getElementById("statusImagem").innerText="Imagem copiada para a área de transferência.";mostrarToast("Imagem copiada.")}catch(e){console.warn(e);alert("Seu navegador não permitiu copiar a imagem. Use o botão Baixar PNG.")}}
+function limparTudo(){["tipo","tipoOutro","inicio","previsao","localidade","detalhes"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=""});document.getElementById("tom").value="profissional";document.getElementById("campoOutro").classList.add("hidden");document.getElementById("resultado").classList.add("hidden");document.getElementById("resultadoVazio").classList.remove("hidden");sugestoes=[]}
+function mostrarToast(msg){const t=document.getElementById("toast");t.innerText=msg;t.classList.add("ativo");clearTimeout(window.__toast);window.__toast=setTimeout(()=>t.classList.remove("ativo"),2600)}
+function toggleSidebar(){const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");s.classList.toggle("recolhida");const fechada=s.classList.contains("recolhida");l.src=fechada?l.dataset.logoFechada:l.dataset.logoAberta;localStorage.setItem("sidebar_recolhida",fechada?"1":"0")}
+function toggleUserDropdown(){document.getElementById("usuarioMenuDropdown").classList.toggle("ativo");document.getElementById("usuarioDropdown").classList.toggle("aberto")}
+document.addEventListener("click",e=>{const b=document.getElementById("usuarioDropdown"),m=document.getElementById("usuarioMenuDropdown");if(b&&!b.contains(e.target)){m.classList.remove("ativo");b.classList.remove("aberto")}})
+function logout(){const logId=localStorage.getItem("log_id");if(logId)fetch("/api/logout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({log_id:logId})}).catch(()=>{});sessionStorage.clear();localStorage.clear();location.href="login.html"}
+function normalizarLogo(logo){if(!logo)return "/img/logo-default.png";if(/^https?:\/\//i.test(logo))return logo;if(logo.startsWith("/"))return logo;return "/"+logo}
+async function carregarUsuarioTopo(){try{const u=usuarioLocal();if(!u.id){location.href="login.html";return}const r=await fetch("/api/me",{headers:{"x-usuario-id":u.id}});const d=await r.json();document.getElementById("userEmpresa").innerText=d.usuario||u.usuario||"Usuário";document.getElementById("empresaLogada").innerText=d.empresa_nome||u.empresa_nome||"Empresa";const logo=normalizarLogo(d.empresa_logo);document.getElementById("logoEmpresa").src=logo;document.getElementById("arteLogo").src=logo;empresaAtual={nome:d.empresa_nome||u.empresa_nome||"Empresa",logo};atualizarArte()}catch(e){console.error(e)}}
+async function carregarEmpresa(){try{const u=usuarioLocal();const r=await fetch("/api/empresa",{headers:{"x-usuario-id":u.id}});if(!r.ok)return;const d=await r.json();empresaAtual={...empresaAtual,...d};const logo=normalizarLogo(d.logo||empresaAtual.logo);document.getElementById("arteLogo").src=logo;atualizarArte()}catch(e){console.warn("Empresa indisponível",e)}}
+async function carregarLocalidades(){try{const u=usuarioLocal();const r=await fetch("/api/localidades",{headers:{"x-usuario-id":u.id}});const lista=await r.json();document.getElementById("listaLocalidades").innerHTML=(Array.isArray(lista)?lista:[]).map(x=>`<option value="${String(x.nome||x.localidade||"").replace(/"/g,"&quot;")}"></option>`).join("")}catch(e){console.warn(e)}}
+async function carregarUsuariosOnlineTopo(){try{const r=await fetch("/api/logs");const logs=await r.json();const nomes=[...new Set((Array.isArray(logs)?logs:[]).filter(x=>!x.logout).map(x=>x.usuario).filter(Boolean))];document.getElementById("usuariosOnline").innerHTML=nomes.length?nomes.map(x=>`🟢 ${x}`).join("<br>"):"Nenhum usuário online"}catch(e){document.getElementById("usuariosOnline").innerText="Online indisponível"}}
+document.getElementById("tipo").addEventListener("change",e=>document.getElementById("campoOutro").classList.toggle("hidden",e.target.value!=="outro"));
+document.addEventListener("DOMContentLoaded",()=>{const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");if(localStorage.getItem("sidebar_recolhida")==="1"){s.classList.add("recolhida");l.src=l.dataset.logoFechada}carregarUsuarioTopo();carregarEmpresa();carregarLocalidades();carregarUsuariosOnlineTopo();const agora=new Date();agora.setMinutes(agora.getMinutes()-agora.getTimezoneOffset());document.getElementById("inicio").value=agora.toISOString().slice(0,16)});setInterval(carregarUsuariosOnlineTopo,300000);
+</script>
+</body>
+</html>
