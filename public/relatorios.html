@@ -666,16 +666,107 @@ td:last-child{
 ================================ */
 .envio-manual{
     display:grid;
-    grid-template-columns:1.5fr 1fr auto;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:16px;
+    align-items:stretch;
+}
+
+.envio-canal{
+    border:1px solid var(--borda);
+    background:#f8fafc;
+    border-radius:14px;
+    padding:18px;
+}
+
+.envio-canal-topo{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:15px;
+}
+
+.envio-canal-icone{
+    width:42px;
+    height:42px;
+    border-radius:13px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex:none;
+}
+
+.envio-canal-icone svg{
+    width:22px;
+    height:22px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:2;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.envio-canal-topo strong{
+    display:block;
+    font-size:15px;
+}
+
+.envio-canal-topo small{
+    color:var(--muted);
+    font-size:12px;
+}
+
+.envio-campos{
+    display:grid;
+    grid-template-columns:1fr 1fr;
     gap:12px;
     align-items:end;
-    margin-bottom:18px;
 }
+
+.envio-campos .campo-largo{ grid-column:1 / -1; }
+
+.status-whatsapp{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    margin-top:10px;
+    font-size:12px;
+    font-weight:700;
+    color:#64748b;
+}
+
+.status-whatsapp::before{
+    content:"";
+    width:8px;
+    height:8px;
+    border-radius:999px;
+    background:#94a3b8;
+}
+
+.status-whatsapp.conectado{ color:#15803d; }
+.status-whatsapp.conectado::before{ background:#22c55e; }
+.status-whatsapp.desconectado{ color:#dc2626; }
+.status-whatsapp.desconectado::before{ background:#ef4444; }
 
 #datasEnvio{
     grid-column:1 / -1;
     display:none;
+    grid-template-columns:1fr 1fr;
     gap:12px;
+    margin-top:16px;
+    padding-top:16px;
+    border-top:1px solid var(--borda);
+}
+
+.btn-whatsapp{
+    background:#16a34a;
+    color:white;
+    box-shadow:0 8px 18px rgba(22,163,74,.18);
+}
+
+.btn[disabled]{
+    opacity:.55;
+    cursor:not-allowed;
+    transform:none !important;
 }
 
 /* ===============================
@@ -1031,35 +1122,66 @@ td:last-child{
         <div class="card" style="margin-top:18px;">
             <h3 class="card-title">Envio manual de relatório</h3>
 
+            <div class="filtro-item" style="max-width:320px;margin-bottom:16px;">
+                <label>Período do relatório</label>
+                <select id="tipoEnvioManual">
+                    <option value="hoje">Hoje</option>
+                    <option value="ontem">Ontem</option>
+                    <option value="semanal">Semanal (7 dias)</option>
+                    <option value="mensal">Mensal (30 dias)</option>
+                    <option value="personalizado">Personalizado</option>
+                </select>
+            </div>
+
+            <div id="datasEnvio">
+                <div class="filtro-item">
+                    <label>Data início</label>
+                    <input type="date" id="envioDataInicio">
+                </div>
+                <div class="filtro-item">
+                    <label>Data fim</label>
+                    <input type="date" id="envioDataFim">
+                </div>
+            </div>
+
             <div class="envio-manual">
-                <div class="filtro-item">
-                    <label>E-mail</label>
-                    <input type="email" id="emailEnvio" placeholder="Digite o e-mail">
+                <div class="envio-canal">
+                    <div class="envio-canal-topo">
+                        <div class="envio-canal-icone icon-blue">
+                            <svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg>
+                        </div>
+                        <div>
+                            <strong>Enviar por e-mail</strong>
+                            <small>O relatório será enviado em PDF.</small>
+                        </div>
+                    </div>
+                    <div class="envio-campos">
+                        <div class="filtro-item campo-largo">
+                            <label>E-mail do destinatário</label>
+                            <input type="email" id="emailEnvio" placeholder="exemplo@empresa.com.br">
+                        </div>
+                        <button id="btnEnviarEmail" class="btn btn-primary campo-largo" onclick="enviarRelatorioManual('email')">Enviar PDF por e-mail</button>
+                    </div>
                 </div>
 
-                <div class="filtro-item">
-                    <label>Tipo de envio</label>
-                    <select id="tipoEnvioManual">
-                        <option value="hoje">Hoje</option>
-                        <option value="ontem">Ontem</option>
-                        <option value="semanal">Semanal (7 dias)</option>
-                        <option value="mensal">Mensal (30 dias)</option>
-                        <option value="personalizado">Personalizado</option>
-                    </select>
-                </div>
-
-                <button class="btn btn-primary" onclick="enviarRelatorioManual()">Enviar agora</button>
-
-                <div id="datasEnvio">
-                    <div class="filtro-item">
-                        <label>Data início</label>
-                        <input type="date" id="envioDataInicio">
+                <div class="envio-canal">
+                    <div class="envio-canal-topo">
+                        <div class="envio-canal-icone icon-green">
+                            <svg viewBox="0 0 24 24"><path d="M20 11.5a8.5 8.5 0 0 1-12.5 7.5L3 20l1.1-4A8.5 8.5 0 1 1 20 11.5z"/><path d="M8.5 8.5c.5 2.8 2.2 4.5 5 5"/></svg>
+                        </div>
+                        <div>
+                            <strong>Enviar por WhatsApp</strong>
+                            <small>Disponível quando o WhatsApp da empresa estiver conectado.</small>
+                        </div>
                     </div>
-
-                    <div class="filtro-item">
-                        <label>Data fim</label>
-                        <input type="date" id="envioDataFim">
+                    <div class="envio-campos">
+                        <div class="filtro-item campo-largo">
+                            <label>Número do WhatsApp</label>
+                            <input type="tel" id="telefoneWhatsappEnvio" inputmode="numeric" placeholder="5573999999999" maxlength="15">
+                        </div>
+                        <button id="btnEnviarWhatsapp" class="btn btn-whatsapp campo-largo" onclick="enviarRelatorioManual('whatsapp')" disabled>Enviar PDF por WhatsApp</button>
                     </div>
+                    <div id="statusWhatsappRelatorio" class="status-whatsapp">Verificando conexão...</div>
                 </div>
             </div>
         </div>
@@ -2601,44 +2723,164 @@ async function exportarPDF(){
 
 
 // ===============================
-// 🔥 ENVIAR RELATÓRIO
+// 🔥 ENVIAR RELATÓRIO MANUAL (E-MAIL / WHATSAPP)
 // ===============================
-async function enviarRelatorioManual(){
+function dataUriParaBlob(dataUri){
+    const base64Clean = String(dataUri || "").replace(/^data:application\/pdf.*base64,/, "");
+    const bytes = atob(base64Clean);
+    const array = new Uint8Array(bytes.length);
+
+    for(let i = 0; i < bytes.length; i++){
+        array[i] = bytes.charCodeAt(i);
+    }
+
+    return new Blob([array], { type:"application/pdf" });
+}
+
+function obterNomeRelatorioManual(){
+    const tipo = document.getElementById("tipoEnvioManual")?.value || "hoje";
+    const hoje = new Date().toLocaleDateString("pt-BR").replaceAll("/", "-");
+    const nomes = {
+        hoje:"Relatorio-Diario",
+        ontem:"Relatorio-Ontem",
+        semanal:"Relatorio-Semanal",
+        mensal:"Relatorio-Mensal",
+        personalizado:"Relatorio-Personalizado"
+    };
+    return `${nomes[tipo] || "Relatorio"}-${hoje}.pdf`;
+}
+
+function normalizarTelefoneWhatsapp(valor){
+    let numero = String(valor || "").replace(/\D/g, "");
+    if(numero.startsWith("0")) numero = numero.substring(1);
+    if(numero && !numero.startsWith("55")) numero = "55" + numero;
+    return numero;
+}
+
+async function verificarStatusWhatsappRelatorio(){
+    const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+    const empresaId = usuario.empresa_id || usuario.empresaId;
+    const statusEl = document.getElementById("statusWhatsappRelatorio");
+    const botao = document.getElementById("btnEnviarWhatsapp");
+
+    if(!statusEl || !botao) return;
+
+    if(!empresaId){
+        statusEl.textContent = "Empresa do usuário não identificada";
+        statusEl.className = "status-whatsapp desconectado";
+        botao.disabled = true;
+        return;
+    }
 
     try{
+        const resposta = await fetch(`/api/whatsapp/status/${empresaId}`, {
+            headers:{ "x-usuario-id": usuario.id }
+        });
+        const dados = await resposta.json();
+        const conectado = resposta.ok && dados.status === "conectado";
 
-        const email = document.getElementById("emailEnvio")?.value;
+        statusEl.textContent = conectado
+            ? "WhatsApp conectado e pronto para envio"
+            : "WhatsApp desconectado";
+        statusEl.className = conectado
+            ? "status-whatsapp conectado"
+            : "status-whatsapp desconectado";
+        botao.disabled = !conectado;
+    }catch(erro){
+        console.error("Erro ao consultar WhatsApp:", erro);
+        statusEl.textContent = "Não foi possível verificar a conexão";
+        statusEl.className = "status-whatsapp desconectado";
+        botao.disabled = true;
+    }
+}
 
-        if(!email){
-            alert("Informe um e-mail");
+async function enviarRelatorioManual(canal = "email"){
+    const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+    const tipo = document.getElementById("tipoEnvioManual")?.value || "hoje";
+    const dataInicioManual = document.getElementById("envioDataInicio")?.value || "";
+    const dataFimManual = document.getElementById("envioDataFim")?.value || "";
+    const botao = canal === "whatsapp"
+        ? document.getElementById("btnEnviarWhatsapp")
+        : document.getElementById("btnEnviarEmail");
+
+    try{
+        let destino = "";
+
+        if(canal === "email"){
+            destino = document.getElementById("emailEnvio")?.value.trim();
+            if(!destino){
+                alert("Informe o e-mail do destinatário.");
+                return;
+            }
+        }else{
+            destino = normalizarTelefoneWhatsapp(
+                document.getElementById("telefoneWhatsappEnvio")?.value
+            );
+            if(destino.length < 12 || destino.length > 13){
+                alert("Informe um número válido com DDD. Exemplo: 5573999999999");
+                return;
+            }
+        }
+
+        if(tipo === "personalizado" && (!dataInicioManual || !dataFimManual)){
+            alert("Informe a data inicial e a data final.");
             return;
         }
 
-        const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
-
-        const res = await fetch("/api/relatorios/enviar-manual", {
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json",
-                "x-usuario-id": usuario.id
-            },
-            body: JSON.stringify({
-                email,
-                pdfBase64: await gerarPDFRelatorio()
-            })
-        });
-
-        const data = await res.json();
-
-        if(data.ok){
-            alert("📧 Enviado com sucesso!");
-        }else{
-            alert("Erro ao enviar");
+        if(botao){
+            botao.disabled = true;
+            botao.dataset.textoOriginal = botao.textContent;
+            botao.textContent = "Gerando PDF...";
         }
 
+        const pdfDataUri = await gerarPDFRelatorio();
+        const pdfBlob = dataUriParaBlob(pdfDataUri);
+        const formData = new FormData();
+
+        formData.append("pdf", pdfBlob, obterNomeRelatorioManual());
+        formData.append("periodo", tipo);
+        formData.append("dataInicio", dataInicioManual);
+        formData.append("dataFim", dataFimManual);
+
+        let endpoint;
+        if(canal === "email"){
+            endpoint = "/api/relatorios/enviar-manual";
+            formData.append("email", destino);
+        }else{
+            endpoint = "/api/relatorios/enviar-whatsapp-manual";
+            formData.append("telefone", destino);
+        }
+
+        if(botao) botao.textContent = "Enviando...";
+
+        const resposta = await fetch(endpoint, {
+            method:"POST",
+            headers:{ "x-usuario-id": usuario.id },
+            body:formData
+        });
+
+        const texto = await resposta.text();
+        let dados = {};
+        try{ dados = JSON.parse(texto); }
+        catch{ dados = { erro:texto || "Resposta inválida do servidor" }; }
+
+        if(!resposta.ok || !dados.ok){
+            throw new Error(dados.erro || dados.mensagem || `Erro ${resposta.status}`);
+        }
+
+        alert(canal === "whatsapp"
+            ? "✅ Relatório enviado pelo WhatsApp!"
+            : "✅ Relatório enviado por e-mail!");
+
     }catch(err){
-        console.error("Erro envio:", err);
-        alert("Erro ao enviar relatório");
+        console.error("Erro no envio manual:", err);
+        alert(`Erro ao enviar relatório: ${err.message}`);
+    }finally{
+        if(botao){
+            botao.textContent = botao.dataset.textoOriginal || "Enviar agora";
+            botao.disabled = false;
+            if(canal === "whatsapp") verificarStatusWhatsappRelatorio();
+        }
     }
 }
 
@@ -2683,6 +2925,7 @@ function exportarXML(){
 // ===============================
 window.exportarPDF = exportarPDF;
 window.enviarRelatorioManual = enviarRelatorioManual;
+window.verificarStatusWhatsappRelatorio = verificarStatusWhatsappRelatorio;
 window.exportarXML = exportarXML;
 window.setPeriodo = setPeriodo;
 window.aplicarFiltros = aplicarFiltros;
@@ -2700,6 +2943,16 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("Erro ao iniciar:", e);
     }
 
+    verificarStatusWhatsappRelatorio();
+    setInterval(verificarStatusWhatsappRelatorio, 30000);
+
+    const telefoneWhatsapp = document.getElementById("telefoneWhatsappEnvio");
+    if(telefoneWhatsapp){
+        telefoneWhatsapp.addEventListener("input", () => {
+            telefoneWhatsapp.value = telefoneWhatsapp.value.replace(/\D/g, "").slice(0, 15);
+        });
+    }
+
     const tipoEnvio = document.getElementById("tipoEnvioManual");
     const box = document.getElementById("datasEnvio");
 
@@ -2707,7 +2960,7 @@ document.addEventListener("DOMContentLoaded", () => {
         tipoEnvio.addEventListener("change", (e)=>{
             box.style.display =
                 e.target.value === "personalizado"
-                ? "block"
+                ? "grid"
                 : "none";
         });
     }
