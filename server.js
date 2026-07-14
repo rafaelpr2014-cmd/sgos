@@ -105,13 +105,13 @@ app.use(cors());
 
 // 🔥 IMPORTANTE: JSON só para rotas JSON (não quebra FormData)
 app.use(express.json({
-    limit: "10mb",
+    limit: "100mb",
     type: "application/json"
 }));
 
 app.use(express.urlencoded({
     extended: true,
-    limit: "10mb"
+    limit: "100mb"
 }));
 
 // ===============================
