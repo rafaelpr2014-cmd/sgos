@@ -25,6 +25,7 @@ const osAvulsasRoutes = require("./routes/os-avulsas.routes");
 const cronJobs = require("./cron/jobs");
 const pushRoutes = require("./routes/push.routes");
 const pushService = require("./services/push.service");
+const relatoriosAutomaticosRoutes = require('./routes/relatorios-automaticos.routes');
 
 
 // ===============================
@@ -147,7 +148,9 @@ app.use("/api/push", pushRoutes(pool, verificarAutenticacao));
 app.use("/api/servicos-pendentes", servicosPendentesRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/inviabilidades", inviabilidadeRoutes);
+app.use('/api/relatorios-automaticos', relatoriosAutomaticosRoutes(pool, verificarAutenticacao));
 app.use("/api/svas", svasRoutes);
+
 
 // ===============================
 // APP MOBILE
