@@ -8,6 +8,7 @@ const { Server } = require("socket.io");
 const integracoesRoutes = require("./routes/integracoes.routes");
 const servicosPendentesRoutes = require("./routes/servicos-pendentes.routes");
 const inviabilidadeRoutes = require("./routes/inviabilidades.routes");
+const viabilidadeRoutes = require("./routes/viabilidade.routes");
 const svasRoutes = require("./routes/svas.routes");
 
 
@@ -157,6 +158,7 @@ app.use("/api/push", pushRoutes(pool, verificarAutenticacao));
 app.use("/api/servicos-pendentes", servicosPendentesRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/inviabilidades", inviabilidadeRoutes);
+app.use("/api", viabilidadeRoutes(pool, verificarAutenticacao));
 app.use('/api/relatorios-automaticos', relatoriosAutomaticosRoutes(pool, verificarAutenticacao));
 app.use("/api/svas", svasRoutes);
 

@@ -190,7 +190,7 @@ function anexosDoRegistro(o){
     if(typeof lista==="string"){try{const j=JSON.parse(lista);lista=Array.isArray(j)?j:[lista]}catch{lista=lista.split(",").map(x=>x.trim()).filter(Boolean)}}
     if(!Array.isArray(lista))lista=[];
     [o.anexo,o.arquivo,o.anexo_path,o.arquivo_path,o.evidencia].forEach(x=>{if(x&&!lista.includes(x))lista.push(x)});
-    return lista.filter(Boolean).map(x=>typeof x==="object"?(x.url||x.path||x.caminho||x.arquivo):x).filter(Boolean);
+    return lista.filter(Boolean).map(x=>typeof x==="object"?(x.url||x.path||x.caminho||x.arquivo||x.nome_arquivo):x).filter(Boolean);
 }
 function getUrl(src){if(!src)return"";const s=String(src).replace(/\\/g,"/");if(/^https?:\/\//i.test(s))return s;if(s.startsWith("/"))return s;if(s.startsWith("uploads/"))return "/"+s;const i=s.indexOf("uploads/");return i>=0?"/"+s.slice(i):"/uploads/"+s.split("/").pop()}
 function ehVideo(url){return /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url)}
@@ -204,7 +204,7 @@ async function carregarUsuario(){
     document.getElementById("cadastradoPor").value=local.usuario||local.nome||"";
     try{const r=await fetch("/api/me",{headers:{"x-usuario-id":local.id}});const d=await r.json();if(d?.usuario){document.getElementById("userEmpresa").innerText=d.usuario;document.getElementById("empresaLogada").innerText=d.empresa_nome||local.empresa_nome||"Empresa";document.getElementById("cadastradoPor").value=d.usuario;const logo=d.empresa_logo;document.getElementById("logoEmpresa").src=logo?(logo.startsWith("/")?logo:"/"+logo):"/img/logo-default.png"}}catch(e){console.error(e);document.getElementById("userEmpresa").innerText=local.usuario||"Administrador"}
 }
-async function carregarUsuariosOnline(){try{const r=await fetch("/api/logs");const logs=await r.json();const n=[...new Set((Array.isArray(logs)?logs:[]).filter(x=>!x.logout).map(x=>x.usuario).filter(Boolean))];document.getElementById("usuariosOnline").innerHTML=n.length?n.map(x=>`🟢 ${escapar(x)}`).join("<br>"):"Nenhum usuário online"}catch{document.getElementById("usuariosOnline").innerText="Online indisponível"}}
+async function carregarUsuariosOnline(){try{const u=usuarioLocal();const r=await fetch("/api/logs",{headers:{"x-empresa-id":u.empresa_id||"","x-usuario-id":u.id||""}});const logs=await r.json();const n=[...new Set((Array.isArray(logs)?logs:[]).filter(x=>!x.logout).map(x=>x.usuario).filter(Boolean))];document.getElementById("usuariosOnline").innerHTML=n.length?n.map(x=>`🟢 ${escapar(x)}`).join("<br>"):"Nenhum usuário online"}catch{document.getElementById("usuariosOnline").innerText="Online indisponível"}}
 function logout(){const id=localStorage.getItem("log_id");if(id)fetch("/api/logout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({log_id:id})}).catch(()=>{});sessionStorage.clear();localStorage.clear();location.href="login.html"}
 
 function atualizarHorario(){document.getElementById("registradoEm").value=new Date().toLocaleString("pt-BR")}
