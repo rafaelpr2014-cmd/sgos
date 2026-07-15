@@ -3010,46 +3010,47 @@ document.addEventListener("click", function(e){
 
 async function carregarUsuarioTopo() {
     try {
-        const userLocal = JSON.parse(localStorage.getItem("usuario") || "{}");
-
-        if (!userLocal?.id) {
-            window.location.href = "login.html";
-            return;
-        }
+        const data = typeof fetchAuth === "function"
+            ? await fetchAuth("/api/me")
+            : await fetch("/api/me", {
+                credentials: "include",
+                headers: { "Content-Type": "application/json" }
+            }).then(async res => {
+                const body = await res.json();
+                if (!res.ok) throw new Error(body.erro || "Não autenticado");
+                return body;
+            });
 
         const userEmpresaEl = document.getElementById("userEmpresa");
         const empresaLogadaEl = document.getElementById("empresaLogada");
 
-        const res = await fetch("/api/me", {
-            headers: { "x-usuario-id": userLocal.id }
-        });
+        if (userEmpresaEl) {
+            userEmpresaEl.innerText = data?.usuario || "Administrador";
+        }
 
-        const data = await res.json();
+        if (empresaLogadaEl) {
+            empresaLogadaEl.innerText = data?.empresa_nome || "Empresa";
+        }
 
-        if (data?.usuario) {
-            if(userEmpresaEl) userEmpresaEl.innerText = data.usuario;
+        const logo = data?.empresa_logo;
+        const logoEl = document.getElementById("logoEmpresa");
 
-            if(empresaLogadaEl){
-                empresaLogadaEl.innerText =
-                    data.empresa_nome ||
-                    userLocal.empresa_nome ||
-                    "Empresa";
-            }
-
-            const logo = data.empresa_logo;
-            const logoEl = document.getElementById("logoEmpresa");
-
-            const logoFinal = logo
+        if (logoEl) {
+            logoEl.src = logo
                 ? (logo.startsWith("/") ? logo : "/" + logo)
                 : "/img/logo-default.png";
-
-            if (logoEl) logoEl.src = logoFinal;
         }
 
     } catch (err) {
-        console.error("Erro ao carregar usuário:", err);
+        // Não cria um segundo redirecionamento concorrendo com auth.js.
+        // O próprio fetchAuth já trata sessão realmente expirada.
+        console.error("Erro ao carregar usuário do topo:", err);
+
         const userEmpresaEl = document.getElementById("userEmpresa");
-        if(userEmpresaEl) userEmpresaEl.innerText = "Administrador";
+        const empresaLogadaEl = document.getElementById("empresaLogada");
+
+        if (userEmpresaEl) userEmpresaEl.innerText = "Usuário";
+        if (empresaLogadaEl) empresaLogadaEl.innerText = "Sessão indisponível";
     }
 }
 

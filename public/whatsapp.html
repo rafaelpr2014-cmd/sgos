@@ -39,6 +39,59 @@ async function desconectar(){if(!confirm('Deseja desconectar e remover a autenti
 async function enviarTeste(){const telefone=document.getElementById('telefoneTeste').value.trim();if(!telefone)return alert('Informe o telefone.');try{await api('/api/whatsapp/central/teste',{method:'POST',body:JSON.stringify({telefone})});alert('Mensagem de teste enviada com sucesso.');carregarLogs()}catch(err){alert(err.message)}}
 async function carregarLogs(){if(!autorizado)return;try{const lista=await api('/api/whatsapp/central/logs?limite=100');const box=document.getElementById('logs');if(!lista.length){box.innerHTML='<div class="empty">Nenhum evento registrado nesta execução.</div>';return}box.innerHTML=lista.map(item=>{const data=new Date(item.criadoEm).toLocaleString('pt-BR');const tipo=item.tipo||'info';return `<div class="log-item"><span>${data}</span><span class="log-tipo log-${tipo}">${tipo}</span><span>${item.mensagem}</span></div>`}).join('')}catch(err){document.getElementById('logs').innerHTML='<div class="empty">Não foi possível carregar os logs.</div>'}}
 function logout(){sessionStorage.clear();localStorage.clear();location.href='login.html'}
-document.addEventListener('DOMContentLoaded',async()=>{try{const user=await api('/api/me');document.getElementById('usuarioNome').textContent=user.usuario||'Administrador';document.getElementById('empresaNome').textContent=user.empresa_nome||'Empresa';const logo=user.empresa_logo;document.getElementById('logoEmpresa').src=logo?(logo.startsWith('/')?logo:'/'+logo):'/img/logo-default.png';if(normalizarEmpresa(user)!=='1'){document.getElementById('bloqueio').style.display='flex';return}autorizado=true;await verificarStatus(true);await carregarLogs();setInterval(()=>verificarStatus(true),4000);setInterval(carregarLogs,15000)}catch(err){location.href='login.html'}})
+document.addEventListener('DOMContentLoaded', async () => {
+    let user;
+
+    // A autenticação é validada exclusivamente pelo mesmo fetchAuth usado no SGOS.
+    // Erros das rotas do WhatsApp não devem ser confundidos com sessão expirada.
+    try {
+        user = typeof fetchAuth === 'function'
+            ? await fetchAuth('/api/me')
+            : await api('/api/me');
+    } catch (err) {
+        console.error('Falha ao validar usuário logado:', err);
+        return;
+    }
+
+    document.getElementById('usuarioNome').textContent =
+        user?.usuario || 'Administrador';
+
+    document.getElementById('empresaNome').textContent =
+        user?.empresa_nome || 'Empresa';
+
+    const logo = user?.empresa_logo;
+    document.getElementById('logoEmpresa').src = logo
+        ? (logo.startsWith('/') ? logo : '/' + logo)
+        : '/img/logo-default.png';
+
+    if (normalizarEmpresa(user) !== '1') {
+        document.getElementById('bloqueio').style.display = 'flex';
+        return;
+    }
+
+    autorizado = true;
+
+    // Falhas no serviço do WhatsApp apenas aparecem no console/tela.
+    // A página não volta mais para o login por causa delas.
+    verificarStatus(true).catch(err =>
+        console.error('Erro ao verificar WhatsApp central:', err)
+    );
+
+    carregarLogs().catch(err =>
+        console.error('Erro ao carregar logs do WhatsApp central:', err)
+    );
+
+    setInterval(() => {
+        verificarStatus(true).catch(err =>
+            console.error('Erro ao atualizar status central:', err)
+        );
+    }, 4000);
+
+    setInterval(() => {
+        carregarLogs().catch(err =>
+            console.error('Erro ao atualizar logs centrais:', err)
+        );
+    }, 15000);
+});
 </script>
 </body></html>

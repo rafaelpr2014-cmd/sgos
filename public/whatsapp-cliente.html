@@ -25,20 +25,62 @@
 <aside class="sidebar"><div class="sidebar-logo"><img src="https://iili.io/CujQzXa.png" alt="SGOS"></div><a href="painel.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg><span>Painel Inicial</span></a><div class="menu-titulo">Comunicação</div><a href="whatsapp.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.9L3 20l1.1-4.7a8.5 8.5 0 1 1 16.9-3.8z"/><path d="M9 8.5c.8 2.2 2.3 3.7 4.5 4.5"/></svg><span>WhatsApp SGOS</span></a><a href="whatsapp-cliente.html" class="ativo"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg><span>WhatsApp da Empresa</span></a><div class="menu-titulo">Operação</div><a href="relatorios.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-8"/></svg><span>Relatórios</span></a><a href="logs_acoes.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h4"/></svg><span>Logs de Ações</span></a><div class="sidebar-footer"><a href="#" onclick="logout();return false"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6"/></svg><span>Sair</span></a></div></aside>
 <main class="main"><header class="header"><div class="header-left"><div class="header-logo"><img id="logoEmpresa" src="/img/logo-default.png" alt="Logo"></div><div class="divisor"></div><div class="header-title"><strong>WhatsApp da Empresa</strong><span>Relatórios manuais e envio de informativos</span></div></div><div class="user-box"><strong id="usuarioNome">Carregando...</strong><small id="empresaNome">Empresa</small></div></header>
 <section class="content"><div class="hero"><div><h1>Sincronize o WhatsApp da sua empresa</h1><p>Conecte o número comercial da sua empresa para enviar relatórios manuais, comunicados e informativos diretamente pelo SGOS.</p></div><div class="badge-restrito">🏢 SESSÃO INDIVIDUAL POR EMPRESA</div></div>
-<div class="cards"><div class="card"><div class="card-header"><div><div class="card-title">Conexão do WhatsApp da empresa</div><div class="card-sub">Leia o QR Code com o número comercial que sua empresa deseja utilizar.</div></div><span id="statusPill" class="status-pill desconectado">Desconectado</span></div><div class="qr-area" id="qrArea"><div class="qr-placeholder">📲</div><strong>Nenhum QR Code ativo</strong><p>Clique em “Gerar QR Code” para iniciar ou recuperar a sessão central.</p></div><div class="actions"><button class="btn-primary" id="btnConectar" onclick="conectar()">Gerar QR Code</button><button class="btn-light" onclick="verificarStatus(true)">Atualizar status</button><button class="btn-danger" id="btnDesconectar" onclick="desconectar()">Desconectar</button></div></div>
+<div class="cards"><div class="card"><div class="card-header"><div><div class="card-title">Conexão do WhatsApp da empresa</div><div class="card-sub">Leia o QR Code com o número comercial que sua empresa deseja utilizar.</div></div><span id="statusPill" class="status-pill desconectado">Desconectado</span></div><div class="qr-area" id="qrArea"><div class="qr-placeholder">📲</div><strong>Nenhum QR Code ativo</strong><p>Clique em “Gerar QR Code” para iniciar ou recuperar a sessão da sua empresa.</p></div><div class="actions"><button class="btn-primary" id="btnConectar" onclick="conectar()">Gerar QR Code</button><button class="btn-light" onclick="verificarStatus(true)">Atualizar status</button><button class="btn-danger" id="btnDesconectar" onclick="desconectar()">Desconectar</button></div></div>
 <div class="card"><div class="card-header"><div><div class="card-title">Informações da sessão</div><div class="card-sub">Dados atuais da conexão vinculada à sua empresa.</div></div></div><div class="info-grid"><div class="info"><small>Finalidade</small><strong>Relatórios manuais e informativos</strong></div><div class="info"><small>Segurança</small><strong>Sessão isolada por empresa</strong></div><div class="info"><small>Número conectado</small><strong id="numeroConectado">Não identificado</strong></div><div class="info"><small>Nome do perfil</small><strong id="nomeConectado">Não identificado</strong></div></div><div class="test-box"><div class="field"><label>Enviar mensagem de teste</label><input id="telefoneTeste" placeholder="Ex.: (73) 99999-9999"></div><div class="actions"><button class="btn-success" onclick="enviarTeste()">Enviar teste</button></div></div><div class="notice"><strong>Atenção:</strong> use um número comercial próprio e evite disparos excessivos. O SGOS mantém esta autenticação separada do WhatsApp central responsável pelos relatórios automáticos.</div></div>
 <div class="card logs-card"><div class="logs-head"><div><div class="card-title">Logs da conexão da empresa</div><div class="card-sub">Eventos recentes da sessão vinculada à empresa logada.</div></div><button class="btn-light" onclick="carregarLogs()">Atualizar logs</button></div><div class="logs" id="logs"><div class="empty">Nenhum log carregado.</div></div></div></div></section></main>
 <script>
 let autorizado=true;
 async function api(url,options={}){const resposta=typeof fetchAuth==='function'?await fetchAuth(url,options):await fetch(url,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});if(resposta&&typeof resposta.json==='function'){const data=await resposta.json();if(!resposta.ok)throw new Error(data.erro||'Erro na requisição');return data}return resposta}
 function normalizarEmpresa(user){return String(user.empresa_id??user.empresaId??user.id_empresa??'')}
-function renderStatus(data={}){const status=data.status||'desconectado';const pill=document.getElementById('statusPill');const nomes={conectado:'Conectado',desconectado:'Desconectado',aguardando_qr:'Aguardando QR Code',iniciando:'Iniciando'};pill.textContent=nomes[status]||status;pill.className='status-pill '+status;document.getElementById('numeroConectado').textContent=data.numero?('+'+data.numero):'Não identificado';document.getElementById('nomeConectado').textContent=data.nome||'Não identificado';document.getElementById('btnDesconectar').disabled=!data.conectado;if(data.conectado){document.getElementById('qrArea').innerHTML='<div class="qr-placeholder">✅</div><strong>WhatsApp conectado</strong><p>A sessão central está pronta para enviar relatórios automáticos.</p>'}}
+function renderStatus(data={}){const status=data.status||'desconectado';const pill=document.getElementById('statusPill');const nomes={conectado:'Conectado',desconectado:'Desconectado',aguardando_qr:'Aguardando QR Code',iniciando:'Iniciando'};pill.textContent=nomes[status]||status;pill.className='status-pill '+status;document.getElementById('numeroConectado').textContent=data.numero?('+'+data.numero):'Não identificado';document.getElementById('nomeConectado').textContent=data.nome||'Não identificado';document.getElementById('btnDesconectar').disabled=!data.conectado;if(data.conectado){document.getElementById('qrArea').innerHTML='<div class="qr-placeholder">✅</div><strong>WhatsApp conectado</strong><p>O WhatsApp da empresa está conectado e pronto para relatórios manuais e informativos.</p>'}}
 async function conectar(){const btn=document.getElementById('btnConectar');btn.disabled=true;btn.textContent='Gerando...';try{const data=await api('/api/whatsapp/cliente/qr');renderStatus(data);if(data.qr){const area=document.getElementById('qrArea');area.innerHTML='';QRCode.toCanvas(data.qr,{width:280,margin:1},(erro,canvas)=>{if(erro)return;area.appendChild(canvas);const p=document.createElement('p');p.textContent='Abra o WhatsApp no celular, acesse Aparelhos conectados e leia este código.';area.appendChild(p)})}else if(data.erro){alert(data.erro)}}catch(err){alert(err.message)}finally{btn.disabled=false;btn.textContent='Gerar QR Code'}}
 async function verificarStatus(silencioso=false){try{const data=await api('/api/whatsapp/cliente/status');renderStatus(data);if(!silencioso&&data.conectado)carregarLogs()}catch(err){if(!silencioso)alert(err.message)}}
 async function desconectar(){if(!confirm('Deseja desconectar e remover a autenticação do WhatsApp da empresa?'))return;try{await api('/api/whatsapp/cliente/desconectar',{method:'POST',body:JSON.stringify({})});document.getElementById('qrArea').innerHTML='<div class="qr-placeholder">📲</div><strong>Sessão desconectada</strong><p>Gere um novo QR Code para autenticar novamente.</p>';renderStatus({status:'desconectado'});carregarLogs()}catch(err){alert(err.message)}}
 async function enviarTeste(){const telefone=document.getElementById('telefoneTeste').value.trim();if(!telefone)return alert('Informe o telefone.');try{await api('/api/whatsapp/cliente/teste',{method:'POST',body:JSON.stringify({telefone})});alert('Mensagem de teste enviada com sucesso.');carregarLogs()}catch(err){alert(err.message)}}
 async function carregarLogs(){try{const lista=await api('/api/whatsapp/cliente/logs?limite=100');const box=document.getElementById('logs');if(!lista.length){box.innerHTML='<div class="empty">Nenhum evento registrado nesta execução.</div>';return}box.innerHTML=lista.map(item=>{const data=new Date(item.criadoEm).toLocaleString('pt-BR');const tipo=item.tipo||'info';return `<div class="log-item"><span>${data}</span><span class="log-tipo log-${tipo}">${tipo}</span><span>${item.mensagem}</span></div>`}).join('')}catch(err){document.getElementById('logs').innerHTML='<div class="empty">Não foi possível carregar os logs.</div>'}}
 function logout(){sessionStorage.clear();localStorage.clear();location.href='login.html'}
-document.addEventListener('DOMContentLoaded',async()=>{try{const user=await api('/api/me');document.getElementById('usuarioNome').textContent=user.usuario||'Administrador';document.getElementById('empresaNome').textContent=user.empresa_nome||'Empresa';const logo=user.empresa_logo;document.getElementById('logoEmpresa').src=logo?(logo.startsWith('/')?logo:'/'+logo):'/img/logo-default.png';await verificarStatus(true);await carregarLogs();setInterval(()=>verificarStatus(true),4000);setInterval(carregarLogs,15000)}catch(err){location.href='login.html'}})
+document.addEventListener('DOMContentLoaded', async () => {
+    let user;
+
+    try {
+        user = typeof fetchAuth === 'function'
+            ? await fetchAuth('/api/me')
+            : await api('/api/me');
+    } catch (err) {
+        console.error('Falha ao validar usuário logado:', err);
+        return;
+    }
+
+    document.getElementById('usuarioNome').textContent =
+        user?.usuario || 'Administrador';
+
+    document.getElementById('empresaNome').textContent =
+        user?.empresa_nome || 'Empresa';
+
+    const logo = user?.empresa_logo;
+    document.getElementById('logoEmpresa').src = logo
+        ? (logo.startsWith('/') ? logo : '/' + logo)
+        : '/img/logo-default.png';
+
+    verificarStatus(true).catch(err =>
+        console.error('Erro ao verificar WhatsApp da empresa:', err)
+    );
+
+    carregarLogs().catch(err =>
+        console.error('Erro ao carregar logs do WhatsApp da empresa:', err)
+    );
+
+    setInterval(() => {
+        verificarStatus(true).catch(err =>
+            console.error('Erro ao atualizar status da empresa:', err)
+        );
+    }, 4000);
+
+    setInterval(() => {
+        carregarLogs().catch(err =>
+            console.error('Erro ao atualizar logs da empresa:', err)
+        );
+    }, 15000);
+});
 </script>
 </body></html>
