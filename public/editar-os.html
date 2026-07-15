@@ -1084,6 +1084,192 @@ button:hover{
 
 <script>
 
+
+// ===============================
+// ERP: PLANO/LOCALIDADE FORA DO CADASTRO
+// ===============================
+function adicionarOpcaoERP(selectId, nome, tipo){
+    const select = document.getElementById(selectId);
+    const texto = String(nome || "").trim();
+    if(!select || !texto) return "";
+
+    const normalizado = typeof normalizarTexto === "function"
+        ? normalizarTexto(texto)
+        : texto.toLowerCase().trim();
+
+    const existente = Array.from(select.options).find(opt => {
+        const nomeOpt = typeof normalizarTexto === "function"
+            ? normalizarTexto(opt.textContent || opt.innerText || "")
+            : String(opt.textContent || "").toLowerCase().trim();
+        return nomeOpt === normalizado;
+    });
+
+    if(existente){
+        select.value = existente.value;
+        select.dispatchEvent(new Event("change"));
+        return existente.value;
+    }
+
+    Array.from(select.options)
+        .filter(opt => opt.dataset?.origemErp === "1")
+        .forEach(opt => opt.remove());
+
+    const option = document.createElement("option");
+    option.value = `erp:${tipo}:${encodeURIComponent(texto)}`;
+    option.textContent = `${texto} (ERP)`;
+    option.dataset.origemErp = "1";
+    option.dataset.nomeErp = texto;
+    option.selected = true;
+
+    select.appendChild(option);
+    select.value = option.value;
+    select.dispatchEvent(new Event("change"));
+    return option.value;
+}
+
+function nomeOpcaoERP(selectId){
+    const select = document.getElementById(selectId);
+    const option = select?.options?.[select.selectedIndex];
+    return String(option?.dataset?.nomeErp || "").trim();
+}
+
+function idNumericoSelect(selectId){
+    const select = document.getElementById(selectId);
+    const valor = String(select?.value || "").trim();
+    if(!valor || valor.startsWith("erp:")) return null;
+    const id = Number(valor);
+    return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function extrairIdCadastroERP(resposta){
+    const candidatos = [
+        resposta?.id,
+        resposta?.insertId,
+        resposta?.data?.id,
+        resposta?.resultado?.id,
+        resposta?.localidade?.id,
+        resposta?.plano?.id
+    ];
+    for(const valor of candidatos){
+        const id = Number(valor);
+        if(Number.isFinite(id) && id > 0) return id;
+    }
+    return null;
+}
+
+async function chamarApiCadastroERP(url, payload){
+    if(typeof apiFetch === "function"){
+        return apiFetch(url, { method:"POST", body:JSON.stringify(payload) });
+    }
+    if(typeof api === "function"){
+        return api(url, { method:"POST", body:JSON.stringify(payload) });
+    }
+    throw new Error("Função de API da página não encontrada.");
+}
+
+async function localizarCadastroPorNome(url, nome){
+    try{
+        let lista;
+        if(typeof apiFetch === "function") lista = await apiFetch(url);
+        else if(typeof api === "function") lista = await api(url);
+        else return null;
+
+        if(!Array.isArray(lista)) return null;
+        const procurado = typeof normalizarTexto === "function"
+            ? normalizarTexto(nome)
+            : String(nome || "").toLowerCase().trim();
+
+        const item = lista.find(registro => {
+            const atual = typeof normalizarTexto === "function"
+                ? normalizarTexto(registro?.nome)
+                : String(registro?.nome || "").toLowerCase().trim();
+            return atual === procurado;
+        });
+
+        const id = Number(item?.id);
+        return Number.isFinite(id) && id > 0 ? id : null;
+    }catch(err){
+        return null;
+    }
+}
+
+async function garantirCadastroERP(tipo, nome){
+    const texto = String(nome || "").trim();
+    if(!texto) return null;
+
+    const configuracao = tipo === "plano"
+        ? {
+            consulta:"/api/planos",
+            tentativas:[
+                ["/api/planos", { nome:texto }],
+                ["/api/planos", { nome:texto, ativo:1 }]
+            ]
+        }
+        : {
+            consulta:"/api/ordens_servico/localidades",
+            tentativas:[
+                ["/api/localidades", { nome:texto, vlan:"" }],
+                ["/api/ordens_servico/localidades", { nome:texto, vlan:"" }]
+            ]
+        };
+
+    const existente = await localizarCadastroPorNome(configuracao.consulta, texto);
+    if(existente) return existente;
+
+    let ultimoErro = null;
+    for(const [url, payload] of configuracao.tentativas){
+        try{
+            const resposta = await chamarApiCadastroERP(url, payload);
+            const idResposta = extrairIdCadastroERP(resposta);
+            if(idResposta) return idResposta;
+
+            const localizado = await localizarCadastroPorNome(configuracao.consulta, texto);
+            if(localizado) return localizado;
+        }catch(err){
+            ultimoErro = err;
+        }
+    }
+
+    throw new Error(
+        `Não foi possível cadastrar automaticamente ${tipo === "plano" ? "o plano" : "a localidade"} "${texto}" no SGOS.` +
+        (ultimoErro?.message ? ` ${ultimoErro.message}` : "")
+    );
+}
+
+async function resolverPlanoLocalidadeERP(){
+    let localidadeId = idNumericoSelect("localidade");
+    let planoId = idNumericoSelect("plano");
+    const nomeLocalidade = nomeOpcaoERP("localidade");
+    const nomePlano = nomeOpcaoERP("plano");
+
+    if(!localidadeId && nomeLocalidade){
+        localidadeId = await garantirCadastroERP("localidade", nomeLocalidade);
+        const select = document.getElementById("localidade");
+        if(select){
+            if(!Array.from(select.options).some(o => Number(o.value) === Number(localidadeId))){
+                select.add(new Option(nomeLocalidade, String(localidadeId), true, true));
+            }
+            select.value = String(localidadeId);
+            select.dispatchEvent(new Event("change"));
+        }
+    }
+
+    if(!planoId && nomePlano){
+        planoId = await garantirCadastroERP("plano", nomePlano);
+        const select = document.getElementById("plano");
+        if(select){
+            if(!Array.from(select.options).some(o => Number(o.value) === Number(planoId))){
+                select.add(new Option(nomePlano, String(planoId), true, true));
+            }
+            select.value = String(planoId);
+            select.dispatchEvent(new Event("change"));
+        }
+    }
+
+    return { localidade:localidadeId, plano:planoId };
+}
+
+
 // ===============================
 // BUSCA ERP / ERP
 // ===============================
@@ -1266,11 +1452,9 @@ function selecionarPlanoPorNome(nomePlanoERP, somenteIXC = false) {
 
     Array.from(select.options).forEach(opt => {
         if (encontrado) return;
-
         const textoOpcao = opt.textContent || opt.innerText || "";
         const nomePlanoSGOS = normalizarTexto(textoOpcao);
 
-        // Regra antiga preservada para MikWeb/SGP e demais ERPs.
         if (nomePlanoSGOS === nomeERP) {
             select.value = opt.value;
             encontrado = true;
@@ -1278,9 +1462,6 @@ function selecionarPlanoPorNome(nomePlanoERP, somenteIXC = false) {
             return;
         }
 
-        // Adaptação SOMENTE para IXC:
-        // compara também removendo preço/observações dos dois lados.
-        // Ex.: ERP "300MEGA R$ 62,90" casa com opção "300MEGA" ou "300MEGA R$ 62,90".
         if (somenteIXC) {
             const nomePlanoSGOSIXC = normalizarTexto(normalizarPlanoIXC(textoOpcao));
             if (nomePlanoSGOSIXC && nomePlanoSGOSIXC === nomeERPIXC) {
@@ -1291,9 +1472,7 @@ function selecionarPlanoPorNome(nomePlanoERP, somenteIXC = false) {
         }
     });
 
-    if (!encontrado) {
-        console.warn("Plano vindo do ERP não encontrado no SGOS:", nomePlanoERP);
-    }
+    if (!encontrado) adicionarOpcaoERP("plano", nomePlanoERP, "plano");
 }
 
 function selecionarLocalidadePorNome(nomeCidadeERP){
@@ -1312,9 +1491,7 @@ function selecionarLocalidadePorNome(nomeCidadeERP){
         }
     });
 
-    if(!encontrado){
-        console.warn("Localidade/Cidade vinda da MikWeb não encontrada no SGOS:", nomeCidadeERP);
-    }
+    if(!encontrado) adicionarOpcaoERP("localidade", nomeCidadeERP, "localidade");
 }
 
 function fecharResultadosMikWeb(){
@@ -2553,6 +2730,15 @@ async function salvarOS(
             return;
         }
 
+        let cadastrosERP;
+        try{
+            cadastrosERP = await resolverPlanoLocalidadeERP();
+        }catch(err){
+            console.error(err);
+            alert(err.message || "Erro ao cadastrar plano/localidade vindos do ERP.");
+            return;
+        }
+
         const dados = {
 
             nome:
@@ -2605,10 +2791,10 @@ async function salvarOS(
                 agendamento_envio.value || null,
 
             localidade:
-                Number(localidade.value),
+                cadastrosERP.localidade,
 
             plano:
-                Number(plano.value),
+                cadastrosERP.plano,
 
             tipo_servico:
                 Number(tipo_servico.value),
