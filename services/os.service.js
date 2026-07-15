@@ -2,7 +2,7 @@ const db = require("../database");
 const {
     enviarMensagem,
     enviarMidia
-} = require("../whatsapp/whatsappService");
+} = require("./whatsappService");
 
 // ===============================
 // 🔧 MAPA DE TÉCNICOS

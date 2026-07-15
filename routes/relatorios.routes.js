@@ -9,7 +9,7 @@ module.exports = (pool, verificarAutenticacao) => {
     });
 
     const { enviarRelatorio } = require("../services/relatorios.service");
-    const { enviarDocumento } = require("./whatsappService");
+    const { enviarDocumento } = require("../services/whatsappService");
 
     router.get("/relatorios", verificarAutenticacao, async (req, res) => {
         try {

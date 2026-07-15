@@ -18,7 +18,7 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 
-const whatsappRoutes = require('./whatsapp/whatsappRoutes');
+const whatsappRoutes = require("./routes/whatsappRoutes");
 const empresaRoutes = require("./routes/empresa.routes");
 const escalaRoutes = require("./routes/escala.routes");
 const osAvulsasRoutes = require("./routes/os-avulsas.routes");
@@ -138,7 +138,7 @@ app.use(
 // ===============================
 // ROTAS
 // ===============================
-app.use('/api/whatsapp', whatsappRoutes);
+app.use("/api/whatsapp", whatsappRoutes);
 app.use("/api/empresa", empresaRoutes);
 app.use("/api/escalas", escalaRoutes);
 app.use("/api/os-avulsas", osAvulsasRoutes(pool));

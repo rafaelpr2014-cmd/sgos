@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { gerarRelatorioEmpresa, enviarRelatorio } = require("../services/relatorios.service");
-const { enviarMidia } = require("../services/whatsappService");
+const { enviarMidiaCentral } = require("../services/whatsappService");
 
 module.exports = (pool, verificarAutenticacao) => {
     router.post("/enviar-manual", verificarAutenticacao, async (req, res) => {
@@ -20,7 +20,7 @@ module.exports = (pool, verificarAutenticacao) => {
             if (["whatsapp", "ambos"].includes(canal)) {
                 const telefone = req.body.telefone;
                 if (!telefone) return res.status(400).json({ erro: "Informe o telefone" });
-                await enviarMidia(empresaId, telefone, rel.buffer, rel.filename, "Relatório SGOS");
+                await enviarMidiaCentral(empresaId, telefone, rel.buffer, rel.filename, "Relatório SGOS");
             }
 
             return res.json({ ok: true, nomeArquivo: rel.filename });
