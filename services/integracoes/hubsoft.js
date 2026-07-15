@@ -168,37 +168,297 @@ function extrairLista(data){
     return [];
 }
 
+function valorObjeto(obj, caminhos = []){
+    for(const caminho of caminhos){
+        const partes = String(caminho).split(".");
+        let atual = obj;
+
+        for(const parte of partes){
+            if(atual == null) break;
+            atual = atual[parte];
+        }
+
+        if(atual !== undefined && atual !== null && String(atual).trim() !== ""){
+            return atual;
+        }
+    }
+
+    return "";
+}
+
+function somenteDigitos(valor){
+    return String(valor || "").replace(/\D/g, "");
+}
+
+function formatarTelefoneHubSoft(valor){
+    const numero = somenteDigitos(valor);
+    if(!numero) return "";
+
+    // Mantém DDD + número no padrão aceito pelo SGOS.
+    if(numero.length === 10){
+        return `(${numero.slice(0, 2)}) ${numero.slice(2, 6)}-${numero.slice(6)}`;
+    }
+
+    if(numero.length === 11){
+        return `(${numero.slice(0, 2)}) ${numero.slice(2, 7)}-${numero.slice(7)}`;
+    }
+
+    return numero;
+}
+
+function servicoHubSoftValido(servico){
+    if(!servico || typeof servico !== "object") return false;
+
+    const cancelado = servico.data_cancelamento;
+    const ativoServico = servico.servico?.ativo;
+
+    return !cancelado && ativoServico !== false;
+}
+
+function selecionarServicoHubSoft(cliente){
+    const servicos = Array.isArray(cliente?.servicos) ? cliente.servicos : [];
+    if(!servicos.length) return {};
+
+    // Prioridade:
+    // 1. serviço não cancelado com autenticação;
+    // 2. serviço não cancelado;
+    // 3. primeiro serviço retornado.
+    return (
+        servicos.find(s => servicoHubSoftValido(s) && s.cliente_servico_autenticacao) ||
+        servicos.find(servicoHubSoftValido) ||
+        servicos.find(s => s?.cliente_servico_autenticacao) ||
+        servicos[0] ||
+        {}
+    );
+}
+
+function obterEnderecoHubSoft(cliente, servico){
+    const candidatos = [];
+
+    const adicionar = valor => {
+        if(!valor) return;
+        if(Array.isArray(valor)){
+            valor.forEach(adicionar);
+            return;
+        }
+        if(typeof valor === "object") candidatos.push(valor);
+    };
+
+    adicionar(servico?.endereco_instalacao);
+    adicionar(servico?.enderecos);
+    adicionar(cliente?.enderecos);
+    adicionar(cliente?.endereco_instalacao);
+    adicionar(cliente?.endereco);
+
+    const pontuar = item => {
+        const tipo = String(item?.tipo || "").toLowerCase();
+        const numero = item?.endereco_numero || item?.endereco || item;
+
+        let pontos = 0;
+        if(tipo === "instalacao") pontos += 100;
+        if(tipo === "cadastral") pontos += 50;
+        if(numero?.endereco || numero?.logradouro || numero?.rua) pontos += 20;
+        if(numero?.numero) pontos += 5;
+        if(numero?.bairro) pontos += 5;
+        return pontos;
+    };
+
+    const escolhido = candidatos.sort((a, b) => pontuar(b) - pontuar(a))[0] || {};
+    return escolhido.endereco_numero || escolhido.endereco || escolhido;
+}
+
+function obterCidadeHubSoft(endereco, cliente){
+    const cidade = primeiroValor(
+        endereco?.cidade?.nome,
+        endereco?.cidade?.descricao,
+        endereco?.cidade,
+        endereco?.nome_cidade,
+        endereco?.cidade_nome,
+        cliente?.cidade?.nome,
+        cliente?.cidade?.descricao,
+        cliente?.cidade,
+        cliente?.nome_cidade
+    );
+
+    return typeof cidade === "object" ? "" : cidade;
+}
+
 function normalizarHubSoft(cliente = {}){
-    const contrato = primeiroValor(cliente.contrato, cliente.contrato_servico, cliente.servico, cliente.contratos?.[0], cliente.servicos?.[0]) || {};
-    const endereco = primeiroValor(cliente.endereco, cliente.endereco_principal, cliente.endereco_instalacao, cliente.enderecos?.[0]) || {};
-    const login = primeiroValor(cliente.login, cliente.login_pppoe, cliente.usuario_pppoe, contrato.login, contrato.login_pppoe) || {};
-    const plano = primeiroValor(cliente.plano, cliente.plano_servico, cliente.servico, contrato.plano) || {};
+    const servico = selecionarServicoHubSoft(cliente);
+    const autenticacao =
+        servico?.cliente_servico_autenticacao ||
+        cliente?.cliente_servico_autenticacao ||
+        {};
+
+    const endereco = obterEnderecoHubSoft(cliente, servico);
+    const plano = servico?.servico || cliente?.servico || cliente?.plano || {};
+    const statusServico = servico?.servico_status || cliente?.servico_status || {};
+
+    const idPublico = primeiroValor(
+        cliente.codigo_cliente,
+        cliente.id,
+        cliente.cliente_id,
+        cliente.id_cliente
+    );
+
+    const telefone = primeiroValor(
+        cliente.telefone_primario,
+        cliente.telefone_secundario,
+        cliente.telefone_terciario,
+        cliente.telefone,
+        cliente.celular,
+        cliente.whatsapp,
+        cliente.fone,
+        cliente.telefone_celular
+    );
+
+    const rua = primeiroValor(
+        endereco.endereco,
+        endereco.logradouro,
+        endereco.rua,
+        cliente.rua
+    );
+
+    const numero = primeiroValor(
+        endereco.numero,
+        cliente.numero,
+        cliente.n
+    );
+
+    const bairro = primeiroValor(
+        endereco.bairro,
+        endereco.nome_bairro,
+        cliente.bairro
+    );
+
+    const referencia = primeiroValor(
+        endereco.referencia,
+        endereco.complemento,
+        cliente.referencia,
+        cliente.complemento
+    );
+
+    const cidade = obterCidadeHubSoft(endereco, cliente);
 
     return normalizarClientePadrao({
         origem_erp: "hubsoft",
-        id: primeiroValor(cliente.id, cliente.codigo_cliente, cliente.cliente_id, cliente.id_cliente),
-        cliente_id: primeiroValor(cliente.id, cliente.codigo_cliente, cliente.cliente_id, cliente.id_cliente),
-        contrato_id: primeiroValor(cliente.contrato_id, contrato.id, contrato.codigo_contrato, contrato.id_contrato, contrato.contrato_id),
-        nome: primeiroValor(cliente.nome_razaosocial, cliente.nome, cliente.razao_social, cliente.fantasia, cliente.nome_cliente),
+
+        // O SGOS usa o código visível do cliente no ERP, por exemplo 2139.
+        id: idPublico,
+        cliente_id: idPublico,
+
+        // Mantemos também os IDs internos da HubSoft.
+        id_cliente_erp: primeiroValor(cliente.id_cliente, cliente.id),
+        contrato_id: primeiroValor(
+            servico.id_cliente_servico,
+            cliente.contrato_id,
+            cliente.id_contrato
+        ),
+
+        nome: primeiroValor(
+            cliente.nome_razaosocial,
+            cliente.nome,
+            cliente.razao_social,
+            cliente.fantasia,
+            cliente.nome_cliente
+        ),
+
         fantasia: primeiroValor(cliente.nome_fantasia, cliente.fantasia),
-        cpf_cnpj: primeiroValor(cliente.cpf_cnpj, cliente.cnpj_cpf, cliente.documento, cliente.cpf, cliente.cnpj),
-        telefone: primeiroValor(cliente.telefone, cliente.celular, cliente.whatsapp, cliente.fone, cliente.telefone_celular),
-        login: primeiroValor(cliente.usuario, cliente.login_pppoe, login.login, login.usuario, login.username),
-        senha: primeiroValor(cliente.senha, cliente.senha_pppoe, login.senha, login.password),
-        senha_pppoe: primeiroValor(cliente.senha_pppoe, cliente.senha, login.senha, login.password),
-        plano_nome: primeiroValor(cliente.plano_nome, plano.nome, plano.descricao, plano.nome_plano),
-        plano_nome_erp: primeiroValor(cliente.plano_nome, plano.nome, plano.descricao, plano.nome_plano),
-        plano_id_erp: primeiroValor(cliente.plano_id, plano.id, plano.codigo, plano.id_plano),
-        endereco: typeof endereco === "string" ? endereco : primeiroValor(endereco.completo, endereco.endereco_completo, cliente.endereco_completo),
-        rua: primeiroValor(cliente.rua, endereco.rua, endereco.logradouro, endereco.endereco),
-        numero: primeiroValor(cliente.numero, endereco.numero),
-        bairro: primeiroValor(cliente.bairro, endereco.bairro, endereco.nome_bairro),
-        cidade: primeiroValor(cliente.cidade, endereco.cidade, endereco.nome_cidade),
-        referencia: primeiroValor(cliente.referencia, endereco.referencia, cliente.complemento, endereco.complemento),
-        latitude: primeiroValor(cliente.latitude, endereco.latitude),
-        longitude: primeiroValor(cliente.longitude, endereco.longitude),
-        status: primeiroValor(cliente.status, cliente.ativo, contrato.status, contrato.status_contrato),
-        bruto: { cliente, contrato, login, plano, endereco }
+        cpf_cnpj: primeiroValor(
+            cliente.cpf_cnpj,
+            cliente.cnpj_cpf,
+            cliente.documento,
+            cliente.cpf,
+            cliente.cnpj
+        ),
+
+        telefone: formatarTelefoneHubSoft(telefone),
+
+        login: primeiroValor(
+            autenticacao.login,
+            autenticacao.usuario,
+            autenticacao.username,
+            cliente.login,
+            cliente.login_pppoe,
+            cliente.usuario_pppoe,
+            cliente.usuario
+        ),
+
+        senha: primeiroValor(
+            autenticacao.password,
+            autenticacao.senha,
+            cliente.senha,
+            cliente.senha_pppoe
+        ),
+
+        senha_pppoe: primeiroValor(
+            autenticacao.password,
+            autenticacao.senha,
+            cliente.senha_pppoe,
+            cliente.senha
+        ),
+
+        vlan: primeiroValor(
+            autenticacao.vlan,
+            servico.vlan,
+            cliente.vlan
+        ),
+
+        plano_nome: primeiroValor(
+            plano.descricao,
+            plano.nome,
+            plano.nome_plano,
+            cliente.plano_nome
+        ),
+
+        plano_nome_erp: primeiroValor(
+            plano.descricao,
+            plano.nome,
+            plano.nome_plano,
+            cliente.plano_nome
+        ),
+
+        plano_id_erp: primeiroValor(
+            plano.id_servico,
+            plano.id,
+            plano.codigo,
+            plano.id_plano,
+            servico.numero_plano
+        ),
+
+        endereco: [rua, numero].filter(Boolean).join(", "),
+        rua,
+        numero,
+        n: numero,
+        bairro,
+        cidade,
+        cidade_id_erp: primeiroValor(
+            endereco.id_cidade,
+            endereco.cidade_id,
+            cliente.id_cidade
+        ),
+        referencia,
+        cep: primeiroValor(endereco.cep, cliente.cep),
+        latitude: primeiroValor(endereco.latitude, cliente.latitude),
+        longitude: primeiroValor(endereco.longitude, cliente.longitude),
+
+        status: primeiroValor(
+            statusServico.descricao,
+            statusServico.prefixo,
+            cliente.status,
+            cliente.ativo
+        ),
+
+        bruto: {
+            cliente,
+            contrato: servico,
+            servico,
+            login: autenticacao,
+            autenticacao,
+            plano,
+            endereco,
+            status_servico: statusServico
+        }
     }, "hubsoft");
 }
 
