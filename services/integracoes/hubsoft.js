@@ -195,7 +195,7 @@ function normalizarHubSoft(cliente = {}){
 // =============================
 // GraphQL HubSoft
 // =============================
-const GRAPHQL_ENDPOINTS = ["graphql", "api/graphql", "api/v1/graphql"];
+const GRAPHQL_ENDPOINTS = ["graphql/v1", "graphql", "api/graphql", "api/v1/graphql"];
 
 function unwrapGraphQLType(type){
     let atual = type;
@@ -439,8 +439,8 @@ async function buscarPlano(config, clienteOuTermo){
 }
 
 module.exports = {
-    endpointTeste: "/graphql",
-    endpointClientes: "/graphql",
+    endpointTeste: "/graphql/v1",
+    endpointClientes: "/graphql/v1",
     request,
     requestGraphQL,
     autenticarOAuth,
