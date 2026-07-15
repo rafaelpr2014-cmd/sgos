@@ -81,7 +81,7 @@ button,input,textarea,select{font:inherit}
 
 .filtros{display:grid;grid-template-columns:2fr 2fr 1fr 1fr;gap:12px}
 .table-wrap{width:100%;overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:1250px}th{background:#f8fafc;color:#0f172a;padding:14px 12px;text-align:left;font-size:12px;border-bottom:1px solid var(--borda);white-space:nowrap}td{padding:13px 12px;border-bottom:1px solid var(--borda);font-size:13px;color:#1e293b;vertical-align:top}tr:hover{background:#f8fbff}
-.status-box{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;display:inline-block;background:#dcfce7;color:#15803d}.anexo-lista{display:flex;gap:7px;flex-wrap:wrap}.mini-anexo{width:58px;height:58px;object-fit:cover;border-radius:9px;border:2px solid #e5e7eb;cursor:pointer}.mini-video{width:58px;height:58px;border-radius:9px;border:2px solid #e5e7eb;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px}.acoes{display:flex;gap:8px;align-items:center}.icone-acao{cursor:pointer;font-size:17px}
+.status-box{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;display:inline-block}.status-pendente{background:#fef3c7;color:#b45309}.status-aprovada{background:#dcfce7;color:#15803d}.status-reprovada{background:#fee2e2;color:#dc2626}.anexo-existente{outline:2px solid #93c5fd}.anexo-lista{display:flex;gap:7px;flex-wrap:wrap}.mini-anexo{width:58px;height:58px;object-fit:cover;border-radius:9px;border:2px solid #e5e7eb;cursor:pointer}.mini-video{width:58px;height:58px;border-radius:9px;border:2px solid #e5e7eb;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px}.acoes{display:flex;gap:8px;align-items:center}.icone-acao{cursor:pointer;font-size:17px}
 .vazio{text-align:center;color:#64748b;padding:28px!important}
 
 .popup{position:fixed;inset:0;background:rgba(0,0,0,.84);display:none;justify-content:center;align-items:center;z-index:99999;padding:24px}.popup.ativo{display:flex}.popup img,.popup video{max-width:92vw;max-height:88vh;border-radius:14px;background:#000}.popup-fechar{position:absolute;top:18px;right:18px;background:#ef4444;color:#fff;border:0;width:40px;height:40px;border-radius:50%;cursor:pointer;font-weight:800;font-size:18px}
@@ -143,16 +143,19 @@ button,input,textarea,select{font:inherit}
         <div class="form-grid">
             <div class="campo"><label for="nome">Nome <span class="obrigatorio">*</span></label><input id="nome" maxlength="160" placeholder="Nome do cliente"></div>
             <div class="campo span-2"><label for="endereco">Endereço <span class="obrigatorio">*</span></label><input id="endereco" maxlength="255" placeholder="Rua, número, bairro, localidade e referência"></div>
+            <input type="hidden" id="viabilidadeId">
             <div class="campo"><label for="telefone">Telefone</label><input id="telefone" maxlength="30" inputmode="tel" placeholder="(00) 00000-0000"></div>
-            <div class="campo span-2"><label for="observacao">Observação</label><textarea id="observacao" maxlength="2000" placeholder="Detalhes da viabilidade, estrutura disponível, distância, materiais necessários..."></textarea></div>
+            <div class="campo"><label for="tecnicoResponsavel">Técnico responsável</label><input id="tecnicoResponsavel" maxlength="160" placeholder="Nome do técnico responsável"></div>
+            <div class="campo"><label for="status">Status</label><select id="status"><option value="PENDENTE">Pendente</option><option value="APROVADA">Aprovada</option><option value="REPROVADA">Reprovada</option></select></div>
+            <div class="campo span-3"><label for="observacao">Observação</label><textarea id="observacao" maxlength="2000" placeholder="Detalhes da viabilidade, estrutura disponível, distância, materiais necessários..."></textarea></div>
             <div class="campo"><label for="cadastradoPor">Cadastrado por</label><input id="cadastradoPor" readonly placeholder="Usuário logado"></div>
             <div class="campo"><label for="registradoEm">Registrado em</label><input id="registradoEm" readonly></div>
             <div class="campo span-3">
                 <label for="arquivos">Anexo de fotos e vídeos</label>
-                <div class="arquivo-box"><input type="file" id="arquivos" accept="image/*,video/*" multiple><div class="arquivo-ajuda">Formatos de imagem e vídeo. Limite de 30 MB por arquivo.</div><div id="previewArquivos" class="preview-lista"></div></div>
+                <div class="arquivo-box"><input type="file" id="arquivos" accept="image/*,video/*" multiple><div class="arquivo-ajuda">Formatos de imagem e vídeo. Limite de 30 MB por arquivo.</div><div id="anexosExistentes" class="preview-lista"></div><div id="previewArquivos" class="preview-lista"></div></div>
             </div>
         </div>
-        <div class="form-actions"><button class="btn btn-salvar" id="btnSalvar" onclick="salvarViabilidade()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Salvar Viabilidade</button><button class="btn btn-limpar" type="button" onclick="limparFormulario()">Limpar</button></div>
+        <div class="form-actions"><button class="btn btn-salvar" id="btnSalvar" onclick="salvarViabilidade()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span id="textoBtnSalvar">Salvar Viabilidade</span></button><button class="btn btn-limpar" type="button" onclick="limparFormulario()" id="btnCancelar">Limpar</button></div>
     </div>
 
     <div class="card">
@@ -163,7 +166,7 @@ button,input,textarea,select{font:inherit}
     <div class="card">
         <div class="card-header"><div class="titulo-card">Lista de Viabilidades</div></div>
         <div class="table-wrap">
-            <table><thead><tr><th>ID</th><th>Nome</th><th>Endereço</th><th>Observação</th><th>Telefone</th><th>Cadastrado por</th><th>Registrado em</th><th>Status</th><th>Anexos</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="10" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
+            <table><thead><tr><th>ID</th><th>Nome</th><th>Endereço</th><th>Observação</th><th>Telefone</th><th>Técnico responsável</th><th>Cadastrado por</th><th>Registrado em</th><th>Atualizado por</th><th>Atualizado em</th><th>Status</th><th>Anexos</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="13" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
         </div>
     </div>
 </section>
@@ -177,6 +180,7 @@ const API_VIABILIDADE = "/api/viabilidade";
 const API_UPLOAD = "/api/upload_viabilidade";
 let viabilidades = [];
 let arquivosSelecionados = [];
+let anexosExistentesEdicao = [];
 
 function usuarioLocal(){try{return JSON.parse(localStorage.getItem("usuario")||"{}")}catch{return {}}}
 function getAuthHeaders(){const u=usuarioLocal();return {"x-usuario-id":u.id||"","x-usuario-nome":u.usuario||u.nome||"","x-usuario-cargo":u.cargo||""}}
@@ -185,6 +189,8 @@ function normalizarLista(r){if(Array.isArray(r))return r;if(Array.isArray(r?.dad
 function formatarData(v){if(!v)return "-";const d=new Date(v);return isNaN(d)?"-":d.toLocaleString("pt-BR")}
 function dataRegistro(o){return o.registrado_em||o.criado_em||o.created_at||o.data_cadastro||null}
 function nomeCadastrador(o){return o.cadastrado_por_nome||o.usuario_nome||o.cadastrado_por||"-"}
+function nomeAtualizador(o){return o.atualizado_por||"-"}
+function classeStatus(status){const s=String(status||"PENDENTE").toUpperCase();return s==="APROVADA"?"status-aprovada":s==="REPROVADA"?"status-reprovada":"status-pendente"}
 function anexosDoRegistro(o){
     let lista=o.anexos||o.arquivos||o.midias||[];
     if(typeof lista==="string"){try{const j=JSON.parse(lista);lista=Array.isArray(j)?j:[lista]}catch{lista=lista.split(",").map(x=>x.trim()).filter(Boolean)}}
@@ -217,27 +223,62 @@ function processarArquivos(){
 }
 function renderPreviewArquivos(){const box=document.getElementById("previewArquivos");box.innerHTML="";arquivosSelecionados.forEach((f,i)=>{const url=URL.createObjectURL(f),div=document.createElement("div");div.className="preview-item";div.innerHTML=f.type.startsWith("video/")?`<video src="${url}" muted></video><button type="button" onclick="removerArquivo(${i})">×</button>`:`<img src="${url}" alt="${escapar(f.name)}"><button type="button" onclick="removerArquivo(${i})">×</button>`;box.appendChild(div)})}
 function removerArquivo(i){arquivosSelecionados.splice(i,1);renderPreviewArquivos()}
-function limparFormulario(){["nome","endereco","telefone","observacao"].forEach(id=>document.getElementById(id).value="");arquivosSelecionados=[];renderPreviewArquivos();atualizarHorario();document.getElementById("nome").focus()}
+function renderAnexosExistentes(){
+    const box=document.getElementById("anexosExistentes");
+    box.innerHTML=anexosExistentesEdicao.map(a=>{const u=getUrl(a.url||a.caminho||a.arquivo),video=String(a.tipo||"").startsWith("video/")||ehVideo(u);return `<div class="preview-item anexo-existente">${video?`<video src="${escapar(u)}" muted></video>`:`<img src="${escapar(u)}" alt="Anexo">`}<button type="button" title="Excluir anexo" onclick="excluirAnexoEdicao(${Number(a.id)})">×</button></div>`}).join("");
+}
+async function excluirAnexoEdicao(id){
+    if(!id||!confirm("Excluir este anexo?"))return;
+    try{const r=await fetch(`/api/viabilidade_anexos/${id}`,{method:"DELETE",headers:getAuthHeaders()});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.erro||`Erro ${r.status}`);anexosExistentesEdicao=anexosExistentesEdicao.filter(a=>Number(a.id)!==Number(id));renderAnexosExistentes();}catch(e){alert("Erro ao excluir anexo: "+e.message)}
+}
+function editarViabilidade(id){
+    const o=viabilidades.find(v=>Number(v.id)===Number(id));if(!o)return;
+    document.getElementById("viabilidadeId").value=o.id;
+    document.getElementById("nome").value=o.nome||"";
+    document.getElementById("endereco").value=o.endereco||"";
+    document.getElementById("telefone").value=o.telefone||"";
+    document.getElementById("observacao").value=o.observacao||o.observacoes||"";
+    document.getElementById("tecnicoResponsavel").value=o.tecnico_responsavel||"";
+    document.getElementById("status").value=String(o.status||"PENDENTE").toUpperCase();
+    document.getElementById("cadastradoPor").value=nomeCadastrador(o)==="-"?"":nomeCadastrador(o);
+    document.getElementById("registradoEm").value=formatarData(dataRegistro(o));
+    anexosExistentesEdicao=Array.isArray(o.anexos)?o.anexos:[];
+    arquivosSelecionados=[];renderPreviewArquivos();renderAnexosExistentes();
+    document.getElementById("textoBtnSalvar").textContent="Atualizar Viabilidade";
+    document.getElementById("btnCancelar").textContent="Cancelar edição";
+    document.querySelector(".card").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function limparFormulario(){
+    ["viabilidadeId","nome","endereco","telefone","observacao","tecnicoResponsavel"].forEach(id=>document.getElementById(id).value="");
+    document.getElementById("status").value="PENDENTE";
+    arquivosSelecionados=[];
+    anexosExistentesEdicao=[];
+    renderPreviewArquivos();
+    renderAnexosExistentes();
+    document.getElementById("textoBtnSalvar").textContent="Salvar Viabilidade";
+    document.getElementById("btnCancelar").textContent="Limpar";
+    atualizarHorario();
+    document.getElementById("nome").focus();
+}
 
 async function salvarViabilidade(){
-    const nome=document.getElementById("nome").value.trim(),endereco=document.getElementById("endereco").value.trim(),observacao=document.getElementById("observacao").value.trim(),telefone=document.getElementById("telefone").value.trim(),u=usuarioLocal();
+    const id=document.getElementById("viabilidadeId").value;
+    const nome=document.getElementById("nome").value.trim(),endereco=document.getElementById("endereco").value.trim(),observacao=document.getElementById("observacao").value.trim(),telefone=document.getElementById("telefone").value.trim(),tecnico_responsavel=document.getElementById("tecnicoResponsavel").value.trim(),status=document.getElementById("status").value;
     if(!nome||!endereco){alert("Preencha os campos Nome e Endereço.");return}
-    const btn=document.getElementById("btnSalvar");btn.disabled=true;btn.innerHTML="Salvando...";
+    const btn=document.getElementById("btnSalvar");btn.disabled=true;document.getElementById("textoBtnSalvar").textContent=id?"Atualizando...":"Salvando...";
     try{
-        const payload={nome,endereco,observacao,telefone,cadastrado_por:u.id||u.usuario||null,registrado_em:new Date().toISOString()};
-        const r=await fetch(API_VIABILIDADE,{method:"POST",headers:{"Content-Type":"application/json",...getAuthHeaders()},body:JSON.stringify(payload)});
+        const payload={nome,endereco,observacao,telefone,tecnico_responsavel,status};
+        const r=await fetch(id?`${API_VIABILIDADE}/${id}`:API_VIABILIDADE,{method:id?"PUT":"POST",headers:{"Content-Type":"application/json",...getAuthHeaders()},body:JSON.stringify(payload)});
         const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.erro||j.mensagem||`Erro ${r.status}`);
-        const id=j.id||j.viabilidade_id||j.insertId||j?.dados?.id;
-        if(arquivosSelecionados.length&&id){
-            for(const arquivo of arquivosSelecionados){const fd=new FormData();fd.append("arquivo",arquivo);fd.append("viabilidade_id",id);const up=await fetch(API_UPLOAD,{method:"POST",headers:getAuthHeaders(),body:fd});if(!up.ok){const e=await up.json().catch(()=>({}));throw new Error(e.erro||`Falha ao enviar ${arquivo.name}`)}}
-        }
-        alert("Viabilidade salva com sucesso!");limparFormulario();await carregarViabilidades();
-    }catch(e){console.error(e);alert("Erro ao salvar viabilidade: "+e.message)}finally{btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Salvar Viabilidade'}
+        const registroId=Number(id||j.id||j.viabilidade_id||j.insertId||j?.dados?.id);
+        if(arquivosSelecionados.length&&registroId){for(const arquivo of arquivosSelecionados){const fd=new FormData();fd.append("arquivo",arquivo);fd.append("viabilidade_id",registroId);const up=await fetch(API_UPLOAD,{method:"POST",headers:getAuthHeaders(),body:fd});const ej=await up.json().catch(()=>({}));if(!up.ok)throw new Error(ej.erro||`Falha ao enviar ${arquivo.name}`)}}
+        alert(id?"Viabilidade atualizada com sucesso!":"Viabilidade salva com sucesso!");limparFormulario();await carregarViabilidades();
+    }catch(e){console.error(e);alert("Erro ao salvar viabilidade: "+e.message)}finally{btn.disabled=false;document.getElementById("textoBtnSalvar").textContent=document.getElementById("viabilidadeId").value?"Atualizar Viabilidade":"Salvar Viabilidade"}
 }
 
 async function carregarViabilidades(){
-    const tbody=document.getElementById("tabelaViabilidades");tbody.innerHTML='<tr><td colspan="10" class="vazio">Carregando viabilidades...</td></tr>';
-    try{const r=await fetch(API_VIABILIDADE,{headers:getAuthHeaders()});if(!r.ok)throw new Error(`Erro ${r.status}`);viabilidades=normalizarLista(await r.json());renderTabela()}catch(e){console.error(e);tbody.innerHTML='<tr><td colspan="10" class="vazio">Erro ao carregar viabilidades.</td></tr>'}
+    const tbody=document.getElementById("tabelaViabilidades");tbody.innerHTML='<tr><td colspan="13" class="vazio">Carregando viabilidades...</td></tr>';
+    try{const r=await fetch(API_VIABILIDADE,{headers:getAuthHeaders()});if(!r.ok)throw new Error(`Erro ${r.status}`);viabilidades=normalizarLista(await r.json());renderTabela()}catch(e){console.error(e);tbody.innerHTML='<tr><td colspan="13" class="vazio">Erro ao carregar viabilidades.</td></tr>'}
 }
 function dentroDias(v,dias){if(!v)return false;const d=new Date(v);if(isNaN(d))return false;const ini=new Date();ini.setDate(ini.getDate()-(dias-1));ini.setHours(0,0,0,0);const fim=new Date();fim.setHours(23,59,59,999);return d>=ini&&d<=fim}
 function mesmoDia(v){if(!v)return false;const d=new Date(v),h=new Date();return !isNaN(d)&&d.toDateString()===h.toDateString()}
@@ -245,8 +286,8 @@ function atualizarCards(lista){document.getElementById("cardTotal").innerText=li
 function renderTabela(){
     const nome=document.getElementById("filtroNome").value.toLowerCase(),end=document.getElementById("filtroEndereco").value.toLowerCase(),di=document.getElementById("dataInicio").value,df=document.getElementById("dataFim").value;
     const lista=viabilidades.filter(o=>{const d=dataRegistro(o)?new Date(dataRegistro(o)):null;let ok=(!nome||String(o.nome||"").toLowerCase().includes(nome))&&(!end||String(o.endereco||"").toLowerCase().includes(end));if(di)ok=ok&&d&&!isNaN(d)&&d>=new Date(di+"T00:00:00");if(df)ok=ok&&d&&!isNaN(d)&&d<=new Date(df+"T23:59:59");return ok}).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
-    atualizarCards(lista);const tbody=document.getElementById("tabelaViabilidades");if(!lista.length){tbody.innerHTML='<tr><td colspan="10" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
-    tbody.innerHTML=lista.map(o=>{const anexos=anexosDoRegistro(o).map(getUrl);const htmlAnexos=anexos.length?`<div class="anexo-lista">${anexos.map(u=>ehVideo(u)?`<div class="mini-video" title="Abrir vídeo" onclick="abrirMidia('${escapar(u)}',true)">▶</div>`:`<img class="mini-anexo" src="${escapar(u)}" alt="Anexo" onclick="abrirMidia('${escapar(u)}',false)">`).join("")}</div>`:"-";return `<tr><td>${o.id??"-"}</td><td><strong>${escapar(o.nome||"-")}</strong></td><td>${escapar(o.endereco||"-")}</td><td style="white-space:normal;min-width:240px">${escapar(o.observacao||o.observacoes||"-")}</td><td>${escapar(o.telefone||"-")}</td><td>${escapar(nomeCadastrador(o))}</td><td>${formatarData(dataRegistro(o))}</td><td><span class="status-box">VIÁVEL</span></td><td>${htmlAnexos}</td><td><div class="acoes"><span class="icone-acao" title="Excluir" onclick="excluirViabilidade(${Number(o.id)})">🗑️</span></div></td></tr>`}).join("")
+    atualizarCards(lista);const tbody=document.getElementById("tabelaViabilidades");if(!lista.length){tbody.innerHTML='<tr><td colspan="13" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
+    tbody.innerHTML=lista.map(o=>{const anexos=anexosDoRegistro(o).map(getUrl);const htmlAnexos=anexos.length?`<div class="anexo-lista">${anexos.map(u=>ehVideo(u)?`<div class="mini-video" title="Abrir vídeo" onclick="abrirMidia('${escapar(u)}',true)">▶</div>`:`<img class="mini-anexo" src="${escapar(u)}" alt="Anexo" onclick="abrirMidia('${escapar(u)}',false)">`).join("")}</div>`:"-";const st=String(o.status||"PENDENTE").toUpperCase();return `<tr><td>${o.id??"-"}</td><td><strong>${escapar(o.nome||"-")}</strong></td><td>${escapar(o.endereco||"-")}</td><td style="white-space:normal;min-width:240px">${escapar(o.observacao||o.observacoes||"-")}</td><td>${escapar(o.telefone||"-")}</td><td>${escapar(o.tecnico_responsavel||"-")}</td><td>${escapar(nomeCadastrador(o))}</td><td>${formatarData(dataRegistro(o))}</td><td>${escapar(nomeAtualizador(o))}</td><td>${formatarData(o.atualizado_em)}</td><td><span class="status-box ${classeStatus(st)}">${escapar(st)}</span></td><td>${htmlAnexos}</td><td><div class="acoes"><span class="icone-acao" title="Editar" onclick="editarViabilidade(${Number(o.id)})">✏️</span><span class="icone-acao" title="Excluir" onclick="excluirViabilidade(${Number(o.id)})">🗑️</span></div></td></tr>`}).join("")
 }
 async function excluirViabilidade(id){if(!id||!confirm("Deseja excluir esta viabilidade?"))return;try{const r=await fetch(`${API_VIABILIDADE}/${id}`,{method:"DELETE",headers:getAuthHeaders()});if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.erro||`Erro ${r.status}`)}alert("Viabilidade excluída com sucesso.");carregarViabilidades()}catch(e){console.error(e);alert("Não foi possível excluir: "+e.message)}}
 function abrirMidia(url,video){const c=document.getElementById("popupConteudo");c.innerHTML=video?`<video src="${escapar(url)}" controls autoplay></video>`:`<img src="${escapar(url)}" alt="Anexo">`;document.getElementById("popupMidia").classList.add("ativo")}

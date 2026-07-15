@@ -65,7 +65,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const empresaId = req.usuario.empresa_id;
             const [viabilidades] = await pool.query(
                 `SELECT id, nome, endereco, observacao, telefone,
-                        empresa_id, cadastrado_por, registrado_em
+                        empresa_id, cadastrado_por, registrado_em, status,
+                        atualizado_em, atualizado_por, tecnico_responsavel
                  FROM viabilidade
                  WHERE empresa_id = ?
                  ORDER BY COALESCE(registrado_em, '1970-01-01') DESC, id DESC`,
@@ -103,7 +104,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
         try {
             const [rows] = await pool.query(
                 `SELECT id, nome, endereco, observacao, telefone,
-                        empresa_id, cadastrado_por, registrado_em
+                        empresa_id, cadastrado_por, registrado_em, status,
+                        atualizado_em, atualizado_por, tecnico_responsavel
                  FROM viabilidade
                  WHERE id = ? AND empresa_id = ? LIMIT 1`,
                 [req.params.id, req.usuario.empresa_id]
@@ -132,6 +134,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const endereco = String(req.body.endereco || "").trim();
             const observacao = String(req.body.observacao || "").trim() || null;
             const telefone = String(req.body.telefone || "").trim() || null;
+            const tecnicoResponsavel = String(req.body.tecnico_responsavel || "").trim() || null;
+            const status = "PENDENTE";
             if (!nome || !endereco) {
                 return res.status(400).json({ erro: "Nome e endereço são obrigatórios." });
             }
@@ -139,9 +143,11 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const cadastradoPor = req.usuario.usuario || String(req.usuario.id);
             const [resultado] = await pool.query(
                 `INSERT INTO viabilidade
-                    (nome, endereco, observacao, telefone, empresa_id, cadastrado_por, registrado_em)
-                 VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-                [nome, endereco, observacao, telefone, req.usuario.empresa_id, cadastradoPor]
+                    (nome, endereco, observacao, telefone, tecnico_responsavel, status,
+                     empresa_id, cadastrado_por, registrado_em, atualizado_em, atualizado_por)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)`,
+                [nome, endereco, observacao, telefone, tecnicoResponsavel, status,
+                 req.usuario.empresa_id, cadastradoPor, cadastradoPor]
             );
 
             return res.status(201).json({ sucesso: true, id: resultado.insertId, viabilidade_id: resultado.insertId });
@@ -157,15 +163,30 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const endereco = String(req.body.endereco || "").trim();
             const observacao = String(req.body.observacao || "").trim() || null;
             const telefone = String(req.body.telefone || "").trim() || null;
-            if (!nome || !endereco) return res.status(400).json({ erro: "Nome e endereço são obrigatórios." });
+            const tecnicoResponsavel = String(req.body.tecnico_responsavel || "").trim() || null;
+            const statusRecebido = String(req.body.status || "PENDENTE").trim().toUpperCase();
+            const statusPermitidos = ["PENDENTE", "APROVADA", "REPROVADA"];
+            const status = statusPermitidos.includes(statusRecebido) ? statusRecebido : "PENDENTE";
 
+            if (!nome || !endereco) {
+                return res.status(400).json({ erro: "Nome e endereço são obrigatórios." });
+            }
+
+            const atualizadoPor = req.usuario.usuario || String(req.usuario.id);
             const [resultado] = await pool.query(
-                `UPDATE viabilidade SET nome = ?, endereco = ?, observacao = ?, telefone = ?
+                `UPDATE viabilidade
+                 SET nome = ?, endereco = ?, observacao = ?, telefone = ?,
+                     tecnico_responsavel = ?, status = ?, atualizado_em = NOW(), atualizado_por = ?
                  WHERE id = ? AND empresa_id = ?`,
-                [nome, endereco, observacao, telefone, req.params.id, req.usuario.empresa_id]
+                [nome, endereco, observacao, telefone, tecnicoResponsavel, status, atualizadoPor,
+                 req.params.id, req.usuario.empresa_id]
             );
-            if (!resultado.affectedRows) return res.status(404).json({ erro: "Viabilidade não encontrada." });
-            return res.json({ sucesso: true });
+
+            if (!resultado.affectedRows) {
+                return res.status(404).json({ erro: "Viabilidade não encontrada." });
+            }
+
+            return res.json({ sucesso: true, id: Number(req.params.id) });
         } catch (erro) {
             console.error("Erro ao editar viabilidade:", erro);
             return res.status(500).json({ erro: erro.message });
