@@ -1,5 +1,5 @@
 const nodemailer = require("nodemailer");
-const puppeteer = require("puppeteer");
+const { jsPDF } = require("jspdf");
 const fs = require("fs");
 const path = require("path");
 
@@ -40,42 +40,45 @@ function fimDoDia(data) {
 
 function obterPeriodo(tipo, referencia = new Date()) {
     const ref = new Date(referencia);
-    let inicio;
-    let fim;
 
     if (tipo === "diario") {
-        inicio = inicioDoDia(ref);
-        fim = fimDoDia(ref);
-    } else if (tipo === "semanal") {
-        fim = fimDoDia(ref);
-        inicio = inicioDoDia(ref);
-        inicio.setDate(inicio.getDate() - 6);
-    } else if (tipo === "mensal") {
-        // Mantém a regra atual do SGOS: mês anterior completo.
-        inicio = new Date(
-            ref.getFullYear(),
-            ref.getMonth() - 1,
-            1,
-            0,
-            0,
-            0,
-            0
-        );
-
-        fim = new Date(
-            ref.getFullYear(),
-            ref.getMonth(),
-            0,
-            23,
-            59,
-            59,
-            999
-        );
-    } else {
-        throw new Error(`Periodicidade inválida: ${tipo}`);
+        return {
+            inicio: inicioDoDia(ref),
+            fim: fimDoDia(ref)
+        };
     }
 
-    return { inicio, fim };
+    if (tipo === "semanal") {
+        const fim = fimDoDia(ref);
+        const inicio = inicioDoDia(ref);
+        inicio.setDate(inicio.getDate() - 6);
+        return { inicio, fim };
+    }
+
+    if (tipo === "mensal") {
+        return {
+            inicio: new Date(
+                ref.getFullYear(),
+                ref.getMonth() - 1,
+                1,
+                0,
+                0,
+                0,
+                0
+            ),
+            fim: new Date(
+                ref.getFullYear(),
+                ref.getMonth(),
+                0,
+                23,
+                59,
+                59,
+                999
+            )
+        };
+    }
+
+    throw new Error(`Periodicidade inválida: ${tipo}`);
 }
 
 function nomeEmpresa(empresa) {
@@ -114,33 +117,6 @@ function montarNomeArquivo(tipo, inicio, fim, empresa) {
     return `${titulo} ${periodo} - ${nome}.pdf`;
 }
 
-function escaparHtml(valor) {
-    return String(valor ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-function normalizarListaTecnicos(valor) {
-    if (!valor) return [];
-
-    if (Array.isArray(valor)) {
-        return valor.map(String).map(v => v.trim()).filter(Boolean);
-    }
-
-    try {
-        const parsed = JSON.parse(valor);
-
-        if (Array.isArray(parsed)) {
-            return parsed.map(String).map(v => v.trim()).filter(Boolean);
-        }
-    } catch (_) {}
-
-    return [String(valor).trim()].filter(Boolean);
-}
-
 async function buscarEmpresa(pool, empresaId) {
     const [rows] = await pool.query(
         "SELECT * FROM empresa WHERE id = ? LIMIT 1",
@@ -167,7 +143,6 @@ async function buscarTecnicos(pool, empresaId) {
 
         return rows;
     } catch (_) {
-        // Compatibilidade com estruturas antigas.
         const [rows] = await pool.query(
             `
             SELECT id, nome
@@ -210,12 +185,13 @@ async function buscarOrdens(pool, empresaId, inicio, fim) {
             COALESCE(ts.nome, os.tipo_servico) AS nome_tipo_servico
         FROM ordens_servico os
         LEFT JOIN localidades l
-            ON l.id = os.localidade
+            ON os.localidade = l.id
            AND l.empresa_id = os.empresa_id
         LEFT JOIN tipos_servico ts
-            ON ts.id = os.tipo_servico
+            ON os.tipo_servico = ts.id
            AND ts.empresa_id = os.empresa_id
         WHERE os.empresa_id = ?
+          AND os.status <> 'em_andamento'
           AND (
                 os.data_abertura BETWEEN ? AND ?
                 OR os.finalizado_em BETWEEN ? AND ?
@@ -237,250 +213,101 @@ async function buscarOrdens(pool, empresaId, inicio, fim) {
     return rows;
 }
 
-function criarMapa(lista, campoNome = "nome") {
+function criarMapa(lista) {
     const mapa = {};
 
     for (const item of lista || []) {
         mapa[String(item.id)] =
-            item[campoNome] ||
-            item.usuario ||
             item.nome ||
+            item.usuario ||
+            item.name ||
             String(item.id);
     }
 
     return mapa;
 }
 
-function garantirGrupo(obj, chave) {
-    const nome = String(chave || "NÃO INFORMADO").trim() || "NÃO INFORMADO";
+function normalizarTecnicos(valor) {
+    if (!valor) return [];
 
-    if (!obj[nome]) {
-        obj[nome] = {
-            abertas: 0,
-            concluidas: 0
-        };
+    if (Array.isArray(valor)) {
+        return valor;
     }
 
-    return obj[nome];
-}
-
-function contabilizarRegistro(grupo, os) {
-    if (os.data_abertura) grupo.abertas++;
-    if (os.finalizado_em) grupo.concluidas++;
-}
-
-function prepararDados(ordens, mapaTecnicos, mapaPlanos) {
-    const tecnicos = {};
-    const localidades = {};
-    const tipos = {};
-    const instalacoes = {};
-    const tiposLocalidade = {};
-    const instalacoesLocalidade = {};
-
-    for (const os of ordens || []) {
-        const local = os.nome_localidade || "NÃO INFORMADO";
-        const tipo = os.nome_tipo_servico || "NÃO INFORMADO";
-
-        contabilizarRegistro(garantirGrupo(localidades, local), os);
-        contabilizarRegistro(garantirGrupo(tipos, tipo), os);
-
-        const listaTecnicos = [
-            ...new Set(normalizarListaTecnicos(os.tecnico))
-        ];
-
-        for (const tecnico of listaTecnicos) {
-            const nomeTecnico =
-                mapaTecnicos[String(tecnico)] ||
-                String(tecnico);
-
-            if (
-                !nomeTecnico ||
-                nomeTecnico === "null" ||
-                nomeTecnico === "undefined"
-            ) {
-                continue;
-            }
-
-            contabilizarRegistro(
-                garantirGrupo(tecnicos, nomeTecnico),
-                os
-            );
+    if (
+        typeof valor === "string" &&
+        valor.trim().startsWith("[")
+    ) {
+        try {
+            const parsed = JSON.parse(valor);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+            return [];
         }
+    }
 
-        const tipoUpper = String(tipo).toUpperCase();
+    return [valor];
+}
 
-        if (tipoUpper.includes("INSTALA")) {
-            contabilizarRegistro(
-                garantirGrupo(instalacoes, local),
-                os
-            );
+function agrupar(lista, campo, mapaTecnicos) {
+    const obj = {};
 
-            const plano =
-                mapaPlanos[String(os.plano)] ||
-                "";
+    for (const o of lista || []) {
+        if (campo === "tecnico") {
+            const tecnicos = [
+                ...new Set(normalizarTecnicos(o.tecnico))
+            ]
+                .map(t => String(t).trim())
+                .filter(t =>
+                    t &&
+                    t !== "null" &&
+                    t !== "undefined"
+                );
 
-            if (plano) {
-                if (!instalacoesLocalidade[plano]) {
-                    instalacoesLocalidade[plano] = {};
+            for (const tecnico of tecnicos) {
+                const nome =
+                    mapaTecnicos[String(tecnico)] ||
+                    String(tecnico);
+
+                if (!nome || nome === "null" || nome === "undefined") {
+                    continue;
                 }
 
-                contabilizarRegistro(
-                    garantirGrupo(
-                        instalacoesLocalidade[plano],
-                        local
-                    ),
-                    os
-                );
+                if (!obj[nome]) {
+                    obj[nome] = {
+                        abertas: 0,
+                        concluidas: 0
+                    };
+                }
+
+                if (o.data_abertura) obj[nome].abertas++;
+                if (o.finalizado_em) obj[nome].concluidas++;
             }
+
+            continue;
         }
 
-        if (!tiposLocalidade[tipo]) {
-            tiposLocalidade[tipo] = {};
+        const chave =
+            o?.[campo] && String(o[campo]).trim()
+                ? String(o[campo]).trim()
+                : "NÃO INFORMADO";
+
+        if (!obj[chave]) {
+            obj[chave] = {
+                abertas: 0,
+                concluidas: 0
+            };
         }
 
-        contabilizarRegistro(
-            garantirGrupo(tiposLocalidade[tipo], local),
-            os
-        );
+        if (o.data_abertura) obj[chave].abertas++;
+        if (o.finalizado_em) obj[chave].concluidas++;
     }
 
-    return {
-        tecnicos,
-        localidades,
-        tipos,
-        instalacoes,
-        tiposLocalidade,
-        instalacoesLocalidade
-    };
+    return obj;
 }
 
-function ordenarGrupos(obj) {
-    return Object.entries(obj || {}).sort((a, b) => {
-        const totalA =
-            Number(a[1]?.abertas || 0) +
-            Number(a[1]?.concluidas || 0);
-
-        const totalB =
-            Number(b[1]?.abertas || 0) +
-            Number(b[1]?.concluidas || 0);
-
-        return totalB - totalA;
-    });
-}
-
-function tabelaSimples(titulo, dados) {
-    const linhas = ordenarGrupos(dados)
-        .map(([descricao, valores]) => `
-            <tr>
-                <td>${escaparHtml(descricao)}</td>
-                <td class="numero">${Number(valores.abertas || 0)}</td>
-                <td class="numero">${Number(valores.concluidas || 0)}</td>
-            </tr>
-        `)
-        .join("");
-
-    return `
-        <section class="bloco">
-            <div class="titulo-azul">${escaparHtml(titulo)}</div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>Descrição</th>
-                        <th class="numero">Abertas</th>
-                        <th class="numero">Concluídas</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    ${
-                        linhas ||
-                        `
-                        <tr>
-                            <td colspan="3" class="vazio">
-                                Nenhum registro no período
-                            </td>
-                        </tr>
-                        `
-                    }
-                </tbody>
-            </table>
-        </section>
-    `;
-}
-
-function tabelaAgrupada(titulo, dados) {
-    const grupos = [];
-
-    for (const [descricao, locais] of Object.entries(dados || {})) {
-        let totalAbertas = 0;
-        let totalConcluidas = 0;
-
-        const linhas = ordenarGrupos(locais)
-            .map(([localidade, valores]) => {
-                const abertas = Number(valores.abertas || 0);
-                const concluidas = Number(valores.concluidas || 0);
-
-                totalAbertas += abertas;
-                totalConcluidas += concluidas;
-
-                return `
-                    <tr>
-                        <td>${escaparHtml(descricao)}</td>
-                        <td>${escaparHtml(localidade)}</td>
-                        <td class="numero">${abertas}</td>
-                        <td class="numero">${concluidas}</td>
-                    </tr>
-                `;
-            })
-            .join("");
-
-        grupos.push(`
-            ${linhas}
-
-            <tr class="total">
-                <td colspan="2">
-                    TOTAL = ${escaparHtml(descricao)}
-                </td>
-                <td class="numero">${totalAbertas}</td>
-                <td class="numero">${totalConcluidas}</td>
-            </tr>
-        `);
-    }
-
-    return `
-        <section class="bloco">
-            <div class="titulo-azul">${escaparHtml(titulo)}</div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>Descrição</th>
-                        <th>Localidade</th>
-                        <th class="numero">Abertas</th>
-                        <th class="numero">Concluídas</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    ${
-                        grupos.join("") ||
-                        `
-                        <tr>
-                            <td colspan="4" class="vazio">
-                                Nenhum registro no período
-                            </td>
-                        </tr>
-                        `
-                    }
-                </tbody>
-            </table>
-        </section>
-    `;
-}
-
-function logoBase64(empresa) {
-    if (!empresa.logo) return "";
+function carregarLogoDataUri(empresa) {
+    if (!empresa.logo) return null;
 
     const arquivo = path.join(
         __dirname,
@@ -488,300 +315,450 @@ function logoBase64(empresa) {
         path.basename(empresa.logo)
     );
 
-    if (!fs.existsSync(arquivo)) return "";
+    if (!fs.existsSync(arquivo)) return null;
+
+    const ext = path.extname(arquivo).toLowerCase();
+    const mime =
+        ext === ".jpg" || ext === ".jpeg"
+            ? "image/jpeg"
+            : "image/png";
+
+    return `data:${mime};base64,${fs.readFileSync(arquivo).toString("base64")}`;
+}
+
+function detectarTipoImagem(dataUri) {
+    return String(dataUri).includes("image/jpeg")
+        ? "JPEG"
+        : "PNG";
+}
+
+function desenharLogo(doc, logoDataUri) {
+    if (!logoDataUri) return;
 
     try {
-        const extensao =
-            path.extname(arquivo).toLowerCase() === ".jpg" ||
-            path.extname(arquivo).toLowerCase() === ".jpeg"
-                ? "jpeg"
-                : "png";
+        const propriedades = doc.getImageProperties(logoDataUri);
 
-        const conteudo = fs.readFileSync(arquivo).toString("base64");
+        let largura = propriedades.width || 200;
+        let altura = propriedades.height || 80;
 
-        return `data:image/${extensao};base64,${conteudo}`;
-    } catch (_) {
-        return "";
+        const maxWidth = 42;
+        const maxHeight = 22;
+
+        const ratio = Math.min(
+            maxWidth / largura,
+            maxHeight / altura
+        );
+
+        largura *= ratio;
+        altura *= ratio;
+
+        const posX = 200 - largura - 4;
+        const posY = 8;
+
+        doc.addImage(
+            logoDataUri,
+            detectarTipoImagem(logoDataUri),
+            posX,
+            posY,
+            largura,
+            altura
+        );
+    } catch (erro) {
+        console.error("Erro ao desenhar logo no PDF:", erro.message);
     }
 }
 
-function textoPeriodo(tipo, inicio, fim) {
-    if (tipo === "diario") return dataBR(inicio);
-    return `${dataBR(inicio)} a ${dataBR(fim)}`;
-}
-
-function montarHtml({
+function montarPdfExato({
     empresa,
     tipo,
     inicio,
     fim,
-    dados
+    ordens,
+    mapaTecnicos,
+    mapaPlanos
 }) {
-    const logo = logoBase64(empresa);
+    const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+    });
 
-    return `
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
+    const logoDataUri = carregarLogoDataUri(empresa);
+    desenharLogo(doc, logoDataUri);
 
-    <style>
-        @page {
-            size: A4;
-            margin: 10mm;
+    let y = 18;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(nomeEmpresa(empresa), 10, y);
+
+    y += 7;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+
+    doc.text(
+        `CNPJ/CPF: ${empresa.cnpj || empresa.cpf || "-"}`,
+        10,
+        y
+    );
+
+    y += 5;
+
+    doc.text(
+        `Telefone: ${empresa.telefone || "-"}`,
+        10,
+        y
+    );
+
+    y += 5;
+
+    if (empresa.email) {
+        doc.text(
+            `Email: ${empresa.email}`,
+            10,
+            y
+        );
+
+        y += 5;
+    }
+
+    if (empresa.endereco) {
+        const linhas = doc.splitTextToSize(
+            String(empresa.endereco),
+            120
+        );
+
+        doc.text("Endereço:", 10, y);
+        doc.text(linhas, 30, y);
+
+        y += (linhas.length * 4) + 2;
+    }
+
+    const textoPeriodo =
+        tipo === "diario"
+            ? dataBR(inicio)
+            : `${dataBR(inicio)} até ${dataBR(fim)}`;
+
+    doc.text(
+        `Período: ${textoPeriodo}`,
+        10,
+        y
+    );
+
+    y += 5;
+
+    doc.text(
+        `Gerado em: ${dataHoraBR()}`,
+        10,
+        y
+    );
+
+    y += 10;
+
+    function tituloAzul(texto) {
+        if (y > 270) {
+            doc.addPage();
+            y = 20;
         }
 
-        * {
-            box-sizing: border-box;
+        doc.setFillColor(0, 102, 204);
+        doc.rect(10, y - 5, 190, 8, "F");
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text(texto.toUpperCase(), 12, y);
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+        y += 8;
+    }
+
+    function desenharTabela(obj) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.text("Descrição", 10, y);
+        doc.text("Abertas", 140, y);
+        doc.text("Concluídas", 170, y);
+
+        doc.setFont("helvetica", "normal");
+        y += 6;
+
+        Object.entries(obj)
+            .sort(
+                (a, b) =>
+                    (b[1].abertas + b[1].concluidas) -
+                    (a[1].abertas + a[1].concluidas)
+            )
+            .forEach(([chave, valores]) => {
+                if (y > 270) {
+                    doc.addPage();
+                    y = 20;
+                }
+
+                doc.text(
+                    String(chave).substring(0, 40),
+                    10,
+                    y
+                );
+
+                doc.text(
+                    String(valores.abertas || 0),
+                    145,
+                    y
+                );
+
+                doc.text(
+                    String(valores.concluidas || 0),
+                    175,
+                    y
+                );
+
+                y += 5;
+            });
+
+        y += 4;
+    }
+
+    function desenharListaAgrupada(titulo, dados) {
+        if (y > 220) {
+            doc.addPage();
+            y = 20;
         }
 
-        body {
-            margin: 0;
-            font-family: Arial, Helvetica, sans-serif;
-            color: #111827;
-            font-size: 9px;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
+        doc.setFillColor(0, 102, 204);
+        doc.rect(10, y - 6, 190, 8, "F");
 
-        .cabecalho {
-            min-height: 76px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 1px solid #dbe3ef;
-            padding-bottom: 9px;
-            margin-bottom: 10px;
-        }
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text(titulo.toUpperCase(), 12, y - 0.5);
 
-        .empresa {
-            max-width: 72%;
-        }
+        doc.setTextColor(0, 0, 0);
+        y += 10;
 
-        .empresa h1 {
-            margin: 0 0 6px;
-            font-size: 15px;
-            color: #111827;
-        }
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
 
-        .empresa p {
-            margin: 0 0 3px;
-            line-height: 1.25;
-        }
+        doc.text("Descrição", 12, y);
+        doc.text("Localidade", 85, y);
+        doc.text("Abertas", 155, y, { align: "right" });
+        doc.text("Concluídas", 190, y, { align: "right" });
 
-        .logo {
-            max-width: 115px;
-            max-height: 58px;
-            object-fit: contain;
-        }
+        y += 5;
 
-        .periodo {
-            margin-bottom: 12px;
-            line-height: 1.35;
-        }
+        doc.setFont("helvetica", "normal");
 
-        .periodo strong {
-            color: #0f172a;
-        }
+        Object.entries(dados).forEach(([nome, locais]) => {
+            let totalAbertasGrupo = 0;
+            let totalConcluidasGrupo = 0;
 
-        .bloco {
-            margin-bottom: 9px;
-            break-inside: avoid;
-        }
+            Object.entries(locais).forEach(
+                ([local, valores]) => {
+                    if (y > 270) {
+                        doc.addPage();
+                        y = 20;
+                    }
 
-        .titulo-azul {
-            background: #0066cc;
-            color: #ffffff;
-            padding: 5px 7px;
-            font-size: 9px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
+                    const abertas =
+                        valores.abertas || 0;
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
+                    const concluidas =
+                        valores.concluidas || 0;
 
-        thead {
-            display: table-header-group;
-        }
+                    totalAbertasGrupo += abertas;
+                    totalConcluidasGrupo += concluidas;
 
-        tr {
-            break-inside: avoid;
-        }
+                    doc.text(
+                        String(nome).substring(0, 38),
+                        12,
+                        y
+                    );
 
-        th,
-        td {
-            padding: 4px 7px;
-            border-bottom: 1px solid #edf1f7;
-            text-align: left;
-            vertical-align: top;
-            overflow-wrap: anywhere;
-        }
+                    doc.text(
+                        String(local).substring(0, 22),
+                        85,
+                        y
+                    );
 
-        th {
-            font-size: 8px;
-            color: #111827;
-            font-weight: 700;
-            background: #f8fafc;
-        }
+                    doc.text(
+                        String(abertas),
+                        155,
+                        y,
+                        { align: "right" }
+                    );
 
-        td {
-            font-size: 8px;
-        }
+                    doc.text(
+                        String(concluidas),
+                        190,
+                        y,
+                        { align: "right" }
+                    );
 
-        .numero {
-            text-align: right;
-            width: 72px;
-        }
+                    y += 5;
+                }
+            );
 
-        .total td {
-            font-weight: 700;
-            background: #f8fafc;
-            border-top: 1px solid #dbe3ef;
-            padding-top: 5px;
-            padding-bottom: 5px;
-        }
+            doc.setFont("helvetica", "bold");
 
-        .vazio {
-            text-align: center;
-            color: #64748b;
-            padding: 10px;
-        }
+            doc.text(
+                `TOTAL = ${String(nome).substring(0, 45)}`,
+                12,
+                y
+            );
 
-        .rodape {
-            margin-top: 8px;
-            padding-top: 7px;
-            border-top: 1px solid #e5e7eb;
-            color: #64748b;
-            text-align: center;
-            font-size: 7px;
-        }
-    </style>
-</head>
+            doc.text(
+                String(totalAbertasGrupo),
+                155,
+                y,
+                { align: "right" }
+            );
 
-<body>
-    <header class="cabecalho">
-        <div class="empresa">
-            <h1>${escaparHtml(nomeEmpresa(empresa))}</h1>
+            doc.text(
+                String(totalConcluidasGrupo),
+                190,
+                y,
+                { align: "right" }
+            );
 
-            <p>
-                <strong>CNPJ/CPF:</strong>
-                ${escaparHtml(empresa.cnpj || empresa.cpf || "-")}
-            </p>
+            doc.setFont("helvetica", "normal");
 
-            <p>
-                <strong>Telefone:</strong>
-                ${escaparHtml(empresa.telefone || "-")}
-            </p>
+            y += 8;
 
-            <p>
-                <strong>Email:</strong>
-                ${escaparHtml(empresa.email || "-")}
-            </p>
-
-            ${
-                empresa.endereco
-                    ? `
-                    <p>
-                        <strong>Endereço:</strong>
-                        ${escaparHtml(empresa.endereco)}
-                    </p>
-                    `
-                    : ""
-            }
-        </div>
-
-        ${
-            logo
-                ? `<img class="logo" src="${logo}" alt="Logo da empresa">`
-                : ""
-        }
-    </header>
-
-    <div class="periodo">
-        <div>
-            <strong>Período:</strong>
-            ${escaparHtml(textoPeriodo(tipo, inicio, fim))}
-        </div>
-
-        <div>
-            <strong>Gerado em:</strong>
-            ${escaparHtml(dataHoraBR())}
-        </div>
-    </div>
-
-    ${tabelaSimples("TÉCNICOS", dados.tecnicos)}
-    ${tabelaSimples("LOCALIDADES", dados.localidades)}
-    ${tabelaSimples("TIPOS DE SERVIÇO", dados.tipos)}
-    ${tabelaSimples(
-        "INSTALAÇÕES POR LOCALIDADE",
-        dados.instalacoes
-    )}
-
-    ${tabelaAgrupada(
-        "TIPOS DE SERVIÇOS POR LOCALIDADE",
-        dados.tiposLocalidade
-    )}
-
-    ${tabelaAgrupada(
-        "PLANOS DAS INSTALAÇÕES POR LOCALIDADE",
-        dados.instalacoesLocalidade
-    )}
-
-    <div class="rodape">
-        SGOS - Sistema de Gestão de Ordens de Serviço
-    </div>
-</body>
-</html>
-    `;
-}
-
-async function gerarPdfComPuppeteer(html) {
-    let browser;
-
-    try {
-        browser = await puppeteer.launch({
-            headless: true,
-            executablePath:
-                process.env.PUPPETEER_EXECUTABLE_PATH ||
-                process.env.CHROME_PATH ||
-                undefined,
-            args: [
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu"
-            ]
+            doc.setDrawColor(220);
+            doc.line(10, y - 4, 200, y - 4);
         });
 
-        const page = await browser.newPage();
+        y += 5;
+    }
 
-        await page.setContent(html, {
-            waitUntil: "networkidle0",
-            timeout: 60000
-        });
+    tituloAzul("TÉCNICOS");
+    desenharTabela(
+        agrupar(ordens, "tecnico", mapaTecnicos)
+    );
 
-        const pdf = await page.pdf({
-            format: "A4",
-            printBackground: true,
-            preferCSSPageSize: true,
-            margin: {
-                top: "10mm",
-                right: "10mm",
-                bottom: "10mm",
-                left: "10mm"
-            }
-        });
+    tituloAzul("LOCALIDADES");
+    desenharTabela(
+        agrupar(ordens, "nome_localidade", mapaTecnicos)
+    );
 
-        return Buffer.from(pdf);
-    } finally {
-        if (browser) {
-            await browser.close();
+    tituloAzul("TIPOS DE SERVIÇO");
+    desenharTabela(
+        agrupar(ordens, "nome_tipo_servico", mapaTecnicos)
+    );
+
+    tituloAzul("INSTALAÇÕES POR LOCALIDADE");
+
+    const instalacoes = {};
+
+    for (const o of ordens) {
+        const tipoServico = String(
+            o.nome_tipo_servico || ""
+        ).toUpperCase();
+
+        if (!tipoServico.includes("INSTALA")) continue;
+
+        const local =
+            o.nome_localidade ||
+            "NÃO INFORMADO";
+
+        if (!instalacoes[local]) {
+            instalacoes[local] = {
+                abertas: 0,
+                concluidas: 0
+            };
+        }
+
+        if (o.data_abertura) instalacoes[local].abertas++;
+        if (o.finalizado_em) instalacoes[local].concluidas++;
+    }
+
+    desenharTabela(instalacoes);
+
+    const tiposLocalidade = {};
+
+    for (const o of ordens) {
+        const tipoServico =
+            o.nome_tipo_servico ||
+            "NÃO INFORMADO";
+
+        const local =
+            o.nome_localidade ||
+            "SEM LOCAL";
+
+        if (!tiposLocalidade[tipoServico]) {
+            tiposLocalidade[tipoServico] = {};
+        }
+
+        if (!tiposLocalidade[tipoServico][local]) {
+            tiposLocalidade[tipoServico][local] = {
+                abertas: 0,
+                concluidas: 0
+            };
+        }
+
+        if (o.data_abertura) {
+            tiposLocalidade[tipoServico][local].abertas++;
+        }
+
+        if (o.finalizado_em) {
+            tiposLocalidade[tipoServico][local].concluidas++;
         }
     }
+
+    const instalacoesLocalidade = {};
+
+    for (const o of ordens) {
+        const tipoServico = String(
+            o.nome_tipo_servico || ""
+        ).toUpperCase();
+
+        if (!tipoServico.includes("INSTALA")) continue;
+
+        const plano =
+            mapaPlanos[String(o.plano)] ||
+            "";
+
+        if (!plano || plano === "SEM PLANO") continue;
+
+        const local =
+            o.nome_localidade ||
+            "SEM LOCAL";
+
+        if (!instalacoesLocalidade[plano]) {
+            instalacoesLocalidade[plano] = {};
+        }
+
+        if (!instalacoesLocalidade[plano][local]) {
+            instalacoesLocalidade[plano][local] = {
+                abertas: 0,
+                concluidas: 0
+            };
+        }
+
+        if (o.data_abertura) {
+            instalacoesLocalidade[plano][local].abertas++;
+        }
+
+        if (o.finalizado_em) {
+            instalacoesLocalidade[plano][local].concluidas++;
+        }
+    }
+
+    desenharListaAgrupada(
+        "TIPOS DE SERVIÇOS POR LOCALIDADE",
+        tiposLocalidade
+    );
+
+    desenharListaAgrupada(
+        "PLANOS DAS INSTALAÇÕES POR LOCALIDADE",
+        instalacoesLocalidade
+    );
+
+    return Buffer.from(
+        doc.output("arraybuffer")
+    );
 }
 
 async function gerarRelatorioEmpresa(
@@ -790,47 +767,65 @@ async function gerarRelatorioEmpresa(
     tipo = "diario",
     referencia = new Date()
 ) {
-    const empresa = await buscarEmpresa(pool, empresaId);
-    const { inicio, fim } = obterPeriodo(tipo, referencia);
+    const empresa =
+        await buscarEmpresa(pool, empresaId);
+
+    const { inicio, fim } =
+        obterPeriodo(tipo, referencia);
 
     const [
         ordens,
         tecnicos,
         planos
     ] = await Promise.all([
-        buscarOrdens(pool, empresaId, inicio, fim),
-        buscarTecnicos(pool, empresaId),
-        buscarPlanos(pool, empresaId)
+        buscarOrdens(
+            pool,
+            empresaId,
+            inicio,
+            fim
+        ),
+        buscarTecnicos(
+            pool,
+            empresaId
+        ),
+        buscarPlanos(
+            pool,
+            empresaId
+        )
     ]);
 
-    const mapaTecnicos = criarMapa(tecnicos);
-    const mapaPlanos = criarMapa(planos);
+    const mapaTecnicos =
+        criarMapa(tecnicos);
 
-    const dados = prepararDados(
-        ordens,
-        mapaTecnicos,
-        mapaPlanos
-    );
+    const mapaPlanos =
+        criarMapa(planos);
 
-    const filename = montarNomeArquivo(
-        tipo,
-        inicio,
-        fim,
-        empresa
-    );
+    const filename =
+        montarNomeArquivo(
+            tipo,
+            inicio,
+            fim,
+            empresa
+        );
 
-    const html = montarHtml({
-        empresa,
-        tipo,
-        inicio,
-        fim,
-        dados
-    });
+    const buffer =
+        montarPdfExato({
+            empresa,
+            tipo,
+            inicio,
+            fim,
+            ordens,
+            mapaTecnicos,
+            mapaPlanos
+        });
 
-    const buffer = await gerarPdfComPuppeteer(html);
-
-    if (!buffer || buffer.length < 100) {
-        throw new Error("PDF automático vazio ou inválido");
+    if (
+        !Buffer.isBuffer(buffer) ||
+        buffer.length < 100
+    ) {
+        throw new Error(
+            "PDF automático vazio ou inválido"
+        );
     }
 
     return {
@@ -839,7 +834,6 @@ async function gerarRelatorioEmpresa(
         empresa,
         inicio,
         fim,
-        dados,
         totalOrdens: ordens.length
     };
 }
@@ -847,7 +841,9 @@ async function gerarRelatorioEmpresa(
 function criarTransporter() {
     return nodemailer.createTransport({
         host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT || 587),
+        port: Number(
+            process.env.SMTP_PORT || 587
+        ),
         secure:
             String(
                 process.env.SMTP_SECURE || "false"
@@ -866,7 +862,9 @@ async function enviarRelatorio(
     nomeArquivo = "relatorio.pdf"
 ) {
     if (!email) {
-        throw new Error("E-mail de destino não informado");
+        throw new Error(
+            "E-mail de destino não informado"
+        );
     }
 
     const buffer =
@@ -874,11 +872,17 @@ async function enviarRelatorio(
             ? pdf
             : pdf?.buffer;
 
-    if (!Buffer.isBuffer(buffer) || buffer.length < 100) {
-        throw new Error("PDF vazio ou inválido");
+    if (
+        !Buffer.isBuffer(buffer) ||
+        buffer.length < 100
+    ) {
+        throw new Error(
+            "PDF vazio ou inválido"
+        );
     }
 
-    const transporter = criarTransporter();
+    const transporter =
+        criarTransporter();
 
     await transporter.sendMail({
         from:
@@ -894,7 +898,8 @@ async function enviarRelatorio(
             {
                 filename: nomeArquivo,
                 content: buffer,
-                contentType: "application/pdf"
+                contentType:
+                    "application/pdf"
             }
         ]
     });
