@@ -1,6 +1,6 @@
 const cron = require("node-cron");
 const { gerarRelatorioEmpresa, enviarRelatorio, dataBR } = require("../services/relatorios.service");
-const { enviarMidia } = require("../whatsapp/whatsappService");
+const { enviarMidiaCentral } = require("../services/whatsappService");
 
 const FUSO = "America/Sao_Paulo";
 
@@ -160,9 +160,9 @@ async function processarTipo(pool, emp, tipo) {
             }
 
             try {
-                if (typeof enviarMidia !== "function") throw new Error("enviarMidia não foi exportada pelo whatsappService");
+                if (typeof enviarMidiaCentral !== "function") throw new Error("enviarMidiaCentral não foi exportada pelo whatsappService");
                 console.log(`📲 Empresa ${emp.id}: enviando para WhatsApp ${telefone}...`);
-                const resultado = await enviarMidia(
+                const resultado = await enviarMidiaCentral(
                     emp.id,
                     telefone,
                     rel.buffer,

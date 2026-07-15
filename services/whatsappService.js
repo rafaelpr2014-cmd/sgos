@@ -1,13 +1,19 @@
+"use strict";
+
 const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 const crypto = require("crypto");
 
 const CENTRAL_EMPRESA_ID = "1";
 const CENTRAL_SESSION_KEY = "sgos-central";
 
-const sessions = {};
-const qrs = {};
-const jobs = {};
+// Estes objetos existem apenas neste módulo. O arquivo whatsapp/whatsappService.js
+// apenas redireciona para cá, evitando duas instâncias concorrentes.
+const sessions = Object.create(null);
+const qrs = Object.create(null);
+const jobs = Object.create(null);
 const logs = [];
+const estados = Object.create(null);
+const inicializacoes = Object.create(null);
 
 const esperar = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -35,7 +41,7 @@ function formatarNumero(numero) {
     if (!numero) return null;
     let limpo = String(numero).replace(/\D/g, "");
     if (limpo.startsWith("0")) limpo = limpo.substring(1);
-    if (!limpo.startsWith("55")) limpo = "55" + limpo;
+    if (!limpo.startsWith("55")) limpo = `55${limpo}`;
     return limpo;
 }
 
@@ -49,11 +55,47 @@ function resolverChaveSessao({ tipo = "cliente", empresaId } = {}) {
     return tipo === "central" ? CENTRAL_SESSION_KEY : chaveSessaoCliente(empresaId);
 }
 
+function dadosEscopo(tipo, empresaId) {
+    return {
+        escopo: tipo,
+        empresaId: tipo === "central" ? CENTRAL_EMPRESA_ID : String(empresaId)
+    };
+}
+
+function erroNavegadorInvalido(err) {
+    const texto = String(err?.message || err || "").toLowerCase();
+    return [
+        "detached frame",
+        "execution context was destroyed",
+        "target closed",
+        "session closed",
+        "protocol error",
+        "most likely the page has been closed",
+        "cannot find context with specified id"
+    ].some(trecho => texto.includes(trecho));
+}
+
+async function destruirCliente(chave, motivo = "Sessão inválida") {
+    const client = sessions[chave];
+    delete sessions[chave];
+    delete qrs[chave];
+    delete inicializacoes[chave];
+    estados[chave] = { status: "desconectado", conectado: false, motivo };
+
+    if (client && typeof client.destroy === "function") {
+        try {
+            await client.destroy();
+        } catch (_) {}
+    }
+}
+
 function criarSessao({ tipo = "cliente", empresaId } = {}) {
     const chave = resolverChaveSessao({ tipo, empresaId });
-    const empresaLog = tipo === "central" ? CENTRAL_EMPRESA_ID : String(empresaId);
+    const escopo = dadosEscopo(tipo, empresaId);
 
     if (sessions[chave]) return sessions[chave];
+
+    estados[chave] = { status: "iniciando", conectado: false };
 
     const client = new Client({
         authStrategy: new LocalAuth({ clientId: chave }),
@@ -68,40 +110,57 @@ function criarSessao({ tipo = "cliente", empresaId } = {}) {
         }
     });
 
+    sessions[chave] = client;
+
     client.on("qr", qr => {
         qrs[chave] = qr;
-        registrarLog("info", "QR Code gerado.", { escopo: tipo, empresaId: empresaLog });
+        estados[chave] = { status: "aguardando_qr", conectado: false };
+        registrarLog("info", "QR Code gerado.", escopo);
     });
 
     client.on("authenticated", () => {
-        registrarLog("sucesso", "WhatsApp autenticado.", { escopo: tipo, empresaId: empresaLog });
+        estados[chave] = { status: "autenticado", conectado: false };
+        registrarLog("sucesso", "WhatsApp autenticado.", escopo);
     });
 
     client.on("ready", () => {
         delete qrs[chave];
-        registrarLog("sucesso", "WhatsApp conectado e pronto para envio.", { escopo: tipo, empresaId: empresaLog });
+        estados[chave] = {
+            status: "conectado",
+            conectado: true,
+            numero: client.info?.wid?.user || null,
+            nome: client.info?.pushname || null
+        };
+        registrarLog("sucesso", "WhatsApp conectado e pronto para envio.", escopo);
         console.log(`✅ WhatsApp ${tipo} conectado: ${chave}`);
     });
 
-    client.on("auth_failure", msg => {
-        registrarLog("erro", "Falha de autenticação do WhatsApp.", { escopo: tipo, empresaId: empresaLog, motivo: msg });
+    client.on("auth_failure", async msg => {
+        estados[chave] = { status: "falha_autenticacao", conectado: false, erro: msg };
+        registrarLog("erro", "Falha de autenticação do WhatsApp.", { ...escopo, motivo: msg });
         console.error(`❌ Falha de autenticação ${chave}:`, msg);
+        await destruirCliente(chave, "Falha de autenticação");
     });
 
-    client.on("disconnected", reason => {
-        registrarLog("alerta", "WhatsApp desconectado.", { escopo: tipo, empresaId: empresaLog, motivo: reason });
-        delete sessions[chave];
-        delete qrs[chave];
+    client.on("disconnected", async reason => {
+        registrarLog("alerta", "WhatsApp desconectado.", { ...escopo, motivo: reason });
+        await destruirCliente(chave, reason || "Desconectado");
     });
 
-    client.initialize().catch(err => {
-        registrarLog("erro", "Falha ao iniciar a sessão do WhatsApp.", { escopo: tipo, empresaId: empresaLog, erro: err.message });
-        delete sessions[chave];
-        delete qrs[chave];
-        console.error(`❌ Falha ao iniciar ${chave}:`, err.message);
-    });
+    inicializacoes[chave] = client.initialize()
+        .catch(async err => {
+            registrarLog("erro", "Falha ao iniciar a sessão do WhatsApp.", { ...escopo, erro: err.message });
+            console.error(`❌ Falha ao iniciar ${chave}:`, err.message);
+            await destruirCliente(chave, err.message);
+            throw err;
+        })
+        .finally(() => {
+            delete inicializacoes[chave];
+        });
 
-    sessions[chave] = client;
+    // Evita rejeição não tratada quando a criação foi disparada por uma rota de status.
+    inicializacoes[chave].catch(() => {});
+
     return client;
 }
 
@@ -122,19 +181,49 @@ function getClienteEmpresa(empresaId) {
     return sessions[chave] || criarSessaoCliente(empresaId);
 }
 
-function obterStatus({ tipo = "cliente", empresaId } = {}) {
+async function estadoRealCliente(client) {
+    if (!client) return null;
+    try {
+        return await client.getState();
+    } catch (err) {
+        if (erroNavegadorInvalido(err)) throw err;
+        return null;
+    }
+}
+
+async function obterStatus({ tipo = "cliente", empresaId } = {}) {
     const chave = resolverChaveSessao({ tipo, empresaId });
     const client = sessions[chave];
-    if (!client) return { status: "desconectado", conectado: false };
-    if (client.info) {
-        return {
-            status: "conectado",
-            conectado: true,
-            numero: client.info?.wid?.user || null,
-            nome: client.info?.pushname || null
-        };
+
+    if (!client) {
+        return estados[chave] || { status: "desconectado", conectado: false };
     }
-    return { status: qrs[chave] ? "aguardando_qr" : "iniciando", conectado: false };
+
+    try {
+        const state = await estadoRealCliente(client);
+        if (state === "CONNECTED") {
+            const status = {
+                status: "conectado",
+                conectado: true,
+                numero: client.info?.wid?.user || estados[chave]?.numero || null,
+                nome: client.info?.pushname || estados[chave]?.nome || null
+            };
+            estados[chave] = status;
+            return status;
+        }
+
+        if (qrs[chave]) return { status: "aguardando_qr", conectado: false };
+        return estados[chave] || { status: String(state || "iniciando").toLowerCase(), conectado: false };
+    } catch (err) {
+        if (erroNavegadorInvalido(err)) {
+            registrarLog("erro", "A sessão perdeu a página do navegador e foi invalidada.", {
+                ...dadosEscopo(tipo, empresaId),
+                erro: err.message
+            });
+            await destruirCliente(chave, err.message);
+        }
+        return { status: "desconectado", conectado: false, erro: err.message };
+    }
 }
 
 function obterQr({ tipo = "cliente", empresaId } = {}) {
@@ -145,10 +234,11 @@ function obterQr({ tipo = "cliente", empresaId } = {}) {
 async function desconectarSessao({ tipo = "cliente", empresaId, apagarAutenticacao = true } = {}) {
     const chave = resolverChaveSessao({ tipo, empresaId });
     const client = sessions[chave];
-    const empresaLog = tipo === "central" ? CENTRAL_EMPRESA_ID : String(empresaId);
+    const escopo = dadosEscopo(tipo, empresaId);
 
     if (!client) {
         delete qrs[chave];
+        estados[chave] = { status: "desconectado", conectado: false };
         return { ok: true, status: "desconectado" };
     }
 
@@ -156,14 +246,41 @@ async function desconectarSessao({ tipo = "cliente", empresaId, apagarAutenticac
         if (apagarAutenticacao && typeof client.logout === "function") await client.logout();
         else if (typeof client.destroy === "function") await client.destroy();
     } catch (err) {
-        registrarLog("alerta", "Sessão encerrada com ressalva.", { escopo: tipo, empresaId: empresaLog, erro: err.message });
+        registrarLog("alerta", "Sessão encerrada com ressalva.", { ...escopo, erro: err.message });
     } finally {
         delete sessions[chave];
         delete qrs[chave];
+        delete inicializacoes[chave];
+        estados[chave] = { status: "desconectado", conectado: false };
     }
 
-    registrarLog("info", "Sessão do WhatsApp desconectada manualmente.", { escopo: tipo, empresaId: empresaLog });
+    registrarLog("info", "Sessão do WhatsApp desconectada manualmente.", escopo);
     return { ok: true, status: "desconectado" };
+}
+
+async function obterClientePronto({ tipo, empresaId, timeoutMs = 15000 }) {
+    const chave = resolverChaveSessao({ tipo, empresaId });
+    const client = tipo === "central" ? getClienteCentral() : getClienteEmpresa(empresaId);
+    const limite = Date.now() + timeoutMs;
+
+    while (Date.now() < limite) {
+        try {
+            const state = await estadoRealCliente(client);
+            if (state === "CONNECTED") return client;
+        } catch (err) {
+            if (erroNavegadorInvalido(err)) {
+                await destruirCliente(chave, err.message);
+                throw new Error(tipo === "central"
+                    ? "A sessão do WhatsApp central perdeu a conexão com o navegador. Abra a página do WhatsApp e aguarde a reconexão."
+                    : "A sessão do WhatsApp da empresa perdeu a conexão com o navegador. Abra a sincronização e aguarde a reconexão.");
+            }
+        }
+        await esperar(500);
+    }
+
+    throw new Error(tipo === "central"
+        ? "WhatsApp central do SGOS está desconectado ou ainda iniciando."
+        : "WhatsApp da empresa está desconectado ou ainda iniciando.");
 }
 
 async function obterChatId(client, telefone) {
@@ -174,18 +291,43 @@ async function obterChatId(client, telefone) {
     return { chatId: numberId._serialized, numero };
 }
 
-async function enviarTextoComCliente(client, telefone, mensagem) {
-    if (!client?.info) return { ok: false, error: "offline" };
-    if (!String(mensagem || "").trim()) return { ok: false, error: "empty_message" };
-    const { chatId, numero } = await obterChatId(client, telefone);
-    await client.sendMessage(chatId, String(mensagem).trim());
-    return { ok: true, numero };
+async function executarEnvioSeguro({ tipo, empresaId, operacao }) {
+    const chave = resolverChaveSessao({ tipo, empresaId });
+    const client = await obterClientePronto({ tipo, empresaId });
+
+    try {
+        return await operacao(client);
+    } catch (err) {
+        if (erroNavegadorInvalido(err)) {
+            registrarLog("erro", "Falha do navegador durante o envio. A sessão foi reinicializada.", {
+                ...dadosEscopo(tipo, empresaId),
+                erro: err.message
+            });
+            await destruirCliente(chave, err.message);
+            criarSessao({ tipo, empresaId });
+            throw new Error("A sessão do WhatsApp foi reiniciada porque perdeu a conexão com o navegador. Aguarde alguns segundos e tente novamente.");
+        }
+        throw err;
+    }
 }
 
-// Usado pelos envios manuais e informativos da própria empresa cliente.
+async function enviarTextoComCliente({ tipo, empresaId, telefone, mensagem }) {
+    if (!String(mensagem || "").trim()) return { ok: false, error: "empty_message" };
+
+    return executarEnvioSeguro({
+        tipo,
+        empresaId,
+        operacao: async client => {
+            const { chatId, numero } = await obterChatId(client, telefone);
+            await client.sendMessage(chatId, String(mensagem).trim());
+            return { ok: true, numero };
+        }
+    });
+}
+
 async function enviarMensagem(empresaId, telefone, mensagem) {
     try {
-        const resultado = await enviarTextoComCliente(getClienteEmpresa(empresaId), telefone, mensagem);
+        const resultado = await enviarTextoComCliente({ tipo: "cliente", empresaId, telefone, mensagem });
         registrarLog(resultado.ok ? "sucesso" : "erro", resultado.ok ? "Mensagem manual enviada." : "Falha no envio manual.", {
             escopo: "cliente", empresaId: String(empresaId), telefone: formatarNumero(telefone), erro: resultado.error || null
         });
@@ -196,10 +338,9 @@ async function enviarMensagem(empresaId, telefone, mensagem) {
     }
 }
 
-// Usado pelo WhatsApp exclusivo do SGOS.
 async function enviarMensagemCentral(telefone, mensagem) {
     try {
-        const resultado = await enviarTextoComCliente(getClienteCentral(), telefone, mensagem);
+        const resultado = await enviarTextoComCliente({ tipo: "central", empresaId: CENTRAL_EMPRESA_ID, telefone, mensagem });
         registrarLog(resultado.ok ? "sucesso" : "erro", resultado.ok ? "Mensagem central enviada." : "Falha no envio central.", {
             escopo: "central", empresaId: CENTRAL_EMPRESA_ID, telefone: formatarNumero(telefone), erro: resultado.error || null
         });
@@ -210,68 +351,63 @@ async function enviarMensagemCentral(telefone, mensagem) {
     }
 }
 
-// Envio manual de PDF usando o WhatsApp autenticado pela empresa cliente.
+function validarBuffer(arquivo) {
+    const buffer = Buffer.isBuffer(arquivo) ? arquivo : arquivo?.buffer;
+    if (!Buffer.isBuffer(buffer) || buffer.length < 100) throw new Error("Arquivo PDF inválido.");
+    return buffer;
+}
+
 async function enviarDocumento(empresaId, telefone, arquivo, nomeArquivo, legenda = "") {
     try {
-        const client = getClienteEmpresa(empresaId);
-        if (!client?.info) return { ok: false, error: "offline" };
-
-        const { chatId, numero } = await obterChatId(client, telefone);
-        const buffer = Buffer.isBuffer(arquivo) ? arquivo : arquivo?.buffer;
-        if (!Buffer.isBuffer(buffer) || buffer.length < 100) {
-            return { ok: false, error: "invalid_file" };
-        }
-
-        const media = new MessageMedia(
-            "application/pdf",
-            buffer.toString("base64"),
-            nomeArquivo || "relatorio.pdf"
-        );
-
-        await client.sendMessage(chatId, media, {
-            caption: legenda || "Relatório SGOS"
+        const buffer = validarBuffer(arquivo);
+        const resultado = await executarEnvioSeguro({
+            tipo: "cliente",
+            empresaId,
+            operacao: async client => {
+                const { chatId, numero } = await obterChatId(client, telefone);
+                const media = new MessageMedia("application/pdf", buffer.toString("base64"), nomeArquivo || "relatorio.pdf");
+                await client.sendMessage(chatId, media, { caption: legenda || "Relatório SGOS" });
+                return { ok: true, numero };
+            }
         });
 
         registrarLog("sucesso", "Relatório manual enviado pela empresa.", {
-            escopo: "cliente",
-            empresaId: String(empresaId),
-            telefone: numero,
-            arquivo: nomeArquivo || "relatorio.pdf"
+            escopo: "cliente", empresaId: String(empresaId), telefone: resultado.numero, arquivo: nomeArquivo || "relatorio.pdf"
         });
-
-        return { ok: true, numero };
+        return resultado;
     } catch (err) {
         registrarLog("erro", "Erro no envio de relatório manual.", {
-            escopo: "cliente",
-            empresaId: String(empresaId),
-            erro: err.message
+            escopo: "cliente", empresaId: String(empresaId), erro: err.message
         });
         return { ok: false, error: "send_failed", detail: err.message };
     }
 }
 
-// Mantém o nome esperado pelo serviço de relatórios automáticos, mas força a sessão central.
 async function enviarMidiaCentral(_empresaIdIgnorada, telefone, arquivo, nomeArquivo, legenda = "") {
-    const client = getClienteCentral();
-    if (!client?.info) throw new Error("WhatsApp central do SGOS está desconectado.");
-
-    const { chatId, numero } = await obterChatId(client, telefone);
-    const buffer = Buffer.isBuffer(arquivo) ? arquivo : arquivo?.buffer;
-    if (!Buffer.isBuffer(buffer) || buffer.length < 100) throw new Error("Arquivo PDF inválido.");
-
-    const media = new MessageMedia("application/pdf", buffer.toString("base64"), nomeArquivo || "relatorio.pdf");
-    await client.sendMessage(chatId, media, { caption: legenda || "Relatório automático SGOS" });
-    registrarLog("sucesso", "Relatório automático enviado.", {
-        escopo: "central", empresaId: CENTRAL_EMPRESA_ID, telefone: numero, arquivo: nomeArquivo || "relatorio.pdf"
+    const buffer = validarBuffer(arquivo);
+    const resultado = await executarEnvioSeguro({
+        tipo: "central",
+        empresaId: CENTRAL_EMPRESA_ID,
+        operacao: async client => {
+            const { chatId, numero } = await obterChatId(client, telefone);
+            const media = new MessageMedia("application/pdf", buffer.toString("base64"), nomeArquivo || "relatorio.pdf");
+            await client.sendMessage(chatId, media, { caption: legenda || "Relatório automático SGOS" });
+            return { ok: true, numero };
+        }
     });
-    return { ok: true, numero };
+
+    registrarLog("sucesso", "Relatório automático enviado.", {
+        escopo: "central", empresaId: CENTRAL_EMPRESA_ID, telefone: resultado.numero, arquivo: nomeArquivo || "relatorio.pdf"
+    });
+    return resultado;
 }
 
 function criarJobEnvio({ empresaId, contatos, mensagem, intervaloSegundos = 45 }) {
-    const lista = Array.isArray(contatos) ? contatos.slice(0, 10) : [];
-    if (!lista.length) throw new Error("Nenhum contato informado.");
-    if (contatos.length > 10) throw new Error("O limite é de 10 contatos por lote.");
+    const origem = Array.isArray(contatos) ? contatos : [];
+    if (!origem.length) throw new Error("Nenhum contato informado.");
+    if (origem.length > 10) throw new Error("O limite é de 10 contatos por lote.");
 
+    const lista = origem.slice(0, 10);
     const intervalo = Math.max(45, Number(intervaloSegundos) || 45);
     const id = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString("hex");
     const job = {
@@ -300,7 +436,7 @@ function criarJobEnvio({ empresaId, contatos, mensagem, intervaloSegundos = 45 }
                 nome: contato.nome || "Cliente",
                 telefone: contato.telefone || "",
                 ok: Boolean(resultado.ok),
-                erro: resultado.error || null,
+                erro: resultado.detail || resultado.error || null,
                 enviadoEm: new Date().toISOString()
             });
 

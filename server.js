@@ -19,6 +19,7 @@ const path = require("path");
 const fs = require("fs");
 
 const whatsappRoutes = require("./routes/whatsappRoutes");
+const { criarSessaoCentral } = require("./services/whatsappService");
 const empresaRoutes = require("./routes/empresa.routes");
 const escalaRoutes = require("./routes/escala.routes");
 const osAvulsasRoutes = require("./routes/os-avulsas.routes");
@@ -43,6 +44,14 @@ const port = 3000;
 
 cronJobs(pool);
 require("./services/agendamento.service")(pool, io);
+
+// Restaura a sessão central logo na inicialização do servidor.
+// A falha não derruba o SGOS; o QR continuará disponível pela página administrativa.
+try {
+    criarSessaoCentral();
+} catch (err) {
+    console.error("❌ Falha ao iniciar WhatsApp central:", err.message);
+}
 
 // 🔥 disponibiliza IO globalmente
 app.set("io", io);

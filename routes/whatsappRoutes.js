@@ -85,7 +85,7 @@ function exigirEmpresaCentral(req, res, next) {
 async function aguardarQr({ tipo, empresaId }) {
     const limite = Date.now() + 10000;
     while (Date.now() < limite) {
-        const status = obterStatus({ tipo, empresaId });
+        const status = await obterStatus({ tipo, empresaId });
         if (status.conectado) return status;
         const qr = obterQr({ tipo, empresaId });
         if (qr) return { status: "aguardando_qr", qr };
@@ -99,8 +99,8 @@ router.use(exigirAutenticacao);
 // =====================================================
 // WHATSAPP CENTRAL DO SGOS - SOMENTE EMPRESA 1
 // =====================================================
-router.get("/central/status", exigirEmpresaCentral, (req, res) => {
-    return res.json(obterStatus({ tipo: "central", empresaId: CENTRAL_EMPRESA_ID }));
+router.get("/central/status", exigirEmpresaCentral, async (req, res) => {
+    return res.json(await obterStatus({ tipo: "central", empresaId: CENTRAL_EMPRESA_ID }));
 });
 
 router.get("/central/qr", exigirEmpresaCentral, async (req, res) => {
@@ -127,8 +127,8 @@ router.post("/central/teste", exigirEmpresaCentral, async (req, res) => {
 // =====================================================
 // WHATSAPP DA EMPRESA CLIENTE - UMA SESSÃO POR EMPRESA
 // =====================================================
-router.get("/cliente/status", (req, res) => {
-    return res.json(obterStatus({ tipo: "cliente", empresaId: req.empresaIdAutenticada }));
+router.get("/cliente/status", async (req, res) => {
+    return res.json(await obterStatus({ tipo: "cliente", empresaId: req.empresaIdAutenticada }));
 });
 
 router.get("/cliente/qr", async (req, res) => {
@@ -152,7 +152,7 @@ router.post("/cliente/teste", async (req, res) => {
     return res.status(resultado.ok ? 200 : 400).json(resultado);
 });
 
-router.post("/enviar-lote", (req, res) => {
+router.post("/enviar-lote", async (req, res) => {
     try {
         const { contatos, mensagem, intervaloSegundos } = req.body || {};
         const empresaId = req.empresaIdAutenticada;
@@ -160,7 +160,7 @@ router.post("/enviar-lote", (req, res) => {
         if (!mensagem || !String(mensagem).trim()) return res.status(400).json({ erro: "Mensagem vazia." });
         if (!Array.isArray(contatos) || !contatos.length) return res.status(400).json({ erro: "Selecione pelo menos um contato." });
         if (contatos.length > 10) return res.status(400).json({ erro: "O limite é de 10 contatos por lote." });
-        if (!obterStatus({ tipo: "cliente", empresaId }).conectado) {
+        if (!(await obterStatus({ tipo: "cliente", empresaId })).conectado) {
             return res.status(409).json({ erro: "WhatsApp da empresa desconectado. Leia o QR Code antes de enviar." });
         }
 
