@@ -2781,6 +2781,12 @@ async function verificarStatusWhatsappRelatorio(){
             }
         });
 
+        if (!resposta) {
+            throw new Error(
+                "A consulta do WhatsApp não retornou resposta."
+            );
+        }
+
         let dados = {};
         try {
             dados = await resposta.json();

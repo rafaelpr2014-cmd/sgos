@@ -16,16 +16,52 @@ const {
 } = require("../services/whatsappService");
 
 function extrairUsuario(req) {
-    return req.user || req.usuario || req.session?.user || req.session?.usuario || null;
+    const usuarioDoMiddleware =
+        req.user ||
+        req.usuario ||
+        req.session?.user ||
+        req.session?.usuario ||
+        null;
+
+    if (usuarioDoMiddleware) {
+        return usuarioDoMiddleware;
+    }
+
+    // O SGOS atual autentica o frontend por cabeçalhos.
+    const usuarioId =
+        req.get("x-usuario-id") ||
+        null;
+
+    const empresaId =
+        req.get("x-empresa-id") ||
+        null;
+
+    if (!usuarioId || !empresaId) {
+        return null;
+    }
+
+    return {
+        id: usuarioId,
+        usuario:
+            req.get("x-usuario-nome") ||
+            "",
+        cargo:
+            req.get("x-usuario-cargo") ||
+            "",
+        empresa_id: empresaId
+    };
 }
 
 function extrairEmpresaId(req) {
     const user = extrairUsuario(req);
+
     return String(
         user?.empresa_id ??
         user?.empresaId ??
         user?.id_empresa ??
+        user?.empresa?.id ??
         req.empresa_id ??
+        req.get("x-empresa-id") ??
         ""
     ).trim();
 }
