@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SGOS Técnico - Viabilidades</title>
+<link rel="icon" type="image/png" href="/img/favicon.png">
+<style>
+:root{
+    --azul:#2563eb;--azul-dark:#081a31;--fundo:#f5f7fb;--card:#fff;--texto:#0f172a;
+    --muted:#64748b;--borda:#e5e7eb;--verde:#16a34a;--laranja:#f59e0b;
+    --vermelho:#ef4444;--roxo:#7c3aed;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);color:var(--texto);min-height:100vh}
+button,input,textarea,select{font:inherit}
+.mobile-shell{max-width:520px;margin:0 auto;min-height:100vh;background:var(--fundo);position:relative;overflow-x:hidden}
+.mobile-topbar{min-height:84px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top) + 12px) 14px 10px;position:sticky;top:0;z-index:1000;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.menu-btn{width:42px;height:42px;border:none;border-radius:12px;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.18);flex:0 0 auto}
+.menu-btn span{display:block;width:20px;height:2px;background:#fff;position:relative;border-radius:99px}
+.menu-btn span:before,.menu-btn span:after{content:"";position:absolute;left:0;width:20px;height:2px;background:#fff;border-radius:99px}
+.menu-btn span:before{top:-7px}.menu-btn span:after{top:7px}
+.top-logo{height:38px;max-width:112px;object-fit:contain}
+.top-title{min-width:0;flex:1}.top-title strong{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.top-title small{display:block;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-user{font-size:20px;border:none;background:#f1f5f9;border-radius:12px;width:40px;height:40px;flex:0 0 auto}
+.drawer-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1999;opacity:0;pointer-events:none;transition:.25s}.drawer-overlay.show{opacity:1;pointer-events:auto}
+.side-drawer{position:fixed;left:0;top:0;height:100dvh;width:280px;max-width:82vw;background:linear-gradient(180deg,#081a31,#061426);z-index:2000;transform:translateX(-100%);transition:.25s ease;color:#fff;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 16px);display:flex;flex-direction:column;box-shadow:18px 0 45px rgba(0,0,0,.32)}
+.side-drawer.open{transform:translateX(0)}.drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.drawer-head img{width:148px;max-height:58px;object-fit:contain}.drawer-close{width:38px;height:38px;border:none;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-size:22px}
+.drawer-user{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;margin-bottom:14px}.drawer-user strong{display:block;font-size:14px}.drawer-user small{display:block;color:#cbd5e1;font-size:12px;margin-top:3px}
+.drawer-nav{display:flex;flex-direction:column;gap:7px}.drawer-nav a{color:#dbeafe;text-decoration:none;display:flex;align-items:center;gap:12px;padding:13px;border-radius:14px;font-size:15px;font-weight:800}.drawer-nav a.active,.drawer-nav a:hover{background:#2563eb;color:#fff}.drawer-nav .ico{width:28px;height:28px;border-radius:10px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center}
+.drawer-footer{margin-top:auto}.drawer-logout{width:100%;border:none;background:#ef4444;color:#fff;border-radius:14px;padding:13px;font-weight:900;font-size:14px}
+.content{padding:14px 12px 28px}.mini-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px}.mini-card{background:#fff;border:1px solid var(--borda);border-radius:16px;padding:12px 6px;text-align:center;box-shadow:0 8px 20px rgba(15,23,42,.05)}.mini-card strong{font-size:22px;display:block}.mini-card span{font-size:10px;color:#64748b;font-weight:800}
+.card-box{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 10px 24px rgba(15,23,42,.06)}
+.section-title{font-size:17px;font-weight:900;margin:0 0 12px}.input,.select,.textarea{width:100%;padding:12px 13px;border:1px solid var(--borda);border-radius:13px;background:#fff;outline:none;font-size:14px}.textarea{min-height:110px;resize:vertical}.input:focus,.select:focus,.textarea:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.muted{color:var(--muted)}.empty{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:26px 14px;text-align:center;color:#64748b;font-weight:800}
+.list-card{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:14px;margin-bottom:10px;box-shadow:0 10px 24px rgba(15,23,42,.06);font-size:13px;line-height:1.55;position:relative;overflow:hidden}
+.list-card:before{content:"";position:absolute;left:0;top:0;width:5px;height:100%;background:#2563eb}.list-card h3{margin:0 0 8px;padding-left:6px;font-size:16px}.list-card p{margin:4px 0;padding-left:6px}.list-card .endereco{white-space:normal;color:#334155}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.pill{display:inline-block;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:900;white-space:nowrap}.pill.green{background:#dcfce7;color:#15803d}.pill.orange{background:#ffedd5;color:#c2410c}.pill.red{background:#fee2e2;color:#dc2626}.pill.blue{background:#dbeafe;color:#1d4ed8}
+.btn{border:none;border-radius:13px;padding:12px 14px;font-weight:900;color:#fff;background:#2563eb;cursor:pointer}.btn.block{width:100%}.btn-row{display:flex;gap:8px;margin-top:12px}.btn-light{background:#f1f5f9;color:#0f172a}.btn-green{background:#16a34a}.btn-red{background:#ef4444}.btn-roxo{background:#7c3aed}.btn:disabled{opacity:.6;cursor:not-allowed}
+.telefone{color:#2563eb;text-decoration:none;font-weight:900}.detalhes{background:#f8fafc;border:1px solid var(--borda);border-radius:14px;padding:12px;margin-top:10px}.detalhes p{padding-left:0}.label{font-size:12px;font-weight:900;color:#334155;margin:12px 0 6px;display:block}
+.file-box{border:1px dashed #93c5fd;border-radius:14px;background:#eff6ff;padding:12px;margin-top:8px}.file-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.file-btn{border:none;border-radius:12px;padding:11px 8px;font-weight:900;background:#fff;color:#1e3a8a;border:1px solid #bfdbfe}
+.preview-list{display:flex;gap:8px;overflow-x:auto;padding:10px 0 2px}.preview-item{position:relative;flex:0 0 86px;width:86px;height:72px;border-radius:10px;overflow:hidden;background:#0f172a;border:1px solid var(--borda)}.preview-item img,.preview-item video{width:100%;height:100%;object-fit:cover}.preview-item button{position:absolute;right:3px;top:3px;width:23px;height:23px;border:none;border-radius:50%;background:rgba(239,68,68,.94);color:#fff;font-weight:900}
+.mapa-card{display:none;margin-top:10px;border:1px solid var(--borda);border-radius:14px;padding:10px;background:#f8fafc}.mapa-card.show{display:block}.mapa-card iframe{width:100%;height:260px;border:0;border-radius:10px}.mapa-card a{display:inline-block;margin-top:8px;color:#2563eb;font-weight:900;text-decoration:none;font-size:13px}
+.anexos{display:flex;gap:8px;overflow-x:auto;padding:5px 0}.anexo{flex:0 0 74px;width:74px;height:66px;border-radius:10px;overflow:hidden;border:1px solid var(--borda);background:#0f172a;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px}.anexo img,.anexo video{width:100%;height:100%;object-fit:cover}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.66);display:none;align-items:flex-end;justify-content:center;z-index:3000}.modal.show{display:flex}.modal-card{width:100%;max-width:520px;max-height:92dvh;overflow:auto;background:#f8fafc;border-radius:24px 24px 0 0;padding:16px 12px calc(env(safe-area-inset-bottom) + 20px);box-shadow:0 -20px 60px rgba(0,0,0,.3)}.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.modal-head h2{font-size:18px;margin:0}.modal-close{width:38px;height:38px;border:none;border-radius:12px;background:#e2e8f0;font-size:22px}
+.loading-overlay{position:fixed;inset:0;background:rgba(15,23,42,.7);display:none;align-items:center;justify-content:center;z-index:5000;color:#fff;font-weight:900}.loading-overlay.show{display:flex}
+@media(min-width:760px){body{background:#e5e7eb}.mobile-shell{margin:10px auto;border-radius:24px;overflow:hidden;box-shadow:0 18px 60px rgba(15,23,42,.18)}.modal{align-items:center}.modal-card{border-radius:24px;max-height:88vh}}
+</style>
+</head>
+<body>
+<div class="mobile-shell">
+<div class="drawer-overlay" id="drawerOverlay" onclick="fecharMenu()"></div>
+<aside class="side-drawer" id="sideDrawer">
+ <div class="drawer-head"><img id="drawerLogo" src="https://iili.io/C5XGAnp.png" alt="SGOS"><button class="drawer-close" onclick="fecharMenu()">×</button></div>
+ <div class="drawer-user"><strong id="drawerUser">Carregando...</strong><small id="drawerEmpresa">Empresa</small></div>
+ <nav class="drawer-nav">
+  <a data-page="os" href="appmobile.html"><span class="ico">🧾</span>Ordens de Serviço</a>
+  <a data-page="viabilidades" href="app-viabilidades.html" class="active"><span class="ico">📍</span>Viabilidades</a>
+  <a data-page="escala" href="app-escala.html"><span class="ico">📅</span>Escala</a>
+  <a data-page="planos" href="app-planos.html"><span class="ico">📦</span>Planos</a>
+  <a data-page="historico" href="app-historico-os.html"><span class="ico">🕘</span>Histórico de OS</a>
+ </nav>
+ <div class="drawer-footer"><button class="drawer-logout" onclick="logout()">Sair</button></div>
+</aside>
+
+<header class="mobile-topbar">
+ <button class="menu-btn" onclick="abrirMenu()" aria-label="Abrir menu"><span></span></button>
+ <img id="topLogo" class="top-logo" alt="Logo">
+ <div class="top-title"><strong>Viabilidades</strong><small id="topEmpresa">SGOS Técnico</small></div>
+ <button class="top-user" title="Usuário">👤</button>
+</header>
+
+<main class="content">
+ <div class="mini-cards">
+  <div class="mini-card"><strong id="cardPendentes">0</strong><span>Pendentes</span></div>
+  <div class="mini-card"><strong id="cardAprovadas">0</strong><span>Aprovadas</span></div>
+  <div class="mini-card"><strong id="cardVisitadas">0</strong><span>Com visita</span></div>
+ </div>
+
+ <div class="card-box">
+  <h2 class="section-title">Minhas viabilidades</h2>
+  <input class="input" id="busca" placeholder="Buscar cliente ou endereço">
+  <div class="grid-2" style="margin-top:10px">
+   <select class="select" id="filtroStatus">
+    <option value="">Todos os status</option>
+    <option value="PENDENTE">Pendentes</option>
+    <option value="APROVADA">Aprovadas</option>
+    <option value="REPROVADA">Reprovadas</option>
+   </select>
+   <button class="btn" onclick="carregarViabilidades()">Atualizar</button>
+  </div>
+ </div>
+
+ <div id="listaViabilidades"></div>
+</main>
+</div>
+
+<div class="modal" id="modalViabilidade" onclick="fecharModalFundo(event)">
+ <div class="modal-card">
+  <div class="modal-head"><h2>Registrar visita</h2><button class="modal-close" onclick="fecharModal()">×</button></div>
+  <div id="resumoModal" class="card-box"></div>
+  <div class="card-box">
+   <label class="label" for="observacaoPos">Observação pós-aprovação</label>
+   <textarea id="observacaoPos" class="textarea" placeholder="Descreva o que foi verificado durante a visita, passagem de cabo, postes, distância, materiais e conclusão técnica."></textarea>
+
+   <label class="label">Comprovação da visita</label>
+   <div class="file-box">
+    <div class="file-actions">
+     <button class="file-btn" type="button" onclick="document.getElementById('cameraFoto').click()">📷 Tirar foto</button>
+     <button class="file-btn" type="button" onclick="document.getElementById('cameraVideo').click()">🎥 Gravar vídeo</button>
+     <button class="file-btn" type="button" onclick="document.getElementById('arquivosVisita').click()">📁 Galeria</button>
+     <button class="file-btn" type="button" onclick="obterLocalizacao()">📍 Adicionar localização</button>
+    </div>
+    <input hidden type="file" id="cameraFoto" accept="image/*" capture="environment">
+    <input hidden type="file" id="cameraVideo" accept="video/*" capture="environment">
+    <input hidden type="file" id="arquivosVisita" accept="image/*,video/*" multiple>
+    <div id="statusLocalizacao" class="muted" style="font-size:12px;margin-top:9px">Localização ainda não coletada.</div>
+    <button id="btnVisualizarLocalizacaoModal" class="btn btn-light block" type="button" style="margin-top:9px;display:none" onclick="visualizarLocalizacaoModal()">🗺️ Visualizar localização</button>
+    <div id="mapaModal" class="mapa-card"></div>
+    <div id="previewVisita" class="preview-list"></div>
+   </div>
+   <button id="btnSalvarVisita" class="btn btn-green block" style="margin-top:12px" onclick="salvarVisita()">Salvar visita</button>
+  </div>
+ </div>
+</div>
+
+<div class="modal" id="modalMidia" onclick="fecharMidiaFundo(event)">
+ <div class="modal-card" style="background:#0f172a;min-height:45vh;display:flex;flex-direction:column">
+  <div class="modal-head"><h2 style="color:#fff">Anexo</h2><button class="modal-close" onclick="fecharMidia()">×</button></div>
+  <div id="conteudoMidia" style="display:flex;align-items:center;justify-content:center;flex:1"></div>
+ </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">Enviando dados da visita...</div>
+
+<script>
+const API_VIABILIDADE="/api/viabilidade";
+const API_UPLOAD="/api/upload_viabilidade";
+let usuarioAtual=null;
+let viabilidades=[];
+let viabilidadeAtual=null;
+let arquivosVisita=[];
+let localizacaoAtual=null;
+
+function getApiBase(){
+ const salvo=localStorage.getItem("api_base");if(salvo)return String(salvo).replace(/\/$/,"");
+ const provedor=localStorage.getItem("provedor");if(provedor)return `https://${provedor}.sgos.net.br`;
+ if(location.protocol.startsWith("http"))return location.origin;return "";
+}
+function apiUrl(path){if(!path)return getApiBase();if(/^https?:\/\//i.test(path))return path;const b=getApiBase();return b?b+(path.startsWith("/")?path:"/"+path):path}
+function apiFetch(path,opt={}){return fetch(apiUrl(path),opt)}
+function resolverUrlArquivo(url){if(!url)return"";if(/^https?:\/\//i.test(url))return url;return apiUrl(url.startsWith("/")?url:"/"+url)}
+function getUsuarioLocal(){try{return JSON.parse(localStorage.getItem("usuario")||"{}")}catch{return{}}}
+function authHeaders(){const u=getUsuarioLocal();return{"x-usuario-id":u.id||"","x-usuario-nome":u.usuario||u.nome||"","x-usuario-cargo":u.cargo||""}}
+function escapar(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}
+function abrirMenu(){document.getElementById("sideDrawer").classList.add("open");document.getElementById("drawerOverlay").classList.add("show")}
+function fecharMenu(){document.getElementById("sideDrawer").classList.remove("open");document.getElementById("drawerOverlay").classList.remove("show")}
+function logout(){localStorage.removeItem("usuario");localStorage.removeItem("usuario_id");location.href="index.html"}
+function formatarData(v){if(!v)return"-";const d=new Date(v);return isNaN(d)?"-":d.toLocaleString("pt-BR")}
+function telefoneLink(v){const n=String(v||"").replace(/\D/g,"");return n?`<a class="telefone" href="tel:${n}">${escapar(v)}</a>`:"-"}
+function statusClasse(s){s=String(s||"PENDENTE").toUpperCase();return s==="APROVADA"?"green":s==="REPROVADA"?"red":"orange"}
+function coordenadasValidas(v){const lat=Number(v?.latitude),lon=Number(v?.longitude);return Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180}
+function urlMapaEmbed(lat,lon){const m=.006;return `https://www.openstreetmap.org/export/embed.html?bbox=${lon-m}%2C${lat-m}%2C${lon+m}%2C${lat+m}&layer=mapnik&marker=${lat}%2C${lon}`}
+function htmlMapa(lat,lon){return `<iframe loading="lazy" src="${urlMapaEmbed(lat,lon)}"></iframe><a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${lat},${lon}">Abrir no Google Maps</a><div class="muted" style="font-size:11px;margin-top:6px">Latitude: ${Number(lat).toFixed(8)} | Longitude: ${Number(lon).toFixed(8)}</div>`}
+function alternarMapaCard(id){
+ const v=viabilidades.find(x=>Number(x.id)===Number(id));if(!v||!coordenadasValidas(v)){alert("Esta viabilidade ainda não possui localização.");return}
+ const box=document.getElementById(`mapaCard-${id}`);if(!box)return;const abrir=!box.classList.contains("show");
+ document.querySelectorAll(".mapa-card.show").forEach(x=>x.classList.remove("show"));
+ if(abrir){box.innerHTML=htmlMapa(Number(v.latitude),Number(v.longitude));box.classList.add("show");box.scrollIntoView({behavior:"smooth",block:"nearest"})}
+}
+function visualizarLocalizacaoModal(){
+ const base=localizacaoAtual||viabilidadeAtual;if(!coordenadasValidas(base)){alert("Localização ainda não disponível.");return}
+ const box=document.getElementById("mapaModal");box.innerHTML=htmlMapa(Number(base.latitude),Number(base.longitude));box.classList.toggle("show");
+}
+function nomeTecnicoUsuario(u){return String(u.tecnico_nome||u.nome||u.usuario||"").trim().toLowerCase()}
+function idTecnicoUsuario(u){return String(u.tecnico_id||u.tecnicoId||u.id_tecnico||u.idTecnico||u.id||"")}
+function pertenceAoTecnico(v,u){
+ const responsavel=String(v.tecnico_responsavel||"").trim().toLowerCase();
+ if(!responsavel)return false;
+ const nome=nomeTecnicoUsuario(u),id=idTecnicoUsuario(u);
+ return responsavel===id || (nome && (responsavel===nome || responsavel.includes(nome) || nome.includes(responsavel)));
+}
+function anexosCategoria(v,categoria){return (Array.isArray(v.anexos)?v.anexos:[]).filter(a=>String(a.categoria||"ANALISE").toUpperCase()===categoria)}
+function ehVideo(a){return String(a.tipo||"").startsWith("video/")||/\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(a.url||a.caminho||a.arquivo||"")}
+function urlAnexo(a){return resolverUrlArquivo(a.url||a.caminho||a.arquivo||"")}
+function renderAnexos(lista){
+ if(!lista.length)return'<span class="muted">Nenhum anexo.</span>';
+ return `<div class="anexos">${lista.map(a=>{const u=urlAnexo(a);return ehVideo(a)?`<div class="anexo" onclick="abrirMidia('${escapar(u)}',true)">▶</div>`:`<div class="anexo" onclick="abrirMidia('${escapar(u)}',false)"><img src="${escapar(u)}" alt="Anexo"></div>`}).join("")}</div>`;
+}
+async function prepararTopo(){
+ const local=getUsuarioLocal();if(!local.id){location.href="index.html";return null}
+ let completo={};try{const r=await apiFetch("/api/me",{headers:{"x-usuario-id":local.id}});if(r.ok)completo=await r.json()}catch(e){}
+ const u={...local,...completo};localStorage.setItem("usuario",JSON.stringify(u));
+ const nome=u.usuario||u.nome||("ID "+u.id),emp=u.empresa_nome||"SGOS Técnico";
+ document.getElementById("drawerUser").innerText=nome;document.getElementById("drawerEmpresa").innerText=emp;document.getElementById("topEmpresa").innerText=emp;
+ let logo=u.empresa_logo||"https://iili.io/CujQzXa.png";document.getElementById("topLogo").src=resolverUrlArquivo(logo);
+ return u;
+}
+async function carregarViabilidades(){
+ const box=document.getElementById("listaViabilidades");box.innerHTML='<div class="empty">Carregando viabilidades...</div>';
+ try{
+  const r=await apiFetch(API_VIABILIDADE,{headers:authHeaders()});const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.erro||`Erro ${r.status}`);
+  const todas=Array.isArray(d)?d:(d.viabilidades||d.dados||[]);
+  viabilidades=todas.filter(v=>pertenceAoTecnico(v,usuarioAtual));
+  renderLista();
+ }catch(e){console.error(e);box.innerHTML=`<div class="empty">Erro ao carregar viabilidades.<br><small>${escapar(e.message)}</small></div>`}
+}
+function renderLista(){
+ const busca=document.getElementById("busca").value.trim().toLowerCase(),status=document.getElementById("filtroStatus").value;
+ const lista=viabilidades.filter(v=>{
+  const texto=`${v.nome||""} ${v.endereco||""} ${v.telefone||""}`.toLowerCase();
+  return(!busca||texto.includes(busca))&&(!status||String(v.status||"PENDENTE").toUpperCase()===status);
+ }).sort((a,b)=>new Date(b.atualizado_em||b.registrado_em||0)-new Date(a.atualizado_em||a.registrado_em||0));
+ document.getElementById("cardPendentes").innerText=viabilidades.filter(v=>String(v.status||"PENDENTE").toUpperCase()==="PENDENTE").length;
+ document.getElementById("cardAprovadas").innerText=viabilidades.filter(v=>String(v.status||"").toUpperCase()==="APROVADA").length;
+ document.getElementById("cardVisitadas").innerText=viabilidades.filter(v=>anexosCategoria(v,"COMPROVACAO_VISITA").length||String(v.observacao_pos_aprovacao||"").trim()).length;
+ const box=document.getElementById("listaViabilidades");
+ if(!lista.length){box.innerHTML='<div class="empty">Nenhuma viabilidade atribuída a este técnico.</div>';return}
+ box.innerHTML=lista.map(v=>{
+  const analise=anexosCategoria(v,"ANALISE"),visita=anexosCategoria(v,"COMPROVACAO_VISITA");
+  return `<article class="list-card">
+   <div class="card-top"><h3>${escapar(v.nome||"Cliente")}</h3><span class="pill ${statusClasse(v.status)}">${escapar(String(v.status||"PENDENTE").toUpperCase())}</span></div>
+   <p class="endereco"><b>Endereço:</b> ${escapar(v.endereco||"-")}</p>
+   <p><b>Telefone:</b> ${telefoneLink(v.telefone)}</p>
+   <p><b>Técnico:</b> ${escapar(v.tecnico_responsavel||"-")}</p>
+   <p><b>Cadastrado em:</b> ${formatarData(v.registrado_em)}</p>
+   <div class="detalhes">
+    <p><b>Observação inicial:</b><br>${escapar(v.observacao||"-")}</p>
+    <p><b>Anexos da análise:</b></p>${renderAnexos(analise)}
+    ${v.observacao_pos_aprovacao?`<p><b>Observação pós-aprovação:</b><br>${escapar(v.observacao_pos_aprovacao)}</p>`:""}
+    ${visita.length?`<p><b>Comprovação da visita:</b></p>${renderAnexos(visita)}`:""}
+   </div>
+   <div class="btn-row">
+    <button class="btn btn-green" style="flex:1" onclick="abrirViabilidade(${Number(v.id)})">📝 Registrar visita</button>
+    ${coordenadasValidas(v)?`<button class="btn btn-light" style="flex:1" onclick="alternarMapaCard(${Number(v.id)})">🗺️ Visualizar localização</button>`:""}
+   </div>
+   <div id="mapaCard-${Number(v.id)}" class="mapa-card"></div>
+  </article>`;
+ }).join("");
+}
+function abrirViabilidade(id){
+ viabilidadeAtual=viabilidades.find(v=>Number(v.id)===Number(id));if(!viabilidadeAtual)return;
+ arquivosVisita=[];localizacaoAtual=coordenadasValidas(viabilidadeAtual)?{latitude:Number(viabilidadeAtual.latitude),longitude:Number(viabilidadeAtual.longitude),precisao:null}:null;renderPreview();document.getElementById("observacaoPos").value=viabilidadeAtual.observacao_pos_aprovacao||"";
+ document.getElementById("mapaModal").classList.remove("show");document.getElementById("mapaModal").innerHTML="";
+ document.getElementById("statusLocalizacao").innerText=localizacaoAtual?`Localização registrada: ${localizacaoAtual.latitude.toFixed(6)}, ${localizacaoAtual.longitude.toFixed(6)}`:"Localização ainda não coletada.";
+ document.getElementById("btnVisualizarLocalizacaoModal").style.display=localizacaoAtual?"block":"none";
+ document.getElementById("resumoModal").innerHTML=`<h3 style="margin:0 0 8px">${escapar(viabilidadeAtual.nome||"Cliente")}</h3>
+ <p><b>Endereço:</b> ${escapar(viabilidadeAtual.endereco||"-")}</p><p><b>Telefone:</b> ${telefoneLink(viabilidadeAtual.telefone)}</p>
+ <p><b>Status:</b> <span class="pill ${statusClasse(viabilidadeAtual.status)}">${escapar(viabilidadeAtual.status||"PENDENTE")}</span></p>
+ <p><b>Observação inicial:</b><br>${escapar(viabilidadeAtual.observacao||"-")}</p>
+ <p><b>Anexos atuais da visita:</b></p>${renderAnexos(anexosCategoria(viabilidadeAtual,"COMPROVACAO_VISITA"))}`;
+ document.getElementById("modalViabilidade").classList.add("show");
+}
+function fecharModal(){document.getElementById("modalViabilidade").classList.remove("show")}
+function fecharModalFundo(e){if(e.target.id==="modalViabilidade")fecharModal()}
+function adicionarArquivos(files){
+ for(const f of [...files]){if(f.size>30*1024*1024){alert(`${f.name} ultrapassa 30 MB.`);continue}if(!f.type.startsWith("image/")&&!f.type.startsWith("video/")){alert(`Formato não permitido: ${f.name}`);continue}arquivosVisita.push(f)}
+ renderPreview();
+}
+function renderPreview(){
+ const box=document.getElementById("previewVisita");box.innerHTML="";
+ arquivosVisita.forEach((f,i)=>{const u=URL.createObjectURL(f);box.innerHTML+=`<div class="preview-item">${f.type.startsWith("video/")?`<video src="${u}" muted></video>`:`<img src="${u}" alt="${escapar(f.name)}">`}<button onclick="removerArquivo(${i})">×</button></div>`});
+}
+function removerArquivo(i){arquivosVisita.splice(i,1);renderPreview()}
+function obterLocalizacao(){
+ const s=document.getElementById("statusLocalizacao");if(!navigator.geolocation){s.innerText="Localização não suportada neste aparelho.";return}
+ s.innerText="Obtendo localização...";
+ navigator.geolocation.getCurrentPosition(p=>{localizacaoAtual={latitude:p.coords.latitude,longitude:p.coords.longitude,precisao:p.coords.accuracy};s.innerText=`Localização coletada: ${p.coords.latitude.toFixed(6)}, ${p.coords.longitude.toFixed(6)} (precisão ${Math.round(p.coords.accuracy)} m)`;document.getElementById("btnVisualizarLocalizacaoModal").style.display="block"},e=>{s.innerText="Não foi possível obter a localização: "+e.message},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+}
+async function salvarVisita(){
+ if(!viabilidadeAtual)return;
+ const obs=document.getElementById("observacaoPos").value.trim();
+ if(!obs&&!arquivosVisita.length){alert("Preencha a observação ou adicione um anexo da visita.");return}
+ const overlay=document.getElementById("loadingOverlay"),btn=document.getElementById("btnSalvarVisita");overlay.classList.add("show");btn.disabled=true;
+ try{
+  const observacaoFinal=obs;
+  const payload={
+   nome:viabilidadeAtual.nome||"",endereco:viabilidadeAtual.endereco||"",observacao:viabilidadeAtual.observacao||"",
+   telefone:viabilidadeAtual.telefone||"",tecnico_responsavel:viabilidadeAtual.tecnico_responsavel||"",
+   observacao_pos_aprovacao:observacaoFinal,status:viabilidadeAtual.status||"PENDENTE",
+   latitude:localizacaoAtual?.latitude??viabilidadeAtual.latitude??null,
+   longitude:localizacaoAtual?.longitude??viabilidadeAtual.longitude??null
+  };
+  const r=await apiFetch(`${API_VIABILIDADE}/${viabilidadeAtual.id}`,{method:"PUT",headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify(payload)});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.erro||`Erro ${r.status}`);
+  for(const arquivo of arquivosVisita){
+   const fd=new FormData();fd.append("arquivo",arquivo);fd.append("viabilidade_id",viabilidadeAtual.id);fd.append("categoria","COMPROVACAO_VISITA");
+   const up=await apiFetch(API_UPLOAD,{method:"POST",headers:authHeaders(),body:fd});const uj=await up.json().catch(()=>({}));if(!up.ok)throw new Error(uj.erro||`Falha ao enviar ${arquivo.name}`);
+  }
+  alert("Visita salva com sucesso!");fecharModal();await carregarViabilidades();
+ }catch(e){console.error(e);alert("Erro ao salvar a visita: "+e.message)}
+ finally{overlay.classList.remove("show");btn.disabled=false}
+}
+function abrirMidia(url,video){const c=document.getElementById("conteudoMidia");c.innerHTML=video?`<video src="${escapar(url)}" controls autoplay style="max-width:100%;max-height:72vh"></video>`:`<img src="${escapar(url)}" style="max-width:100%;max-height:72vh;border-radius:12px">`;document.getElementById("modalMidia").classList.add("show")}
+function fecharMidia(){document.getElementById("modalMidia").classList.remove("show");document.getElementById("conteudoMidia").innerHTML=""}
+function fecharMidiaFundo(e){if(e.target.id==="modalMidia")fecharMidia()}
+
+document.addEventListener("DOMContentLoaded",async()=>{
+ usuarioAtual=await prepararTopo();if(!usuarioAtual)return;
+ document.getElementById("busca").addEventListener("input",renderLista);document.getElementById("filtroStatus").addEventListener("change",renderLista);
+ document.getElementById("cameraFoto").addEventListener("change",e=>{adicionarArquivos(e.target.files);e.target.value=""});
+ document.getElementById("cameraVideo").addEventListener("change",e=>{adicionarArquivos(e.target.files);e.target.value=""});
+ document.getElementById("arquivosVisita").addEventListener("change",e=>{adicionarArquivos(e.target.files);e.target.value=""});
+ document.addEventListener("keydown",e=>{if(e.key==="Escape"){fecharModal();fecharMidia()}});
+ carregarViabilidades();
+});
+</script>
+</body>
+</html>

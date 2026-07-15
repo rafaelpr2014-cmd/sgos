@@ -56,7 +56,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             tipo: anexo.tipo,
             data_upload: anexo.data_upload,
             cadastrado_por: anexo.cadastrado_por,
-            registrado_em: anexo.registrado_em
+            registrado_em: anexo.registrado_em,
+            categoria: anexo.categoria || "ANALISE"
         };
     }
 
@@ -66,7 +67,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const [viabilidades] = await pool.query(
                 `SELECT id, nome, endereco, observacao, telefone,
                         empresa_id, cadastrado_por, registrado_em, status,
-                        atualizado_em, atualizado_por, tecnico_responsavel
+                        atualizado_em, atualizado_por, tecnico_responsavel, observacao_pos_aprovacao,
+                        latitude, longitude
                  FROM viabilidade
                  WHERE empresa_id = ?
                  ORDER BY COALESCE(registrado_em, '1970-01-01') DESC, id DESC`,
@@ -79,7 +81,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const placeholders = ids.map(() => "?").join(",");
             const [anexos] = await pool.query(
                 `SELECT id, viabilidade_id, caminho, tipo, data_upload,
-                        cadastrado_por, registrado_em, nome_arquivo, empresa_id
+                        cadastrado_por, registrado_em, nome_arquivo, empresa_id, categoria
                  FROM viabilidade_anexos
                  WHERE empresa_id = ?
                    AND viabilidade_id IN (${placeholders})
@@ -105,7 +107,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const [rows] = await pool.query(
                 `SELECT id, nome, endereco, observacao, telefone,
                         empresa_id, cadastrado_por, registrado_em, status,
-                        atualizado_em, atualizado_por, tecnico_responsavel
+                        atualizado_em, atualizado_por, tecnico_responsavel, observacao_pos_aprovacao,
+                        latitude, longitude
                  FROM viabilidade
                  WHERE id = ? AND empresa_id = ? LIMIT 1`,
                 [req.params.id, req.usuario.empresa_id]
@@ -114,7 +117,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
 
             const [anexos] = await pool.query(
                 `SELECT id, viabilidade_id, caminho, tipo, data_upload,
-                        cadastrado_por, registrado_em, nome_arquivo, empresa_id
+                        cadastrado_por, registrado_em, nome_arquivo, empresa_id, categoria
                  FROM viabilidade_anexos
                  WHERE viabilidade_id = ? AND empresa_id = ?
                  ORDER BY COALESCE(registrado_em, data_upload) DESC, id DESC`,
@@ -135,6 +138,16 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const observacao = String(req.body.observacao || "").trim() || null;
             const telefone = String(req.body.telefone || "").trim() || null;
             const tecnicoResponsavel = String(req.body.tecnico_responsavel || "").trim() || null;
+            const observacaoPosAprovacao = String(req.body.observacao_pos_aprovacao || "").trim() || null;
+            const latitudeRecebida = req.body.latitude;
+            const longitudeRecebida = req.body.longitude;
+            const latitude = latitudeRecebida === "" || latitudeRecebida === null || latitudeRecebida === undefined
+                ? null : Number(latitudeRecebida);
+            const longitude = longitudeRecebida === "" || longitudeRecebida === null || longitudeRecebida === undefined
+                ? null : Number(longitudeRecebida);
+            if ((latitude !== null && !Number.isFinite(latitude)) || (longitude !== null && !Number.isFinite(longitude))) {
+                return res.status(400).json({ erro: "Latitude ou longitude inválida." });
+            }
             const status = "PENDENTE";
             if (!nome || !endereco) {
                 return res.status(400).json({ erro: "Nome e endereço são obrigatórios." });
@@ -143,11 +156,11 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const cadastradoPor = req.usuario.usuario || String(req.usuario.id);
             const [resultado] = await pool.query(
                 `INSERT INTO viabilidade
-                    (nome, endereco, observacao, telefone, tecnico_responsavel, status,
-                     empresa_id, cadastrado_por, registrado_em, atualizado_em, atualizado_por)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)`,
-                [nome, endereco, observacao, telefone, tecnicoResponsavel, status,
-                 req.usuario.empresa_id, cadastradoPor, cadastradoPor]
+                    (nome, endereco, observacao, telefone, tecnico_responsavel, observacao_pos_aprovacao, status,
+                     latitude, longitude, empresa_id, cadastrado_por, registrado_em, atualizado_em, atualizado_por)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)`,
+                [nome, endereco, observacao, telefone, tecnicoResponsavel, observacaoPosAprovacao, status,
+                 latitude, longitude, req.usuario.empresa_id, cadastradoPor, cadastradoPor]
             );
 
             return res.status(201).json({ sucesso: true, id: resultado.insertId, viabilidade_id: resultado.insertId });
@@ -164,6 +177,16 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const observacao = String(req.body.observacao || "").trim() || null;
             const telefone = String(req.body.telefone || "").trim() || null;
             const tecnicoResponsavel = String(req.body.tecnico_responsavel || "").trim() || null;
+            const observacaoPosAprovacao = String(req.body.observacao_pos_aprovacao || "").trim() || null;
+            const latitudeRecebida = req.body.latitude;
+            const longitudeRecebida = req.body.longitude;
+            const latitude = latitudeRecebida === "" || latitudeRecebida === null || latitudeRecebida === undefined
+                ? null : Number(latitudeRecebida);
+            const longitude = longitudeRecebida === "" || longitudeRecebida === null || longitudeRecebida === undefined
+                ? null : Number(longitudeRecebida);
+            if ((latitude !== null && !Number.isFinite(latitude)) || (longitude !== null && !Number.isFinite(longitude))) {
+                return res.status(400).json({ erro: "Latitude ou longitude inválida." });
+            }
             const statusRecebido = String(req.body.status || "PENDENTE").trim().toUpperCase();
             const statusPermitidos = ["PENDENTE", "APROVADA", "REPROVADA"];
             const status = statusPermitidos.includes(statusRecebido) ? statusRecebido : "PENDENTE";
@@ -176,10 +199,11 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const [resultado] = await pool.query(
                 `UPDATE viabilidade
                  SET nome = ?, endereco = ?, observacao = ?, telefone = ?,
-                     tecnico_responsavel = ?, status = ?, atualizado_em = NOW(), atualizado_por = ?
+                     tecnico_responsavel = ?, observacao_pos_aprovacao = ?, status = ?,
+                     latitude = ?, longitude = ?, atualizado_em = NOW(), atualizado_por = ?
                  WHERE id = ? AND empresa_id = ?`,
-                [nome, endereco, observacao, telefone, tecnicoResponsavel, status, atualizadoPor,
-                 req.params.id, req.usuario.empresa_id]
+                [nome, endereco, observacao, telefone, tecnicoResponsavel, observacaoPosAprovacao, status,
+                 latitude, longitude, atualizadoPor, req.params.id, req.usuario.empresa_id]
             );
 
             if (!resultado.affectedRows) {
@@ -235,7 +259,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
         try {
             const [rows] = await pool.query(
                 `SELECT a.id, a.viabilidade_id, a.caminho, a.tipo, a.data_upload,
-                        a.cadastrado_por, a.registrado_em, a.nome_arquivo, a.empresa_id
+                        a.cadastrado_por, a.registrado_em, a.nome_arquivo, a.empresa_id, a.categoria
                  FROM viabilidade_anexos a
                  INNER JOIN viabilidade v ON v.id = a.viabilidade_id
                  WHERE a.viabilidade_id = ? AND a.empresa_id = ? AND v.empresa_id = ?
@@ -283,19 +307,22 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                 }
 
                 const cadastradoPor = req.usuario.usuario || String(req.usuario.id);
+                const categoriaRecebida = String(req.body.categoria || "ANALISE").trim().toUpperCase();
+                const categoria = categoriaRecebida === "COMPROVACAO_VISITA" ? "COMPROVACAO_VISITA" : "ANALISE";
                 const caminho = caminhoPublico(req.file.filename);
                 const [resultado] = await pool.query(
                     `INSERT INTO viabilidade_anexos
                         (viabilidade_id, caminho, tipo, data_upload,
-                         cadastrado_por, registrado_em, nome_arquivo, empresa_id)
-                     VALUES (?, ?, ?, NOW(), ?, NOW(), ?, ?)`,
+                         cadastrado_por, registrado_em, nome_arquivo, empresa_id, categoria)
+                     VALUES (?, ?, ?, NOW(), ?, NOW(), ?, ?, ?)`,
                     [
                         viabilidadeId,
                         caminho,
                         req.file.mimetype || null,
                         cadastradoPor,
                         req.file.originalname || req.file.filename,
-                        req.usuario.empresa_id
+                        req.usuario.empresa_id,
+                        categoria
                     ]
                 );
 
@@ -304,7 +331,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                     id: resultado.insertId,
                     caminho,
                     arquivo: caminho,
-                    url: caminho
+                    url: caminho,
+                    categoria
                 });
             } catch (erro) {
                 if (req.file?.filename) removerArquivo(req.file.filename);

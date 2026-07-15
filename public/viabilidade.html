@@ -74,14 +74,20 @@ button,input,textarea,select{font:inherit}
 
 .form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.campo{display:flex;flex-direction:column;gap:6px}.campo.span-2{grid-column:span 2}.campo.span-3{grid-column:span 3}
 .campo label{font-size:13px;font-weight:800;color:#334155}.obrigatorio{color:#ef4444}
-.campo input,.campo textarea,.filtros input,.filtros select{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--borda);background:#fff;outline:none;font-size:14px}
-.campo textarea{min-height:96px;resize:vertical}.campo input:focus,.campo textarea:focus,.filtros input:focus,.filtros select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.campo input,.campo textarea,.campo select,.filtros input,.filtros select{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--borda);background:#fff;outline:none;font-size:14px}
+.campo textarea{min-height:96px;resize:vertical}.campo input:focus,.campo textarea:focus,.campo select:focus,.filtros input:focus,.filtros select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
 .arquivo-box{border:1px dashed #93c5fd;background:#eff6ff;border-radius:12px;padding:14px}.arquivo-ajuda{font-size:12px;color:#64748b;margin-top:7px}.preview-lista{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.preview-item{position:relative;width:104px;height:82px;border:1px solid var(--borda);border-radius:10px;overflow:hidden;background:#f8fafc}.preview-item img,.preview-item video{width:100%;height:100%;object-fit:cover}.preview-item button{position:absolute;right:4px;top:4px;width:24px;height:24px;border:0;border-radius:50%;background:rgba(239,68,68,.92);color:#fff;cursor:pointer;font-weight:800}
 .form-actions{display:flex;gap:10px;margin-top:18px}.btn{border:0;padding:11px 16px;border-radius:10px;cursor:pointer;font-weight:800;color:#fff;display:inline-flex;align-items:center;gap:8px}.btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}.btn-salvar{background:var(--verde)}.btn-salvar:hover{background:#15803d}.btn-limpar{background:#64748b}.btn:disabled{opacity:.65;cursor:not-allowed}
 
 .filtros{display:grid;grid-template-columns:2fr 2fr 1fr 1fr;gap:12px}
 .table-wrap{width:100%;overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:1250px}th{background:#f8fafc;color:#0f172a;padding:14px 12px;text-align:left;font-size:12px;border-bottom:1px solid var(--borda);white-space:nowrap}td{padding:13px 12px;border-bottom:1px solid var(--borda);font-size:13px;color:#1e293b;vertical-align:top}tr:hover{background:#f8fbff}
-.status-box{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;display:inline-block}.status-pendente{background:#fef3c7;color:#b45309}.status-aprovada{background:#dcfce7;color:#15803d}.status-reprovada{background:#fee2e2;color:#dc2626}.anexo-existente{outline:2px solid #93c5fd}.anexo-lista{display:flex;gap:7px;flex-wrap:wrap}.mini-anexo{width:58px;height:58px;object-fit:cover;border-radius:9px;border:2px solid #e5e7eb;cursor:pointer}.mini-video{width:58px;height:58px;border-radius:9px;border:2px solid #e5e7eb;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px}.acoes{display:flex;gap:8px;align-items:center}.icone-acao{cursor:pointer;font-size:17px}
+.status-box{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;display:inline-block}.status-pendente{background:#fef3c7;color:#b45309}.status-aprovada{background:#dcfce7;color:#15803d}.status-reprovada{background:#fee2e2;color:#dc2626}.anexo-existente{outline:2px solid #93c5fd}.anexo-lista{display:flex;gap:7px;flex-wrap:wrap}.mini-anexo{width:58px;height:58px;object-fit:cover;border-radius:9px;border:2px solid #e5e7eb;cursor:pointer}.mini-video{width:58px;height:58px;border-radius:9px;border:2px solid #e5e7eb;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px}.acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.icone-acao{cursor:pointer;font-size:17px}
+.btn-localizacao{border:0;border-radius:9px;padding:7px 10px;background:#dbeafe;color:#1d4ed8;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
+.mapa-linha td{padding:0 12px 14px;background:#f8fafc}
+.mapa-inline{display:none;border:1px solid var(--borda);border-radius:14px;overflow:hidden;background:#fff;padding:12px;margin-top:10px}
+.mapa-inline.ativo{display:block}.mapa-inline iframe{width:100%;height:340px;border:0;border-radius:10px}
+.mapa-topo{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.mapa-topo strong{font-size:14px}
+.mapa-link{color:#2563eb;text-decoration:none;font-weight:800;font-size:13px}
 .vazio{text-align:center;color:#64748b;padding:28px!important}
 
 .popup{position:fixed;inset:0;background:rgba(0,0,0,.84);display:none;justify-content:center;align-items:center;z-index:99999;padding:24px}.popup.ativo{display:flex}.popup img,.popup video{max-width:92vw;max-height:88vh;border-radius:14px;background:#000}.popup-fechar{position:absolute;top:18px;right:18px;background:#ef4444;color:#fff;border:0;width:40px;height:40px;border-radius:50%;cursor:pointer;font-weight:800;font-size:18px}
@@ -144,15 +150,23 @@ button,input,textarea,select{font:inherit}
             <div class="campo"><label for="nome">Nome <span class="obrigatorio">*</span></label><input id="nome" maxlength="160" placeholder="Nome do cliente"></div>
             <div class="campo span-2"><label for="endereco">Endereço <span class="obrigatorio">*</span></label><input id="endereco" maxlength="255" placeholder="Rua, número, bairro, localidade e referência"></div>
             <input type="hidden" id="viabilidadeId">
+            <input type="hidden" id="latitude">
+            <input type="hidden" id="longitude">
             <div class="campo"><label for="telefone">Telefone</label><input id="telefone" maxlength="30" inputmode="tel" placeholder="(00) 00000-0000"></div>
-            <div class="campo"><label for="tecnicoResponsavel">Técnico responsável</label><input id="tecnicoResponsavel" maxlength="160" placeholder="Nome do técnico responsável"></div>
+            <div class="campo"><label for="tecnicoResponsavel">Técnico responsável</label><select id="tecnicoResponsavel"><option value="">Selecione o técnico</option></select></div>
             <div class="campo"><label for="status">Status</label><select id="status"><option value="PENDENTE">Pendente</option><option value="APROVADA">Aprovada</option><option value="REPROVADA">Reprovada</option></select></div>
             <div class="campo span-3"><label for="observacao">Observação</label><textarea id="observacao" maxlength="2000" placeholder="Detalhes da viabilidade, estrutura disponível, distância, materiais necessários..."></textarea></div>
+            <div class="campo span-3"><label for="observacaoPosAprovacao">Observação pós-aprovação</label><textarea id="observacaoPosAprovacao" maxlength="3000" placeholder="Preenchimento após aprovação/visita: resultado da visita, materiais, condições encontradas e orientações."></textarea></div>
             <div class="campo"><label for="cadastradoPor">Cadastrado por</label><input id="cadastradoPor" readonly placeholder="Usuário logado"></div>
             <div class="campo"><label for="registradoEm">Registrado em</label><input id="registradoEm" readonly></div>
+            <div class="campo"><label>Localização do técnico</label><input id="localizacaoTecnico" readonly placeholder="Ainda não registrada"></div>
             <div class="campo span-3">
-                <label for="arquivos">Anexo de fotos e vídeos</label>
-                <div class="arquivo-box"><input type="file" id="arquivos" accept="image/*,video/*" multiple><div class="arquivo-ajuda">Formatos de imagem e vídeo. Limite de 30 MB por arquivo.</div><div id="anexosExistentes" class="preview-lista"></div><div id="previewArquivos" class="preview-lista"></div></div>
+                <label for="arquivos">Anexos da análise inicial</label>
+                <div class="arquivo-box"><input type="file" id="arquivos" accept="image/*,video/*" multiple><div class="arquivo-ajuda">Fotos e vídeos da análise inicial. Limite de 30 MB por arquivo.</div><div id="anexosExistentes" class="preview-lista"></div><div id="previewArquivos" class="preview-lista"></div></div>
+            </div>
+            <div class="campo span-3">
+                <label for="arquivosVisita">Anexo de comprovação de visita</label>
+                <div class="arquivo-box"><input type="file" id="arquivosVisita" accept="image/*,video/*" multiple><div class="arquivo-ajuda">Preenchido pelo técnico após a visita. Anexe fotos ou vídeos que comprovem o atendimento. Limite de 30 MB por arquivo.</div><div id="anexosVisitaExistentes" class="preview-lista"></div><div id="previewArquivosVisita" class="preview-lista"></div></div>
             </div>
         </div>
         <div class="form-actions"><button class="btn btn-salvar" id="btnSalvar" onclick="salvarViabilidade()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span id="textoBtnSalvar">Salvar Viabilidade</span></button><button class="btn btn-limpar" type="button" onclick="limparFormulario()" id="btnCancelar">Limpar</button></div>
@@ -166,7 +180,7 @@ button,input,textarea,select{font:inherit}
     <div class="card">
         <div class="card-header"><div class="titulo-card">Lista de Viabilidades</div></div>
         <div class="table-wrap">
-            <table><thead><tr><th>ID</th><th>Nome</th><th>Endereço</th><th>Observação</th><th>Telefone</th><th>Técnico responsável</th><th>Cadastrado por</th><th>Registrado em</th><th>Atualizado por</th><th>Atualizado em</th><th>Status</th><th>Anexos</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="13" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
+            <table><thead><tr><th>ID</th><th>Nome</th><th>Endereço</th><th>Observação</th><th>Observação pós-aprovação</th><th>Telefone</th><th>Técnico responsável</th><th>Cadastrado por</th><th>Registrado em</th><th>Atualizado por</th><th>Atualizado em</th><th>Status</th><th>Anexos da análise</th><th>Comprovação de visita</th><th>Localização</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="16" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
         </div>
     </div>
 </section>
@@ -180,6 +194,7 @@ const API_VIABILIDADE = "/api/viabilidade";
 const API_UPLOAD = "/api/upload_viabilidade";
 let viabilidades = [];
 let arquivosSelecionados = [];
+let arquivosVisitaSelecionados = [];
 let anexosExistentesEdicao = [];
 
 function usuarioLocal(){try{return JSON.parse(localStorage.getItem("usuario")||"{}")}catch{return {}}}
@@ -198,8 +213,25 @@ function anexosDoRegistro(o){
     [o.anexo,o.arquivo,o.anexo_path,o.arquivo_path,o.evidencia].forEach(x=>{if(x&&!lista.includes(x))lista.push(x)});
     return lista.filter(Boolean).map(x=>typeof x==="object"?(x.url||x.path||x.caminho||x.arquivo||x.nome_arquivo):x).filter(Boolean);
 }
+function anexosPorCategoria(o,categoria){return anexosDoRegistro(o).filter(a=>String((a&&typeof a==="object"?a.categoria:"")||"ANALISE").toUpperCase()===categoria)}
 function getUrl(src){if(!src)return"";const s=String(src).replace(/\\/g,"/");if(/^https?:\/\//i.test(s))return s;if(s.startsWith("/"))return s;if(s.startsWith("uploads/"))return "/"+s;const i=s.indexOf("uploads/");return i>=0?"/"+s.slice(i):"/uploads/"+s.split("/").pop()}
 function ehVideo(url){return /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url)}
+function coordenadasValidas(o){const lat=Number(o?.latitude),lon=Number(o?.longitude);return Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180}
+function urlMapaEmbed(lat,lon){const margem=.006;return `https://www.openstreetmap.org/export/embed.html?bbox=${lon-margem}%2C${lat-margem}%2C${lon+margem}%2C${lat+margem}&layer=mapnik&marker=${lat}%2C${lon}`}
+function abrirMapaViabilidade(id){
+    const registro=viabilidades.find(v=>Number(v.id)===Number(id));
+    if(!registro||!coordenadasValidas(registro)){alert("Esta viabilidade ainda não possui localização registrada.");return}
+    const box=document.getElementById(`mapaViabilidade-${id}`);
+    if(!box)return;
+    const abrir=!box.classList.contains("ativo");
+    document.querySelectorAll(".mapa-inline.ativo").forEach(el=>el.classList.remove("ativo"));
+    if(abrir){
+        const lat=Number(registro.latitude),lon=Number(registro.longitude);
+        box.innerHTML=`<div class="mapa-topo"><strong>📍 Localização registrada pelo técnico</strong><a class="mapa-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${lat},${lon}">Abrir no Google Maps</a></div><iframe loading="lazy" src="${urlMapaEmbed(lat,lon)}"></iframe><div class="muted" style="font-size:12px;margin-top:8px">Latitude: ${lat.toFixed(8)} | Longitude: ${lon.toFixed(8)}</div>`;
+        box.classList.add("ativo");
+        box.scrollIntoView({behavior:"smooth",block:"nearest"});
+    }
+}
 
 function toggleSidebar(){const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");if(!s||!l)return;s.classList.toggle("recolhida");const r=s.classList.contains("recolhida");l.src=r?l.dataset.logoFechada:l.dataset.logoAberta;localStorage.setItem("sidebar_recolhida",r?"1":"0")}
 function toggleUserDropdown(){document.getElementById("usuarioMenuDropdown")?.classList.toggle("ativo");document.getElementById("usuarioDropdown")?.classList.toggle("aberto")}
@@ -210,6 +242,21 @@ async function carregarUsuario(){
     document.getElementById("cadastradoPor").value=local.usuario||local.nome||"";
     try{const r=await fetch("/api/me",{headers:{"x-usuario-id":local.id}});const d=await r.json();if(d?.usuario){document.getElementById("userEmpresa").innerText=d.usuario;document.getElementById("empresaLogada").innerText=d.empresa_nome||local.empresa_nome||"Empresa";document.getElementById("cadastradoPor").value=d.usuario;const logo=d.empresa_logo;document.getElementById("logoEmpresa").src=logo?(logo.startsWith("/")?logo:"/"+logo):"/img/logo-default.png"}}catch(e){console.error(e);document.getElementById("userEmpresa").innerText=local.usuario||"Administrador"}
 }
+async function carregarTecnicos(){
+    const select=document.getElementById("tecnicoResponsavel");
+    if(!select)return;
+    const valorAtual=select.value;
+    try{
+        const r=await fetch("/api/tecnicos",{headers:getAuthHeaders()});
+        if(!r.ok)throw new Error(`Erro ${r.status}`);
+        const resp=await r.json();
+        const lista=Array.isArray(resp)?resp:(Array.isArray(resp?.dados)?resp.dados:(Array.isArray(resp?.tecnicos)?resp.tecnicos:[]));
+        const tecnicos=lista.filter(t=>t&&t.ativo!==0&&t.ativo!==false).map(t=>({id:t.id,nome:t.nome||t.usuario||t.tecnico||t.nome_completo||""})).filter(t=>t.nome);
+        select.innerHTML='<option value="">Selecione o técnico</option>'+tecnicos.map(t=>`<option value="${escapar(t.nome)}" data-id="${Number(t.id)||0}">${escapar(t.nome)}</option>`).join("");
+        if(valorAtual)select.value=valorAtual;
+    }catch(e){console.error("Erro ao carregar técnicos:",e);select.innerHTML='<option value="">Não foi possível carregar os técnicos</option>';}
+}
+
 async function carregarUsuariosOnline(){try{const u=usuarioLocal();const r=await fetch("/api/logs",{headers:{"x-empresa-id":u.empresa_id||"","x-usuario-id":u.id||""}});const logs=await r.json();const n=[...new Set((Array.isArray(logs)?logs:[]).filter(x=>!x.logout).map(x=>x.usuario).filter(Boolean))];document.getElementById("usuariosOnline").innerHTML=n.length?n.map(x=>`🟢 ${escapar(x)}`).join("<br>"):"Nenhum usuário online"}catch{document.getElementById("usuariosOnline").innerText="Online indisponível"}}
 function logout(){const id=localStorage.getItem("log_id");if(id)fetch("/api/logout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({log_id:id})}).catch(()=>{});sessionStorage.clear();localStorage.clear();location.href="login.html"}
 
@@ -223,9 +270,17 @@ function processarArquivos(){
 }
 function renderPreviewArquivos(){const box=document.getElementById("previewArquivos");box.innerHTML="";arquivosSelecionados.forEach((f,i)=>{const url=URL.createObjectURL(f),div=document.createElement("div");div.className="preview-item";div.innerHTML=f.type.startsWith("video/")?`<video src="${url}" muted></video><button type="button" onclick="removerArquivo(${i})">×</button>`:`<img src="${url}" alt="${escapar(f.name)}"><button type="button" onclick="removerArquivo(${i})">×</button>`;box.appendChild(div)})}
 function removerArquivo(i){arquivosSelecionados.splice(i,1);renderPreviewArquivos()}
+function processarArquivosVisita(){
+    const novos=[...document.getElementById("arquivosVisita").files];
+    for(const f of novos){if(f.size>30*1024*1024){alert(`O arquivo ${f.name} ultrapassa 30 MB.`);continue}if(!f.type.startsWith("image/")&&!f.type.startsWith("video/")){alert(`Formato não permitido: ${f.name}`);continue}arquivosVisitaSelecionados.push(f)}
+    document.getElementById("arquivosVisita").value="";renderPreviewArquivosVisita();
+}
+function renderPreviewArquivosVisita(){const box=document.getElementById("previewArquivosVisita");box.innerHTML="";arquivosVisitaSelecionados.forEach((f,i)=>{const url=URL.createObjectURL(f),div=document.createElement("div");div.className="preview-item";div.innerHTML=f.type.startsWith("video/")?`<video src="${url}" muted></video><button type="button" onclick="removerArquivoVisita(${i})">×</button>`:`<img src="${url}" alt="${escapar(f.name)}"><button type="button" onclick="removerArquivoVisita(${i})">×</button>`;box.appendChild(div)})}
+function removerArquivoVisita(i){arquivosVisitaSelecionados.splice(i,1);renderPreviewArquivosVisita()}
 function renderAnexosExistentes(){
-    const box=document.getElementById("anexosExistentes");
-    box.innerHTML=anexosExistentesEdicao.map(a=>{const u=getUrl(a.url||a.caminho||a.arquivo),video=String(a.tipo||"").startsWith("video/")||ehVideo(u);return `<div class="preview-item anexo-existente">${video?`<video src="${escapar(u)}" muted></video>`:`<img src="${escapar(u)}" alt="Anexo">`}<button type="button" title="Excluir anexo" onclick="excluirAnexoEdicao(${Number(a.id)})">×</button></div>`}).join("");
+    const render=(lista)=>lista.map(a=>{const u=getUrl(a.url||a.caminho||a.arquivo),video=String(a.tipo||"").startsWith("video/")||ehVideo(u);return `<div class="preview-item anexo-existente">${video?`<video src="${escapar(u)}" muted></video>`:`<img src="${escapar(u)}" alt="Anexo">`}<button type="button" title="Excluir anexo" onclick="excluirAnexoEdicao(${Number(a.id)})">×</button></div>`}).join("");
+    document.getElementById("anexosExistentes").innerHTML=render(anexosExistentesEdicao.filter(a=>String(a.categoria||"ANALISE").toUpperCase()!=="COMPROVACAO_VISITA"));
+    document.getElementById("anexosVisitaExistentes").innerHTML=render(anexosExistentesEdicao.filter(a=>String(a.categoria||"").toUpperCase()==="COMPROVACAO_VISITA"));
 }
 async function excluirAnexoEdicao(id){
     if(!id||!confirm("Excluir este anexo?"))return;
@@ -238,22 +293,28 @@ function editarViabilidade(id){
     document.getElementById("endereco").value=o.endereco||"";
     document.getElementById("telefone").value=o.telefone||"";
     document.getElementById("observacao").value=o.observacao||o.observacoes||"";
+    document.getElementById("observacaoPosAprovacao").value=o.observacao_pos_aprovacao||"";
     document.getElementById("tecnicoResponsavel").value=o.tecnico_responsavel||"";
     document.getElementById("status").value=String(o.status||"PENDENTE").toUpperCase();
+    document.getElementById("latitude").value=o.latitude??"";
+    document.getElementById("longitude").value=o.longitude??"";
+    document.getElementById("localizacaoTecnico").value=coordenadasValidas(o)?`${Number(o.latitude).toFixed(8)}, ${Number(o.longitude).toFixed(8)}`:"Ainda não registrada";
     document.getElementById("cadastradoPor").value=nomeCadastrador(o)==="-"?"":nomeCadastrador(o);
     document.getElementById("registradoEm").value=formatarData(dataRegistro(o));
     anexosExistentesEdicao=Array.isArray(o.anexos)?o.anexos:[];
-    arquivosSelecionados=[];renderPreviewArquivos();renderAnexosExistentes();
+    arquivosSelecionados=[];arquivosVisitaSelecionados=[];renderPreviewArquivos();renderPreviewArquivosVisita();renderAnexosExistentes();
     document.getElementById("textoBtnSalvar").textContent="Atualizar Viabilidade";
     document.getElementById("btnCancelar").textContent="Cancelar edição";
     document.querySelector(".card").scrollIntoView({behavior:"smooth",block:"start"});
 }
 function limparFormulario(){
-    ["viabilidadeId","nome","endereco","telefone","observacao","tecnicoResponsavel"].forEach(id=>document.getElementById(id).value="");
+    ["viabilidadeId","nome","endereco","telefone","observacao","observacaoPosAprovacao","tecnicoResponsavel","latitude","longitude","localizacaoTecnico"].forEach(id=>document.getElementById(id).value="");
     document.getElementById("status").value="PENDENTE";
     arquivosSelecionados=[];
+    arquivosVisitaSelecionados=[];
     anexosExistentesEdicao=[];
     renderPreviewArquivos();
+    renderPreviewArquivosVisita();
     renderAnexosExistentes();
     document.getElementById("textoBtnSalvar").textContent="Salvar Viabilidade";
     document.getElementById("btnCancelar").textContent="Limpar";
@@ -263,22 +324,25 @@ function limparFormulario(){
 
 async function salvarViabilidade(){
     const id=document.getElementById("viabilidadeId").value;
-    const nome=document.getElementById("nome").value.trim(),endereco=document.getElementById("endereco").value.trim(),observacao=document.getElementById("observacao").value.trim(),telefone=document.getElementById("telefone").value.trim(),tecnico_responsavel=document.getElementById("tecnicoResponsavel").value.trim(),status=document.getElementById("status").value;
+    const nome=document.getElementById("nome").value.trim(),endereco=document.getElementById("endereco").value.trim(),observacao=document.getElementById("observacao").value.trim(),observacao_pos_aprovacao=document.getElementById("observacaoPosAprovacao").value.trim(),telefone=document.getElementById("telefone").value.trim(),tecnico_responsavel=document.getElementById("tecnicoResponsavel").value.trim(),status=document.getElementById("status").value;
     if(!nome||!endereco){alert("Preencha os campos Nome e Endereço.");return}
     const btn=document.getElementById("btnSalvar");btn.disabled=true;document.getElementById("textoBtnSalvar").textContent=id?"Atualizando...":"Salvando...";
     try{
-        const payload={nome,endereco,observacao,telefone,tecnico_responsavel,status};
+        const latitude=document.getElementById("latitude").value;
+        const longitude=document.getElementById("longitude").value;
+        const payload={nome,endereco,observacao,observacao_pos_aprovacao,telefone,tecnico_responsavel,status,latitude,longitude};
         const r=await fetch(id?`${API_VIABILIDADE}/${id}`:API_VIABILIDADE,{method:id?"PUT":"POST",headers:{"Content-Type":"application/json",...getAuthHeaders()},body:JSON.stringify(payload)});
         const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.erro||j.mensagem||`Erro ${r.status}`);
         const registroId=Number(id||j.id||j.viabilidade_id||j.insertId||j?.dados?.id);
-        if(arquivosSelecionados.length&&registroId){for(const arquivo of arquivosSelecionados){const fd=new FormData();fd.append("arquivo",arquivo);fd.append("viabilidade_id",registroId);const up=await fetch(API_UPLOAD,{method:"POST",headers:getAuthHeaders(),body:fd});const ej=await up.json().catch(()=>({}));if(!up.ok)throw new Error(ej.erro||`Falha ao enviar ${arquivo.name}`)}}
+        const enviarArquivos=async(lista,categoria)=>{for(const arquivo of lista){const fd=new FormData();fd.append("arquivo",arquivo);fd.append("viabilidade_id",registroId);fd.append("categoria",categoria);const up=await fetch(API_UPLOAD,{method:"POST",headers:getAuthHeaders(),body:fd});const ej=await up.json().catch(()=>({}));if(!up.ok)throw new Error(ej.erro||`Falha ao enviar ${arquivo.name}`)}};
+        if(registroId){await enviarArquivos(arquivosSelecionados,"ANALISE");await enviarArquivos(arquivosVisitaSelecionados,"COMPROVACAO_VISITA");}
         alert(id?"Viabilidade atualizada com sucesso!":"Viabilidade salva com sucesso!");limparFormulario();await carregarViabilidades();
     }catch(e){console.error(e);alert("Erro ao salvar viabilidade: "+e.message)}finally{btn.disabled=false;document.getElementById("textoBtnSalvar").textContent=document.getElementById("viabilidadeId").value?"Atualizar Viabilidade":"Salvar Viabilidade"}
 }
 
 async function carregarViabilidades(){
-    const tbody=document.getElementById("tabelaViabilidades");tbody.innerHTML='<tr><td colspan="13" class="vazio">Carregando viabilidades...</td></tr>';
-    try{const r=await fetch(API_VIABILIDADE,{headers:getAuthHeaders()});if(!r.ok)throw new Error(`Erro ${r.status}`);viabilidades=normalizarLista(await r.json());renderTabela()}catch(e){console.error(e);tbody.innerHTML='<tr><td colspan="13" class="vazio">Erro ao carregar viabilidades.</td></tr>'}
+    const tbody=document.getElementById("tabelaViabilidades");tbody.innerHTML='<tr><td colspan="16" class="vazio">Carregando viabilidades...</td></tr>';
+    try{const r=await fetch(API_VIABILIDADE,{headers:getAuthHeaders()});if(!r.ok)throw new Error(`Erro ${r.status}`);viabilidades=normalizarLista(await r.json());renderTabela()}catch(e){console.error(e);tbody.innerHTML='<tr><td colspan="16" class="vazio">Erro ao carregar viabilidades.</td></tr>'}
 }
 function dentroDias(v,dias){if(!v)return false;const d=new Date(v);if(isNaN(d))return false;const ini=new Date();ini.setDate(ini.getDate()-(dias-1));ini.setHours(0,0,0,0);const fim=new Date();fim.setHours(23,59,59,999);return d>=ini&&d<=fim}
 function mesmoDia(v){if(!v)return false;const d=new Date(v),h=new Date();return !isNaN(d)&&d.toDateString()===h.toDateString()}
@@ -286,8 +350,27 @@ function atualizarCards(lista){document.getElementById("cardTotal").innerText=li
 function renderTabela(){
     const nome=document.getElementById("filtroNome").value.toLowerCase(),end=document.getElementById("filtroEndereco").value.toLowerCase(),di=document.getElementById("dataInicio").value,df=document.getElementById("dataFim").value;
     const lista=viabilidades.filter(o=>{const d=dataRegistro(o)?new Date(dataRegistro(o)):null;let ok=(!nome||String(o.nome||"").toLowerCase().includes(nome))&&(!end||String(o.endereco||"").toLowerCase().includes(end));if(di)ok=ok&&d&&!isNaN(d)&&d>=new Date(di+"T00:00:00");if(df)ok=ok&&d&&!isNaN(d)&&d<=new Date(df+"T23:59:59");return ok}).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
-    atualizarCards(lista);const tbody=document.getElementById("tabelaViabilidades");if(!lista.length){tbody.innerHTML='<tr><td colspan="13" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
-    tbody.innerHTML=lista.map(o=>{const anexos=anexosDoRegistro(o).map(getUrl);const htmlAnexos=anexos.length?`<div class="anexo-lista">${anexos.map(u=>ehVideo(u)?`<div class="mini-video" title="Abrir vídeo" onclick="abrirMidia('${escapar(u)}',true)">▶</div>`:`<img class="mini-anexo" src="${escapar(u)}" alt="Anexo" onclick="abrirMidia('${escapar(u)}',false)">`).join("")}</div>`:"-";const st=String(o.status||"PENDENTE").toUpperCase();return `<tr><td>${o.id??"-"}</td><td><strong>${escapar(o.nome||"-")}</strong></td><td>${escapar(o.endereco||"-")}</td><td style="white-space:normal;min-width:240px">${escapar(o.observacao||o.observacoes||"-")}</td><td>${escapar(o.telefone||"-")}</td><td>${escapar(o.tecnico_responsavel||"-")}</td><td>${escapar(nomeCadastrador(o))}</td><td>${formatarData(dataRegistro(o))}</td><td>${escapar(nomeAtualizador(o))}</td><td>${formatarData(o.atualizado_em)}</td><td><span class="status-box ${classeStatus(st)}">${escapar(st)}</span></td><td>${htmlAnexos}</td><td><div class="acoes"><span class="icone-acao" title="Editar" onclick="editarViabilidade(${Number(o.id)})">✏️</span><span class="icone-acao" title="Excluir" onclick="excluirViabilidade(${Number(o.id)})">🗑️</span></div></td></tr>`}).join("")
+    atualizarCards(lista);
+    const tbody=document.getElementById("tabelaViabilidades");
+    if(!lista.length){tbody.innerHTML='<tr><td colspan="16" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
+    const renderAnexos=(listaAnexos)=>listaAnexos.length?`<div class="anexo-lista">${listaAnexos.map(a=>{const u=getUrl(typeof a==="object"?(a.url||a.caminho||a.arquivo):a);return (String(a?.tipo||"").startsWith("video/")||ehVideo(u))?`<div class="mini-video" title="Visualizar vídeo" onclick="abrirMidia('${escapar(u)}',true)">▶</div>`:`<img class="mini-anexo" src="${escapar(u)}" alt="Anexo" title="Visualizar imagem" onclick="abrirMidia('${escapar(u)}',false)">`}).join("")}</div>`:"-";
+    tbody.innerHTML=lista.map(o=>{
+        const analise=anexosPorCategoria(o,"ANALISE"),visita=anexosPorCategoria(o,"COMPROVACAO_VISITA");
+        const st=String(o.status||"PENDENTE").toUpperCase();
+        const localizacao=coordenadasValidas(o)?`<button class="btn-localizacao" onclick="abrirMapaViabilidade(${Number(o.id)})">📍 Visualizar localização</button>`:"<span class='muted'>Não registrada</span>";
+        return `<tr>
+            <td>${o.id??"-"}</td><td><strong>${escapar(o.nome||"-")}</strong></td><td>${escapar(o.endereco||"-")}</td>
+            <td style="white-space:normal;min-width:220px">${escapar(o.observacao||o.observacoes||"-")}</td>
+            <td style="white-space:normal;min-width:220px">${escapar(o.observacao_pos_aprovacao||"-")}</td>
+            <td>${escapar(o.telefone||"-")}</td><td>${escapar(o.tecnico_responsavel||"-")}</td>
+            <td>${escapar(nomeCadastrador(o))}</td><td>${formatarData(dataRegistro(o))}</td>
+            <td>${escapar(nomeAtualizador(o))}</td><td>${formatarData(o.atualizado_em)}</td>
+            <td><span class="status-box ${classeStatus(st)}">${escapar(st)}</span></td>
+            <td>${renderAnexos(analise)}</td><td>${renderAnexos(visita)}</td><td>${localizacao}</td>
+            <td><div class="acoes"><span class="icone-acao" title="Editar" onclick="editarViabilidade(${Number(o.id)})">✏️</span><span class="icone-acao" title="Excluir" onclick="excluirViabilidade(${Number(o.id)})">🗑️</span></div></td>
+        </tr>
+        <tr class="mapa-linha"><td colspan="16"><div class="mapa-inline" id="mapaViabilidade-${Number(o.id)}"></div></td></tr>`;
+    }).join("");
 }
 async function excluirViabilidade(id){if(!id||!confirm("Deseja excluir esta viabilidade?"))return;try{const r=await fetch(`${API_VIABILIDADE}/${id}`,{method:"DELETE",headers:getAuthHeaders()});if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.erro||`Erro ${r.status}`)}alert("Viabilidade excluída com sucesso.");carregarViabilidades()}catch(e){console.error(e);alert("Não foi possível excluir: "+e.message)}}
 function abrirMidia(url,video){const c=document.getElementById("popupConteudo");c.innerHTML=video?`<video src="${escapar(url)}" controls autoplay></video>`:`<img src="${escapar(url)}" alt="Anexo">`;document.getElementById("popupMidia").classList.add("ativo")}
@@ -296,8 +379,8 @@ function fecharMidiaAoFundo(e){if(e.target.id==="popupMidia")fecharMidia()}
 
 document.addEventListener("DOMContentLoaded",()=>{
     const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");if(s&&l&&localStorage.getItem("sidebar_recolhida")==="1"){s.classList.add("recolhida");l.src=l.dataset.logoFechada}
-    atualizarHorario();setInterval(atualizarHorario,60000);carregarUsuario();carregarUsuariosOnline();carregarViabilidades();
-    document.getElementById("telefone").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);
+    atualizarHorario();setInterval(atualizarHorario,60000);carregarUsuario();carregarTecnicos();carregarUsuariosOnline();carregarViabilidades();
+    document.getElementById("telefone").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);document.getElementById("arquivosVisita").addEventListener("change",processarArquivosVisita);
     document.querySelectorAll("#filtroNome,#filtroEndereco,#dataInicio,#dataFim").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
     document.getElementById("buscaViabilidade").addEventListener("input",e=>{document.getElementById("filtroNome").value=e.target.value;renderTabela()});
     document.addEventListener("keydown",e=>{if(e.key==="Escape")fecharMidia()});
