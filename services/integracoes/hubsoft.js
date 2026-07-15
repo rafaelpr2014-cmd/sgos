@@ -24,16 +24,26 @@ function temTokenDireto(config){
     return !!String(config.token || config.access_token || "").trim();
 }
 
-function joinUrl(baseUrl, path){
-    const base = limparBaseUrl(baseUrl);
-    const p = String(path || "").replace(/^\/+/, "");
-    if(!p) return base;
+function raizApi(baseUrl){
+    return limparBaseUrl(baseUrl)
+        .replace(/\/(?:api\/v1|api|graphql\/v1|graphql)$/i, "");
+}
 
-    if(/\/api\/v1$/i.test(base) && /^api\/v1\//i.test(p)){
-        return `${base}/${p.replace(/^api\/v1\//i, "")}`;
+function joinUrl(baseUrl, path){
+    const baseOriginal = limparBaseUrl(baseUrl);
+    const p = String(path || "").trim().replace(/^\/+/, "");
+    if(!p) return baseOriginal;
+
+    // OAuth e GraphQL da HubSoft ficam na raiz do host.
+    if(/^(?:oauth\/token|graphql\/v1|graphql)$/i.test(p)){
+        return `${raizApi(baseOriginal)}/${p}`;
     }
 
-    return `${base}/${p}`;
+    if(/\/api\/v1$/i.test(baseOriginal) && /^api\/v1\//i.test(p)){
+        return `${baseOriginal}/${p.replace(/^api\/v1\//i, "")}`;
+    }
+
+    return `${baseOriginal}/${p}`;
 }
 
 function montarHeaders(config, tokenOverride = null){
@@ -195,7 +205,7 @@ function normalizarHubSoft(cliente = {}){
 // =============================
 // GraphQL HubSoft
 // =============================
-const GRAPHQL_ENDPOINTS = ["graphql/v1", "graphql", "api/graphql", "api/v1/graphql"];
+const GRAPHQL_ENDPOINTS = ["graphql/v1", "graphql"];
 
 function unwrapGraphQLType(type){
     let atual = type;
@@ -247,7 +257,16 @@ async function requestGraphQL(config, query, variables = {}, token = null){
 
             return { endpoint: path, data: resposta.data };
         }catch(err){
-            ultimoErro = err;
+            const detalhe = err.response?.data || err.message;
+            const erro = new Error(
+                `Falha no GraphQL HubSoft em ${joinUrl(baseUrl, path)}: ` +
+                `${typeof detalhe === "string" ? detalhe : JSON.stringify(detalhe)}`
+            );
+            erro.status = err.response?.status;
+            erro.response = err.response;
+            erro.endpoint = path;
+            erro.url = joinUrl(baseUrl, path);
+            ultimoErro = erro;
         }
     }
 
@@ -394,6 +413,7 @@ async function testarConexao(config){
             ok: true,
             mensagem: "HubSoft conectado com sucesso via GraphQL.",
             endpoint: info.endpoint,
+            url: joinUrl(config.base_url, info.endpoint),
             retorno: { status: "ok", graphql: true, campos_cliente_encontrados: campos }
         };
     }catch(err){

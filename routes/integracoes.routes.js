@@ -229,7 +229,23 @@ router.get("/:tipo_erp/testar", async (req,res)=>{
         await pool.query(`UPDATE integracoes_erp SET ultimo_teste_em=NOW(), ultimo_status='conectado', ultimo_tempo_ms=?, atualizado_em=NOW() WHERE id=? AND empresa_id=?`, [tempoMs, config.id, empresaId]);
         await pool.query(`INSERT INTO integracoes_logs (empresa_id, integracao_id, tipo_erp, acao, endpoint, status, mensagem) VALUES (?, ?, ?, 'testar_conexao', ?, 'sucesso', ?)`, [empresaId, config.id, config.tipo_erp, provider.endpointTeste || "-", `Conexão ${config.tipo_erp.toUpperCase()} testada com sucesso.`]);
         res.json({sucesso:true, status:"Conectado", mensagem:`Conexão com ${config.tipo_erp.toUpperCase()} realizada com sucesso.`, tempo_ms:tempoMs, retorno});
-    }catch(err){ console.error(err.response?.data || err.message); res.status(500).json({erro:"Falha ao conectar com o ERP.", detalhe:err.response?.data || err.message}); }
+    }catch(err){
+        const detalhe = err.response?.data || err.message;
+        console.error("[INTEGRACOES][TESTE]", {
+            tipo: req.params.tipo_erp,
+            url: err.url || err.config?.url || null,
+            endpoint: err.endpoint || null,
+            status: err.status || err.response?.status || null,
+            detalhe
+        });
+        res.status(err.status && err.status >= 400 && err.status < 600 ? err.status : 500).json({
+            erro: "Falha ao conectar com o ERP.",
+            detalhe,
+            endpoint: err.endpoint || null,
+            url: err.url || err.config?.url || null,
+            status_http: err.status || err.response?.status || 500
+        });
+    }
 });
 
 router.get("/:tipo_erp/clientes", async (req,res)=>{
