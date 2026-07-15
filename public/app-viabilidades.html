@@ -36,7 +36,7 @@ button,input,textarea,select{font:inherit}
 .list-card{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:14px;margin-bottom:10px;box-shadow:0 10px 24px rgba(15,23,42,.06);font-size:13px;line-height:1.55;position:relative;overflow:hidden}
 .list-card:before{content:"";position:absolute;left:0;top:0;width:5px;height:100%;background:#2563eb}.list-card h3{margin:0 0 8px;padding-left:6px;font-size:16px}.list-card p{margin:4px 0;padding-left:6px}.list-card .endereco{white-space:normal;color:#334155}
 .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.pill{display:inline-block;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:900;white-space:nowrap}.pill.green{background:#dcfce7;color:#15803d}.pill.orange{background:#ffedd5;color:#c2410c}.pill.red{background:#fee2e2;color:#dc2626}.pill.blue{background:#dbeafe;color:#1d4ed8}
-.btn{border:none;border-radius:13px;padding:12px 14px;font-weight:900;color:#fff;background:#2563eb;cursor:pointer}.btn.block{width:100%}.btn-row{display:flex;gap:8px;margin-top:12px}.btn-light{background:#f1f5f9;color:#0f172a}.btn-green{background:#16a34a}.btn-red{background:#ef4444}.btn-roxo{background:#7c3aed}.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn{border:none;border-radius:13px;padding:12px 14px;font-weight:900;color:#fff;background:#2563eb;cursor:pointer}.btn.block{width:100%}.btn-row{display:flex;gap:8px;margin-top:12px}.btn-light{background:#f1f5f9;color:#0f172a}.btn-green{background:#16a34a}.btn-red{background:#ef4444}.btn-roxo{background:#7c3aed}.btn:disabled{opacity:.6;cursor:not-allowed}.encerrada-box{margin-top:11px;padding:11px 12px;border-radius:13px;background:#f1f5f9;color:#475569;font-size:12px;font-weight:900;text-align:center;border:1px solid var(--borda)}
 .telefone{color:#2563eb;text-decoration:none;font-weight:900}.detalhes{background:#f8fafc;border:1px solid var(--borda);border-radius:14px;padding:12px;margin-top:10px}.detalhes p{padding-left:0}.label{font-size:12px;font-weight:900;color:#334155;margin:12px 0 6px;display:block}
 .file-box{border:1px dashed #93c5fd;border-radius:14px;background:#eff6ff;padding:12px;margin-top:8px}.file-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.file-btn{border:none;border-radius:12px;padding:11px 8px;font-weight:900;background:#fff;color:#1e3a8a;border:1px solid #bfdbfe}
 .preview-list{display:flex;gap:8px;overflow-x:auto;padding:10px 0 2px}.preview-item{position:relative;flex:0 0 86px;width:86px;height:72px;border-radius:10px;overflow:hidden;background:#0f172a;border:1px solid var(--borda)}.preview-item img,.preview-item video{width:100%;height:100%;object-fit:cover}.preview-item button{position:absolute;right:3px;top:3px;width:23px;height:23px;border:none;border-radius:50%;background:rgba(239,68,68,.94);color:#fff;font-weight:900}
@@ -100,6 +100,14 @@ button,input,textarea,select{font:inherit}
   <div class="modal-head"><h2>Registrar visita</h2><button class="modal-close" onclick="fecharModal()">×</button></div>
   <div id="resumoModal" class="card-box"></div>
   <div class="card-box">
+   <label class="label" for="statusTecnico">Resultado da viabilidade</label>
+   <select id="statusTecnico" class="select">
+    <option value="PENDENTE">Pendente</option>
+    <option value="APROVADA">Aprovada</option>
+    <option value="REPROVADA">Reprovada</option>
+   </select>
+   <div class="muted" style="font-size:12px;margin-top:7px">Após salvar como aprovada ou reprovada, a edição será encerrada para o técnico.</div>
+
    <label class="label" for="observacaoPos">Observação pós-aprovação</label>
    <textarea id="observacaoPos" class="textarea" placeholder="Descreva o que foi verificado durante a visita, passagem de cabo, postes, distância, materiais e conclusão técnica."></textarea>
 
@@ -231,17 +239,22 @@ function renderLista(){
     ${v.observacao_pos_aprovacao?`<p><b>Observação pós-aprovação:</b><br>${escapar(v.observacao_pos_aprovacao)}</p>`:""}
     ${visita.length?`<p><b>Comprovação da visita:</b></p>${renderAnexos(visita)}`:""}
    </div>
+   ${String(v.status||"PENDENTE").toUpperCase()==="PENDENTE"?`
    <div class="btn-row">
     <button class="btn btn-green" style="flex:1" onclick="abrirViabilidade(${Number(v.id)})">📝 Registrar visita</button>
     ${coordenadasValidas(v)?`<button class="btn btn-light" style="flex:1" onclick="alternarMapaCard(${Number(v.id)})">🗺️ Visualizar localização</button>`:""}
-   </div>
+   </div>`:`
+   <div class="encerrada-box">🔒 Viabilidade finalizada pelo técnico — edição encerrada</div>
+   ${coordenadasValidas(v)?`<button class="btn btn-light block" style="margin-top:8px" onclick="alternarMapaCard(${Number(v.id)})">🗺️ Visualizar localização</button>`:""}`}
    <div id="mapaCard-${Number(v.id)}" class="mapa-card"></div>
   </article>`;
  }).join("");
 }
 function abrirViabilidade(id){
  viabilidadeAtual=viabilidades.find(v=>Number(v.id)===Number(id));if(!viabilidadeAtual)return;
- arquivosVisita=[];localizacaoAtual=coordenadasValidas(viabilidadeAtual)?{latitude:Number(viabilidadeAtual.latitude),longitude:Number(viabilidadeAtual.longitude),precisao:null}:null;renderPreview();document.getElementById("observacaoPos").value=viabilidadeAtual.observacao_pos_aprovacao||"";
+ const statusAtual=String(viabilidadeAtual.status||"PENDENTE").toUpperCase();
+ if(statusAtual!=="PENDENTE"){alert("Esta viabilidade já foi finalizada e não pode mais ser editada pelo técnico.");return;}
+ arquivosVisita=[];localizacaoAtual=coordenadasValidas(viabilidadeAtual)?{latitude:Number(viabilidadeAtual.latitude),longitude:Number(viabilidadeAtual.longitude),precisao:null}:null;renderPreview();document.getElementById("observacaoPos").value=viabilidadeAtual.observacao_pos_aprovacao||"";document.getElementById("statusTecnico").value=String(viabilidadeAtual.status||"PENDENTE").toUpperCase();
  document.getElementById("mapaModal").classList.remove("show");document.getElementById("mapaModal").innerHTML="";
  document.getElementById("statusLocalizacao").innerText=localizacaoAtual?`Localização registrada: ${localizacaoAtual.latitude.toFixed(6)}, ${localizacaoAtual.longitude.toFixed(6)}`:"Localização ainda não coletada.";
  document.getElementById("btnVisualizarLocalizacaoModal").style.display=localizacaoAtual?"block":"none";
@@ -271,14 +284,19 @@ function obterLocalizacao(){
 async function salvarVisita(){
  if(!viabilidadeAtual)return;
  const obs=document.getElementById("observacaoPos").value.trim();
+ const statusTecnico=String(document.getElementById("statusTecnico").value||"PENDENTE").toUpperCase();
  if(!obs&&!arquivosVisita.length){alert("Preencha a observação ou adicione um anexo da visita.");return}
+ if(statusTecnico!=="PENDENTE"){
+  const texto=statusTecnico==="APROVADA"?"APROVAR":"REPROVAR";
+  if(!confirm(`Deseja realmente ${texto} esta viabilidade? Após salvar, a edição será encerrada para o técnico.`))return;
+ }
  const overlay=document.getElementById("loadingOverlay"),btn=document.getElementById("btnSalvarVisita");overlay.classList.add("show");btn.disabled=true;
  try{
   const observacaoFinal=obs;
   const payload={
    nome:viabilidadeAtual.nome||"",endereco:viabilidadeAtual.endereco||"",observacao:viabilidadeAtual.observacao||"",
    telefone:viabilidadeAtual.telefone||"",tecnico_responsavel:viabilidadeAtual.tecnico_responsavel||"",
-   observacao_pos_aprovacao:observacaoFinal,status:viabilidadeAtual.status||"PENDENTE",
+   observacao_pos_aprovacao:observacaoFinal,status:statusTecnico,
    latitude:localizacaoAtual?.latitude??viabilidadeAtual.latitude??null,
    longitude:localizacaoAtual?.longitude??viabilidadeAtual.longitude??null
   };
@@ -288,7 +306,7 @@ async function salvarVisita(){
    const fd=new FormData();fd.append("arquivo",arquivo);fd.append("viabilidade_id",viabilidadeAtual.id);fd.append("categoria","COMPROVACAO_VISITA");
    const up=await apiFetch(API_UPLOAD,{method:"POST",headers:authHeaders(),body:fd});const uj=await up.json().catch(()=>({}));if(!up.ok)throw new Error(uj.erro||`Falha ao enviar ${arquivo.name}`);
   }
-  alert("Visita salva com sucesso!");fecharModal();await carregarViabilidades();
+  alert(statusTecnico==="PENDENTE"?"Visita salva com sucesso!":"Viabilidade finalizada com sucesso. A edição foi encerrada para o técnico.");fecharModal();await carregarViabilidades();
  }catch(e){console.error(e);alert("Erro ao salvar a visita: "+e.message)}
  finally{overlay.classList.remove("show");btn.disabled=false}
 }
