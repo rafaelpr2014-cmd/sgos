@@ -1255,6 +1255,51 @@ function selecionarClienteMikWeb(payload){
     preencherClienteMikWeb(cliente);
 }
 
+
+function primeiroValorGeografico(...valores){
+    for(const valor of valores){
+        if(valor !== undefined && valor !== null && String(valor).trim() !== ""){
+            return String(valor).trim();
+        }
+    }
+    return "";
+}
+
+function coordenadasClienteERP(cliente = {}){
+    const bruto = cliente.bruto || {};
+    const endereco =
+        bruto.endereco ||
+        bruto.servico?.endereco ||
+        bruto.contrato?.endereco ||
+        cliente.endereco_objeto ||
+        {};
+
+    return {
+        latitude: primeiroValorGeografico(
+            cliente.latitude,
+            cliente.lat,
+            cliente.altitude,
+            endereco.latitude,
+            endereco.lat,
+            endereco.altitude,
+            bruto.cliente?.latitude,
+            bruto.cliente?.lat,
+            bruto.cliente?.altitude
+        ),
+        longitude: primeiroValorGeografico(
+            cliente.longitude,
+            cliente.lng,
+            cliente.lon,
+            endereco.longitude,
+            endereco.lng,
+            endereco.lon,
+            bruto.cliente?.longitude,
+            bruto.cliente?.lng,
+            bruto.cliente?.lon
+        )
+    };
+}
+
 function preencherClienteMikWeb(cliente) {
     clienteSelecionadoMikWeb = cliente;
 
@@ -1269,8 +1314,9 @@ function preencherClienteMikWeb(cliente) {
     setValorCampo("referencia", cliente.referencia || "");
     setValorCampo("telefone", obterTelefoneClienteERP(cliente));
     setValorCampo("login", obterLoginClienteERP(cliente));
-    setValorCampo("latitude", cliente.latitude || "");
-    setValorCampo("longitude", cliente.longitude || "");
+    const coordenadasERP = coordenadasClienteERP(cliente);
+    setValorCampo("latitude", coordenadasERP.latitude);
+    setValorCampo("longitude", coordenadasERP.longitude);
 
     const nomeEl = document.getElementById("nome");
     const origem = document.getElementById("origemMikWeb");
