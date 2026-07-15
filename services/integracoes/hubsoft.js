@@ -237,10 +237,12 @@ async function requestGraphQL(config, query, variables = {}, token = null){
     let ultimoErro = null;
 
     for(const path of GRAPHQL_ENDPOINTS){
+        const url = joinUrl(baseUrl, path);
+
         try{
             const resposta = await axios({
                 method: "post",
-                url: joinUrl(baseUrl, path),
+                url,
                 headers: montarHeaders(config, accessToken),
                 data: { query, variables },
                 timeout: Number(process.env.HUBSOFT_TIMEOUT_MS || 20000),
@@ -248,25 +250,54 @@ async function requestGraphQL(config, query, variables = {}, token = null){
             });
 
             if(resposta.data?.errors?.length){
-                const err = new Error(resposta.data.errors.map(e => e.message).join(" | "));
+                const mensagens = resposta.data.errors.map(e => e.message).join(" | ");
+                const rotaInexistente = /route .* could not be found|rota .* não existe/i.test(mensagens);
+
+                // Só tenta o endpoint legado quando a própria rota não existe.
+                if(rotaInexistente){
+                    const erroRota = new Error(`Falha no GraphQL HubSoft em ${url}: ${JSON.stringify(resposta.data)}`);
+                    erroRota.endpoint = path;
+                    erroRota.url = url;
+                    ultimoErro = erroRota;
+                    continue;
+                }
+
+                const err = new Error(`Erro GraphQL HubSoft em ${url}: ${mensagens}`);
                 err.graphqlErrors = resposta.data.errors;
                 err.endpoint = path;
+                err.url = url;
                 err.responseData = resposta.data;
                 throw err;
             }
 
-            return { endpoint: path, data: resposta.data };
+            return { endpoint: path, url, data: resposta.data };
         }catch(err){
+            // Erros GraphQL de consulta não devem cair para /graphql legado.
+            if(err.graphqlErrors){
+                throw err;
+            }
+
             const detalhe = err.response?.data || err.message;
+            const status = err.response?.status;
+            const rotaInexistente =
+                status === 404 ||
+                /route .* could not be found|rota .* não existe/i.test(
+                    typeof detalhe === "string" ? detalhe : JSON.stringify(detalhe)
+                );
+
             const erro = new Error(
-                `Falha no GraphQL HubSoft em ${joinUrl(baseUrl, path)}: ` +
+                `Falha no GraphQL HubSoft em ${url}: ` +
                 `${typeof detalhe === "string" ? detalhe : JSON.stringify(detalhe)}`
             );
-            erro.status = err.response?.status;
+            erro.status = status;
             erro.response = err.response;
             erro.endpoint = path;
-            erro.url = joinUrl(baseUrl, path);
+            erro.url = url;
             ultimoErro = erro;
+
+            if(!rotaInexistente){
+                throw erro;
+            }
         }
     }
 
@@ -277,13 +308,147 @@ async function introspectGraphQL(config, token){
     const query = `
         query SGOSIntrospection {
             __schema {
-                queryType { fields { name args { name type { kind name ofType { kind name ofType { kind name } } } } type { kind name ofType { kind name ofType { kind name } } } } }
-                types { name kind fields { name type { kind name ofType { kind name ofType { kind name } } } } }
+                queryType {
+                    fields {
+                        name
+                        args {
+                            name
+                            type {
+                                kind name
+                                ofType {
+                                    kind name
+                                    ofType {
+                                        kind name
+                                        ofType { kind name }
+                                    }
+                                }
+                            }
+                        }
+                        type {
+                            kind name
+                            ofType {
+                                kind name
+                                ofType {
+                                    kind name
+                                    ofType { kind name }
+                                }
+                            }
+                        }
+                    }
+                }
+                types {
+                    name
+                    kind
+                    fields {
+                        name
+                        type {
+                            kind name
+                            ofType {
+                                kind name
+                                ofType {
+                                    kind name
+                                    ofType { kind name }
+                                }
+                            }
+                        }
+                    }
+                    inputFields {
+                        name
+                        type {
+                            kind name
+                            ofType {
+                                kind name
+                                ofType {
+                                    kind name
+                                    ofType { kind name }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     `;
     const resp = await requestGraphQL(config, query, {}, token);
-    return { endpoint: resp.endpoint, schema: resp.data?.data?.__schema };
+    return { endpoint: resp.endpoint, url: resp.url, schema: resp.data?.data?.__schema };
+}
+
+
+function graphQLTypeToString(type){
+    if(!type) return "String";
+    if(type.kind === "NON_NULL") return `${graphQLTypeToString(type.ofType)}!`;
+    if(type.kind === "LIST") return `[${graphQLTypeToString(type.ofType)}]`;
+    return type.name || graphQLTypeToString(type.ofType);
+}
+
+function localizarTipo(schema, typeName){
+    return schema?.types?.find(t => t.name === typeName) || null;
+}
+
+function montarSelecaoGraphQL(schema, type, profundidade = 0, visitados = new Set()){
+    const base = unwrapGraphQLType(type);
+    if(!base?.name) return "id";
+
+    const tipo = localizarTipo(schema, base.name);
+    if(!tipo) return "id";
+
+    const chave = `${base.name}:${profundidade}`;
+    if(visitados.has(chave)) return "id";
+    visitados.add(chave);
+
+    const fields = Array.isArray(tipo.fields) ? tipo.fields : [];
+    const escalares = selecionarCamposScalar(schema, base.name);
+
+    if(profundidade >= 3){
+        return escalares.join("\n") || "id";
+    }
+
+    const nomesContainerPreferidos = [
+        "data", "clientes", "cliente", "items", "nodes", "results",
+        "registros", "edges", "paginatorInfo"
+    ];
+
+    const objetos = fields.filter(f => !isScalarGraphQL(f.type));
+    const containers = [];
+
+    for(const nome of nomesContainerPreferidos){
+        const f = objetos.find(x => x.name === nome);
+        if(f && !containers.includes(f)) containers.push(f);
+    }
+
+    for(const f of objetos){
+        if(containers.length >= 6) break;
+        if(!containers.includes(f)) containers.push(f);
+    }
+
+    const partes = [...escalares];
+
+    for(const f of containers){
+        const sub = montarSelecaoGraphQL(schema, f.type, profundidade + 1, new Set(visitados));
+        if(sub && sub !== "id"){
+            partes.push(`${f.name} {\n${sub}\n}`);
+        }else if(sub){
+            partes.push(`${f.name} {\n${sub}\n}`);
+        }
+    }
+
+    return partes.length ? partes.join("\n") : "id";
+}
+
+function construirValorInput(schema, arg, busca){
+    const base = unwrapGraphQLType(arg.type);
+    if(base?.kind !== "INPUT_OBJECT") return argValorParaBusca(arg.name, busca);
+
+    const tipoInput = localizarTipo(schema, base.name);
+    const campos = Array.isArray(tipoInput?.inputFields) ? tipoInput.inputFields : [];
+    const obj = {};
+
+    for(const campo of campos){
+        const valor = argValorParaBusca(campo.name, busca);
+        if(valor !== undefined) obj[campo.name] = valor;
+    }
+
+    return Object.keys(obj).length ? obj : undefined;
 }
 
 function selecionarCamposScalar(schema, typeName){
@@ -343,26 +508,37 @@ async function buscarClientesGraphQL(config, busca, token){
     const debug = [];
 
     for(const field of candidatos){
-        const tipoRetorno = unwrapGraphQLType(field.type);
-        const campos = selecionarCamposScalar(schema, tipoRetorno?.name).join("\n");
+        const campos = montarSelecaoGraphQL(schema, field.type);
         const args = [];
         const variables = {};
         const varDefs = [];
 
         for(const arg of field.args || []){
-            const valor = argValorParaBusca(arg.name, busca);
+            const valor = construirValorInput(schema, arg, busca);
             if(valor === undefined) continue;
 
-            const tipoBase = unwrapGraphQLType(arg.type);
             const varName = arg.name.replace(/[^A-Za-z0-9_]/g, "_");
             variables[varName] = valor;
             args.push(`${arg.name}: $${varName}`);
-            varDefs.push(`$${varName}: ${tipoBase?.name === "Int" ? "Int" : "String"}`);
+            varDefs.push(`$${varName}: ${graphQLTypeToString(arg.type)}`);
         }
 
-        // Se o campo exige argumentos obrigatórios desconhecidos, pula para evitar erro.
-        const obrigatoriosNaoPreenchidos = (field.args || []).some(arg => arg.type?.kind === "NON_NULL" && !args.some(a => a.startsWith(`${arg.name}:`)));
-        if(obrigatoriosNaoPreenchidos) continue;
+        const obrigatoriosNaoPreenchidos = (field.args || []).some(arg =>
+            arg.type?.kind === "NON_NULL" &&
+            !args.some(a => a.startsWith(`${arg.name}:`))
+        );
+
+        if(obrigatoriosNaoPreenchidos){
+            debug.push({
+                campo: field.name,
+                ignorado: "argumento obrigatório desconhecido",
+                args: (field.args || []).map(a => ({
+                    nome: a.name,
+                    tipo: graphQLTypeToString(a.type)
+                }))
+            });
+            continue;
+        }
 
         const query = `query SGOSBuscaHubSoft${varDefs.length ? `(${varDefs.join(", ")})` : ""} {
             ${field.name}${args.length ? `(${args.join(", ")})` : ""} {
@@ -373,20 +549,30 @@ async function buscarClientesGraphQL(config, busca, token){
         try{
             const resp = await requestGraphQL(config, query, variables, token);
             const bruto = resp.data?.data || {};
-            const listas = extrairListasProfundas(bruto);
-            let lista = listas.find(l => l.length) || extrairLista(bruto[field.name]);
+            const valorCampo = bruto[field.name];
+
+            let lista = extrairLista(valorCampo);
+            if(!lista.length){
+                const listas = extrairListasProfundas(valorCampo);
+                lista = listas
+                    .filter(l => l.length)
+                    .sort((a, b) => b.length - a.length)[0] || [];
+            }
 
             if(Array.isArray(lista) && lista.length){
-                // Quando a query não possui filtro, filtra localmente.
                 if(!args.length) lista = filtrarClientesPorBusca(lista, busca);
 
-                const clientes = lista.map(normalizarHubSoft).filter(c => c && (c.nome || c.id || c.cliente_id));
+                const clientes = lista
+                    .map(normalizarHubSoft)
+                    .filter(c => c && (c.nome || c.id || c.cliente_id));
+
                 if(clientes.length){
                     return {
                         origem_erp: "hubsoft",
                         total: clientes.length,
                         clientes,
                         endpoint: resp.endpoint,
+                        url: resp.url,
                         metodo: "graphql",
                         campo_graphql: field.name,
                         bruto
@@ -394,13 +580,38 @@ async function buscarClientesGraphQL(config, busca, token){
                 }
             }
 
-            debug.push({ campo: field.name, args: field.args?.map(a => a.name) || [], total: Array.isArray(lista) ? lista.length : 0 });
+            debug.push({
+                campo: field.name,
+                endpoint: resp.endpoint,
+                args: (field.args || []).map(a => ({
+                    nome: a.name,
+                    tipo: graphQLTypeToString(a.type)
+                })),
+                variables,
+                total: Array.isArray(lista) ? lista.length : 0
+            });
         }catch(err){
-            debug.push({ campo: field.name, erro: err.message });
+            debug.push({
+                campo: field.name,
+                endpoint: err.endpoint || info.endpoint,
+                erro: err.message,
+                graphql: err.graphqlErrors || null,
+                args: (field.args || []).map(a => ({
+                    nome: a.name,
+                    tipo: graphQLTypeToString(a.type)
+                }))
+            });
         }
     }
 
-    return { origem_erp: "hubsoft", total: 0, clientes: [], debug_graphql: debug.slice(0, 20), endpoint_graphql: info.endpoint };
+    return {
+        origem_erp: "hubsoft",
+        total: 0,
+        clientes: [],
+        debug_graphql: debug.slice(0, 20),
+        endpoint_graphql: info.endpoint,
+        url_graphql: info.url
+    };
 }
 
 async function testarConexao(config){
