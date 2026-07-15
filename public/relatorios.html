@@ -2758,34 +2758,58 @@ function normalizarTelefoneWhatsapp(valor){
 }
 
 async function verificarStatusWhatsappRelatorio(){
-    const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
-    const empresaId = usuario.empresa_id || usuario.empresaId;
     const statusEl = document.getElementById("statusWhatsappRelatorio");
     const botao = document.getElementById("btnEnviarWhatsapp");
 
     if(!statusEl || !botao) return;
 
-    if(!empresaId){
-        statusEl.textContent = "Empresa do usuário não identificada";
-        statusEl.className = "status-whatsapp desconectado";
-        botao.disabled = true;
-        return;
-    }
+    const usuario = (() => {
+        try {
+            return JSON.parse(localStorage.getItem("usuario") || "{}");
+        } catch {
+            return {};
+        }
+    })();
 
     try{
-        const resposta = await fetch(`/api/whatsapp/status/${empresaId}`, {
-            headers:{ "x-usuario-id": usuario.id }
+        const resposta = await fetch("/api/whatsapp/cliente/status", {
+            credentials: "include",
+            headers: {
+                ...(usuario?.id
+                    ? { "x-usuario-id": String(usuario.id) }
+                    : {})
+            }
         });
-        const dados = await resposta.json();
-        const conectado = resposta.ok && dados.status === "conectado";
+
+        let dados = {};
+        try {
+            dados = await resposta.json();
+        } catch {
+            dados = {};
+        }
+
+        const conectado =
+            resposta.ok &&
+            (dados.status === "conectado" || dados.conectado === true);
 
         statusEl.textContent = conectado
             ? "WhatsApp conectado e pronto para envio"
-            : "WhatsApp desconectado";
+            : "WhatsApp da empresa desconectado";
+
         statusEl.className = conectado
             ? "status-whatsapp conectado"
             : "status-whatsapp desconectado";
+
         botao.disabled = !conectado;
+
+        if(!resposta.ok){
+            console.warn(
+                "Status do WhatsApp indisponível:",
+                resposta.status,
+                dados
+            );
+        }
+
     }catch(erro){
         console.error("Erro ao consultar WhatsApp:", erro);
         statusEl.textContent = "Não foi possível verificar a conexão";
@@ -3013,44 +3037,40 @@ async function carregarUsuarioTopo() {
         const data = typeof fetchAuth === "function"
             ? await fetchAuth("/api/me")
             : await fetch("/api/me", {
-                credentials: "include",
-                headers: { "Content-Type": "application/json" }
-            }).then(async res => {
-                const body = await res.json();
-                if (!res.ok) throw new Error(body.erro || "Não autenticado");
-                return body;
+                credentials: "include"
+            }).then(async resposta => {
+                if(!resposta.ok){
+                    throw new Error("Não foi possível validar a sessão.");
+                }
+                return resposta.json();
             });
 
         const userEmpresaEl = document.getElementById("userEmpresa");
         const empresaLogadaEl = document.getElementById("empresaLogada");
 
-        if (userEmpresaEl) {
-            userEmpresaEl.innerText = data?.usuario || "Administrador";
+        if(userEmpresaEl){
+            userEmpresaEl.innerText =
+                data?.usuario || "Administrador";
         }
 
-        if (empresaLogadaEl) {
-            empresaLogadaEl.innerText = data?.empresa_nome || "Empresa";
+        if(empresaLogadaEl){
+            empresaLogadaEl.innerText =
+                data?.empresa_nome || "Empresa";
         }
 
         const logo = data?.empresa_logo;
         const logoEl = document.getElementById("logoEmpresa");
 
-        if (logoEl) {
+        if(logoEl){
             logoEl.src = logo
                 ? (logo.startsWith("/") ? logo : "/" + logo)
                 : "/img/logo-default.png";
         }
 
     } catch (err) {
-        // Não cria um segundo redirecionamento concorrendo com auth.js.
-        // O próprio fetchAuth já trata sessão realmente expirada.
+        // Não redirecionar daqui. auth.js é o único responsável
+        // por tratar uma sessão realmente expirada.
         console.error("Erro ao carregar usuário do topo:", err);
-
-        const userEmpresaEl = document.getElementById("userEmpresa");
-        const empresaLogadaEl = document.getElementById("empresaLogada");
-
-        if (userEmpresaEl) userEmpresaEl.innerText = "Usuário";
-        if (empresaLogadaEl) empresaLogadaEl.innerText = "Sessão indisponível";
     }
 }
 

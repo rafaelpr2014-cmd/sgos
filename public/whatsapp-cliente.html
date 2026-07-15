@@ -30,7 +30,76 @@
 <div class="card logs-card"><div class="logs-head"><div><div class="card-title">Logs da conexão da empresa</div><div class="card-sub">Eventos recentes da sessão vinculada à empresa logada.</div></div><button class="btn-light" onclick="carregarLogs()">Atualizar logs</button></div><div class="logs" id="logs"><div class="empty">Nenhum log carregado.</div></div></div></div></section></main>
 <script>
 let autorizado=true;
-async function api(url,options={}){const resposta=typeof fetchAuth==='function'?await fetchAuth(url,options):await fetch(url,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});if(resposta&&typeof resposta.json==='function'){const data=await resposta.json();if(!resposta.ok)throw new Error(data.erro||'Erro na requisição');return data}return resposta}
+async function api(url, options = {}) {
+    const usuarioLocal = (() => {
+        try {
+            return JSON.parse(localStorage.getItem("usuario") || "{}");
+        } catch {
+            return {};
+        }
+    })();
+
+    const headers = {
+        "Content-Type": "application/json",
+        ...(usuarioLocal?.id ? { "x-usuario-id": String(usuarioLocal.id) } : {}),
+        ...(options.headers || {})
+    };
+
+    const resposta = await fetch(url, {
+        ...options,
+        credentials: "include",
+        headers
+    });
+
+    let data = {};
+    try {
+        data = await resposta.json();
+    } catch {
+        data = {};
+    }
+
+    if (!resposta.ok) {
+        const erro = new Error(
+            data.erro ||
+            data.mensagem ||
+            `Erro HTTP ${resposta.status}`
+        );
+        erro.status = resposta.status;
+        erro.data = data;
+        throw erro;
+    }
+
+    return data;
+}
+
+async function obterUsuarioLogado() {
+    if (typeof fetchAuth === "function") {
+        return fetchAuth("/api/me");
+    }
+
+    const usuarioLocal = (() => {
+        try {
+            return JSON.parse(localStorage.getItem("usuario") || "{}");
+        } catch {
+            return {};
+        }
+    })();
+
+    const resposta = await fetch("/api/me", {
+        credentials: "include",
+        headers: {
+            ...(usuarioLocal?.id
+                ? { "x-usuario-id": String(usuarioLocal.id) }
+                : {})
+        }
+    });
+
+    if (!resposta.ok) {
+        throw new Error("Não foi possível validar a sessão.");
+    }
+
+    return resposta.json();
+}
 function normalizarEmpresa(user){return String(user.empresa_id??user.empresaId??user.id_empresa??'')}
 function renderStatus(data={}){const status=data.status||'desconectado';const pill=document.getElementById('statusPill');const nomes={conectado:'Conectado',desconectado:'Desconectado',aguardando_qr:'Aguardando QR Code',iniciando:'Iniciando'};pill.textContent=nomes[status]||status;pill.className='status-pill '+status;document.getElementById('numeroConectado').textContent=data.numero?('+'+data.numero):'Não identificado';document.getElementById('nomeConectado').textContent=data.nome||'Não identificado';document.getElementById('btnDesconectar').disabled=!data.conectado;if(data.conectado){document.getElementById('qrArea').innerHTML='<div class="qr-placeholder">✅</div><strong>WhatsApp conectado</strong><p>O WhatsApp da empresa está conectado e pronto para relatórios manuais e informativos.</p>'}}
 async function conectar(){const btn=document.getElementById('btnConectar');btn.disabled=true;btn.textContent='Gerando...';try{const data=await api('/api/whatsapp/cliente/qr');renderStatus(data);if(data.qr){const area=document.getElementById('qrArea');area.innerHTML='';QRCode.toCanvas(data.qr,{width:280,margin:1},(erro,canvas)=>{if(erro)return;area.appendChild(canvas);const p=document.createElement('p');p.textContent='Abra o WhatsApp no celular, acesse Aparelhos conectados e leia este código.';area.appendChild(p)})}else if(data.erro){alert(data.erro)}}catch(err){alert(err.message)}finally{btn.disabled=false;btn.textContent='Gerar QR Code'}}
@@ -39,46 +108,44 @@ async function desconectar(){if(!confirm('Deseja desconectar e remover a autenti
 async function enviarTeste(){const telefone=document.getElementById('telefoneTeste').value.trim();if(!telefone)return alert('Informe o telefone.');try{await api('/api/whatsapp/cliente/teste',{method:'POST',body:JSON.stringify({telefone})});alert('Mensagem de teste enviada com sucesso.');carregarLogs()}catch(err){alert(err.message)}}
 async function carregarLogs(){try{const lista=await api('/api/whatsapp/cliente/logs?limite=100');const box=document.getElementById('logs');if(!lista.length){box.innerHTML='<div class="empty">Nenhum evento registrado nesta execução.</div>';return}box.innerHTML=lista.map(item=>{const data=new Date(item.criadoEm).toLocaleString('pt-BR');const tipo=item.tipo||'info';return `<div class="log-item"><span>${data}</span><span class="log-tipo log-${tipo}">${tipo}</span><span>${item.mensagem}</span></div>`}).join('')}catch(err){document.getElementById('logs').innerHTML='<div class="empty">Não foi possível carregar os logs.</div>'}}
 function logout(){sessionStorage.clear();localStorage.clear();location.href='login.html'}
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener("DOMContentLoaded", async () => {
     let user;
 
     try {
-        user = typeof fetchAuth === 'function'
-            ? await fetchAuth('/api/me')
-            : await api('/api/me');
+        user = await obterUsuarioLogado();
     } catch (err) {
-        console.error('Falha ao validar usuário logado:', err);
+        console.error("Falha ao validar sessão:", err);
         return;
     }
 
-    document.getElementById('usuarioNome').textContent =
-        user?.usuario || 'Administrador';
+    document.getElementById("usuarioNome").textContent =
+        user?.usuario || "Administrador";
 
-    document.getElementById('empresaNome').textContent =
-        user?.empresa_nome || 'Empresa';
+    document.getElementById("empresaNome").textContent =
+        user?.empresa_nome || "Empresa";
 
     const logo = user?.empresa_logo;
-    document.getElementById('logoEmpresa').src = logo
-        ? (logo.startsWith('/') ? logo : '/' + logo)
-        : '/img/logo-default.png';
+    document.getElementById("logoEmpresa").src = logo
+        ? (logo.startsWith("/") ? logo : "/" + logo)
+        : "/img/logo-default.png";
 
     verificarStatus(true).catch(err =>
-        console.error('Erro ao verificar WhatsApp da empresa:', err)
+        console.error("Status WhatsApp da empresa:", err)
     );
 
     carregarLogs().catch(err =>
-        console.error('Erro ao carregar logs do WhatsApp da empresa:', err)
+        console.error("Logs WhatsApp da empresa:", err)
     );
 
     setInterval(() => {
         verificarStatus(true).catch(err =>
-            console.error('Erro ao atualizar status da empresa:', err)
+            console.error("Atualização WhatsApp da empresa:", err)
         );
     }, 4000);
 
     setInterval(() => {
         carregarLogs().catch(err =>
-            console.error('Erro ao atualizar logs da empresa:', err)
+            console.error("Atualização dos logs da empresa:", err)
         );
     }, 15000);
 });
