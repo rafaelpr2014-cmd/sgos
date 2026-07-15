@@ -225,9 +225,25 @@ function ehCampoCliente(nome){
 
 function argValorParaBusca(argName, busca){
     const n = String(argName || "").toLowerCase();
-    if(["busca", "search", "termo", "q", "nome", "nome_razaosocial", "cpf_cnpj", "documento", "cpf", "cnpj", "login", "contrato"].includes(n)) return busca;
+    const valor = String(busca || "").trim();
+    const somenteNumeros = valor.replace(/\D/g, "");
+
+    if(["busca", "search", "termo", "q", "nome", "nome_razaosocial", "cpf_cnpj", "documento", "cpf", "cnpj", "login", "contrato"].includes(n)){
+        return valor;
+    }
+
+    if(["id", "id_cliente", "cliente_id"].includes(n)){
+        return somenteNumeros || undefined;
+    }
+
+    if(["codigo", "codigo_cliente", "cod_cliente"].includes(n)){
+        return somenteNumeros ? Number(somenteNumeros) : undefined;
+    }
+
     if(["first", "limit", "per_page", "perpage", "take", "quantidade", "page_size"].includes(n)) return 10;
-    if(["page", "pagina", "offset", "skip"].includes(n)) return 1;
+    if(["page", "pagina"].includes(n)) return 1;
+    if(["offset", "skip"].includes(n)) return 0;
+
     return undefined;
 }
 
@@ -387,20 +403,20 @@ function localizarTipo(schema, typeName){
 
 function montarSelecaoGraphQL(schema, type, profundidade = 0, visitados = new Set()){
     const base = unwrapGraphQLType(type);
-    if(!base?.name) return "id";
+    if(!base?.name) return "";
 
     const tipo = localizarTipo(schema, base.name);
-    if(!tipo) return "id";
+    if(!tipo) return "";
 
     const chave = `${base.name}:${profundidade}`;
-    if(visitados.has(chave)) return "id";
+    if(visitados.has(chave)) return "";
     visitados.add(chave);
 
     const fields = Array.isArray(tipo.fields) ? tipo.fields : [];
     const escalares = selecionarCamposScalar(schema, base.name);
 
-    if(profundidade >= 3){
-        return escalares.join("\n") || "id";
+    if(profundidade >= 4){
+        return escalares.join("\n");
     }
 
     const nomesContainerPreferidos = [
@@ -416,23 +432,27 @@ function montarSelecaoGraphQL(schema, type, profundidade = 0, visitados = new Se
         if(f && !containers.includes(f)) containers.push(f);
     }
 
-    for(const f of objetos){
-        if(containers.length >= 6) break;
-        if(!containers.includes(f)) containers.push(f);
+    // Para tipos paginadores, prioriza apenas campos realmente existentes,
+    // especialmente "data" e "paginatorInfo".
+    const ehPaginador = /paginator|pagination|connection/i.test(base.name);
+
+    if(!ehPaginador){
+        for(const f of objetos){
+            if(containers.length >= 8) break;
+            if(!containers.includes(f)) containers.push(f);
+        }
     }
 
     const partes = [...escalares];
 
     for(const f of containers){
         const sub = montarSelecaoGraphQL(schema, f.type, profundidade + 1, new Set(visitados));
-        if(sub && sub !== "id"){
-            partes.push(`${f.name} {\n${sub}\n}`);
-        }else if(sub){
+        if(sub){
             partes.push(`${f.name} {\n${sub}\n}`);
         }
     }
 
-    return partes.length ? partes.join("\n") : "id";
+    return partes.join("\n");
 }
 
 function construirValorInput(schema, arg, busca){
@@ -474,7 +494,7 @@ function selecionarCamposScalar(schema, typeName){
         if(isScalarGraphQL(f.type) && !nomes.includes(f.name)) nomes.push(f.name);
     }
 
-    return nomes.length ? nomes : ["id"];
+    return nomes;
 }
 
 function extrairListasProfundas(obj, saida = []){
@@ -509,6 +529,16 @@ async function buscarClientesGraphQL(config, busca, token){
 
     for(const field of candidatos){
         const campos = montarSelecaoGraphQL(schema, field.type);
+
+        if(!campos){
+            debug.push({
+                campo: field.name,
+                ignorado: "não foi possível descobrir os campos de retorno",
+                tipo_retorno: unwrapGraphQLType(field.type)?.name || null
+            });
+            continue;
+        }
+
         const args = [];
         const variables = {};
         const varDefs = [];
@@ -552,10 +582,15 @@ async function buscarClientesGraphQL(config, busca, token){
             const valorCampo = bruto[field.name];
 
             let lista = extrairLista(valorCampo);
+
+            if(!lista.length && Array.isArray(valorCampo?.data)){
+                lista = valorCampo.data;
+            }
+
             if(!lista.length){
                 const listas = extrairListasProfundas(valorCampo);
                 lista = listas
-                    .filter(l => l.length)
+                    .filter(l => l.length && l.some(item => item && typeof item === "object"))
                     .sort((a, b) => b.length - a.length)[0] || [];
             }
 
