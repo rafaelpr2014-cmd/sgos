@@ -1,14 +1,28 @@
 const nodemailer = require("nodemailer");
-const PDFDocument = require("pdfkit");
+const puppeteer = require("puppeteer");
 const fs = require("fs");
 const path = require("path");
 
+const FUSO = "America/Sao_Paulo";
+
 function dataBR(data) {
     return new Intl.DateTimeFormat("pt-BR", {
-        timeZone: "America/Sao_Paulo",
+        timeZone: FUSO,
         day: "2-digit",
         month: "2-digit",
         year: "numeric"
+    }).format(new Date(data));
+}
+
+function dataHoraBR(data = new Date()) {
+    return new Intl.DateTimeFormat("pt-BR", {
+        timeZone: FUSO,
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
     }).format(new Date(data));
 }
 
@@ -37,8 +51,26 @@ function obterPeriodo(tipo, referencia = new Date()) {
         inicio = inicioDoDia(ref);
         inicio.setDate(inicio.getDate() - 6);
     } else if (tipo === "mensal") {
-        inicio = new Date(ref.getFullYear(), ref.getMonth() - 1, 1, 0, 0, 0, 0);
-        fim = new Date(ref.getFullYear(), ref.getMonth(), 0, 23, 59, 59, 999);
+        // Mantém a regra atual do SGOS: mês anterior completo.
+        inicio = new Date(
+            ref.getFullYear(),
+            ref.getMonth() - 1,
+            1,
+            0,
+            0,
+            0,
+            0
+        );
+
+        fim = new Date(
+            ref.getFullYear(),
+            ref.getMonth(),
+            0,
+            23,
+            59,
+            59,
+            999
+        );
     } else {
         throw new Error(`Periodicidade inválida: ${tipo}`);
     }
@@ -47,7 +79,12 @@ function obterPeriodo(tipo, referencia = new Date()) {
 }
 
 function nomeEmpresa(empresa) {
-    return empresa.nome_provedor || empresa.nome_fantasia || empresa.nome_completo || `Empresa ${empresa.id}`;
+    return (
+        empresa.nome_provedor ||
+        empresa.nome_fantasia ||
+        empresa.nome_completo ||
+        `Empresa ${empresa.id}`
+    );
 }
 
 function limparNomeArquivo(valor) {
@@ -61,180 +98,805 @@ function limparNomeArquivo(valor) {
 
 function montarNomeArquivo(tipo, inicio, fim, empresa) {
     const nome = limparNomeArquivo(nomeEmpresa(empresa));
-    const titulo = tipo === "diario" ? "Relatorio Diario" : tipo === "semanal" ? "Relatorio Semanal" : "Relatorio Mensal";
-    const periodo = tipo === "diario" ? dataBR(inicio) : `${dataBR(inicio)} a ${dataBR(fim)}`;
+
+    const titulo =
+        tipo === "diario"
+            ? "Relatorio Diario"
+            : tipo === "semanal"
+                ? "Relatorio Semanal"
+                : "Relatorio Mensal";
+
+    const periodo =
+        tipo === "diario"
+            ? dataBR(inicio)
+            : `${dataBR(inicio)} a ${dataBR(fim)}`;
+
     return `${titulo} ${periodo} - ${nome}.pdf`;
 }
 
+function escaparHtml(valor) {
+    return String(valor ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function normalizarListaTecnicos(valor) {
+    if (!valor) return [];
+
+    if (Array.isArray(valor)) {
+        return valor.map(String).map(v => v.trim()).filter(Boolean);
+    }
+
+    try {
+        const parsed = JSON.parse(valor);
+
+        if (Array.isArray(parsed)) {
+            return parsed.map(String).map(v => v.trim()).filter(Boolean);
+        }
+    } catch (_) {}
+
+    return [String(valor).trim()].filter(Boolean);
+}
+
 async function buscarEmpresa(pool, empresaId) {
-    const [rows] = await pool.query("SELECT * FROM empresa WHERE id = ? LIMIT 1", [empresaId]);
-    if (!rows.length) throw new Error("Empresa não encontrada");
+    const [rows] = await pool.query(
+        "SELECT * FROM empresa WHERE id = ? LIMIT 1",
+        [empresaId]
+    );
+
+    if (!rows.length) {
+        throw new Error("Empresa não encontrada");
+    }
+
     return rows[0];
 }
 
-async function buscarOrdens(pool, empresaId, inicio, fim) {
-    const [rows] = await pool.query(`
-        SELECT
-            os.id,
-            os.cliente,
-            os.status,
-            os.data_abertura,
-            os.finalizado_em,
-            os.agendamento,
-            COALESCE(l.nome, os.localidade) AS localidade_nome,
-            COALESCE(ts.nome, os.tipo_servico) AS tipo_servico_nome
-        FROM ordens_servico os
-        LEFT JOIN localidades l ON l.id = os.localidade AND l.empresa_id = os.empresa_id
-        LEFT JOIN tipos_servico ts ON ts.id = os.tipo_servico AND ts.empresa_id = os.empresa_id
-        WHERE os.empresa_id = ?
-          AND (
-            (os.data_abertura BETWEEN ? AND ?)
-            OR (os.finalizado_em BETWEEN ? AND ?)
-            OR (os.agendamento BETWEEN ? AND ?)
-          )
-        ORDER BY os.id DESC
-    `, [empresaId, inicio, fim, inicio, fim, inicio, fim]);
+async function buscarTecnicos(pool, empresaId) {
+    try {
+        const [rows] = await pool.query(
+            `
+            SELECT id, nome, usuario
+            FROM tecnicos
+            WHERE empresa_id = ?
+            `,
+            [empresaId]
+        );
+
+        return rows;
+    } catch (_) {
+        // Compatibilidade com estruturas antigas.
+        const [rows] = await pool.query(
+            `
+            SELECT id, nome
+            FROM tecnicos
+            WHERE empresa_id = ?
+            `,
+            [empresaId]
+        );
+
+        return rows;
+    }
+}
+
+async function buscarPlanos(pool, empresaId) {
+    const [rows] = await pool.query(
+        `
+        SELECT id, nome
+        FROM planos
+        WHERE empresa_id = ?
+        `,
+        [empresaId]
+    );
+
     return rows;
 }
 
-function contarStatus(ordens) {
-    const resumo = { total: ordens.length, abertas: 0, andamento: 0, concluidas: 0, ausentes: 0, inviabilidades: 0 };
-    for (const os of ordens) {
-        const status = String(os.status || "").toLowerCase();
-        if (["concluido", "concluida", "finalizado", "finalizada"].includes(status)) resumo.concluidas++;
-        else if (["em_andamento", "andamento", "execucao"].includes(status)) resumo.andamento++;
-        else if (status.includes("ausente")) resumo.ausentes++;
-        else if (status.includes("inviab")) resumo.inviabilidades++;
-        else resumo.abertas++;
-    }
-    return resumo;
+async function buscarOrdens(pool, empresaId, inicio, fim) {
+    const [rows] = await pool.query(
+        `
+        SELECT
+            os.id,
+            os.cliente,
+            os.plano,
+            os.status,
+            os.tecnico,
+            os.data_abertura,
+            os.finalizado_em,
+            os.agendamento,
+            COALESCE(l.nome, os.localidade) AS nome_localidade,
+            COALESCE(ts.nome, os.tipo_servico) AS nome_tipo_servico
+        FROM ordens_servico os
+        LEFT JOIN localidades l
+            ON l.id = os.localidade
+           AND l.empresa_id = os.empresa_id
+        LEFT JOIN tipos_servico ts
+            ON ts.id = os.tipo_servico
+           AND ts.empresa_id = os.empresa_id
+        WHERE os.empresa_id = ?
+          AND (
+                os.data_abertura BETWEEN ? AND ?
+                OR os.finalizado_em BETWEEN ? AND ?
+                OR os.agendamento BETWEEN ? AND ?
+              )
+        ORDER BY os.id DESC
+        `,
+        [
+            empresaId,
+            inicio,
+            fim,
+            inicio,
+            fim,
+            inicio,
+            fim
+        ]
+    );
+
+    return rows;
 }
 
-function adicionarCabecalho(doc, empresa, tipo, inicio, fim) {
-    const logo = empresa.logo ? path.join(__dirname, "../uploads/logos", path.basename(empresa.logo)) : null;
-    if (logo && fs.existsSync(logo)) {
-        try { doc.image(logo, 430, 36, { fit: [110, 55], align: "right" }); } catch (_) {}
+function criarMapa(lista, campoNome = "nome") {
+    const mapa = {};
+
+    for (const item of lista || []) {
+        mapa[String(item.id)] =
+            item[campoNome] ||
+            item.usuario ||
+            item.nome ||
+            String(item.id);
     }
 
-    doc.font("Helvetica-Bold").fontSize(17).text(nomeEmpresa(empresa), 45, 42, { width: 360 });
-    doc.font("Helvetica").fontSize(9).fillColor("#475569");
-    doc.text(`CNPJ/CPF: ${empresa.cnpj || empresa.cpf || "-"}`, 45, 67);
-    doc.text(`Telefone: ${empresa.telefone || "-"}  |  E-mail: ${empresa.email || "-"}`, 45, 81);
-
-    const titulo = tipo === "diario" ? "RELATÓRIO DIÁRIO" : tipo === "semanal" ? "RELATÓRIO SEMANAL" : "RELATÓRIO MENSAL";
-    doc.moveDown(3.5);
-    doc.fillColor("#0f172a").font("Helvetica-Bold").fontSize(20).text(titulo, { align: "center" });
-    doc.font("Helvetica").fontSize(10).fillColor("#475569").text(`Período: ${dataBR(inicio)} a ${dataBR(fim)}`, { align: "center" });
-    doc.moveDown(1.2);
+    return mapa;
 }
 
-function desenharKpis(doc, resumo) {
-    const itens = [
-        ["Total", resumo.total], ["Abertas", resumo.abertas], ["Em andamento", resumo.andamento],
-        ["Concluídas", resumo.concluidas], ["Ausentes", resumo.ausentes], ["Inviabilidades", resumo.inviabilidades]
-    ];
-    const largura = 165;
-    const altura = 52;
-    const gap = 12;
-    let x = 45;
-    let y = doc.y;
+function garantirGrupo(obj, chave) {
+    const nome = String(chave || "NÃO INFORMADO").trim() || "NÃO INFORMADO";
 
-    itens.forEach(([rotulo, valor], i) => {
-        if (i > 0 && i % 3 === 0) { x = 45; y += altura + gap; }
-        doc.roundedRect(x, y, largura, altura, 8).fillAndStroke("#eff6ff", "#dbeafe");
-        doc.fillColor("#1e3a8a").font("Helvetica-Bold").fontSize(20).text(String(valor), x + 12, y + 9, { width: largura - 24 });
-        doc.fillColor("#475569").font("Helvetica").fontSize(9).text(rotulo, x + 12, y + 33, { width: largura - 24 });
-        x += largura + gap;
+    if (!obj[nome]) {
+        obj[nome] = {
+            abertas: 0,
+            concluidas: 0
+        };
+    }
+
+    return obj[nome];
+}
+
+function contabilizarRegistro(grupo, os) {
+    if (os.data_abertura) grupo.abertas++;
+    if (os.finalizado_em) grupo.concluidas++;
+}
+
+function prepararDados(ordens, mapaTecnicos, mapaPlanos) {
+    const tecnicos = {};
+    const localidades = {};
+    const tipos = {};
+    const instalacoes = {};
+    const tiposLocalidade = {};
+    const instalacoesLocalidade = {};
+
+    for (const os of ordens || []) {
+        const local = os.nome_localidade || "NÃO INFORMADO";
+        const tipo = os.nome_tipo_servico || "NÃO INFORMADO";
+
+        contabilizarRegistro(garantirGrupo(localidades, local), os);
+        contabilizarRegistro(garantirGrupo(tipos, tipo), os);
+
+        const listaTecnicos = [
+            ...new Set(normalizarListaTecnicos(os.tecnico))
+        ];
+
+        for (const tecnico of listaTecnicos) {
+            const nomeTecnico =
+                mapaTecnicos[String(tecnico)] ||
+                String(tecnico);
+
+            if (
+                !nomeTecnico ||
+                nomeTecnico === "null" ||
+                nomeTecnico === "undefined"
+            ) {
+                continue;
+            }
+
+            contabilizarRegistro(
+                garantirGrupo(tecnicos, nomeTecnico),
+                os
+            );
+        }
+
+        const tipoUpper = String(tipo).toUpperCase();
+
+        if (tipoUpper.includes("INSTALA")) {
+            contabilizarRegistro(
+                garantirGrupo(instalacoes, local),
+                os
+            );
+
+            const plano =
+                mapaPlanos[String(os.plano)] ||
+                "";
+
+            if (plano) {
+                if (!instalacoesLocalidade[plano]) {
+                    instalacoesLocalidade[plano] = {};
+                }
+
+                contabilizarRegistro(
+                    garantirGrupo(
+                        instalacoesLocalidade[plano],
+                        local
+                    ),
+                    os
+                );
+            }
+        }
+
+        if (!tiposLocalidade[tipo]) {
+            tiposLocalidade[tipo] = {};
+        }
+
+        contabilizarRegistro(
+            garantirGrupo(tiposLocalidade[tipo], local),
+            os
+        );
+    }
+
+    return {
+        tecnicos,
+        localidades,
+        tipos,
+        instalacoes,
+        tiposLocalidade,
+        instalacoesLocalidade
+    };
+}
+
+function ordenarGrupos(obj) {
+    return Object.entries(obj || {}).sort((a, b) => {
+        const totalA =
+            Number(a[1]?.abertas || 0) +
+            Number(a[1]?.concluidas || 0);
+
+        const totalB =
+            Number(b[1]?.abertas || 0) +
+            Number(b[1]?.concluidas || 0);
+
+        return totalB - totalA;
     });
-    doc.y = y + altura + 18;
 }
 
-function adicionarTabela(doc, ordens) {
-    doc.fillColor("#0f172a").font("Helvetica-Bold").fontSize(13).text("Ordens de serviço do período");
-    doc.moveDown(0.5);
+function tabelaSimples(titulo, dados) {
+    const linhas = ordenarGrupos(dados)
+        .map(([descricao, valores]) => `
+            <tr>
+                <td>${escaparHtml(descricao)}</td>
+                <td class="numero">${Number(valores.abertas || 0)}</td>
+                <td class="numero">${Number(valores.concluidas || 0)}</td>
+            </tr>
+        `)
+        .join("");
 
-    const cab = ["OS", "Cliente", "Tipo", "Localidade", "Status"];
-    const widths = [42, 150, 115, 115, 90];
-    const startX = 45;
+    return `
+        <section class="bloco">
+            <div class="titulo-azul">${escaparHtml(titulo)}</div>
 
-    function linha(celulas, header = false) {
-        if (doc.y > 735) { doc.addPage(); doc.y = 45; }
-        const y = doc.y;
-        let x = startX;
-        const h = 27;
-        if (header) doc.rect(startX, y, widths.reduce((a, b) => a + b, 0), h).fill("#163b70");
-        else doc.rect(startX, y, widths.reduce((a, b) => a + b, 0), h).fillAndStroke("#ffffff", "#e5e7eb");
-        celulas.forEach((valor, i) => {
-            doc.fillColor(header ? "#ffffff" : "#0f172a")
-                .font(header ? "Helvetica-Bold" : "Helvetica")
-                .fontSize(header ? 8 : 7.5)
-                .text(String(valor ?? "-"), x + 5, y + 8, { width: widths[i] - 10, height: 15, ellipsis: true });
-            x += widths[i];
+            <table>
+                <thead>
+                    <tr>
+                        <th>Descrição</th>
+                        <th class="numero">Abertas</th>
+                        <th class="numero">Concluídas</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    ${
+                        linhas ||
+                        `
+                        <tr>
+                            <td colspan="3" class="vazio">
+                                Nenhum registro no período
+                            </td>
+                        </tr>
+                        `
+                    }
+                </tbody>
+            </table>
+        </section>
+    `;
+}
+
+function tabelaAgrupada(titulo, dados) {
+    const grupos = [];
+
+    for (const [descricao, locais] of Object.entries(dados || {})) {
+        let totalAbertas = 0;
+        let totalConcluidas = 0;
+
+        const linhas = ordenarGrupos(locais)
+            .map(([localidade, valores]) => {
+                const abertas = Number(valores.abertas || 0);
+                const concluidas = Number(valores.concluidas || 0);
+
+                totalAbertas += abertas;
+                totalConcluidas += concluidas;
+
+                return `
+                    <tr>
+                        <td>${escaparHtml(descricao)}</td>
+                        <td>${escaparHtml(localidade)}</td>
+                        <td class="numero">${abertas}</td>
+                        <td class="numero">${concluidas}</td>
+                    </tr>
+                `;
+            })
+            .join("");
+
+        grupos.push(`
+            ${linhas}
+
+            <tr class="total">
+                <td colspan="2">
+                    TOTAL = ${escaparHtml(descricao)}
+                </td>
+                <td class="numero">${totalAbertas}</td>
+                <td class="numero">${totalConcluidas}</td>
+            </tr>
+        `);
+    }
+
+    return `
+        <section class="bloco">
+            <div class="titulo-azul">${escaparHtml(titulo)}</div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Descrição</th>
+                        <th>Localidade</th>
+                        <th class="numero">Abertas</th>
+                        <th class="numero">Concluídas</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    ${
+                        grupos.join("") ||
+                        `
+                        <tr>
+                            <td colspan="4" class="vazio">
+                                Nenhum registro no período
+                            </td>
+                        </tr>
+                        `
+                    }
+                </tbody>
+            </table>
+        </section>
+    `;
+}
+
+function logoBase64(empresa) {
+    if (!empresa.logo) return "";
+
+    const arquivo = path.join(
+        __dirname,
+        "../uploads/logos",
+        path.basename(empresa.logo)
+    );
+
+    if (!fs.existsSync(arquivo)) return "";
+
+    try {
+        const extensao =
+            path.extname(arquivo).toLowerCase() === ".jpg" ||
+            path.extname(arquivo).toLowerCase() === ".jpeg"
+                ? "jpeg"
+                : "png";
+
+        const conteudo = fs.readFileSync(arquivo).toString("base64");
+
+        return `data:image/${extensao};base64,${conteudo}`;
+    } catch (_) {
+        return "";
+    }
+}
+
+function textoPeriodo(tipo, inicio, fim) {
+    if (tipo === "diario") return dataBR(inicio);
+    return `${dataBR(inicio)} a ${dataBR(fim)}`;
+}
+
+function montarHtml({
+    empresa,
+    tipo,
+    inicio,
+    fim,
+    dados
+}) {
+    const logo = logoBase64(empresa);
+
+    return `
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+
+    <style>
+        @page {
+            size: A4;
+            margin: 10mm;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #111827;
+            font-size: 9px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .cabecalho {
+            min-height: 76px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid #dbe3ef;
+            padding-bottom: 9px;
+            margin-bottom: 10px;
+        }
+
+        .empresa {
+            max-width: 72%;
+        }
+
+        .empresa h1 {
+            margin: 0 0 6px;
+            font-size: 15px;
+            color: #111827;
+        }
+
+        .empresa p {
+            margin: 0 0 3px;
+            line-height: 1.25;
+        }
+
+        .logo {
+            max-width: 115px;
+            max-height: 58px;
+            object-fit: contain;
+        }
+
+        .periodo {
+            margin-bottom: 12px;
+            line-height: 1.35;
+        }
+
+        .periodo strong {
+            color: #0f172a;
+        }
+
+        .bloco {
+            margin-bottom: 9px;
+            break-inside: avoid;
+        }
+
+        .titulo-azul {
+            background: #0066cc;
+            color: #ffffff;
+            padding: 5px 7px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        thead {
+            display: table-header-group;
+        }
+
+        tr {
+            break-inside: avoid;
+        }
+
+        th,
+        td {
+            padding: 4px 7px;
+            border-bottom: 1px solid #edf1f7;
+            text-align: left;
+            vertical-align: top;
+            overflow-wrap: anywhere;
+        }
+
+        th {
+            font-size: 8px;
+            color: #111827;
+            font-weight: 700;
+            background: #f8fafc;
+        }
+
+        td {
+            font-size: 8px;
+        }
+
+        .numero {
+            text-align: right;
+            width: 72px;
+        }
+
+        .total td {
+            font-weight: 700;
+            background: #f8fafc;
+            border-top: 1px solid #dbe3ef;
+            padding-top: 5px;
+            padding-bottom: 5px;
+        }
+
+        .vazio {
+            text-align: center;
+            color: #64748b;
+            padding: 10px;
+        }
+
+        .rodape {
+            margin-top: 8px;
+            padding-top: 7px;
+            border-top: 1px solid #e5e7eb;
+            color: #64748b;
+            text-align: center;
+            font-size: 7px;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="cabecalho">
+        <div class="empresa">
+            <h1>${escaparHtml(nomeEmpresa(empresa))}</h1>
+
+            <p>
+                <strong>CNPJ/CPF:</strong>
+                ${escaparHtml(empresa.cnpj || empresa.cpf || "-")}
+            </p>
+
+            <p>
+                <strong>Telefone:</strong>
+                ${escaparHtml(empresa.telefone || "-")}
+            </p>
+
+            <p>
+                <strong>Email:</strong>
+                ${escaparHtml(empresa.email || "-")}
+            </p>
+
+            ${
+                empresa.endereco
+                    ? `
+                    <p>
+                        <strong>Endereço:</strong>
+                        ${escaparHtml(empresa.endereco)}
+                    </p>
+                    `
+                    : ""
+            }
+        </div>
+
+        ${
+            logo
+                ? `<img class="logo" src="${logo}" alt="Logo da empresa">`
+                : ""
+        }
+    </header>
+
+    <div class="periodo">
+        <div>
+            <strong>Período:</strong>
+            ${escaparHtml(textoPeriodo(tipo, inicio, fim))}
+        </div>
+
+        <div>
+            <strong>Gerado em:</strong>
+            ${escaparHtml(dataHoraBR())}
+        </div>
+    </div>
+
+    ${tabelaSimples("TÉCNICOS", dados.tecnicos)}
+    ${tabelaSimples("LOCALIDADES", dados.localidades)}
+    ${tabelaSimples("TIPOS DE SERVIÇO", dados.tipos)}
+    ${tabelaSimples(
+        "INSTALAÇÕES POR LOCALIDADE",
+        dados.instalacoes
+    )}
+
+    ${tabelaAgrupada(
+        "TIPOS DE SERVIÇOS POR LOCALIDADE",
+        dados.tiposLocalidade
+    )}
+
+    ${tabelaAgrupada(
+        "PLANOS DAS INSTALAÇÕES POR LOCALIDADE",
+        dados.instalacoesLocalidade
+    )}
+
+    <div class="rodape">
+        SGOS - Sistema de Gestão de Ordens de Serviço
+    </div>
+</body>
+</html>
+    `;
+}
+
+async function gerarPdfComPuppeteer(html) {
+    let browser;
+
+    try {
+        browser = await puppeteer.launch({
+            headless: true,
+            executablePath:
+                process.env.PUPPETEER_EXECUTABLE_PATH ||
+                process.env.CHROME_PATH ||
+                undefined,
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu"
+            ]
         });
-        doc.y = y + h;
-    }
 
-    linha(cab, true);
-    ordens.slice(0, 150).forEach(os => linha([
-        os.id,
-        os.cliente || "-",
-        os.tipo_servico_nome || "-",
-        os.localidade_nome || "-",
-        String(os.status || "-").replaceAll("_", " ")
-    ]));
+        const page = await browser.newPage();
 
-    if (ordens.length > 150) {
-        doc.moveDown(0.5).fontSize(8).fillColor("#64748b").text(`Exibidas 150 de ${ordens.length} ordens.`);
+        await page.setContent(html, {
+            waitUntil: "networkidle0",
+            timeout: 60000
+        });
+
+        const pdf = await page.pdf({
+            format: "A4",
+            printBackground: true,
+            preferCSSPageSize: true,
+            margin: {
+                top: "10mm",
+                right: "10mm",
+                bottom: "10mm",
+                left: "10mm"
+            }
+        });
+
+        return Buffer.from(pdf);
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
     }
 }
 
-async function gerarRelatorioEmpresa(pool, empresaId, tipo = "diario", referencia = new Date()) {
+async function gerarRelatorioEmpresa(
+    pool,
+    empresaId,
+    tipo = "diario",
+    referencia = new Date()
+) {
     const empresa = await buscarEmpresa(pool, empresaId);
     const { inicio, fim } = obterPeriodo(tipo, referencia);
-    const ordens = await buscarOrdens(pool, empresaId, inicio, fim);
-    const resumo = contarStatus(ordens);
-    const filename = montarNomeArquivo(tipo, inicio, fim, empresa);
 
-    const buffer = await new Promise((resolve, reject) => {
-        const doc = new PDFDocument({ size: "A4", margin: 45, info: { Title: filename, Author: "SGOS" } });
-        const chunks = [];
-        doc.on("data", chunk => chunks.push(chunk));
-        doc.on("end", () => resolve(Buffer.concat(chunks)));
-        doc.on("error", reject);
+    const [
+        ordens,
+        tecnicos,
+        planos
+    ] = await Promise.all([
+        buscarOrdens(pool, empresaId, inicio, fim),
+        buscarTecnicos(pool, empresaId),
+        buscarPlanos(pool, empresaId)
+    ]);
 
-        adicionarCabecalho(doc, empresa, tipo, inicio, fim);
-        desenharKpis(doc, resumo);
-        adicionarTabela(doc, ordens);
-        doc.moveDown(1);
-        doc.font("Helvetica").fontSize(8).fillColor("#64748b")
-            .text(`Gerado automaticamente pelo SGOS em ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`, { align: "center" });
-        doc.end();
+    const mapaTecnicos = criarMapa(tecnicos);
+    const mapaPlanos = criarMapa(planos);
+
+    const dados = prepararDados(
+        ordens,
+        mapaTecnicos,
+        mapaPlanos
+    );
+
+    const filename = montarNomeArquivo(
+        tipo,
+        inicio,
+        fim,
+        empresa
+    );
+
+    const html = montarHtml({
+        empresa,
+        tipo,
+        inicio,
+        fim,
+        dados
     });
 
-    return { buffer, filename, empresa, inicio, fim, resumo };
+    const buffer = await gerarPdfComPuppeteer(html);
+
+    if (!buffer || buffer.length < 100) {
+        throw new Error("PDF automático vazio ou inválido");
+    }
+
+    return {
+        buffer,
+        filename,
+        empresa,
+        inicio,
+        fim,
+        dados,
+        totalOrdens: ordens.length
+    };
 }
 
 function criarTransporter() {
     return nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: Number(process.env.SMTP_PORT || 587),
-        secure: String(process.env.SMTP_SECURE || "false") === "true",
-        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        secure:
+            String(
+                process.env.SMTP_SECURE || "false"
+            ).toLowerCase() === "true",
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS
+        }
     });
 }
 
-async function enviarRelatorio(email, pdf, assunto, nomeArquivo = "relatorio.pdf") {
-    if (!email) throw new Error("E-mail de destino não informado");
-    const buffer = Buffer.isBuffer(pdf) ? pdf : pdf?.buffer;
-    if (!Buffer.isBuffer(buffer) || buffer.length < 100) throw new Error("PDF vazio ou inválido");
+async function enviarRelatorio(
+    email,
+    pdf,
+    assunto,
+    nomeArquivo = "relatorio.pdf"
+) {
+    if (!email) {
+        throw new Error("E-mail de destino não informado");
+    }
+
+    const buffer =
+        Buffer.isBuffer(pdf)
+            ? pdf
+            : pdf?.buffer;
+
+    if (!Buffer.isBuffer(buffer) || buffer.length < 100) {
+        throw new Error("PDF vazio ou inválido");
+    }
 
     const transporter = criarTransporter();
+
     await transporter.sendMail({
-        from: process.env.SMTP_FROM || `"SGOS" <${process.env.SMTP_USER}>`,
+        from:
+            process.env.SMTP_FROM ||
+            `"SGOS" <${process.env.SMTP_USER}>`,
         to: email,
         subject: assunto,
-        html: "<p>Olá! Segue o relatório automático do SGOS em anexo.</p>",
-        attachments: [{ filename: nomeArquivo, content: buffer, contentType: "application/pdf" }]
+        html: `
+            <p>Olá!</p>
+            <p>Segue o relatório automático do SGOS em anexo.</p>
+        `,
+        attachments: [
+            {
+                filename: nomeArquivo,
+                content: buffer,
+                contentType: "application/pdf"
+            }
+        ]
     });
 }
 
