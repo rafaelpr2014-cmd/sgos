@@ -996,7 +996,7 @@ select:focus{
 
             <div class="campo">
                 <label>Feriado?</label>
-                <select id="feriadoEscala" onchange="alternarObservacaoFeriado()">
+                <select id="feriadoEscala" onchange="alterarFeriadoManual()">
                     <option value="NAO">Não</option>
                     <option value="SIM">Sim</option>
                 </select>
@@ -1023,7 +1023,7 @@ select:focus{
         <div class="card-header">
             <div>
                 <div class="titulo-card">Escala em formato calendário</div>
-                <div style="font-size:13px;color:#64748b;margin-top:4px">Imprima a escala organizada por dia e período.</div>
+                <div style="font-size:13px;color:#64748b;margin-top:4px">Imprima o mês atual e todos os meses futuros que possuírem escalas.</div>
             </div>
             <button class="btn btn-imprimir" type="button" onclick="imprimirEscalaCalendario()">
                 <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>
@@ -1057,6 +1057,7 @@ let escalas = [];
 let tecnicos = [];
 let datasSelecionadasEscala = [];
 let escalaEmEdicao = null;
+let feriadoAutomaticoAtivo = false;
 
 const diasSemana = [
     "DOMINGO",
@@ -1281,6 +1282,37 @@ function nomeFeriadoNacional(dataIso){
     return feriadosNacionaisDoAno(ano).get(data) || "";
 }
 
+function recalcularFeriadoAutomatico(){
+    const feriadosEncontrados = datasSelecionadasEscala
+        .map(data => ({
+            data,
+            nome: nomeFeriadoNacional(data)
+        }))
+        .filter(item => item.nome);
+
+    if(feriadosEncontrados.length){
+        const nomesUnicos = [...new Set(feriadosEncontrados.map(item => item.nome))];
+
+        document.getElementById("feriadoEscala").value = "SIM";
+        document.getElementById("observacaoFeriado").value = nomesUnicos.join(" / ");
+        feriadoAutomaticoAtivo = true;
+        alternarObservacaoFeriado();
+        return;
+    }
+
+    if(feriadoAutomaticoAtivo){
+        document.getElementById("feriadoEscala").value = "NAO";
+        document.getElementById("observacaoFeriado").value = "";
+        feriadoAutomaticoAtivo = false;
+        alternarObservacaoFeriado();
+    }
+}
+
+function alterarFeriadoManual(){
+    feriadoAutomaticoAtivo = false;
+    alternarObservacaoFeriado();
+}
+
 function adicionarDataSelecionada(){
     const input = document.getElementById("dataEscala");
     const data = normalizarDataEscala(input.value);
@@ -1297,11 +1329,13 @@ function adicionarDataSelecionada(){
 
     input.value = "";
     renderizarDatasSelecionadas();
+    recalcularFeriadoAutomatico();
 }
 
 function removerDataSelecionada(data){
     datasSelecionadasEscala = datasSelecionadasEscala.filter(item => item !== data);
     renderizarDatasSelecionadas();
+    recalcularFeriadoAutomatico();
 }
 
 function renderizarDatasSelecionadas(){
@@ -1346,6 +1380,7 @@ function limparFormularioEscala(){
     document.getElementById("observacaoFeriado").value = "";
     alternarObservacaoFeriado();
     escalaEmEdicao = null;
+    feriadoAutomaticoAtivo = false;
     document.getElementById("textoBtnSalvarEscala").textContent = "Adicionar escalas";
     document.getElementById("btnCancelarEdicao").classList.remove("ativo");
 }
@@ -1500,6 +1535,16 @@ function editarEscala(id){
     document.getElementById("observacaoFeriado").value =
         escala.observacao_feriado || escala.feriado_observacao || escala.observacao || "";
     alternarObservacaoFeriado();
+
+    const feriadoNacional = nomeFeriadoNacional(datasSelecionadasEscala[0]);
+    if(feriadoNacional && !ehFeriado){
+        document.getElementById("feriadoEscala").value = "SIM";
+        document.getElementById("observacaoFeriado").value = feriadoNacional;
+        feriadoAutomaticoAtivo = true;
+        alternarObservacaoFeriado();
+    }else{
+        feriadoAutomaticoAtivo = false;
+    }
 
     document.getElementById("textoBtnSalvarEscala").textContent = "Salvar alteração";
     document.getElementById("btnCancelarEdicao").classList.add("ativo");
@@ -1799,15 +1844,33 @@ function dadosMesParaImpressao(ano, mes){
 
 function imprimirEscalaCalendario(){
     const hoje = new Date();
-    const atual = dadosMesParaImpressao(hoje.getFullYear(), hoje.getMonth());
+    const anoAtual = hoje.getFullYear();
+    const mesAtual = hoje.getMonth();
 
-    const proximaData = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
-    const proximo = dadosMesParaImpressao(proximaData.getFullYear(), proximaData.getMonth());
+    const chavesMeses = new Set();
+    chavesMeses.add(`${anoAtual}-${String(mesAtual + 1).padStart(2, "0")}`);
 
-    const meses = [atual];
-    if(proximo.listaMes.length > 0){
-        meses.push(proximo);
-    }
+    escalas.forEach(escala => {
+        const dataIso = normalizarDataEscala(escala.data_escala);
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(dataIso)) return;
+
+        const ano = Number(dataIso.slice(0, 4));
+        const mes = Number(dataIso.slice(5, 7)) - 1;
+
+        const dataMes = new Date(ano, mes, 1);
+        const inicioMesAtual = new Date(anoAtual, mesAtual, 1);
+
+        if(dataMes >= inicioMesAtual){
+            chavesMeses.add(`${ano}-${String(mes + 1).padStart(2, "0")}`);
+        }
+    });
+
+    const meses = [...chavesMeses]
+        .sort()
+        .map(chave => {
+            const [ano, mes] = chave.split("-").map(Number);
+            return dadosMesParaImpressao(ano, mes - 1);
+        });
 
     const logo = document.getElementById("logoEmpresa")?.src || "";
     const empresa = document.getElementById("empresaLogada")?.innerText?.trim() || "Empresa";
