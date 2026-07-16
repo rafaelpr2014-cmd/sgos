@@ -81,7 +81,7 @@ button,input,textarea,select{font:inherit}
 
 .filtros{display:grid;grid-template-columns:2fr 2fr 1fr 1fr;gap:12px}
 .table-wrap{width:100%;overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:1250px}th{background:#f8fafc;color:#0f172a;padding:14px 12px;text-align:left;font-size:12px;border-bottom:1px solid var(--borda);white-space:nowrap}td{padding:13px 12px;border-bottom:1px solid var(--borda);font-size:13px;color:#1e293b;vertical-align:top}tr:hover{background:#f8fbff}
-.status-box{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;display:inline-block}.status-pendente{background:#fef3c7;color:#b45309}.status-aprovada{background:#dcfce7;color:#15803d}.status-reprovada{background:#fee2e2;color:#dc2626}.anexo-existente{outline:2px solid #93c5fd}.anexo-lista{display:flex;gap:7px;flex-wrap:wrap}.mini-anexo{width:58px;height:58px;object-fit:cover;border-radius:9px;border:2px solid #e5e7eb;cursor:pointer}.mini-video{width:58px;height:58px;border-radius:9px;border:2px solid #e5e7eb;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px}.acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.icone-acao{cursor:pointer;font-size:17px}
+.status-box{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;display:inline-block}.status-pendente{background:#fef3c7;color:#b45309}.status-em-analise{background:#dbeafe;color:#1d4ed8}.status-aprovada{background:#dcfce7;color:#15803d}.status-reprovada{background:#fee2e2;color:#dc2626}.anexo-existente{outline:2px solid #93c5fd}.anexo-lista{display:flex;gap:7px;flex-wrap:wrap}.mini-anexo{width:58px;height:58px;object-fit:cover;border-radius:9px;border:2px solid #e5e7eb;cursor:pointer}.mini-video{width:58px;height:58px;border-radius:9px;border:2px solid #e5e7eb;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px}.acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.icone-acao{cursor:pointer;font-size:17px}
 .btn-localizacao{border:0;border-radius:9px;padding:7px 10px;background:#dbeafe;color:#1d4ed8;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
 .mapa-linha td{padding:0 12px 14px;background:#f8fafc}
 .mapa-inline{display:none;border:1px solid var(--borda);border-radius:14px;overflow:hidden;background:#fff;padding:12px;margin-top:10px}
@@ -187,9 +187,9 @@ button,input,textarea,select{font:inherit}
             <div class="campo"><label for="telefone2">Telefone secundário</label><input id="telefone2" maxlength="30" inputmode="tel" placeholder="(00) 00000-0000"></div>
             <div class="campo"><label for="localidade">Localidade <span class="obrigatorio">*</span></label><select id="localidade" required><option value="">Selecione a localidade</option></select></div>
             <div class="campo"><label for="tecnicoResponsavel">Técnicos responsáveis <span style="font-weight:400;color:#64748b">(até 4)</span></label><select id="tecnicoResponsavel" multiple size="4" aria-describedby="ajudaTecnicos"></select><div id="ajudaTecnicos" class="arquivo-ajuda">Selecione de 1 a 4 técnicos. Use Ctrl no Windows ou Command no Mac para selecionar mais de um.</div></div>
-            <div class="campo"><label for="status">Status</label><select id="status"><option value="PENDENTE">Pendente</option><option value="APROVADA">Aprovada</option><option value="REPROVADA">Reprovada</option></select></div>
-            <div class="campo span-3"><label for="observacao">Observação</label><textarea id="observacao" maxlength="2000" placeholder="Detalhes da viabilidade, estrutura disponível, distância, materiais necessários..."></textarea></div>
-            <div class="campo span-3"><label for="observacaoPosAprovacao">Observação pós-aprovação</label><textarea id="observacaoPosAprovacao" maxlength="3000" placeholder="Preenchimento após aprovação/visita: resultado da visita, materiais, condições encontradas e orientações."></textarea></div>
+            <div class="campo"><label for="status">Status</label><select id="status"><option value="PENDENTE">Pendente</option><option value="EM_ANALISE">Em análise</option><option value="APROVADA">Aprovada</option><option value="REPROVADA">Reprovada</option></select></div>
+            <div class="campo span-3"><label for="observacao">Observação inicial</label><textarea id="observacao" maxlength="2000" placeholder="Detalhes da viabilidade, estrutura disponível, distância, materiais necessários..."></textarea></div>
+            <div class="campo span-3"><label for="observacaoPosAprovacao">Observação do técnico pós-visita</label><textarea id="observacaoPosAprovacao" maxlength="3000" placeholder="Preenchimento após aprovação/visita: resultado da visita, materiais, condições encontradas e orientações."></textarea></div>
             <div class="campo"><label for="cadastradoPor">Cadastrado por</label><input id="cadastradoPor" readonly placeholder="Usuário logado"></div>
             <div class="campo"><label for="registradoEm">Registrado em</label><input id="registradoEm" readonly></div>
             <div class="campo"><label>Localização do técnico</label><input id="localizacaoTecnico" readonly placeholder="Ainda não registrada"></div>
@@ -213,7 +213,7 @@ button,input,textarea,select{font:inherit}
     <div class="card">
         <div class="card-header lista-toolbar"><div><div class="titulo-card">Lista de Viabilidades</div><div class="sub-card">Clique em uma viabilidade para abrir o resumo completo.</div></div><div class="lista-toolbar-acoes"><button class="btn btn-imprimir" type="button" onclick="imprimirSelecionadas()">🖨️ Imprimir selecionadas</button></div></div>
         <div class="table-wrap">
-            <table><thead><tr><th><input type="checkbox" class="checkbox-viabilidade" id="selecionarTodas" title="Selecionar todas"></th><th>Nome</th><th>Localidade</th><th>Endereço</th><th>Observação</th><th>Telefones</th><th>Técnico</th><th>Registrado em</th><th>Status</th><th>Anexos</th><th>Localização</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="12" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
+            <table><thead><tr><th><input type="checkbox" class="checkbox-viabilidade" id="selecionarTodas" title="Selecionar todas"></th><th>Nome</th><th>Localidade</th><th>Endereço</th><th>Observação inicial</th><th>Observação do técnico pós-visita</th><th>Telefones</th><th>Técnicos</th><th>Cadastrado por</th><th>Registrado em</th><th>Atualizado por</th><th>Atualizado em</th><th>Status</th><th>Anexos</th><th>Localização</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="16" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
         </div>
     </div>
 </section>
@@ -248,7 +248,8 @@ function formatarData(v){if(!v)return "-";const d=new Date(v);return isNaN(d)?"-
 function dataRegistro(o){return o.registrado_em||o.criado_em||o.created_at||o.data_cadastro||null}
 function nomeCadastrador(o){return o.cadastrado_por_nome||o.usuario_nome||o.cadastrado_por||"-"}
 function nomeAtualizador(o){return o.atualizado_por||"-"}
-function classeStatus(status){const s=String(status||"PENDENTE").toUpperCase();return s==="APROVADA"?"status-aprovada":s==="REPROVADA"?"status-reprovada":"status-pendente"}
+function classeStatus(status){const s=String(status||"PENDENTE").toUpperCase();return s==="EM_ANALISE"?"status-em-analise":s==="APROVADA"?"status-aprovada":s==="REPROVADA"?"status-reprovada":"status-pendente"}
+function nomeStatus(status){const s=String(status||"PENDENTE").toUpperCase();return s==="EM_ANALISE"?"EM ANÁLISE":s}
 function nomeLocalidade(valor){const bruto=String(valor??"").trim();if(!bruto)return "-";const encontrada=localidades.find(x=>String(x.id)===bruto||String(x.nome).trim().toLowerCase()===bruto.toLowerCase());return encontrada?.nome||bruto}
 function localidadeDoRegistro(o){return nomeLocalidade(o?.localidade_nome||o?.localidade)}
 function anexosDoRegistro(o){
@@ -425,8 +426,8 @@ async function salvarViabilidade(){
 }
 
 async function carregarViabilidades(){
-    const tbody=document.getElementById("tabelaViabilidades");tbody.innerHTML='<tr><td colspan="12" class="vazio">Carregando viabilidades...</td></tr>';
-    try{const r=await fetch(API_VIABILIDADE,{headers:getAuthHeaders()});if(!r.ok)throw new Error(`Erro ${r.status}`);viabilidades=normalizarLista(await r.json());renderTabela()}catch(e){console.error(e);tbody.innerHTML='<tr><td colspan="12" class="vazio">Erro ao carregar viabilidades.</td></tr>'}
+    const tbody=document.getElementById("tabelaViabilidades");tbody.innerHTML='<tr><td colspan="16" class="vazio">Carregando viabilidades...</td></tr>';
+    try{const r=await fetch(API_VIABILIDADE,{headers:getAuthHeaders()});if(!r.ok)throw new Error(`Erro ${r.status}`);viabilidades=normalizarLista(await r.json());renderTabela()}catch(e){console.error(e);tbody.innerHTML='<tr><td colspan="16" class="vazio">Erro ao carregar viabilidades.</td></tr>'}
 }
 function dentroDias(v,dias){if(!v)return false;const d=new Date(v);if(isNaN(d))return false;const ini=new Date();ini.setDate(ini.getDate()-(dias-1));ini.setHours(0,0,0,0);const fim=new Date();fim.setHours(23,59,59,999);return d>=ini&&d<=fim}
 function mesmoDia(v){if(!v)return false;const d=new Date(v),h=new Date();return !isNaN(d)&&d.toDateString()===h.toDateString()}
@@ -436,7 +437,7 @@ function renderTabela(){
     const lista=viabilidades.filter(o=>{const d=dataRegistro(o)?new Date(dataRegistro(o)):null;let ok=(!nome||String(o.nome||"").toLowerCase().includes(nome))&&(!end||String(o.endereco||"").toLowerCase().includes(end))&&(!loc||localidadeDoRegistro(o).toLowerCase()===loc);if(di)ok=ok&&d&&!isNaN(d)&&d>=new Date(di+"T00:00:00");if(df)ok=ok&&d&&!isNaN(d)&&d<=new Date(df+"T23:59:59");return ok}).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
     atualizarCards(lista);
     const tbody=document.getElementById("tabelaViabilidades");
-    if(!lista.length){tbody.innerHTML='<tr><td colspan="12" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
+    if(!lista.length){tbody.innerHTML='<tr><td colspan="16" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
     tbody.innerHTML=lista.map(o=>{
         const anexos=anexosDoRegistro(o).length;
         const st=String(o.status||"PENDENTE").toUpperCase();
@@ -448,10 +449,14 @@ function renderTabela(){
             <td>${escapar(localidadeDoRegistro(o))}</td>
             <td>${escapar(o.endereco||"-")}</td>
             <td style="white-space:normal;min-width:220px">${escapar(o.observacao||o.observacoes||"-")}</td>
+            <td style="white-space:normal;min-width:220px">${escapar(o.observacao_pos_aprovacao||"-")}</td>
             <td>${telefones}</td>
             <td>${escapar(o.tecnico_responsavel||"-")}</td>
+            <td>${escapar(nomeCadastrador(o))}</td>
             <td>${formatarData(dataRegistro(o))}</td>
-            <td><span class="status-box ${classeStatus(st)}">${escapar(st)}</span></td>
+            <td>${escapar(nomeAtualizador(o))}</td>
+            <td>${formatarData(o.atualizado_em)}</td>
+            <td><span class="status-box ${classeStatus(st)}">${escapar(nomeStatus(st))}</span></td>
             <td>${anexos?`📎 ${anexos}`:"-"}</td>
             <td>${localizacao}</td>
             <td onclick="event.stopPropagation()"><div class="acoes"><span class="icone-acao" title="Imprimir" onclick="imprimirViabilidade(${Number(o.id)})">🖨️</span><span class="icone-acao" title="Editar" onclick="editarViabilidade(${Number(o.id)})">✏️</span><span class="icone-acao" title="Excluir" onclick="excluirViabilidade(${Number(o.id)})">🗑️</span></div></td>
@@ -470,7 +475,7 @@ function abrirResumoViabilidade(id,foco=""){
     document.getElementById("resumoSubtitulo").textContent=`${localidadeDoRegistro(o)==="-"?"Localidade não informada":localidadeDoRegistro(o)} • ${formatarData(dataRegistro(o))}`;
     const mapa=coordenadasValidas(o)?`<div class="resumo-mapa" id="resumoLocalizacao"><iframe loading="lazy" src="${urlMapaEmbed(Number(o.latitude),Number(o.longitude))}"></iframe><div class="resumo-mapa-info"><span>Latitude: ${Number(o.latitude).toFixed(8)} | Longitude: ${Number(o.longitude).toFixed(8)}</span><a class="mapa-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${Number(o.latitude)},${Number(o.longitude)}">Abrir no Google Maps</a></div></div>`:'<div class="muted">Localização ainda não registrada.</div>';
     document.getElementById("resumoConteudo").innerHTML=`<div class="resumo-grid">
-        <div class="resumo-item"><small>Status</small><span class="status-box ${classeStatus(st)}">${escapar(st)}</span></div>
+        <div class="resumo-item"><small>Status</small><span class="status-box ${classeStatus(st)}">${escapar(nomeStatus(st))}</span></div>
         <div class="resumo-item"><small>Localidade</small><strong>${escapar(localidadeDoRegistro(o))}</strong></div>
         <div class="resumo-item span-2"><small>Endereço</small><div>${escapar(o.endereco||"-")}</div></div>
         <div class="resumo-item"><small>Telefone principal</small><div>${escapar(o.telefone||"-")}</div></div>
@@ -478,9 +483,10 @@ function abrirResumoViabilidade(id,foco=""){
         <div class="resumo-item"><small>Técnico responsável</small><div>${escapar(o.tecnico_responsavel||"-")}</div></div>
         <div class="resumo-item"><small>Cadastrado por</small><div>${escapar(nomeCadastrador(o))}</div></div>
         <div class="resumo-item"><small>Registrado em</small><div>${formatarData(dataRegistro(o))}</div></div>
-        <div class="resumo-item"><small>Última atualização</small><div>${formatarData(o.atualizado_em)}</div></div>
-        <div class="resumo-item span-2"><small>Observação</small><div>${escapar(o.observacao||o.observacoes||"-")}</div></div>
-        <div class="resumo-item span-2"><small>Observação pós-aprovação</small><div>${escapar(o.observacao_pos_aprovacao||"-")}</div></div>
+        <div class="resumo-item"><small>Atualizado por</small><div>${escapar(nomeAtualizador(o))}</div></div>
+        <div class="resumo-item"><small>Atualizado em</small><div>${formatarData(o.atualizado_em)}</div></div>
+        <div class="resumo-item span-2"><small>Observação inicial</small><div>${escapar(o.observacao||o.observacoes||"-")}</div></div>
+        <div class="resumo-item span-2"><small>Observação do técnico pós-visita</small><div>${escapar(o.observacao_pos_aprovacao||"-")}</div></div>
     </div>
     <div class="resumo-secao"><h3>Anexo inicial</h3>${renderAnexosResumo(analise)}</div>
     <div class="resumo-secao"><h3>Anexo da comprovação de visita</h3>${renderAnexosResumo(visita)}</div>
@@ -497,13 +503,15 @@ function htmlImpressao(registros){
     const paginas=[];
     for(let i=0;i<registros.length;i+=6)paginas.push(registros.slice(i,i+6));
     const renderItem=o=>`<article class="item">
-        <div class="item-topo"><h2>${escapar(o.nome||"-")}</h2><span class="status">${escapar(o.status||"PENDENTE")}</span></div>
+        <div class="item-topo"><h2>${escapar(o.nome||"-")}</h2><span class="status">${escapar(nomeStatus(o.status||"PENDENTE"))}</span></div>
         <div class="linha"><b>Localidade:</b> ${escapar(localidadeDoRegistro(o))}</div>
         <div class="linha"><b>Endereço:</b> ${escapar(o.endereco||"-")}</div>
         <div class="duas"><div><b>Telefone:</b> ${escapar(o.telefone||"-")}</div><div><b>Telefone 2:</b> ${escapar(o.telefone2||o.telefone_secundario||"-")}</div></div>
-        <div class="duas"><div><b>Técnico:</b> ${escapar(o.tecnico_responsavel||"-")}</div><div><b>Registro:</b> ${formatarData(dataRegistro(o))}</div></div>
-        <div class="obs"><b>Observação:</b> ${escapar(o.observacao||o.observacoes||"-")}</div>
-        ${o.observacao_pos_aprovacao?`<div class="obs pos"><b>Pós-aprovação:</b> ${escapar(o.observacao_pos_aprovacao)}</div>`:""}
+        <div class="duas"><div><b>Técnicos:</b> ${escapar(o.tecnico_responsavel||"-")}</div><div><b>Registro:</b> ${formatarData(dataRegistro(o))}</div></div>
+        <div class="duas"><div><b>Cadastrado por:</b> ${escapar(nomeCadastrador(o))}</div><div><b>Atualizado por:</b> ${escapar(nomeAtualizador(o))}</div></div>
+        <div class="linha"><b>Atualizado em:</b> ${formatarData(o.atualizado_em)}</div>
+        <div class="obs"><b>Observação inicial:</b> ${escapar(o.observacao||o.observacoes||"-")}</div>
+        ${o.observacao_pos_aprovacao?`<div class="obs pos"><b>Observação do técnico pós-visita:</b> ${escapar(o.observacao_pos_aprovacao)}</div>`:""}
     </article>`;
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relatório de Viabilidades</title><style>
         @page{size:A4 portrait;margin:8mm}

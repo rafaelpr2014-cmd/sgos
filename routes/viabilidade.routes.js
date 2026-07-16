@@ -171,7 +171,9 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             if ((latitude !== null && !Number.isFinite(latitude)) || (longitude !== null && !Number.isFinite(longitude))) {
                 return res.status(400).json({ erro: "Latitude ou longitude inválida." });
             }
-            const status = "PENDENTE";
+            const statusRecebido = String(req.body.status || "PENDENTE").trim().toUpperCase();
+            const statusPermitidos = ["PENDENTE", "EM_ANALISE", "APROVADA", "REPROVADA"];
+            const status = statusPermitidos.includes(statusRecebido) ? statusRecebido : "PENDENTE";
             if (!nome || !endereco || !localidade) {
                 return res.status(400).json({ erro: "Nome, endereço e localidade são obrigatórios." });
             }
@@ -213,7 +215,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                 return res.status(400).json({ erro: "Latitude ou longitude inválida." });
             }
             const statusRecebido = String(req.body.status || "PENDENTE").trim().toUpperCase();
-            const statusPermitidos = ["PENDENTE", "APROVADA", "REPROVADA"];
+            const statusPermitidos = ["PENDENTE", "EM_ANALISE", "APROVADA", "REPROVADA"];
             const status = statusPermitidos.includes(statusRecebido) ? statusRecebido : "PENDENTE";
 
             if (!nome || !endereco || !localidade) {
