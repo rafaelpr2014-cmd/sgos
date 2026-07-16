@@ -65,7 +65,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
         try {
             const empresaId = req.usuario.empresa_id;
             const [viabilidades] = await pool.query(
-                `SELECT id, nome, endereco, observacao, telefone,
+                `SELECT id, nome, endereco, observacao, telefone, telefone2, localidade,
                         empresa_id, cadastrado_por, registrado_em, status,
                         atualizado_em, atualizado_por, tecnico_responsavel, observacao_pos_aprovacao,
                         latitude, longitude
@@ -105,7 +105,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
     router.get("/viabilidade/:id", verificarAutenticacao, async (req, res) => {
         try {
             const [rows] = await pool.query(
-                `SELECT id, nome, endereco, observacao, telefone,
+                `SELECT id, nome, endereco, observacao, telefone, telefone2, localidade,
                         empresa_id, cadastrado_por, registrado_em, status,
                         atualizado_em, atualizado_por, tecnico_responsavel, observacao_pos_aprovacao,
                         latitude, longitude
@@ -137,6 +137,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const endereco = String(req.body.endereco || "").trim();
             const observacao = String(req.body.observacao || "").trim() || null;
             const telefone = String(req.body.telefone || "").trim() || null;
+            const telefone2 = String(req.body.telefone2 || "").trim() || null;
+            const localidade = String(req.body.localidade || "").trim() || null;
             const tecnicoResponsavel = String(req.body.tecnico_responsavel || "").trim() || null;
             const observacaoPosAprovacao = String(req.body.observacao_pos_aprovacao || "").trim() || null;
             const latitudeRecebida = req.body.latitude;
@@ -156,10 +158,10 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const cadastradoPor = req.usuario.usuario || String(req.usuario.id);
             const [resultado] = await pool.query(
                 `INSERT INTO viabilidade
-                    (nome, endereco, observacao, telefone, tecnico_responsavel, observacao_pos_aprovacao, status,
+                    (nome, endereco, observacao, telefone, telefone2, localidade, tecnico_responsavel, observacao_pos_aprovacao, status,
                      latitude, longitude, empresa_id, cadastrado_por, registrado_em, atualizado_em, atualizado_por)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)`,
-                [nome, endereco, observacao, telefone, tecnicoResponsavel, observacaoPosAprovacao, status,
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)`,
+                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status,
                  latitude, longitude, req.usuario.empresa_id, cadastradoPor, cadastradoPor]
             );
 
@@ -176,6 +178,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const endereco = String(req.body.endereco || "").trim();
             const observacao = String(req.body.observacao || "").trim() || null;
             const telefone = String(req.body.telefone || "").trim() || null;
+            const telefone2 = String(req.body.telefone2 || "").trim() || null;
+            const localidade = String(req.body.localidade || "").trim() || null;
             const tecnicoResponsavel = String(req.body.tecnico_responsavel || "").trim() || null;
             const observacaoPosAprovacao = String(req.body.observacao_pos_aprovacao || "").trim() || null;
             const latitudeRecebida = req.body.latitude;
@@ -198,11 +202,11 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const atualizadoPor = req.usuario.usuario || String(req.usuario.id);
             const [resultado] = await pool.query(
                 `UPDATE viabilidade
-                 SET nome = ?, endereco = ?, observacao = ?, telefone = ?,
+                 SET nome = ?, endereco = ?, observacao = ?, telefone = ?, telefone2 = ?, localidade = ?,
                      tecnico_responsavel = ?, observacao_pos_aprovacao = ?, status = ?,
                      latitude = ?, longitude = ?, atualizado_em = NOW(), atualizado_por = ?
                  WHERE id = ? AND empresa_id = ?`,
-                [nome, endereco, observacao, telefone, tecnicoResponsavel, observacaoPosAprovacao, status,
+                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status,
                  latitude, longitude, atualizadoPor, req.params.id, req.usuario.empresa_id]
             );
 

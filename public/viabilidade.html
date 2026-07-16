@@ -209,7 +209,7 @@ button,input,textarea,select{font:inherit}
     <div class="card">
         <div class="card-header lista-toolbar"><div><div class="titulo-card">Lista de Viabilidades</div><div class="sub-card">Clique em uma viabilidade para abrir o resumo completo.</div></div><div class="lista-toolbar-acoes"><button class="btn btn-imprimir" type="button" onclick="imprimirSelecionadas()">🖨️ Imprimir selecionadas</button></div></div>
         <div class="table-wrap">
-            <table><thead><tr><th><input type="checkbox" class="checkbox-viabilidade" id="selecionarTodas" title="Selecionar todas"></th><th>Nome</th><th>Localidade</th><th>Endereço</th><th>Telefones</th><th>Técnico</th><th>Registrado em</th><th>Status</th><th>Anexos</th><th>Localização</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="11" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
+            <table><thead><tr><th><input type="checkbox" class="checkbox-viabilidade" id="selecionarTodas" title="Selecionar todas"></th><th>Nome</th><th>Localidade</th><th>Endereço</th><th>Observação</th><th>Telefones</th><th>Técnico</th><th>Registrado em</th><th>Status</th><th>Anexos</th><th>Localização</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="12" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
         </div>
     </div>
 </section>
@@ -247,12 +247,26 @@ function nomeAtualizador(o){return o.atualizado_por||"-"}
 function classeStatus(status){const s=String(status||"PENDENTE").toUpperCase();return s==="APROVADA"?"status-aprovada":s==="REPROVADA"?"status-reprovada":"status-pendente"}
 function anexosDoRegistro(o){
     let lista=o.anexos||o.arquivos||o.midias||[];
-    if(typeof lista==="string"){try{const j=JSON.parse(lista);lista=Array.isArray(j)?j:[lista]}catch{lista=lista.split(",").map(x=>x.trim()).filter(Boolean)}}
+    if(typeof lista==="string"){
+        try{const j=JSON.parse(lista);lista=Array.isArray(j)?j:[j]}
+        catch{lista=lista.split(",").map(x=>x.trim()).filter(Boolean)}
+    }
     if(!Array.isArray(lista))lista=[];
-    [o.anexo,o.arquivo,o.anexo_path,o.arquivo_path,o.evidencia].forEach(x=>{if(x&&!lista.includes(x))lista.push(x)});
-    return lista.filter(Boolean).map(x=>typeof x==="object"?(x.url||x.path||x.caminho||x.arquivo||x.nome_arquivo):x).filter(Boolean);
+
+    const extras=[o.anexo,o.arquivo,o.anexo_path,o.arquivo_path,o.evidencia]
+        .filter(Boolean)
+        .map(x=>typeof x==="object"?x:{url:x,caminho:x,categoria:"ANALISE"});
+
+    return [...lista,...extras].filter(Boolean).map(a=>{
+        if(typeof a==="string")return {url:a,caminho:a,categoria:"ANALISE"};
+        const url=a.url||a.path||a.caminho||a.arquivo||a.nome_arquivo||"";
+        return {...a,url,caminho:a.caminho||url,categoria:String(a.categoria||"ANALISE").toUpperCase()};
+    }).filter(a=>a.url||a.caminho||a.arquivo||a.nome_arquivo);
 }
-function anexosPorCategoria(o,categoria){return anexosDoRegistro(o).filter(a=>String((a&&typeof a==="object"?a.categoria:"")||"ANALISE").toUpperCase()===categoria)}
+function anexosPorCategoria(o,categoria){
+    const alvo=String(categoria||"ANALISE").toUpperCase();
+    return anexosDoRegistro(o).filter(a=>String(a.categoria||"ANALISE").toUpperCase()===alvo);
+}
 function getUrl(src){if(!src)return"";const s=String(src).replace(/\\/g,"/");if(/^https?:\/\//i.test(s))return s;if(s.startsWith("/"))return s;if(s.startsWith("uploads/"))return "/"+s;const i=s.indexOf("uploads/");return i>=0?"/"+s.slice(i):"/uploads/"+s.split("/").pop()}
 function ehVideo(url){return /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url)}
 function coordenadasValidas(o){const lat=Number(o?.latitude),lon=Number(o?.longitude);return Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180}
@@ -395,8 +409,8 @@ async function salvarViabilidade(){
 }
 
 async function carregarViabilidades(){
-    const tbody=document.getElementById("tabelaViabilidades");tbody.innerHTML='<tr><td colspan="11" class="vazio">Carregando viabilidades...</td></tr>';
-    try{const r=await fetch(API_VIABILIDADE,{headers:getAuthHeaders()});if(!r.ok)throw new Error(`Erro ${r.status}`);viabilidades=normalizarLista(await r.json());renderTabela()}catch(e){console.error(e);tbody.innerHTML='<tr><td colspan="11" class="vazio">Erro ao carregar viabilidades.</td></tr>'}
+    const tbody=document.getElementById("tabelaViabilidades");tbody.innerHTML='<tr><td colspan="12" class="vazio">Carregando viabilidades...</td></tr>';
+    try{const r=await fetch(API_VIABILIDADE,{headers:getAuthHeaders()});if(!r.ok)throw new Error(`Erro ${r.status}`);viabilidades=normalizarLista(await r.json());renderTabela()}catch(e){console.error(e);tbody.innerHTML='<tr><td colspan="12" class="vazio">Erro ao carregar viabilidades.</td></tr>'}
 }
 function dentroDias(v,dias){if(!v)return false;const d=new Date(v);if(isNaN(d))return false;const ini=new Date();ini.setDate(ini.getDate()-(dias-1));ini.setHours(0,0,0,0);const fim=new Date();fim.setHours(23,59,59,999);return d>=ini&&d<=fim}
 function mesmoDia(v){if(!v)return false;const d=new Date(v),h=new Date();return !isNaN(d)&&d.toDateString()===h.toDateString()}
@@ -406,7 +420,7 @@ function renderTabela(){
     const lista=viabilidades.filter(o=>{const d=dataRegistro(o)?new Date(dataRegistro(o)):null;let ok=(!nome||String(o.nome||"").toLowerCase().includes(nome))&&(!end||String(o.endereco||"").toLowerCase().includes(end))&&(!loc||String(o.localidade||o.localidade_nome||"").toLowerCase()===loc);if(di)ok=ok&&d&&!isNaN(d)&&d>=new Date(di+"T00:00:00");if(df)ok=ok&&d&&!isNaN(d)&&d<=new Date(df+"T23:59:59");return ok}).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
     atualizarCards(lista);
     const tbody=document.getElementById("tabelaViabilidades");
-    if(!lista.length){tbody.innerHTML='<tr><td colspan="11" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
+    if(!lista.length){tbody.innerHTML='<tr><td colspan="12" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
     tbody.innerHTML=lista.map(o=>{
         const anexos=anexosDoRegistro(o).length;
         const st=String(o.status||"PENDENTE").toUpperCase();
@@ -417,6 +431,7 @@ function renderTabela(){
             <td><strong>${escapar(o.nome||"-")}</strong></td>
             <td>${escapar(o.localidade||o.localidade_nome||"-")}</td>
             <td>${escapar(o.endereco||"-")}</td>
+            <td style="white-space:normal;min-width:220px">${escapar(o.observacao||o.observacoes||"-")}</td>
             <td>${telefones}</td>
             <td>${escapar(o.tecnico_responsavel||"-")}</td>
             <td>${formatarData(dataRegistro(o))}</td>
@@ -451,8 +466,8 @@ function abrirResumoViabilidade(id,foco=""){
         <div class="resumo-item span-2"><small>Observação</small><div>${escapar(o.observacao||o.observacoes||"-")}</div></div>
         <div class="resumo-item span-2"><small>Observação pós-aprovação</small><div>${escapar(o.observacao_pos_aprovacao||"-")}</div></div>
     </div>
-    <div class="resumo-secao"><h3>Anexos da análise</h3>${renderAnexosResumo(analise)}</div>
-    <div class="resumo-secao"><h3>Comprovação de visita</h3>${renderAnexosResumo(visita)}</div>
+    <div class="resumo-secao"><h3>Anexo inicial</h3>${renderAnexosResumo(analise)}</div>
+    <div class="resumo-secao"><h3>Anexo da comprovação de visita</h3>${renderAnexosResumo(visita)}</div>
     <div class="resumo-secao"><h3>Localização</h3>${mapa}</div>`;
     document.getElementById("resumoAcoes").innerHTML=`<button class="btn btn-fechar-resumo" type="button" onclick="fecharResumo()">Fechar</button><button class="btn btn-imprimir" type="button" onclick="imprimirViabilidade(${Number(o.id)})">🖨️ Imprimir</button><button class="btn btn-secundario" type="button" onclick="fecharResumo();editarViabilidade(${Number(o.id)})">✏️ Editar</button><button class="btn btn-excluir" type="button" onclick="excluirViabilidade(${Number(o.id)})">🗑️ Excluir</button>`;
     document.getElementById("popupResumo").classList.add("ativo");document.body.style.overflow="hidden";
