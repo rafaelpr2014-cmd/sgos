@@ -744,6 +744,24 @@ select:focus{
     .form-grid-lote{grid-template-columns:1fr}
 }
 
+
+/* ===== CORREÇÃO DE LAYOUT DO CADASTRO EM LOTE ===== */
+.card > .form-grid-lote{
+    width:100%;
+}
+.form-grid-lote .campo{
+    min-width:0;
+}
+.form-grid-lote select,
+.form-grid-lote input{
+    min-width:0;
+}
+@media(min-width:1301px){
+    .form-grid-lote{
+        grid-template-columns:minmax(240px,1.35fr) minmax(260px,1.2fr) minmax(150px,.8fr) minmax(130px,.8fr) minmax(240px,1.35fr);
+    }
+}
+
 </style>
 </head>
 
@@ -935,6 +953,7 @@ select:focus{
                 <strong id="escalaCardSemana">0</strong>
                 <span>Dias com escala</span>
             </div>
+        </div>
     </div>
 
     <div class="card">
@@ -997,7 +1016,6 @@ select:focus{
             <button class="btn btn-cancelar-edicao" id="btnCancelarEdicao" type="button" onclick="cancelarEdicaoEscala()">
                 Cancelar edição
             </button>
-        </div>
         </div>
     </div>
 
