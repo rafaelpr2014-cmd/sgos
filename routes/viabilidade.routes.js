@@ -61,17 +61,34 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
         };
     }
 
+    function normalizarTecnicosResponsaveis(valor) {
+        const lista = Array.isArray(valor)
+            ? valor
+            : String(valor || "").split(/[,;|]/);
+        const tecnicos = [...new Set(lista.map(v => String(v || "").trim()).filter(Boolean))];
+        if (tecnicos.length > 4) {
+            const erro = new Error("É permitido selecionar no máximo 4 técnicos.");
+            erro.statusCode = 400;
+            throw erro;
+        }
+        return tecnicos.length ? tecnicos.join(", ") : null;
+    }
+
     router.get("/viabilidade", verificarAutenticacao, async (req, res) => {
         try {
             const empresaId = req.usuario.empresa_id;
             const [viabilidades] = await pool.query(
-                `SELECT id, nome, endereco, observacao, telefone, telefone2, localidade,
-                        empresa_id, cadastrado_por, registrado_em, status,
-                        atualizado_em, atualizado_por, tecnico_responsavel, observacao_pos_aprovacao,
-                        latitude, longitude
-                 FROM viabilidade
-                 WHERE empresa_id = ?
-                 ORDER BY COALESCE(registrado_em, '1970-01-01') DESC, id DESC`,
+                `SELECT v.id, v.nome, v.endereco, v.observacao, v.telefone, v.telefone2, v.localidade,
+                        COALESCE(l.nome, NULLIF(v.localidade, '')) AS localidade_nome,
+                        v.empresa_id, v.cadastrado_por, v.registrado_em, v.status,
+                        v.atualizado_em, v.atualizado_por, v.tecnico_responsavel, v.observacao_pos_aprovacao,
+                        v.latitude, v.longitude
+                 FROM viabilidade v
+                 LEFT JOIN localidades l
+                        ON l.id = CAST(v.localidade AS UNSIGNED)
+                       AND l.empresa_id = v.empresa_id
+                 WHERE v.empresa_id = ?
+                 ORDER BY COALESCE(v.registrado_em, '1970-01-01') DESC, v.id DESC`,
                 [empresaId]
             );
 
@@ -98,19 +115,23 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             return res.json(viabilidades.map(v => ({ ...v, anexos: mapa.get(v.id) || [] })));
         } catch (erro) {
             console.error("Erro ao listar viabilidades:", erro);
-            return res.status(500).json({ erro: erro.message });
+            return res.status(erro.statusCode || 500).json({ erro: erro.message });
         }
     });
 
     router.get("/viabilidade/:id", verificarAutenticacao, async (req, res) => {
         try {
             const [rows] = await pool.query(
-                `SELECT id, nome, endereco, observacao, telefone, telefone2, localidade,
-                        empresa_id, cadastrado_por, registrado_em, status,
-                        atualizado_em, atualizado_por, tecnico_responsavel, observacao_pos_aprovacao,
-                        latitude, longitude
-                 FROM viabilidade
-                 WHERE id = ? AND empresa_id = ? LIMIT 1`,
+                `SELECT v.id, v.nome, v.endereco, v.observacao, v.telefone, v.telefone2, v.localidade,
+                        COALESCE(l.nome, NULLIF(v.localidade, '')) AS localidade_nome,
+                        v.empresa_id, v.cadastrado_por, v.registrado_em, v.status,
+                        v.atualizado_em, v.atualizado_por, v.tecnico_responsavel, v.observacao_pos_aprovacao,
+                        v.latitude, v.longitude
+                 FROM viabilidade v
+                 LEFT JOIN localidades l
+                        ON l.id = CAST(v.localidade AS UNSIGNED)
+                       AND l.empresa_id = v.empresa_id
+                 WHERE v.id = ? AND v.empresa_id = ? LIMIT 1`,
                 [req.params.id, req.usuario.empresa_id]
             );
             if (!rows.length) return res.status(404).json({ erro: "Viabilidade não encontrada." });
@@ -127,7 +148,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             return res.json({ ...rows[0], anexos: anexos.map(mapearAnexo) });
         } catch (erro) {
             console.error("Erro ao consultar viabilidade:", erro);
-            return res.status(500).json({ erro: erro.message });
+            return res.status(erro.statusCode || 500).json({ erro: erro.message });
         }
     });
 
@@ -138,8 +159,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const observacao = String(req.body.observacao || "").trim() || null;
             const telefone = String(req.body.telefone || "").trim() || null;
             const telefone2 = String(req.body.telefone2 || "").trim() || null;
-            const localidade = String(req.body.localidade || "").trim() || null;
-            const tecnicoResponsavel = String(req.body.tecnico_responsavel || "").trim() || null;
+            const localidade = String(req.body.localidade || "").trim();
+            const tecnicoResponsavel = normalizarTecnicosResponsaveis(req.body.tecnico_responsavel);
             const observacaoPosAprovacao = String(req.body.observacao_pos_aprovacao || "").trim() || null;
             const latitudeRecebida = req.body.latitude;
             const longitudeRecebida = req.body.longitude;
@@ -151,8 +172,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                 return res.status(400).json({ erro: "Latitude ou longitude inválida." });
             }
             const status = "PENDENTE";
-            if (!nome || !endereco) {
-                return res.status(400).json({ erro: "Nome e endereço são obrigatórios." });
+            if (!nome || !endereco || !localidade) {
+                return res.status(400).json({ erro: "Nome, endereço e localidade são obrigatórios." });
             }
 
             const cadastradoPor = req.usuario.usuario || String(req.usuario.id);
@@ -168,7 +189,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             return res.status(201).json({ sucesso: true, id: resultado.insertId, viabilidade_id: resultado.insertId });
         } catch (erro) {
             console.error("Erro ao criar viabilidade:", erro);
-            return res.status(500).json({ erro: erro.message });
+            return res.status(erro.statusCode || 500).json({ erro: erro.message });
         }
     });
 
@@ -179,8 +200,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const observacao = String(req.body.observacao || "").trim() || null;
             const telefone = String(req.body.telefone || "").trim() || null;
             const telefone2 = String(req.body.telefone2 || "").trim() || null;
-            const localidade = String(req.body.localidade || "").trim() || null;
-            const tecnicoResponsavel = String(req.body.tecnico_responsavel || "").trim() || null;
+            const localidade = String(req.body.localidade || "").trim();
+            const tecnicoResponsavel = normalizarTecnicosResponsaveis(req.body.tecnico_responsavel);
             const observacaoPosAprovacao = String(req.body.observacao_pos_aprovacao || "").trim() || null;
             const latitudeRecebida = req.body.latitude;
             const longitudeRecebida = req.body.longitude;
@@ -195,8 +216,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const statusPermitidos = ["PENDENTE", "APROVADA", "REPROVADA"];
             const status = statusPermitidos.includes(statusRecebido) ? statusRecebido : "PENDENTE";
 
-            if (!nome || !endereco) {
-                return res.status(400).json({ erro: "Nome e endereço são obrigatórios." });
+            if (!nome || !endereco || !localidade) {
+                return res.status(400).json({ erro: "Nome, endereço e localidade são obrigatórios." });
             }
 
             const atualizadoPor = req.usuario.usuario || String(req.usuario.id);
@@ -217,7 +238,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             return res.json({ sucesso: true, id: Number(req.params.id) });
         } catch (erro) {
             console.error("Erro ao editar viabilidade:", erro);
-            return res.status(500).json({ erro: erro.message });
+            return res.status(erro.statusCode || 500).json({ erro: erro.message });
         }
     });
 
@@ -253,7 +274,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
         } catch (erro) {
             await conexao.rollback();
             console.error("Erro ao excluir viabilidade:", erro);
-            return res.status(500).json({ erro: erro.message });
+            return res.status(erro.statusCode || 500).json({ erro: erro.message });
         } finally {
             conexao.release();
         }
@@ -273,7 +294,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             return res.json(rows.map(mapearAnexo));
         } catch (erro) {
             console.error("Erro ao listar anexos:", erro);
-            return res.status(500).json({ erro: erro.message });
+            return res.status(erro.statusCode || 500).json({ erro: erro.message });
         }
     });
 
@@ -341,7 +362,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             } catch (erro) {
                 if (req.file?.filename) removerArquivo(req.file.filename);
                 console.error("Erro no upload de viabilidade:", erro);
-                return res.status(500).json({ erro: erro.message });
+                return res.status(erro.statusCode || 500).json({ erro: erro.message });
             }
         }
     );
@@ -363,7 +384,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             return res.json({ sucesso: true });
         } catch (erro) {
             console.error("Erro ao excluir anexo:", erro);
-            return res.status(500).json({ erro: erro.message });
+            return res.status(erro.statusCode || 500).json({ erro: erro.message });
         }
     });
 

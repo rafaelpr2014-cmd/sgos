@@ -122,6 +122,10 @@ button,input,textarea,select{font:inherit}
 .btn-excluir{background:#ef4444}.btn-excluir:hover{background:#dc2626}
 .btn-fechar-resumo{background:#64748b}
 @media(max-width:700px){.resumo-grid{grid-template-columns:1fr}.resumo-item.span-2{grid-column:span 1}.resumo-acoes .btn{flex:1;justify-content:center}.resumo-card{max-height:96vh}}
+
+#tecnicoResponsavel{min-height:118px;padding:8px}
+#tecnicoResponsavel option{padding:8px;border-radius:7px;margin:2px 0}
+#tecnicoResponsavel option:checked{background:#2563eb linear-gradient(0deg,#2563eb 0%,#2563eb 100%);color:#fff}
 </style>
 </head>
 <body>
@@ -181,8 +185,8 @@ button,input,textarea,select{font:inherit}
             <input type="hidden" id="longitude">
             <div class="campo"><label for="telefone">Telefone principal</label><input id="telefone" maxlength="30" inputmode="tel" placeholder="(00) 00000-0000"></div>
             <div class="campo"><label for="telefone2">Telefone secundário</label><input id="telefone2" maxlength="30" inputmode="tel" placeholder="(00) 00000-0000"></div>
-            <div class="campo"><label for="localidade">Localidade</label><select id="localidade"><option value="">Selecione a localidade</option></select></div>
-            <div class="campo"><label for="tecnicoResponsavel">Técnico responsável</label><select id="tecnicoResponsavel"><option value="">Selecione o técnico</option></select></div>
+            <div class="campo"><label for="localidade">Localidade <span class="obrigatorio">*</span></label><select id="localidade" required><option value="">Selecione a localidade</option></select></div>
+            <div class="campo"><label for="tecnicoResponsavel">Técnicos responsáveis <span style="font-weight:400;color:#64748b">(até 4)</span></label><select id="tecnicoResponsavel" multiple size="4" aria-describedby="ajudaTecnicos"></select><div id="ajudaTecnicos" class="arquivo-ajuda">Selecione de 1 a 4 técnicos. Use Ctrl no Windows ou Command no Mac para selecionar mais de um.</div></div>
             <div class="campo"><label for="status">Status</label><select id="status"><option value="PENDENTE">Pendente</option><option value="APROVADA">Aprovada</option><option value="REPROVADA">Reprovada</option></select></div>
             <div class="campo span-3"><label for="observacao">Observação</label><textarea id="observacao" maxlength="2000" placeholder="Detalhes da viabilidade, estrutura disponível, distância, materiais necessários..."></textarea></div>
             <div class="campo span-3"><label for="observacaoPosAprovacao">Observação pós-aprovação</label><textarea id="observacaoPosAprovacao" maxlength="3000" placeholder="Preenchimento após aprovação/visita: resultado da visita, materiais, condições encontradas e orientações."></textarea></div>
@@ -245,6 +249,8 @@ function dataRegistro(o){return o.registrado_em||o.criado_em||o.created_at||o.da
 function nomeCadastrador(o){return o.cadastrado_por_nome||o.usuario_nome||o.cadastrado_por||"-"}
 function nomeAtualizador(o){return o.atualizado_por||"-"}
 function classeStatus(status){const s=String(status||"PENDENTE").toUpperCase();return s==="APROVADA"?"status-aprovada":s==="REPROVADA"?"status-reprovada":"status-pendente"}
+function nomeLocalidade(valor){const bruto=String(valor??"").trim();if(!bruto)return "-";const encontrada=localidades.find(x=>String(x.id)===bruto||String(x.nome).trim().toLowerCase()===bruto.toLowerCase());return encontrada?.nome||bruto}
+function localidadeDoRegistro(o){return nomeLocalidade(o?.localidade_nome||o?.localidade)}
 function anexosDoRegistro(o){
     let lista=o.anexos||o.arquivos||o.midias||[];
     if(typeof lista==="string"){
@@ -298,15 +304,16 @@ async function carregarUsuario(){
 async function carregarTecnicos(){
     const select=document.getElementById("tecnicoResponsavel");
     if(!select)return;
-    const valorAtual=select.value;
+    const valorAtual=[...select.selectedOptions].map(o=>o.value).join(", ");
     try{
         const r=await fetch("/api/tecnicos",{headers:getAuthHeaders()});
         if(!r.ok)throw new Error(`Erro ${r.status}`);
         const resp=await r.json();
         const lista=Array.isArray(resp)?resp:(Array.isArray(resp?.dados)?resp.dados:(Array.isArray(resp?.tecnicos)?resp.tecnicos:[]));
         const tecnicos=lista.filter(t=>t&&t.ativo!==0&&t.ativo!==false).map(t=>({id:t.id,nome:t.nome||t.usuario||t.tecnico||t.nome_completo||""})).filter(t=>t.nome);
-        select.innerHTML='<option value="">Selecione o técnico</option>'+tecnicos.map(t=>`<option value="${escapar(t.nome)}" data-id="${Number(t.id)||0}">${escapar(t.nome)}</option>`).join("");
-        if(valorAtual)select.value=valorAtual;
+        select.innerHTML=tecnicos.map(t=>`<option value="${escapar(t.nome)}" data-id="${Number(t.id)||0}">${escapar(t.nome)}</option>`).join("");
+        const atuais=String(valorAtual||"").split(",").map(x=>x.trim()).filter(Boolean);
+        [...select.options].forEach(opt=>opt.selected=atuais.includes(opt.value));
     }catch(e){console.error("Erro ao carregar técnicos:",e);select.innerHTML='<option value="">Não foi possível carregar os técnicos</option>';}
 }
 
@@ -317,9 +324,10 @@ async function carregarLocalidades(){
         const resp=await r.json();
         const lista=Array.isArray(resp)?resp:(Array.isArray(resp?.dados)?resp.dados:(Array.isArray(resp?.localidades)?resp.localidades:[]));
         localidades=lista.map(x=>({id:x.id,nome:x.nome||x.localidade||x.descricao||""})).filter(x=>x.nome).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
-        const opcoes=localidades.map(x=>`<option value="${escapar(x.nome)}">${escapar(x.nome)}</option>`).join("");
-        document.getElementById("localidade").innerHTML='<option value="">Selecione a localidade</option>'+opcoes;
-        document.getElementById("filtroLocalidade").innerHTML='<option value="">Todas as localidades</option>'+opcoes;
+        const opcoesFormulario=localidades.map(x=>`<option value="${escapar(x.id)}">${escapar(x.nome)}</option>`).join("");
+        const opcoesFiltro=localidades.map(x=>`<option value="${escapar(x.nome)}">${escapar(x.nome)}</option>`).join("");
+        document.getElementById("localidade").innerHTML='<option value="">Selecione a localidade</option>'+opcoesFormulario;
+        document.getElementById("filtroLocalidade").innerHTML='<option value="">Todas as localidades</option>'+opcoesFiltro;
     }catch(e){console.error("Erro ao carregar localidades:",e)}
 }
 
@@ -328,6 +336,9 @@ function logout(){const id=localStorage.getItem("log_id");if(id)fetch("/api/logo
 
 function atualizarHorario(){document.getElementById("registradoEm").value=new Date().toLocaleString("pt-BR")}
 function aplicarMascaraTelefone(e){let v=e.target.value.replace(/\D/g,"").slice(0,11);if(v.length>10)v=v.replace(/(\d{2})(\d{5})(\d{0,4})/,"($1) $2-$3");else if(v.length>6)v=v.replace(/(\d{2})(\d{4})(\d{0,4})/,"($1) $2-$3");else if(v.length>2)v=v.replace(/(\d{2})(\d+)/,"($1) $2");e.target.value=v}
+function tecnicosSelecionados(){return [...document.getElementById("tecnicoResponsavel").selectedOptions].map(o=>o.value.trim()).filter(Boolean)}
+function definirTecnicosSelecionados(valor){const nomes=Array.isArray(valor)?valor:String(valor||"").split(/[,;|]/).map(x=>x.trim()).filter(Boolean);[...document.getElementById("tecnicoResponsavel").options].forEach(opt=>opt.selected=nomes.includes(opt.value))}
+function limitarSelecaoTecnicos(){const select=document.getElementById("tecnicoResponsavel"),selecionados=[...select.selectedOptions];if(selecionados.length>4){selecionados[selecionados.length-1].selected=false;alert("É permitido selecionar no máximo 4 técnicos.")}}
 
 function processarArquivos(){
     const novos=[...document.getElementById("arquivos").files];
@@ -359,10 +370,12 @@ function editarViabilidade(id){
     document.getElementById("endereco").value=o.endereco||"";
     document.getElementById("telefone").value=o.telefone||"";
     document.getElementById("telefone2").value=o.telefone2||o.telefone_secundario||"";
-    document.getElementById("localidade").value=o.localidade||o.localidade_nome||"";
+    const localidadeRegistro=String(o.localidade??"").trim();
+    const localidadeEncontrada=localidades.find(x=>String(x.id)===localidadeRegistro||String(x.nome).trim().toLowerCase()===localidadeDoRegistro(o).toLowerCase());
+    document.getElementById("localidade").value=localidadeEncontrada?String(localidadeEncontrada.id):localidadeRegistro;
     document.getElementById("observacao").value=o.observacao||o.observacoes||"";
     document.getElementById("observacaoPosAprovacao").value=o.observacao_pos_aprovacao||"";
-    document.getElementById("tecnicoResponsavel").value=o.tecnico_responsavel||"";
+    definirTecnicosSelecionados(o.tecnico_responsavel||o.tecnicos_responsaveis||"");
     document.getElementById("status").value=String(o.status||"PENDENTE").toUpperCase();
     document.getElementById("latitude").value=o.latitude??"";
     document.getElementById("longitude").value=o.longitude??"";
@@ -376,7 +389,8 @@ function editarViabilidade(id){
     document.querySelector(".card").scrollIntoView({behavior:"smooth",block:"start"});
 }
 function limparFormulario(){
-    ["viabilidadeId","nome","endereco","telefone","telefone2","localidade","observacao","observacaoPosAprovacao","tecnicoResponsavel","latitude","longitude","localizacaoTecnico"].forEach(id=>document.getElementById(id).value="");
+    ["viabilidadeId","nome","endereco","telefone","telefone2","localidade","observacao","observacaoPosAprovacao","latitude","longitude","localizacaoTecnico"].forEach(id=>document.getElementById(id).value="");
+    definirTecnicosSelecionados([]);
     document.getElementById("status").value="PENDENTE";
     arquivosSelecionados=[];
     arquivosVisitaSelecionados=[];
@@ -392,8 +406,10 @@ function limparFormulario(){
 
 async function salvarViabilidade(){
     const id=document.getElementById("viabilidadeId").value;
-    const nome=document.getElementById("nome").value.trim(),endereco=document.getElementById("endereco").value.trim(),observacao=document.getElementById("observacao").value.trim(),observacao_pos_aprovacao=document.getElementById("observacaoPosAprovacao").value.trim(),telefone=document.getElementById("telefone").value.trim(),telefone2=document.getElementById("telefone2").value.trim(),localidade=document.getElementById("localidade").value.trim(),tecnico_responsavel=document.getElementById("tecnicoResponsavel").value.trim(),status=document.getElementById("status").value;
+    const nome=document.getElementById("nome").value.trim(),endereco=document.getElementById("endereco").value.trim(),observacao=document.getElementById("observacao").value.trim(),observacao_pos_aprovacao=document.getElementById("observacaoPosAprovacao").value.trim(),telefone=document.getElementById("telefone").value.trim(),telefone2=document.getElementById("telefone2").value.trim(),localidade=document.getElementById("localidade").value.trim(),tecnicos=tecnicosSelecionados(),tecnico_responsavel=tecnicos.join(", "),status=document.getElementById("status").value;
     if(!nome||!endereco){alert("Preencha os campos Nome e Endereço.");return}
+    if(!localidade){alert("Selecione uma localidade para salvar a viabilidade.");document.getElementById("localidade").focus();return}
+    if(tecnicos.length>4){alert("Selecione no máximo 4 técnicos.");return}
     const btn=document.getElementById("btnSalvar");btn.disabled=true;document.getElementById("textoBtnSalvar").textContent=id?"Atualizando...":"Salvando...";
     try{
         const latitude=document.getElementById("latitude").value;
@@ -417,7 +433,7 @@ function mesmoDia(v){if(!v)return false;const d=new Date(v),h=new Date();return 
 function atualizarCards(lista){document.getElementById("cardTotal").innerText=lista.length;document.getElementById("card7Dias").innerText=viabilidades.filter(x=>dentroDias(dataRegistro(x),7)).length;document.getElementById("cardAnexos").innerText=lista.filter(x=>anexosDoRegistro(x).length).length;document.getElementById("cardHoje").innerText=viabilidades.filter(x=>mesmoDia(dataRegistro(x))).length}
 function renderTabela(){
     const nome=document.getElementById("filtroNome").value.toLowerCase(),end=document.getElementById("filtroEndereco").value.toLowerCase(),loc=document.getElementById("filtroLocalidade").value.toLowerCase(),di=document.getElementById("dataInicio").value,df=document.getElementById("dataFim").value;
-    const lista=viabilidades.filter(o=>{const d=dataRegistro(o)?new Date(dataRegistro(o)):null;let ok=(!nome||String(o.nome||"").toLowerCase().includes(nome))&&(!end||String(o.endereco||"").toLowerCase().includes(end))&&(!loc||String(o.localidade||o.localidade_nome||"").toLowerCase()===loc);if(di)ok=ok&&d&&!isNaN(d)&&d>=new Date(di+"T00:00:00");if(df)ok=ok&&d&&!isNaN(d)&&d<=new Date(df+"T23:59:59");return ok}).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
+    const lista=viabilidades.filter(o=>{const d=dataRegistro(o)?new Date(dataRegistro(o)):null;let ok=(!nome||String(o.nome||"").toLowerCase().includes(nome))&&(!end||String(o.endereco||"").toLowerCase().includes(end))&&(!loc||localidadeDoRegistro(o).toLowerCase()===loc);if(di)ok=ok&&d&&!isNaN(d)&&d>=new Date(di+"T00:00:00");if(df)ok=ok&&d&&!isNaN(d)&&d<=new Date(df+"T23:59:59");return ok}).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
     atualizarCards(lista);
     const tbody=document.getElementById("tabelaViabilidades");
     if(!lista.length){tbody.innerHTML='<tr><td colspan="12" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
@@ -429,7 +445,7 @@ function renderTabela(){
         return `<tr class="linha-viabilidade" onclick="abrirResumoViabilidade(${Number(o.id)})">
             <td onclick="event.stopPropagation()"><input type="checkbox" class="checkbox-viabilidade chk-item" value="${Number(o.id)}" ${idsSelecionados.has(Number(o.id))?'checked':''} onchange="alternarSelecao(${Number(o.id)},this.checked)"></td>
             <td><strong>${escapar(o.nome||"-")}</strong></td>
-            <td>${escapar(o.localidade||o.localidade_nome||"-")}</td>
+            <td>${escapar(localidadeDoRegistro(o))}</td>
             <td>${escapar(o.endereco||"-")}</td>
             <td style="white-space:normal;min-width:220px">${escapar(o.observacao||o.observacoes||"-")}</td>
             <td>${telefones}</td>
@@ -451,11 +467,11 @@ function abrirResumoViabilidade(id,foco=""){
     const o=viabilidades.find(v=>Number(v.id)===Number(id));if(!o)return;
     const analise=anexosPorCategoria(o,"ANALISE"),visita=anexosPorCategoria(o,"COMPROVACAO_VISITA"),st=String(o.status||"PENDENTE").toUpperCase();
     document.getElementById("resumoTitulo").textContent=o.nome||"Detalhes da viabilidade";
-    document.getElementById("resumoSubtitulo").textContent=`${o.localidade||o.localidade_nome||"Localidade não informada"} • ${formatarData(dataRegistro(o))}`;
+    document.getElementById("resumoSubtitulo").textContent=`${localidadeDoRegistro(o)==="-"?"Localidade não informada":localidadeDoRegistro(o)} • ${formatarData(dataRegistro(o))}`;
     const mapa=coordenadasValidas(o)?`<div class="resumo-mapa" id="resumoLocalizacao"><iframe loading="lazy" src="${urlMapaEmbed(Number(o.latitude),Number(o.longitude))}"></iframe><div class="resumo-mapa-info"><span>Latitude: ${Number(o.latitude).toFixed(8)} | Longitude: ${Number(o.longitude).toFixed(8)}</span><a class="mapa-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${Number(o.latitude)},${Number(o.longitude)}">Abrir no Google Maps</a></div></div>`:'<div class="muted">Localização ainda não registrada.</div>';
     document.getElementById("resumoConteudo").innerHTML=`<div class="resumo-grid">
         <div class="resumo-item"><small>Status</small><span class="status-box ${classeStatus(st)}">${escapar(st)}</span></div>
-        <div class="resumo-item"><small>Localidade</small><strong>${escapar(o.localidade||o.localidade_nome||"-")}</strong></div>
+        <div class="resumo-item"><small>Localidade</small><strong>${escapar(localidadeDoRegistro(o))}</strong></div>
         <div class="resumo-item span-2"><small>Endereço</small><div>${escapar(o.endereco||"-")}</div></div>
         <div class="resumo-item"><small>Telefone principal</small><div>${escapar(o.telefone||"-")}</div></div>
         <div class="resumo-item"><small>Telefone secundário</small><div>${escapar(o.telefone2||o.telefone_secundario||"-")}</div></div>
@@ -475,7 +491,39 @@ function abrirResumoViabilidade(id,foco=""){
 }
 function fecharResumo(){document.getElementById("popupResumo").classList.remove("ativo");document.body.style.overflow=""}
 function fecharResumoAoFundo(e){if(e.target.id==="popupResumo")fecharResumo()}
-function htmlImpressao(registros){return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Viabilidades</title><style>body{font-family:Arial;color:#111;padding:24px}.item{border:1px solid #bbb;border-radius:10px;padding:18px;margin-bottom:18px;page-break-inside:avoid}h1{font-size:22px}h2{font-size:18px;margin:0 0 12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px}.full{grid-column:1/-1}.label{font-size:11px;color:#666;text-transform:uppercase;font-weight:bold}.valor{margin:3px 0 8px}.status{font-weight:bold}@media print{button{display:none}}</style></head><body><h1>Relatório de Viabilidades</h1>${registros.map(o=>`<div class="item"><h2>${escapar(o.nome||"-")}</h2><div class="grid"><div><div class="label">Status</div><div class="valor status">${escapar(o.status||"PENDENTE")}</div></div><div><div class="label">Localidade</div><div class="valor">${escapar(o.localidade||o.localidade_nome||"-")}</div></div><div class="full"><div class="label">Endereço</div><div class="valor">${escapar(o.endereco||"-")}</div></div><div><div class="label">Telefone principal</div><div class="valor">${escapar(o.telefone||"-")}</div></div><div><div class="label">Telefone secundário</div><div class="valor">${escapar(o.telefone2||o.telefone_secundario||"-")}</div></div><div><div class="label">Técnico</div><div class="valor">${escapar(o.tecnico_responsavel||"-")}</div></div><div><div class="label">Registrado em</div><div class="valor">${formatarData(dataRegistro(o))}</div></div><div class="full"><div class="label">Observação</div><div class="valor">${escapar(o.observacao||o.observacoes||"-")}</div></div><div class="full"><div class="label">Observação pós-aprovação</div><div class="valor">${escapar(o.observacao_pos_aprovacao||"-")}</div></div></div></div>`).join("")}<script>window.onload=()=>window.print()<\/script></body></html>`}
+function htmlImpressao(registros){
+    const logo=document.getElementById("logoEmpresa")?.src||"/img/logo-default.png";
+    const emitidoEm=new Date().toLocaleString("pt-BR");
+    const paginas=[];
+    for(let i=0;i<registros.length;i+=6)paginas.push(registros.slice(i,i+6));
+    const renderItem=o=>`<article class="item">
+        <div class="item-topo"><h2>${escapar(o.nome||"-")}</h2><span class="status">${escapar(o.status||"PENDENTE")}</span></div>
+        <div class="linha"><b>Localidade:</b> ${escapar(localidadeDoRegistro(o))}</div>
+        <div class="linha"><b>Endereço:</b> ${escapar(o.endereco||"-")}</div>
+        <div class="duas"><div><b>Telefone:</b> ${escapar(o.telefone||"-")}</div><div><b>Telefone 2:</b> ${escapar(o.telefone2||o.telefone_secundario||"-")}</div></div>
+        <div class="duas"><div><b>Técnico:</b> ${escapar(o.tecnico_responsavel||"-")}</div><div><b>Registro:</b> ${formatarData(dataRegistro(o))}</div></div>
+        <div class="obs"><b>Observação:</b> ${escapar(o.observacao||o.observacoes||"-")}</div>
+        ${o.observacao_pos_aprovacao?`<div class="obs pos"><b>Pós-aprovação:</b> ${escapar(o.observacao_pos_aprovacao)}</div>`:""}
+    </article>`;
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relatório de Viabilidades</title><style>
+        @page{size:A4 portrait;margin:8mm}
+        *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#0f172a;background:#fff}
+        .pagina{min-height:281mm;display:flex;flex-direction:column;page-break-after:always}.pagina:last-child{page-break-after:auto}
+        .cabecalho{height:23mm;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #2563eb;padding:0 2mm 3mm;margin-bottom:4mm}
+        .marca{display:flex;align-items:center;gap:4mm}.marca img{max-width:42mm;max-height:17mm;object-fit:contain}.marca h1{font-size:15pt;margin:0}.marca p{font-size:8pt;color:#64748b;margin:1mm 0 0}
+        .contador{font-size:8pt;color:#64748b;font-weight:bold}
+        .grade{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr);gap:3mm;flex:1;min-height:0}
+        .item{border:1px solid #cbd5e1;border-radius:3mm;padding:3mm;overflow:hidden;page-break-inside:avoid;background:#fff}
+        .item-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:2mm;border-bottom:1px solid #e2e8f0;padding-bottom:1.5mm;margin-bottom:1.5mm}.item h2{font-size:10.5pt;margin:0;line-height:1.15}.status{font-size:7pt;font-weight:bold;background:#e2e8f0;border-radius:999px;padding:1mm 2mm;white-space:nowrap}
+        .linha,.duas,.obs{font-size:7.5pt;line-height:1.25;margin-top:1.2mm}.duas{display:grid;grid-template-columns:1fr 1fr;gap:2mm}.obs{border-top:1px dashed #cbd5e1;padding-top:1.3mm;max-height:15mm;overflow:hidden}.obs.pos{max-height:11mm}
+        .rodape{height:9mm;margin-top:3mm;border-top:1px solid #cbd5e1;display:flex;align-items:flex-end;justify-content:center;font-size:7.5pt;color:#475569;text-align:center}
+        @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+    </style></head><body>${paginas.map((pagina,indice)=>`<section class="pagina">
+        <header class="cabecalho"><div class="marca"><img src="${escapar(logo)}" alt="Logo"><div><h1>Relatório de Viabilidades</h1><p>SGOS - Sistema de Gestão de Ordens de Serviço</p></div></div><div class="contador">Página ${indice+1} de ${paginas.length}</div></header>
+        <main class="grade">${pagina.map(renderItem).join("")}</main>
+        <footer class="rodape">Emitido por SGOS - Sistemas de Ordens de Serviço - ${escapar(emitidoEm)}</footer>
+    </section>`).join("")}<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script></body></html>`
+}
 function abrirImpressao(registros){const w=window.open("","_blank");if(!w){alert("Permita pop-ups para imprimir.");return}w.document.open();w.document.write(htmlImpressao(registros));w.document.close()}
 function imprimirViabilidade(id){const o=viabilidades.find(v=>Number(v.id)===Number(id));if(o)abrirImpressao([o])}
 function imprimirSelecionadas(){const registros=viabilidades.filter(v=>idsSelecionados.has(Number(v.id)));if(!registros.length){alert("Selecione pelo menos uma viabilidade para imprimir.");return}abrirImpressao(registros)}
@@ -487,7 +535,7 @@ function fecharMidiaAoFundo(e){if(e.target.id==="popupMidia")fecharMidia()}
 document.addEventListener("DOMContentLoaded",()=>{
     const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");if(s&&l&&localStorage.getItem("sidebar_recolhida")==="1"){s.classList.add("recolhida");l.src=l.dataset.logoFechada}
     atualizarHorario();setInterval(atualizarHorario,60000);carregarUsuario();carregarTecnicos();carregarLocalidades();carregarUsuariosOnline();carregarViabilidades();
-    document.getElementById("telefone").addEventListener("input",aplicarMascaraTelefone);document.getElementById("telefone2").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);document.getElementById("arquivosVisita").addEventListener("change",processarArquivosVisita);
+    document.getElementById("telefone").addEventListener("input",aplicarMascaraTelefone);document.getElementById("tecnicoResponsavel").addEventListener("change",limitarSelecaoTecnicos);document.getElementById("telefone2").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);document.getElementById("arquivosVisita").addEventListener("change",processarArquivosVisita);
     document.querySelectorAll("#filtroNome,#filtroEndereco,#filtroLocalidade,#dataInicio,#dataFim").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
     document.getElementById("buscaViabilidade").addEventListener("input",e=>{document.getElementById("filtroNome").value=e.target.value;renderTabela()});
     document.getElementById("selecionarTodas").addEventListener("change",e=>selecionarTodasViabilidades(e.target.checked));
