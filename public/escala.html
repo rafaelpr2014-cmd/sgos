@@ -487,6 +487,7 @@ select:focus{
 }
 
 .btn-salvar{ background:var(--verde); }
+.btn-imprimir{ background:#0f172a; }
 .btn:hover{ opacity:.92; }
 
 .escala-wrap{
@@ -644,7 +645,7 @@ select:focus{
         <span>Relatórios</span>
     </a>
 
-<a href="escala.html" class=>
+<a href="escala.html" class="ativo">
         <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 14h6"/></svg>
         <span>Escala</span>
     </a>
@@ -849,7 +850,14 @@ select:focus{
 
     <div class="card">
         <div class="card-header">
-            <div class="titulo-card">Escala em formato calendário</div>
+            <div>
+                <div class="titulo-card">Escala em formato calendário</div>
+                <div style="font-size:13px;color:#64748b;margin-top:4px">Imprima a escala organizada por dia e período.</div>
+            </div>
+            <button class="btn btn-imprimir" type="button" onclick="imprimirEscalaCalendario()">
+                <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>
+                Imprimir escala
+            </button>
         </div>
 
         <div class="escala-wrap">
@@ -1153,13 +1161,56 @@ function periodoTexto(periodo){
     return periodo;
 }
 
-function atualizarCards(lista){
-    document.getElementById("cardTotal").innerText = lista.length;
+function chaveTecnicoEscala(escala){
+    const id =
+        escala?.tecnico_id ??
+        escala?.id_tecnico ??
+        escala?.tecnicoId ??
+        escala?.tecnico?.id ??
+        "";
 
-    const tecnicosUnicos = new Set(lista.map(e => e.tecnico));
+    if(String(id).trim()){
+        return `id:${String(id).trim()}`;
+    }
+
+    const nome = String(
+        escala?.tecnico_nome ??
+        escala?.nome_tecnico ??
+        escala?.tecnico?.nome ??
+        escala?.tecnico ??
+        ""
+    ).trim().toLocaleLowerCase("pt-BR");
+
+    return nome ? `nome:${nome}` : "";
+}
+
+function nomeTecnicoEscala(escala){
+    return String(
+        escala?.tecnico_nome ??
+        escala?.nome_tecnico ??
+        escala?.tecnico?.nome ??
+        escala?.tecnico ??
+        "Técnico não informado"
+    ).trim();
+}
+
+function atualizarCards(lista){
+    const registros = Array.isArray(lista) ? lista : [];
+
+    document.getElementById("cardTotal").innerText = registros.length;
+
+    const tecnicosUnicos = new Set(
+        registros
+            .map(chaveTecnicoEscala)
+            .filter(Boolean)
+    );
     document.getElementById("cardTecnicos").innerText = tecnicosUnicos.size;
 
-    const diasUnicos = new Set(lista.map(e => e.data_escala?.split("T")[0] || e.data_escala));
+    const diasUnicos = new Set(
+        registros
+            .map(e => e.data_escala?.split("T")[0] || e.data_escala)
+            .filter(Boolean)
+    );
     document.getElementById("cardSemana").innerText = diasUnicos.size;
 }
 
@@ -1201,7 +1252,7 @@ function renderizarCalendario(lista){
         itens.forEach(e => {
             html += `
                 <div class="escala-item">
-                    <strong>${e.tecnico}</strong>
+                    <strong>${nomeTecnicoEscala(e)}</strong>
                     <span class="periodo ${e.periodo}">
                         ${periodoTexto(e.periodo)}
                     </span>
@@ -1216,11 +1267,166 @@ function renderizarCalendario(lista){
     });
 }
 
+
+function escaparHtml(valor){
+    return String(valor ?? "").replace(/[&<>"']/g, caractere => ({
+        "&":"&amp;",
+        "<":"&lt;",
+        ">":"&gt;",
+        '"':"&quot;",
+        "'":"&#39;"
+    })[caractere]);
+}
+
+function listaAtualParaImpressao(){
+    const termo = String(document.getElementById("campoBusca")?.value || "").trim().toLowerCase();
+
+    if(!termo) return [...escalas];
+
+    return escalas.filter(e =>
+        nomeTecnicoEscala(e).toLowerCase().includes(termo) ||
+        String(e.periodo || "").toLowerCase().includes(termo) ||
+        String(formatarData(e.data_escala)).includes(termo)
+    );
+}
+
+function imprimirEscalaCalendario(){
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = hoje.getMonth();
+    const primeiroDia = new Date(ano, mes, 1);
+    const ultimoDia = new Date(ano, mes + 1, 0);
+
+    const listaMes = escalas.filter(e => {
+        const valor = e.data_escala?.split("T")[0] || e.data_escala;
+        if(!valor) return false;
+        const data = new Date(valor + "T00:00:00");
+        return !isNaN(data) && data.getFullYear() === ano && data.getMonth() === mes;
+    });
+
+    const logoElemento = document.getElementById("logoEmpresa");
+    const logo = logoElemento?.src || "";
+    const empresa = document.getElementById("empresaLogada")?.innerText?.trim() || "Empresa";
+    const usuario = document.getElementById("userEmpresa")?.innerText?.trim() || "Usuário";
+    const emitidoEm = new Date().toLocaleString("pt-BR");
+    const nomeMes = primeiroDia.toLocaleDateString("pt-BR", {month:"long", year:"numeric"});
+    const tituloMes = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+
+    const nomesDias = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+    const cabecalho = nomesDias.map(dia => `<th>${dia}</th>`).join("");
+
+    const totalCelulas = Math.ceil((primeiroDia.getDay() + ultimoDia.getDate()) / 7) * 7;
+    const celulas = [];
+
+    for(let indice = 0; indice < totalCelulas; indice++){
+        const numeroDia = indice - primeiroDia.getDay() + 1;
+
+        if(numeroDia < 1 || numeroDia > ultimoDia.getDate()){
+            celulas.push('<td class="dia-vazio"></td>');
+            continue;
+        }
+
+        const dataChave = `${ano}-${String(mes + 1).padStart(2,"0")}-${String(numeroDia).padStart(2,"0")}`;
+        const itens = listaMes
+            .filter(e => (e.data_escala?.split("T")[0] || e.data_escala) === dataChave)
+            .sort((a,b) => {
+                const ordem = {MANHA:1, INTEGRAL:2, TARDE:3, NOITE:4};
+                return (ordem[a.periodo] || 99) - (ordem[b.periodo] || 99) ||
+                       nomeTecnicoEscala(a).localeCompare(nomeTecnicoEscala(b), "pt-BR");
+            });
+
+        const conteudo = itens.length ? itens.map(e => `
+            <div class="item-escala">
+                <strong>${escaparHtml(nomeTecnicoEscala(e))}</strong>
+                <span class="periodo-print ${escaparHtml(e.periodo || "")}">${escaparHtml(periodoTexto(e.periodo))}</span>
+            </div>
+        `).join("") : '<div class="sem-escala">Sem escala</div>';
+
+        celulas.push(`
+            <td>
+                <div class="numero-dia">${numeroDia}</div>
+                <div class="conteudo-dia">${conteudo}</div>
+            </td>
+        `);
+    }
+
+    const linhas = [];
+    for(let i = 0; i < totalCelulas; i += 7){
+        linhas.push(`<tr>${celulas.slice(i, i + 7).join("")}</tr>`);
+    }
+
+    const janela = window.open("", "_blank", "width=1400,height=900");
+
+    if(!janela){
+        alert("O navegador bloqueou a janela de impressão. Libere os pop-ups e tente novamente.");
+        return;
+    }
+
+    janela.document.open();
+    janela.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Escala mensal - ${escaparHtml(tituloMes)}</title>
+<style>
+    @page{size:A4 landscape;margin:5mm}
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;font-family:Arial,Helvetica,sans-serif;color:#0f172a;background:#fff}
+    .pagina{width:100%;height:199mm;display:flex;flex-direction:column;overflow:hidden}
+    .print-header{height:18mm;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:2px solid #2563eb;padding-bottom:4px;margin-bottom:4px}
+    .marca{display:flex;align-items:center;gap:10px;min-width:0}
+    .marca img{width:88px;height:35px;object-fit:contain}
+    .marca h1{font-size:16px;margin:0 0 2px}
+    .marca p{font-size:9px;color:#64748b;margin:0}
+    .mes-titulo{text-align:center;flex:1;font-size:20px;font-weight:900;text-transform:uppercase;color:#0f172a}
+    .emissao{text-align:right;font-size:8px;line-height:1.35;white-space:nowrap}
+    .emissao strong,.emissao span{display:block}
+    .calendario-mensal{width:100%;height:171mm;border-collapse:collapse;table-layout:fixed}
+    .calendario-mensal th{height:8mm;border:1px solid #94a3b8;background:#dbeafe;padding:2px;text-align:center;font-size:9px;font-weight:900}
+    .calendario-mensal td{border:1px solid #94a3b8;vertical-align:top;padding:2px;height:auto;position:relative;overflow:hidden}
+    .calendario-mensal tbody tr{height:${totalCelulas === 42 ? '27.1mm' : '32.5mm'}}
+    .dia-vazio{background:#f8fafc}
+    .numero-dia{font-size:9px;font-weight:900;color:#0f172a;margin-bottom:2px;border-bottom:1px solid #e2e8f0;padding-bottom:1px}
+    .conteudo-dia{display:flex;flex-direction:column;gap:1px;overflow:hidden}
+    .item-escala{border:1px solid #dbeafe;background:#f8fbff;border-radius:3px;padding:2px;line-height:1.05;break-inside:avoid}
+    .item-escala strong{display:block;font-size:6.8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px}
+    .periodo-print{display:inline-block;border-radius:999px;padding:1px 3px;font-size:5.8px;font-weight:900}
+    .periodo-print.MANHA{background:#dbeafe;color:#1d4ed8}
+    .periodo-print.TARDE{background:#ffedd5;color:#c2410c}
+    .periodo-print.NOITE{background:#ede9fe;color:#6d28d9}
+    .periodo-print.INTEGRAL{background:#dcfce7;color:#15803d}
+    .sem-escala{font-size:6px;color:#94a3b8;text-align:center;padding-top:3px}
+    .print-footer{height:6mm;display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid #cbd5e1;margin-top:3px;padding-top:2px;font-size:7px;color:#64748b}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+<section class="pagina">
+    <header class="print-header">
+        <div class="marca">
+            ${logo ? `<img src="${escaparHtml(logo)}" alt="Logo">` : ""}
+            <div><h1>Escala de Técnicos</h1><p>${escaparHtml(empresa)}</p></div>
+        </div>
+        <div class="mes-titulo">${escaparHtml(tituloMes)}</div>
+        <div class="emissao"><strong>Emitido por: ${escaparHtml(usuario)}</strong><span>${escaparHtml(emitidoEm)}</span></div>
+    </header>
+    <table class="calendario-mensal">
+        <thead><tr>${cabecalho}</tr></thead>
+        <tbody>${linhas.join("")}</tbody>
+    </table>
+    <footer class="print-footer"><span>SGOS - Sistema de Gestão de Ordens de Serviço</span><span>${listaMes.length} escala(s) no mês</span></footer>
+</section>
+<script>window.addEventListener("load",()=>setTimeout(()=>window.print(),300));<\/script>
+</body>
+</html>`);
+    janela.document.close();
+}
+
 function filtrarEscalas(){
     const termo = document.getElementById("campoBusca").value.toLowerCase();
 
     const filtradas = escalas.filter(e =>
-        String(e.tecnico || "").toLowerCase().includes(termo) ||
+        nomeTecnicoEscala(e).toLowerCase().includes(termo) ||
         String(e.periodo || "").toLowerCase().includes(termo) ||
         String(formatarData(e.data_escala)).includes(termo)
     );
