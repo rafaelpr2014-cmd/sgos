@@ -10,7 +10,6 @@
 
 <script src="/js/auth.js" defer></script>
 <script src="/js/init.js" defer></script>
-<script src="/js/painel.js" defer></script>
 
 <style>
 :root{
@@ -777,7 +776,7 @@ select:focus{
             </div>
             <div class="card-info">
                 <small>Total</small>
-                <strong id="cardTotal">0</strong>
+                <strong id="escalaCardTotal">0</strong>
                 <span>Escalas cadastradas</span>
             </div>
         </div>
@@ -788,7 +787,7 @@ select:focus{
             </div>
             <div class="card-info">
                 <small>Técnicos</small>
-                <strong id="cardTecnicos">0</strong>
+                <strong id="escalaCardTecnicos">0</strong>
                 <span>Na escala</span>
             </div>
         </div>
@@ -799,7 +798,7 @@ select:focus{
             </div>
             <div class="card-info">
                 <small>Semana</small>
-                <strong id="cardSemana">0</strong>
+                <strong id="escalaCardSemana">0</strong>
                 <span>Dias com escala</span>
             </div>
         </div>
@@ -1048,9 +1047,22 @@ async function carregarEscalas(){
             headers:{ "x-usuario-id": usuario.id }
         });
 
-        escalas = await res.json();
+        const resposta = await res.json();
+
+        escalas = Array.isArray(resposta)
+            ? resposta
+            : Array.isArray(resposta?.dados)
+                ? resposta.dados
+                : Array.isArray(resposta?.escalas)
+                    ? resposta.escalas
+                    : Array.isArray(resposta?.data)
+                        ? resposta.data
+                        : [];
 
         renderizarCalendario(escalas);
+
+        // Reforça os indicadores após scripts compartilhados terminarem de carregar.
+        setTimeout(() => atualizarCards(escalas), 300);
 
     }catch(err){
         console.error("Erro ao carregar escalas:", err);
@@ -1166,6 +1178,7 @@ function chaveTecnicoEscala(escala){
         escala?.tecnico_id ??
         escala?.id_tecnico ??
         escala?.tecnicoId ??
+        escala?.idTecnico ??
         escala?.tecnico?.id ??
         "";
 
@@ -1173,15 +1186,27 @@ function chaveTecnicoEscala(escala){
         return `id:${String(id).trim()}`;
     }
 
-    const nome = String(
+    const nomeOriginal = String(
         escala?.tecnico_nome ??
         escala?.nome_tecnico ??
+        escala?.nome ??
         escala?.tecnico?.nome ??
         escala?.tecnico ??
         ""
-    ).trim().toLocaleLowerCase("pt-BR");
+    ).trim();
 
-    return nome ? `nome:${nome}` : "";
+    if(!nomeOriginal) return "";
+
+    const tecnicoEncontrado = (Array.isArray(tecnicos) ? tecnicos : []).find(t =>
+        String(t?.nome || t?.usuario || "").trim().toLocaleLowerCase("pt-BR") ===
+        nomeOriginal.toLocaleLowerCase("pt-BR")
+    );
+
+    if(tecnicoEncontrado?.id){
+        return `id:${String(tecnicoEncontrado.id).trim()}`;
+    }
+
+    return `nome:${nomeOriginal.toLocaleLowerCase("pt-BR")}`;
 }
 
 function nomeTecnicoEscala(escala){
@@ -1197,21 +1222,21 @@ function nomeTecnicoEscala(escala){
 function atualizarCards(lista){
     const registros = Array.isArray(lista) ? lista : [];
 
-    document.getElementById("cardTotal").innerText = registros.length;
+    document.getElementById("escalaCardTotal").innerText = registros.length;
 
     const tecnicosUnicos = new Set(
         registros
             .map(chaveTecnicoEscala)
             .filter(Boolean)
     );
-    document.getElementById("cardTecnicos").innerText = tecnicosUnicos.size;
+    document.getElementById("escalaCardTecnicos").innerText = tecnicosUnicos.size;
 
     const diasUnicos = new Set(
         registros
             .map(e => e.data_escala?.split("T")[0] || e.data_escala)
             .filter(Boolean)
     );
-    document.getElementById("cardSemana").innerText = diasUnicos.size;
+    document.getElementById("escalaCardSemana").innerText = diasUnicos.size;
 }
 
 function renderizarCalendario(lista){
@@ -1369,34 +1394,34 @@ function imprimirEscalaCalendario(){
 <meta charset="UTF-8">
 <title>Escala mensal - ${escaparHtml(tituloMes)}</title>
 <style>
-    @page{size:A4 landscape;margin:5mm}
+    @page{size:A4 landscape;margin:8mm}
     *{box-sizing:border-box}
     html,body{margin:0;width:100%;height:100%;font-family:Arial,Helvetica,sans-serif;color:#0f172a;background:#fff}
-    .pagina{width:100%;height:199mm;display:flex;flex-direction:column;overflow:hidden}
-    .print-header{height:18mm;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:2px solid #2563eb;padding-bottom:4px;margin-bottom:4px}
+    .pagina{width:100%;max-width:277mm;height:188mm;margin:0 auto;display:flex;flex-direction:column;overflow:hidden}
+    .print-header{height:17mm;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:2px solid #2563eb;padding-bottom:4px;margin-bottom:4px}
     .marca{display:flex;align-items:center;gap:10px;min-width:0}
-    .marca img{width:88px;height:35px;object-fit:contain}
-    .marca h1{font-size:16px;margin:0 0 2px}
+    .marca img{width:78px;height:32px;object-fit:contain}
+    .marca h1{font-size:15px;margin:0 0 2px}
     .marca p{font-size:9px;color:#64748b;margin:0}
-    .mes-titulo{text-align:center;flex:1;font-size:20px;font-weight:900;text-transform:uppercase;color:#0f172a}
+    .mes-titulo{text-align:center;flex:1;font-size:19px;font-weight:900;text-transform:uppercase;color:#0f172a}
     .emissao{text-align:right;font-size:8px;line-height:1.35;white-space:nowrap}
     .emissao strong,.emissao span{display:block}
-    .calendario-mensal{width:100%;height:171mm;border-collapse:collapse;table-layout:fixed}
-    .calendario-mensal th{height:8mm;border:1px solid #94a3b8;background:#dbeafe;padding:2px;text-align:center;font-size:9px;font-weight:900}
+    .calendario-mensal{width:99%;height:158mm;margin:0 auto;border-collapse:collapse;table-layout:fixed}
+    .calendario-mensal th{height:7mm;border:1px solid #94a3b8;background:#dbeafe;padding:2px;text-align:center;font-size:9px;font-weight:900}
     .calendario-mensal td{border:1px solid #94a3b8;vertical-align:top;padding:2px;height:auto;position:relative;overflow:hidden}
-    .calendario-mensal tbody tr{height:${totalCelulas === 42 ? '27.1mm' : '32.5mm'}}
+    .calendario-mensal tbody tr{height:${totalCelulas === 42 ? '25.1mm' : '30.1mm'}}
     .dia-vazio{background:#f8fafc}
-    .numero-dia{font-size:9px;font-weight:900;color:#0f172a;margin-bottom:2px;border-bottom:1px solid #e2e8f0;padding-bottom:1px}
+    .numero-dia{font-size:10px;font-weight:900;color:#0f172a;margin-bottom:2px;border-bottom:1px solid #e2e8f0;padding-bottom:1px}
     .conteudo-dia{display:flex;flex-direction:column;gap:1px;overflow:hidden}
-    .item-escala{border:1px solid #dbeafe;background:#f8fbff;border-radius:3px;padding:2px;line-height:1.05;break-inside:avoid}
-    .item-escala strong{display:block;font-size:6.8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px}
-    .periodo-print{display:inline-block;border-radius:999px;padding:1px 3px;font-size:5.8px;font-weight:900}
+    .item-escala{border:1px solid #bfdbfe;background:#f8fbff;border-radius:4px;padding:3px 4px;line-height:1.05;break-inside:avoid}
+    .item-escala strong{display:block;font-size:9.2px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px}
+    .periodo-print{display:inline-block;border-radius:999px;padding:1.5px 4px;font-size:7px;font-weight:900}
     .periodo-print.MANHA{background:#dbeafe;color:#1d4ed8}
     .periodo-print.TARDE{background:#ffedd5;color:#c2410c}
     .periodo-print.NOITE{background:#ede9fe;color:#6d28d9}
     .periodo-print.INTEGRAL{background:#dcfce7;color:#15803d}
-    .sem-escala{font-size:6px;color:#94a3b8;text-align:center;padding-top:3px}
-    .print-footer{height:6mm;display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid #cbd5e1;margin-top:3px;padding-top:2px;font-size:7px;color:#64748b}
+    .sem-escala{font-size:7px;color:#94a3b8;text-align:center;padding-top:3px}
+    .print-footer{height:5mm;display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid #cbd5e1;margin-top:3px;padding-top:2px;font-size:7.5px;color:#64748b}
     @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style>
 </head>
@@ -1451,6 +1476,10 @@ document.addEventListener("DOMContentLoaded", () => {
     carregarUsuariosOnline();
     carregarTecnicos();
     carregarEscalas();
+
+    setTimeout(() => {
+        if(Array.isArray(escalas)) atualizarCards(escalas);
+    }, 1200);
 });
 
 setInterval(async () => {
