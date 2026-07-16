@@ -610,6 +610,140 @@ select:focus{
     .top-actions{ grid-template-columns:1fr; }
     .form-grid{ grid-template-columns:1fr; }
 }
+
+/* ===== CADASTRO EM LOTE / FERIADO / AÇÕES ===== */
+.form-grid-lote{
+    display:grid;
+    grid-template-columns:1.35fr 1.2fr .8fr .8fr 1.35fr;
+    gap:14px;
+    align-items:start;
+}
+.select-multiplo{
+    min-height:132px;
+    padding:8px;
+}
+.ajuda-campo{
+    font-size:11px;
+    color:var(--muted);
+    line-height:1.35;
+}
+.datas-box{
+    display:flex;
+    gap:8px;
+    align-items:center;
+}
+.datas-box input{flex:1}
+.btn-add-data{
+    flex:0 0 auto;
+    border:0;
+    border-radius:10px;
+    background:#2563eb;
+    color:#fff;
+    width:42px;
+    height:42px;
+    font-size:21px;
+    font-weight:900;
+    cursor:pointer;
+}
+.datas-selecionadas{
+    display:flex;
+    flex-wrap:wrap;
+    gap:7px;
+    min-height:38px;
+    margin-top:8px;
+    padding:8px;
+    border:1px dashed #cbd5e1;
+    border-radius:10px;
+    background:#f8fafc;
+}
+.data-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    padding:6px 9px;
+    border-radius:999px;
+    background:#dbeafe;
+    color:#1d4ed8;
+    font-size:12px;
+    font-weight:800;
+}
+.data-chip button{
+    width:20px;
+    height:20px;
+    border:0;
+    border-radius:50%;
+    background:#2563eb;
+    color:#fff;
+    cursor:pointer;
+    line-height:1;
+}
+.campo-feriado-obs.oculto{display:none}
+.btn-cancelar-edicao{background:#64748b;display:none}
+.btn-cancelar-edicao.ativo{display:inline-flex}
+.acoes-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:8px;
+    white-space:nowrap;
+}
+.acao-editar,.acao-excluir{
+    border:0;
+    background:transparent;
+    padding:0;
+    cursor:pointer;
+    font-size:12px;
+    font-weight:900;
+}
+.acao-editar{color:#2563eb}
+.acao-excluir{color:#ef4444}
+.feriado-badge{
+    display:inline-block;
+    margin-top:5px;
+    padding:4px 7px;
+    border-radius:999px;
+    background:#fee2e2;
+    color:#dc2626;
+    font-size:10px;
+    font-weight:900;
+}
+.feriado-observacao{
+    margin-top:5px;
+    color:#b91c1c;
+    font-size:11px;
+    font-weight:800;
+    line-height:1.3;
+}
+
+.feriado-dia-nacional{
+    margin:0 0 8px;
+    padding:7px 9px;
+    border-radius:9px;
+    background:#fff1f2;
+    border:1px solid #fecdd3;
+    color:#be123c;
+    font-size:11px;
+    font-weight:900;
+    line-height:1.3;
+}
+.feriado-cabecalho{
+    display:block;
+    margin-top:6px;
+    padding:4px 6px;
+    border-radius:8px;
+    background:#fee2e2;
+    color:#b91c1c;
+    font-size:10px;
+    font-weight:900;
+    white-space:normal;
+}
+@media(max-width:1300px){
+    .form-grid-lote{grid-template-columns:1fr 1fr}
+}
+@media(max-width:900px){
+    .form-grid-lote{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 
@@ -763,7 +897,7 @@ select:focus{
 <section class="content">
 
     <div class="top-actions">
-        <button class="action-card" onclick="adicionarEscala()">
+        <button class="action-card" onclick="document.querySelector('#tecnicoEscala').scrollIntoView({behavior:'smooth'})">
             <span>
                 <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             </span>
@@ -801,7 +935,6 @@ select:focus{
                 <strong id="escalaCardSemana">0</strong>
                 <span>Dias com escala</span>
             </div>
-        </div>
     </div>
 
     <div class="card">
@@ -809,22 +942,26 @@ select:focus{
             <div class="titulo-card">Cadastrar Escala</div>
         </div>
 
-        <div class="form-grid">
+        <input type="hidden" id="escalaEdicaoId">
+
+        <div class="form-grid-lote">
             <div class="campo">
-                <label>Técnico</label>
-                <select id="tecnicoEscala">
-                    <option value="">Selecione</option>
+                <label>Técnicos</label>
+                <select id="tecnicoEscala" class="select-multiplo" multiple>
                 </select>
+                <div class="ajuda-campo">Use Ctrl no Windows ou Command no Mac para selecionar vários técnicos.</div>
             </div>
 
             <div class="campo">
-                <label>Data</label>
-                <input type="date" id="dataEscala" onchange="preencherDiaSemana()">
-            </div>
-
-            <div class="campo">
-                <label>Dia da Semana</label>
-                <input type="text" id="diaSemanaEscala" readonly>
+                <label>Datas</label>
+                <div class="datas-box">
+                    <input type="date" id="dataEscala">
+                    <button type="button" class="btn-add-data" onclick="adicionarDataSelecionada()" title="Adicionar data">+</button>
+                </div>
+                <div id="datasSelecionadas" class="datas-selecionadas">
+                    <span class="ajuda-campo">Nenhuma data adicionada.</span>
+                </div>
+                <div class="ajuda-campo">Adicione um ou mais dias antes de salvar.</div>
             </div>
 
             <div class="campo">
@@ -837,13 +974,30 @@ select:focus{
                     <option value="INTEGRAL">Integral</option>
                 </select>
             </div>
+
+            <div class="campo">
+                <label>Feriado?</label>
+                <select id="feriadoEscala" onchange="alternarObservacaoFeriado()">
+                    <option value="NAO">Não</option>
+                    <option value="SIM">Sim</option>
+                </select>
+            </div>
+
+            <div class="campo campo-feriado-obs oculto" id="campoObservacaoFeriado">
+                <label>Observação do feriado</label>
+                <input type="text" id="observacaoFeriado" maxlength="255" placeholder="Ex.: Independência do Brasil">
+            </div>
         </div>
 
         <div class="form-actions">
-            <button class="btn btn-salvar" onclick="adicionarEscala()">
+            <button class="btn btn-salvar" id="btnSalvarEscala" onclick="salvarEscalas()">
                 <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                Adicionar
+                <span id="textoBtnSalvarEscala">Adicionar escalas</span>
             </button>
+            <button class="btn btn-cancelar-edicao" id="btnCancelarEdicao" type="button" onclick="cancelarEdicaoEscala()">
+                Cancelar edição
+            </button>
+        </div>
         </div>
     </div>
 
@@ -883,6 +1037,8 @@ select:focus{
 <script>
 let escalas = [];
 let tecnicos = [];
+let datasSelecionadasEscala = [];
+let escalaEmEdicao = null;
 
 const diasSemana = [
     "DOMINGO",
@@ -1013,25 +1169,29 @@ function logout(){
 async function carregarTecnicos(){
     try{
         const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
-
         const res = await fetch("/api/tecnicos", {
             headers:{ "x-usuario-id": usuario.id }
         });
 
-        tecnicos = await res.json();
+        const resposta = await res.json();
+        tecnicos = Array.isArray(resposta)
+            ? resposta
+            : Array.isArray(resposta?.dados)
+                ? resposta.dados
+                : Array.isArray(resposta?.tecnicos)
+                    ? resposta.tecnicos
+                    : [];
 
         const select = document.getElementById("tecnicoEscala");
-
-        select.innerHTML = `<option value="">Selecione</option>`;
+        select.innerHTML = "";
 
         tecnicos
             .filter(t => t.ativo == 1 || t.ativo === true || t.ativo === "1")
+            .sort((a,b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"))
             .forEach(t => {
-                select.innerHTML += `
-                    <option value="${t.id}">
-                        ${t.nome}
-                    </option>
-                `;
+                select.insertAdjacentHTML("beforeend", `
+                    <option value="${t.id}">${escaparHtml(t.nome || t.usuario || "Técnico")}</option>
+                `);
             });
 
     }catch(err){
@@ -1070,62 +1230,262 @@ async function carregarEscalas(){
     }
 }
 
-function preencherDiaSemana(){
-    const data = document.getElementById("dataEscala").value;
-    const campo = document.getElementById("diaSemanaEscala");
-
-    if(!data){
-        campo.value = "";
-        return;
-    }
-
-    const d = new Date(data + "T00:00:00");
-    campo.value = diasSemana[d.getDay()];
+function normalizarDataEscala(valor){
+    return String(valor || "").split("T")[0];
 }
 
-async function adicionarEscala(){
-    const tecnico_id = document.getElementById("tecnicoEscala").value;
-    const data_escala = document.getElementById("dataEscala").value;
-    const periodo = document.getElementById("periodoEscala").value;
+function feriadosNacionaisDoAno(ano){
+    const dois = valor => String(valor).padStart(2, "0");
+    const mapa = new Map();
 
-    if(!tecnico_id || !data_escala || !periodo){
-        alert("Preencha técnico, data e período");
+    const adicionar = (mes, dia, nome) => {
+        mapa.set(`${ano}-${dois(mes)}-${dois(dia)}`, nome);
+    };
+
+    adicionar(1, 1, "Confraternização Universal");
+    adicionar(4, 21, "Tiradentes");
+    adicionar(5, 1, "Dia Mundial do Trabalho");
+    adicionar(9, 7, "Independência do Brasil");
+    adicionar(10, 12, "Nossa Senhora Aparecida");
+    adicionar(11, 2, "Finados");
+    adicionar(11, 15, "Proclamação da República");
+    adicionar(11, 20, "Dia Nacional de Zumbi e da Consciência Negra");
+    adicionar(12, 25, "Natal");
+
+    return mapa;
+}
+
+function nomeFeriadoNacional(dataIso){
+    const data = normalizarDataEscala(dataIso);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(data)) return "";
+
+    const ano = Number(data.slice(0, 4));
+    return feriadosNacionaisDoAno(ano).get(data) || "";
+}
+
+function adicionarDataSelecionada(){
+    const input = document.getElementById("dataEscala");
+    const data = normalizarDataEscala(input.value);
+
+    if(!data){
+        alert("Selecione uma data.");
         return;
     }
 
+    if(!datasSelecionadasEscala.includes(data)){
+        datasSelecionadasEscala.push(data);
+        datasSelecionadasEscala.sort();
+    }
+
+    input.value = "";
+    renderizarDatasSelecionadas();
+}
+
+function removerDataSelecionada(data){
+    datasSelecionadasEscala = datasSelecionadasEscala.filter(item => item !== data);
+    renderizarDatasSelecionadas();
+}
+
+function renderizarDatasSelecionadas(){
+    const box = document.getElementById("datasSelecionadas");
+
+    if(!datasSelecionadasEscala.length){
+        box.innerHTML = '<span class="ajuda-campo">Nenhuma data adicionada.</span>';
+        return;
+    }
+
+    box.innerHTML = datasSelecionadasEscala.map(data => `
+        <span class="data-chip">
+            ${escaparHtml(formatarData(data))}
+            <button type="button" onclick="removerDataSelecionada('${escaparHtml(data)}')" title="Remover">×</button>
+        </span>
+    `).join("");
+}
+
+function alternarObservacaoFeriado(){
+    const feriado = document.getElementById("feriadoEscala").value === "SIM";
+    document.getElementById("campoObservacaoFeriado").classList.toggle("oculto", !feriado);
+
+    if(!feriado){
+        document.getElementById("observacaoFeriado").value = "";
+    }
+}
+
+function tecnicosSelecionados(){
+    return [...document.getElementById("tecnicoEscala").selectedOptions]
+        .map(option => option.value)
+        .filter(Boolean);
+}
+
+function limparFormularioEscala(){
+    document.getElementById("escalaEdicaoId").value = "";
+    [...document.getElementById("tecnicoEscala").options].forEach(option => option.selected = false);
+    datasSelecionadasEscala = [];
+    renderizarDatasSelecionadas();
+    document.getElementById("dataEscala").value = "";
+    document.getElementById("periodoEscala").value = "";
+    document.getElementById("feriadoEscala").value = "NAO";
+    document.getElementById("observacaoFeriado").value = "";
+    alternarObservacaoFeriado();
+    escalaEmEdicao = null;
+    document.getElementById("textoBtnSalvarEscala").textContent = "Adicionar escalas";
+    document.getElementById("btnCancelarEdicao").classList.remove("ativo");
+}
+
+function cancelarEdicaoEscala(){
+    limparFormularioEscala();
+}
+
+async function salvarEscalas(){
+    const idsTecnicos = tecnicosSelecionados();
+    const periodo = document.getElementById("periodoEscala").value;
+    const feriado = document.getElementById("feriadoEscala").value === "SIM";
+    const observacao_feriado = document.getElementById("observacaoFeriado").value.trim();
+    const idEdicao = document.getElementById("escalaEdicaoId").value;
+
+    if(!idsTecnicos.length){
+        alert("Selecione pelo menos um técnico.");
+        return;
+    }
+
+    if(!datasSelecionadasEscala.length){
+        alert("Adicione pelo menos uma data.");
+        return;
+    }
+
+    if(!periodo){
+        alert("Selecione o período.");
+        return;
+    }
+
+    if(feriado && !observacao_feriado){
+        alert("Informe a observação do feriado.");
+        return;
+    }
+
+    if(idEdicao && (idsTecnicos.length !== 1 || datasSelecionadasEscala.length !== 1)){
+        alert("Durante a edição, mantenha apenas um técnico e uma data.");
+        return;
+    }
+
+    const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+    const botao = document.getElementById("btnSalvarEscala");
+    botao.disabled = true;
+    document.getElementById("textoBtnSalvarEscala").textContent = idEdicao ? "Salvando..." : "Cadastrando...";
+
     try{
-        const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+        if(idEdicao){
+            const payload = {
+                tecnico_id: idsTecnicos[0],
+                data_escala: datasSelecionadasEscala[0],
+                periodo,
+                feriado: feriado ? 1 : 0,
+                observacao_feriado: feriado ? observacao_feriado : null
+            };
 
-        const res = await fetch("/api/escalas", {
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json",
-                "x-usuario-id": usuario.id
-            },
-            body:JSON.stringify({
-                tecnico_id,
-                data_escala,
-                periodo
-            })
-        });
+            const res = await fetch(`/api/escalas/${idEdicao}`, {
+                method:"PUT",
+                headers:{
+                    "Content-Type":"application/json",
+                    "x-usuario-id": usuario.id
+                },
+                body:JSON.stringify(payload)
+            });
 
-        const data = await res.json();
+            const retorno = await res.json().catch(() => ({}));
+            if(!res.ok || retorno.success === false){
+                throw new Error(retorno.erro || retorno.mensagem || `Erro ${res.status}`);
+            }
 
-        if(data.success){
-            document.getElementById("tecnicoEscala").value = "";
-            document.getElementById("dataEscala").value = "";
-            document.getElementById("diaSemanaEscala").value = "";
-            document.getElementById("periodoEscala").value = "";
-
-            carregarEscalas();
+            alert("Escala atualizada com sucesso.");
         }else{
-            alert(data.erro || "Erro ao adicionar escala");
+            const combinacoes = [];
+            idsTecnicos.forEach(tecnico_id => {
+                datasSelecionadasEscala.forEach(data_escala => {
+                    combinacoes.push({
+                        tecnico_id,
+                        data_escala,
+                        periodo,
+                        feriado: feriado ? 1 : 0,
+                        observacao_feriado: feriado ? observacao_feriado : null
+                    });
+                });
+            });
+
+            let cadastradas = 0;
+            const falhas = [];
+
+            for(const payload of combinacoes){
+                const res = await fetch("/api/escalas", {
+                    method:"POST",
+                    headers:{
+                        "Content-Type":"application/json",
+                        "x-usuario-id": usuario.id
+                    },
+                    body:JSON.stringify(payload)
+                });
+
+                const retorno = await res.json().catch(() => ({}));
+
+                if(res.ok && retorno.success !== false){
+                    cadastradas++;
+                }else{
+                    falhas.push(retorno.erro || retorno.mensagem || `Erro ${res.status}`);
+                }
+            }
+
+            if(falhas.length){
+                alert(`${cadastradas} escala(s) cadastrada(s). ${falhas.length} falha(s): ${falhas[0]}`);
+            }else{
+                alert(`${cadastradas} escala(s) cadastrada(s) com sucesso.`);
+            }
         }
+
+        limparFormularioEscala();
+        await carregarEscalas();
 
     }catch(err){
         console.error(err);
-        alert("Erro ao adicionar escala");
+        alert("Erro ao salvar escala: " + err.message);
+    }finally{
+        botao.disabled = false;
+        document.getElementById("textoBtnSalvarEscala").textContent =
+            document.getElementById("escalaEdicaoId").value ? "Salvar alteração" : "Adicionar escalas";
     }
+}
+
+function editarEscala(id){
+    const escala = escalas.find(item => Number(item.id) === Number(id));
+    if(!escala) return;
+
+    escalaEmEdicao = escala;
+    document.getElementById("escalaEdicaoId").value = escala.id;
+
+    const idTecnico =
+        escala.tecnico_id ??
+        escala.id_tecnico ??
+        escala.tecnicoId ??
+        escala.idTecnico ??
+        escala.tecnico?.id ??
+        "";
+
+    [...document.getElementById("tecnicoEscala").options].forEach(option => {
+        option.selected = String(option.value) === String(idTecnico);
+    });
+
+    datasSelecionadasEscala = [normalizarDataEscala(escala.data_escala)];
+    renderizarDatasSelecionadas();
+
+    document.getElementById("periodoEscala").value = escala.periodo || "";
+    const ehFeriado = escala.feriado == 1 || escala.feriado === true || String(escala.feriado).toUpperCase() === "SIM";
+    document.getElementById("feriadoEscala").value = ehFeriado ? "SIM" : "NAO";
+    document.getElementById("observacaoFeriado").value =
+        escala.observacao_feriado || escala.feriado_observacao || escala.observacao || "";
+    alternarObservacaoFeriado();
+
+    document.getElementById("textoBtnSalvarEscala").textContent = "Salvar alteração";
+    document.getElementById("btnCancelarEdicao").classList.add("ativo");
+    document.querySelector(".card").scrollIntoView({behavior:"smooth", block:"start"});
 }
 
 async function excluirEscala(id){
@@ -1239,6 +1599,20 @@ function atualizarCards(lista){
     document.getElementById("escalaCardSemana").innerText = diasUnicos.size;
 }
 
+function ehFeriadoEscala(escala){
+    return escala?.feriado == 1 ||
+           escala?.feriado === true ||
+           String(escala?.feriado || "").toUpperCase() === "SIM";
+}
+
+function observacaoFeriadoEscala(escala){
+    return String(
+        escala?.observacao_feriado ??
+        escala?.feriado_observacao ??
+        ""
+    ).trim();
+}
+
 function renderizarCalendario(lista){
     const cabecalho = document.getElementById("cabecalhoCalendario");
     const linha = document.getElementById("linhaCalendario");
@@ -1254,44 +1628,52 @@ function renderizarCalendario(lista){
         return;
     }
 
-    const datas = [...new Set(lista.map(e => e.data_escala?.split("T")[0] || e.data_escala))]
-        .sort((a,b) => new Date(a) - new Date(b));
+    const datas = [...new Set(lista.map(e => normalizarDataEscala(e.data_escala)).filter(Boolean))]
+        .sort((a,b) => new Date(a + "T00:00:00") - new Date(b + "T00:00:00"));
 
     datas.forEach(data => {
+        const feriadoNacional = nomeFeriadoNacional(data);
+
         cabecalho.innerHTML += `
             <th>
                 <div class="dia-titulo">${getDiaSemana(data)}</div>
                 <span class="dia-data">${formatarData(data)}</span>
+                ${feriadoNacional ? `<span class="feriado-cabecalho">${escaparHtml(feriadoNacional)}</span>` : ""}
             </th>
         `;
     });
 
     datas.forEach(data => {
-        const itens = lista.filter(e => {
-            const dataItem = e.data_escala?.split("T")[0] || e.data_escala;
-            return dataItem === data;
-        });
+        const itens = lista.filter(e => normalizarDataEscala(e.data_escala) === data);
+        const feriadoNacional = nomeFeriadoNacional(data);
 
-        let html = "";
+        const htmlItens = itens.map(e => {
+            const feriado = ehFeriadoEscala(e);
+            const observacaoFeriado = observacaoFeriadoEscala(e);
 
-        itens.forEach(e => {
-            html += `
+            return `
                 <div class="escala-item">
-                    <strong>${nomeTecnicoEscala(e)}</strong>
-                    <span class="periodo ${e.periodo}">
-                        ${periodoTexto(e.periodo)}
+                    <strong>${escaparHtml(nomeTecnicoEscala(e))}</strong>
+                    <span class="periodo ${escaparHtml(e.periodo || "")}">
+                        ${escaparHtml(periodoTexto(e.periodo))}
                     </span>
-                    <div class="excluir-item" onclick="excluirEscala(${e.id})">
-                        Excluir
+                    ${feriado ? '<span class="feriado-badge">FERIADO</span>' : ''}
+                    ${feriado && observacaoFeriado ? `<div class="feriado-observacao">${escaparHtml(observacaoFeriado)}</div>` : ''}
+                    <div class="acoes-item">
+                        <button type="button" class="acao-editar" onclick="editarEscala(${Number(e.id)})">Editar</button>
+                        <button type="button" class="acao-excluir" onclick="excluirEscala(${Number(e.id)})">Excluir</button>
                     </div>
                 </div>
             `;
-        });
+        }).join("");
 
-        linha.innerHTML += `<td>${html || "-"}</td>`;
+        const avisoFeriadoNacional = feriadoNacional
+            ? `<div class="feriado-dia-nacional">🇧🇷 ${escaparHtml(feriadoNacional)}</div>`
+            : "";
+
+        linha.innerHTML += `<td>${avisoFeriadoNacional}${htmlItens || "-"}</td>`;
     });
 }
-
 
 function escaparHtml(valor){
     return String(valor ?? "").replace(/[&<>"']/g, caractere => ({
@@ -1315,31 +1697,19 @@ function listaAtualParaImpressao(){
     );
 }
 
-function imprimirEscalaCalendario(){
-    const hoje = new Date();
-    const ano = hoje.getFullYear();
-    const mes = hoje.getMonth();
+function dadosMesParaImpressao(ano, mes){
     const primeiroDia = new Date(ano, mes, 1);
     const ultimoDia = new Date(ano, mes + 1, 0);
 
     const listaMes = escalas.filter(e => {
-        const valor = e.data_escala?.split("T")[0] || e.data_escala;
+        const valor = normalizarDataEscala(e.data_escala);
         if(!valor) return false;
         const data = new Date(valor + "T00:00:00");
         return !isNaN(data) && data.getFullYear() === ano && data.getMonth() === mes;
     });
 
-    const logoElemento = document.getElementById("logoEmpresa");
-    const logo = logoElemento?.src || "";
-    const empresa = document.getElementById("empresaLogada")?.innerText?.trim() || "Empresa";
-    const usuario = document.getElementById("userEmpresa")?.innerText?.trim() || "Usuário";
-    const emitidoEm = new Date().toLocaleString("pt-BR");
-    const nomeMes = primeiroDia.toLocaleDateString("pt-BR", {month:"long", year:"numeric"});
-    const tituloMes = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
-
     const nomesDias = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
     const cabecalho = nomesDias.map(dia => `<th>${dia}</th>`).join("");
-
     const totalCelulas = Math.ceil((primeiroDia.getDay() + ultimoDia.getDate()) / 7) * 7;
     const celulas = [];
 
@@ -1353,19 +1723,34 @@ function imprimirEscalaCalendario(){
 
         const dataChave = `${ano}-${String(mes + 1).padStart(2,"0")}-${String(numeroDia).padStart(2,"0")}`;
         const itens = listaMes
-            .filter(e => (e.data_escala?.split("T")[0] || e.data_escala) === dataChave)
+            .filter(e => normalizarDataEscala(e.data_escala) === dataChave)
             .sort((a,b) => {
                 const ordem = {MANHA:1, INTEGRAL:2, TARDE:3, NOITE:4};
                 return (ordem[a.periodo] || 99) - (ordem[b.periodo] || 99) ||
                        nomeTecnicoEscala(a).localeCompare(nomeTecnicoEscala(b), "pt-BR");
             });
 
-        const conteudo = itens.length ? itens.map(e => `
-            <div class="item-escala">
-                <strong>${escaparHtml(nomeTecnicoEscala(e))}</strong>
-                <span class="periodo-print ${escaparHtml(e.periodo || "")}">${escaparHtml(periodoTexto(e.periodo))}</span>
-            </div>
-        `).join("") : '<div class="sem-escala">Sem escala</div>';
+        const feriadoNacional = nomeFeriadoNacional(dataChave);
+
+        const avisoFeriadoNacional = feriadoNacional
+            ? `<div class="feriado-nacional-print">🇧🇷 ${escaparHtml(feriadoNacional)}</div>`
+            : "";
+
+        const itensHtml = itens.length ? itens.map(e => {
+            const feriado = ehFeriadoEscala(e);
+            const obs = observacaoFeriadoEscala(e);
+
+            return `
+                <div class="item-escala ${feriado ? "item-feriado" : ""}">
+                    <strong>${escaparHtml(nomeTecnicoEscala(e))}</strong>
+                    <span class="periodo-print ${escaparHtml(e.periodo || "")}">${escaparHtml(periodoTexto(e.periodo))}</span>
+                    ${feriado ? '<span class="feriado-print">FERIADO</span>' : ''}
+                    ${feriado && obs ? `<div class="feriado-obs-print">${escaparHtml(obs)}</div>` : ''}
+                </div>
+            `;
+        }).join("") : '<div class="sem-escala">Sem escala</div>';
+
+        const conteudo = avisoFeriadoNacional + itensHtml;
 
         celulas.push(`
             <td>
@@ -1380,6 +1765,63 @@ function imprimirEscalaCalendario(){
         linhas.push(`<tr>${celulas.slice(i, i + 7).join("")}</tr>`);
     }
 
+    const nomeMes = primeiroDia.toLocaleDateString("pt-BR", {month:"long", year:"numeric"});
+    const tituloMes = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+
+    return {
+        ano,
+        mes,
+        tituloMes,
+        listaMes,
+        cabecalho,
+        linhas,
+        totalCelulas
+    };
+}
+
+function imprimirEscalaCalendario(){
+    const hoje = new Date();
+    const atual = dadosMesParaImpressao(hoje.getFullYear(), hoje.getMonth());
+
+    const proximaData = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+    const proximo = dadosMesParaImpressao(proximaData.getFullYear(), proximaData.getMonth());
+
+    const meses = [atual];
+    if(proximo.listaMes.length > 0){
+        meses.push(proximo);
+    }
+
+    const logo = document.getElementById("logoEmpresa")?.src || "";
+    const empresa = document.getElementById("empresaLogada")?.innerText?.trim() || "Empresa";
+    const usuario = document.getElementById("userEmpresa")?.innerText?.trim() || "Usuário";
+    const emitidoEm = new Date().toLocaleString("pt-BR");
+
+    const paginas = meses.map((dados, indice) => `
+        <section class="pagina ${indice < meses.length - 1 ? "quebra-pagina" : ""}">
+            <header class="print-header">
+                <div class="marca">
+                    ${logo ? `<img src="${escaparHtml(logo)}" alt="Logo">` : ""}
+                    <div><h1>Escala de Técnicos</h1><p>${escaparHtml(empresa)}</p></div>
+                </div>
+                <div class="mes-titulo">${escaparHtml(dados.tituloMes)}</div>
+                <div class="emissao">
+                    <strong>Emitido por: ${escaparHtml(usuario)}</strong>
+                    <span>${escaparHtml(emitidoEm)}</span>
+                </div>
+            </header>
+
+            <table class="calendario-mensal calendario-${dados.totalCelulas}">
+                <thead><tr>${dados.cabecalho}</tr></thead>
+                <tbody>${dados.linhas.join("")}</tbody>
+            </table>
+
+            <footer class="print-footer">
+                <span>SGOS - Sistema de Gestão de Ordens de Serviço</span>
+                <span>${dados.listaMes.length} escala(s) no mês</span>
+            </footer>
+        </section>
+    `).join("");
+
     const janela = window.open("", "_blank", "width=1400,height=900");
 
     if(!janela){
@@ -1392,58 +1834,142 @@ function imprimirEscalaCalendario(){
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Escala mensal - ${escaparHtml(tituloMes)}</title>
+<title>Escala mensal</title>
 <style>
     @page{size:A4 landscape;margin:8mm}
     *{box-sizing:border-box}
-    html,body{margin:0;width:100%;height:100%;font-family:Arial,Helvetica,sans-serif;color:#0f172a;background:#fff}
-    .pagina{width:100%;max-width:277mm;height:188mm;margin:0 auto;display:flex;flex-direction:column;overflow:hidden}
-    .print-header{height:17mm;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:2px solid #2563eb;padding-bottom:4px;margin-bottom:4px}
+    html,body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#0f172a;background:#fff}
+    .pagina{
+        width:100%;
+        max-width:277mm;
+        height:188mm;
+        margin:0 auto;
+        display:flex;
+        flex-direction:column;
+        overflow:hidden;
+    }
+    .quebra-pagina{break-after:page;page-break-after:always}
+    .print-header{
+        height:17mm;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        border-bottom:2px solid #2563eb;
+        padding-bottom:4px;
+        margin-bottom:4px;
+    }
     .marca{display:flex;align-items:center;gap:10px;min-width:0}
     .marca img{width:78px;height:32px;object-fit:contain}
     .marca h1{font-size:15px;margin:0 0 2px}
     .marca p{font-size:9px;color:#64748b;margin:0}
-    .mes-titulo{text-align:center;flex:1;font-size:19px;font-weight:900;text-transform:uppercase;color:#0f172a}
+    .mes-titulo{text-align:center;flex:1;font-size:19px;font-weight:900;text-transform:uppercase}
     .emissao{text-align:right;font-size:8px;line-height:1.35;white-space:nowrap}
     .emissao strong,.emissao span{display:block}
-    .calendario-mensal{width:99%;height:158mm;margin:0 auto;border-collapse:collapse;table-layout:fixed}
-    .calendario-mensal th{height:7mm;border:1px solid #94a3b8;background:#dbeafe;padding:2px;text-align:center;font-size:9px;font-weight:900}
-    .calendario-mensal td{border:1px solid #94a3b8;vertical-align:top;padding:2px;height:auto;position:relative;overflow:hidden}
-    .calendario-mensal tbody tr{height:${totalCelulas === 42 ? '25.1mm' : '30.1mm'}}
+    .calendario-mensal{width:98%;height:158mm;margin:0 auto;border-collapse:collapse;table-layout:fixed}
+    .calendario-mensal th{
+        height:7mm;
+        border:1px solid #94a3b8;
+        background:#dbeafe;
+        padding:2px;
+        text-align:center;
+        font-size:9px;
+        font-weight:900;
+    }
+    .calendario-mensal td{
+        border:1px solid #94a3b8;
+        vertical-align:top;
+        padding:2px;
+        position:relative;
+        overflow:hidden;
+    }
+    .calendario-42 tbody tr{height:25.1mm}
+    .calendario-35 tbody tr{height:30.1mm}
     .dia-vazio{background:#f8fafc}
-    .numero-dia{font-size:10px;font-weight:900;color:#0f172a;margin-bottom:2px;border-bottom:1px solid #e2e8f0;padding-bottom:1px}
-    .conteudo-dia{display:flex;flex-direction:column;gap:1px;overflow:hidden}
-    .item-escala{border:1px solid #bfdbfe;background:#f8fbff;border-radius:4px;padding:3px 4px;line-height:1.05;break-inside:avoid}
-    .item-escala strong{display:block;font-size:9.2px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px}
-    .periodo-print{display:inline-block;border-radius:999px;padding:1.5px 4px;font-size:7px;font-weight:900}
+    .numero-dia{font-size:10px;font-weight:900;margin-bottom:2px;border-bottom:1px solid #e2e8f0;padding-bottom:1px}
+    .conteudo-dia{display:flex;flex-direction:column;gap:2px;overflow:hidden}
+    .item-escala{
+        border:1px solid #bfdbfe;
+        background:#f8fbff;
+        border-radius:4px;
+        padding:3px 4px;
+        line-height:1.08;
+        break-inside:avoid;
+    }
+    .item-feriado{border-color:#fecaca;background:#fff7f7}
+    .item-escala strong{
+        display:block;
+        font-size:11.4px;
+        line-height:1.15;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        margin-bottom:2px;
+    }
+    .periodo-print{
+        display:inline-block;
+        border-radius:999px;
+        padding:1.5px 4px;
+        font-size:7.4px;
+        font-weight:900;
+    }
     .periodo-print.MANHA{background:#dbeafe;color:#1d4ed8}
     .periodo-print.TARDE{background:#ffedd5;color:#c2410c}
     .periodo-print.NOITE{background:#ede9fe;color:#6d28d9}
     .periodo-print.INTEGRAL{background:#dcfce7;color:#15803d}
+    .feriado-print{
+        display:inline-block;
+        margin-left:3px;
+        padding:1.5px 4px;
+        border-radius:999px;
+        background:#fee2e2;
+        color:#dc2626;
+        font-size:7px;
+        font-weight:900;
+    }
+    .feriado-obs-print{
+        margin-top:2px;
+        color:#b91c1c;
+        font-size:7.5px;
+        font-weight:800;
+        line-height:1.15;
+        white-space:normal;
+    }
+.feriado-nacional-print{
+        margin-bottom:2px;
+        padding:2px 3px;
+        border-radius:3px;
+        background:#fee2e2;
+        border:1px solid #fecaca;
+        color:#b91c1c;
+        font-size:7.6px;
+        font-weight:900;
+        line-height:1.12;
+        white-space:normal;
+    }
     .sem-escala{font-size:7px;color:#94a3b8;text-align:center;padding-top:3px}
-    .print-footer{height:5mm;display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid #cbd5e1;margin-top:3px;padding-top:2px;font-size:7.5px;color:#64748b}
-    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+    .print-footer{
+        height:5mm;
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-end;
+        border-top:1px solid #cbd5e1;
+        margin-top:3px;
+        padding-top:2px;
+        font-size:7.5px;
+        color:#64748b;
+    }
+    @media print{
+        body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    }
 </style>
 </head>
 <body>
-<section class="pagina">
-    <header class="print-header">
-        <div class="marca">
-            ${logo ? `<img src="${escaparHtml(logo)}" alt="Logo">` : ""}
-            <div><h1>Escala de Técnicos</h1><p>${escaparHtml(empresa)}</p></div>
-        </div>
-        <div class="mes-titulo">${escaparHtml(tituloMes)}</div>
-        <div class="emissao"><strong>Emitido por: ${escaparHtml(usuario)}</strong><span>${escaparHtml(emitidoEm)}</span></div>
-    </header>
-    <table class="calendario-mensal">
-        <thead><tr>${cabecalho}</tr></thead>
-        <tbody>${linhas.join("")}</tbody>
-    </table>
-    <footer class="print-footer"><span>SGOS - Sistema de Gestão de Ordens de Serviço</span><span>${listaMes.length} escala(s) no mês</span></footer>
-</section>
-<script>window.addEventListener("load",()=>setTimeout(()=>window.print(),300));<\/script>
+${paginas}
+<script>window.addEventListener("load",()=>setTimeout(()=>window.print(),350));<\/script>
 </body>
 </html>`);
+
     janela.document.close();
 }
 
@@ -1476,6 +2002,8 @@ document.addEventListener("DOMContentLoaded", () => {
     carregarUsuariosOnline();
     carregarTecnicos();
     carregarEscalas();
+    renderizarDatasSelecionadas();
+    alternarObservacaoFeriado();
 
     setTimeout(() => {
         if(Array.isArray(escalas)) atualizarCards(escalas);
