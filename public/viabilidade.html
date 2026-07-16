@@ -95,6 +95,33 @@ button,input,textarea,select{font:inherit}
 
 @media(max-width:1300px){.top-actions{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr 1fr}.campo.span-3{grid-column:span 2}.filtros{grid-template-columns:1fr 1fr}}
 @media(max-width:900px){.sidebar{display:none}.main{margin-left:0}.header{height:auto;flex-direction:column;align-items:flex-start;gap:15px;padding:20px}.header-actions{width:100%;justify-content:space-between;flex-wrap:wrap}.busca-wrap,.input-busca-menu{width:100%}.content{padding:20px}.top-actions,.form-grid,.filtros{grid-template-columns:1fr}.campo.span-2,.campo.span-3{grid-column:span 1}.footer{flex-direction:column;gap:8px}}
+
+/* AJUSTES VIABILIDADE */
+.lista-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.lista-toolbar-acoes{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn-imprimir{background:#0f172a}.btn-imprimir:hover{background:#020617}
+.btn-secundario{background:#2563eb}.btn-secundario:hover{background:#1d4ed8}
+.checkbox-viabilidade{width:18px;height:18px;cursor:pointer;accent-color:#2563eb}
+.linha-viabilidade{cursor:pointer}.linha-viabilidade td:first-child{cursor:default}.linha-viabilidade:hover{background:#eff6ff}
+.btn-localizacao-icone{border:0;width:36px;height:36px;border-radius:10px;background:#dbeafe;color:#1d4ed8;cursor:pointer;font-size:18px;display:inline-flex;align-items:center;justify-content:center}
+.btn-localizacao-icone:hover{background:#bfdbfe}
+.popup-resumo{position:fixed;inset:0;background:rgba(15,23,42,.72);display:none;align-items:center;justify-content:center;padding:20px;z-index:99998}
+.popup-resumo.ativo{display:flex}
+.resumo-card{width:min(980px,96vw);max-height:92vh;background:#fff;border-radius:18px;box-shadow:0 28px 80px rgba(15,23,42,.35);overflow:hidden;display:flex;flex-direction:column}
+.resumo-topo{padding:20px 22px;border-bottom:1px solid var(--borda);display:flex;justify-content:space-between;align-items:flex-start;gap:15px;background:#f8fafc}
+.resumo-topo h2{margin:0;font-size:22px}.resumo-topo p{margin:5px 0 0;color:var(--muted);font-size:13px}
+.resumo-fechar{border:0;background:#fee2e2;color:#dc2626;width:38px;height:38px;border-radius:50%;font-size:18px;font-weight:800;cursor:pointer}
+.resumo-conteudo{padding:22px;overflow:auto}
+.resumo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.resumo-item{border:1px solid var(--borda);border-radius:12px;padding:13px;background:#fff;min-width:0}
+.resumo-item.span-2{grid-column:span 2}.resumo-item small{display:block;color:var(--muted);font-weight:800;font-size:11px;text-transform:uppercase;margin-bottom:5px}.resumo-item strong,.resumo-item div{font-size:14px;word-break:break-word}
+.resumo-secao{margin-top:18px}.resumo-secao h3{font-size:15px;margin:0 0 10px}
+.resumo-anexos{display:flex;gap:10px;flex-wrap:wrap}.resumo-anexo{width:110px;height:88px;border-radius:12px;border:1px solid var(--borda);overflow:hidden;cursor:pointer;background:#0f172a;display:flex;align-items:center;justify-content:center;color:#fff;font-size:30px}.resumo-anexo img{width:100%;height:100%;object-fit:cover}
+.resumo-mapa{border:1px solid var(--borda);border-radius:14px;overflow:hidden}.resumo-mapa iframe{width:100%;height:320px;border:0}.resumo-mapa-info{padding:10px 12px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.resumo-acoes{padding:16px 22px;border-top:1px solid var(--borda);display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;background:#fff}
+.btn-excluir{background:#ef4444}.btn-excluir:hover{background:#dc2626}
+.btn-fechar-resumo{background:#64748b}
+@media(max-width:700px){.resumo-grid{grid-template-columns:1fr}.resumo-item.span-2{grid-column:span 1}.resumo-acoes .btn{flex:1;justify-content:center}.resumo-card{max-height:96vh}}
 </style>
 </head>
 <body>
@@ -152,7 +179,9 @@ button,input,textarea,select{font:inherit}
             <input type="hidden" id="viabilidadeId">
             <input type="hidden" id="latitude">
             <input type="hidden" id="longitude">
-            <div class="campo"><label for="telefone">Telefone</label><input id="telefone" maxlength="30" inputmode="tel" placeholder="(00) 00000-0000"></div>
+            <div class="campo"><label for="telefone">Telefone principal</label><input id="telefone" maxlength="30" inputmode="tel" placeholder="(00) 00000-0000"></div>
+            <div class="campo"><label for="telefone2">Telefone secundário</label><input id="telefone2" maxlength="30" inputmode="tel" placeholder="(00) 00000-0000"></div>
+            <div class="campo"><label for="localidade">Localidade</label><select id="localidade"><option value="">Selecione a localidade</option></select></div>
             <div class="campo"><label for="tecnicoResponsavel">Técnico responsável</label><select id="tecnicoResponsavel"><option value="">Selecione o técnico</option></select></div>
             <div class="campo"><label for="status">Status</label><select id="status"><option value="PENDENTE">Pendente</option><option value="APROVADA">Aprovada</option><option value="REPROVADA">Reprovada</option></select></div>
             <div class="campo span-3"><label for="observacao">Observação</label><textarea id="observacao" maxlength="2000" placeholder="Detalhes da viabilidade, estrutura disponível, distância, materiais necessários..."></textarea></div>
@@ -174,18 +203,26 @@ button,input,textarea,select{font:inherit}
 
     <div class="card">
         <div class="card-header"><div class="titulo-card">Filtros</div></div>
-        <div class="filtros"><input type="text" id="filtroNome" placeholder="Filtrar por nome"><input type="text" id="filtroEndereco" placeholder="Filtrar por endereço"><input type="date" id="dataInicio"><input type="date" id="dataFim"></div>
+        <div class="filtros"><input type="text" id="filtroNome" placeholder="Filtrar por nome"><input type="text" id="filtroEndereco" placeholder="Filtrar por endereço"><select id="filtroLocalidade"><option value="">Todas as localidades</option></select><input type="date" id="dataInicio"><input type="date" id="dataFim"></div>
     </div>
 
     <div class="card">
-        <div class="card-header"><div class="titulo-card">Lista de Viabilidades</div></div>
+        <div class="card-header lista-toolbar"><div><div class="titulo-card">Lista de Viabilidades</div><div class="sub-card">Clique em uma viabilidade para abrir o resumo completo.</div></div><div class="lista-toolbar-acoes"><button class="btn btn-imprimir" type="button" onclick="imprimirSelecionadas()">🖨️ Imprimir selecionadas</button></div></div>
         <div class="table-wrap">
-            <table><thead><tr><th>ID</th><th>Nome</th><th>Endereço</th><th>Observação</th><th>Observação pós-aprovação</th><th>Telefone</th><th>Técnico responsável</th><th>Cadastrado por</th><th>Registrado em</th><th>Atualizado por</th><th>Atualizado em</th><th>Status</th><th>Anexos da análise</th><th>Comprovação de visita</th><th>Localização</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="16" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
+            <table><thead><tr><th><input type="checkbox" class="checkbox-viabilidade" id="selecionarTodas" title="Selecionar todas"></th><th>Nome</th><th>Localidade</th><th>Endereço</th><th>Telefones</th><th>Técnico</th><th>Registrado em</th><th>Status</th><th>Anexos</th><th>Localização</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="11" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
         </div>
     </div>
 </section>
 <footer class="footer"><span>SGOS - Sistema de Gestão de Ordens de Serviço</span><span>Versão 1.0.0</span></footer>
 </main>
+
+<div class="popup-resumo" id="popupResumo" onclick="fecharResumoAoFundo(event)">
+    <div class="resumo-card">
+        <div class="resumo-topo"><div><h2 id="resumoTitulo">Detalhes da viabilidade</h2><p id="resumoSubtitulo"></p></div><button class="resumo-fechar" type="button" onclick="fecharResumo()">✕</button></div>
+        <div class="resumo-conteudo" id="resumoConteudo"></div>
+        <div class="resumo-acoes" id="resumoAcoes"></div>
+    </div>
+</div>
 
 <div class="popup" id="popupMidia" onclick="fecharMidiaAoFundo(event)"><button class="popup-fechar" onclick="fecharMidia()">✕</button><div id="popupConteudo"></div></div>
 
@@ -196,6 +233,8 @@ let viabilidades = [];
 let arquivosSelecionados = [];
 let arquivosVisitaSelecionados = [];
 let anexosExistentesEdicao = [];
+let localidades = [];
+let idsSelecionados = new Set();
 
 function usuarioLocal(){try{return JSON.parse(localStorage.getItem("usuario")||"{}")}catch{return {}}}
 function getAuthHeaders(){const u=usuarioLocal();return {"x-usuario-id":u.id||"","x-usuario-nome":u.usuario||u.nome||"","x-usuario-cargo":u.cargo||""}}
@@ -257,6 +296,19 @@ async function carregarTecnicos(){
     }catch(e){console.error("Erro ao carregar técnicos:",e);select.innerHTML='<option value="">Não foi possível carregar os técnicos</option>';}
 }
 
+async function carregarLocalidades(){
+    try{
+        const r=await fetch("/api/localidades",{headers:getAuthHeaders()});
+        if(!r.ok)throw new Error(`Erro ${r.status}`);
+        const resp=await r.json();
+        const lista=Array.isArray(resp)?resp:(Array.isArray(resp?.dados)?resp.dados:(Array.isArray(resp?.localidades)?resp.localidades:[]));
+        localidades=lista.map(x=>({id:x.id,nome:x.nome||x.localidade||x.descricao||""})).filter(x=>x.nome).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+        const opcoes=localidades.map(x=>`<option value="${escapar(x.nome)}">${escapar(x.nome)}</option>`).join("");
+        document.getElementById("localidade").innerHTML='<option value="">Selecione a localidade</option>'+opcoes;
+        document.getElementById("filtroLocalidade").innerHTML='<option value="">Todas as localidades</option>'+opcoes;
+    }catch(e){console.error("Erro ao carregar localidades:",e)}
+}
+
 async function carregarUsuariosOnline(){try{const u=usuarioLocal();const r=await fetch("/api/logs",{headers:{"x-empresa-id":u.empresa_id||"","x-usuario-id":u.id||""}});const logs=await r.json();const n=[...new Set((Array.isArray(logs)?logs:[]).filter(x=>!x.logout).map(x=>x.usuario).filter(Boolean))];document.getElementById("usuariosOnline").innerHTML=n.length?n.map(x=>`🟢 ${escapar(x)}`).join("<br>"):"Nenhum usuário online"}catch{document.getElementById("usuariosOnline").innerText="Online indisponível"}}
 function logout(){const id=localStorage.getItem("log_id");if(id)fetch("/api/logout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({log_id:id})}).catch(()=>{});sessionStorage.clear();localStorage.clear();location.href="login.html"}
 
@@ -292,6 +344,8 @@ function editarViabilidade(id){
     document.getElementById("nome").value=o.nome||"";
     document.getElementById("endereco").value=o.endereco||"";
     document.getElementById("telefone").value=o.telefone||"";
+    document.getElementById("telefone2").value=o.telefone2||o.telefone_secundario||"";
+    document.getElementById("localidade").value=o.localidade||o.localidade_nome||"";
     document.getElementById("observacao").value=o.observacao||o.observacoes||"";
     document.getElementById("observacaoPosAprovacao").value=o.observacao_pos_aprovacao||"";
     document.getElementById("tecnicoResponsavel").value=o.tecnico_responsavel||"";
@@ -308,7 +362,7 @@ function editarViabilidade(id){
     document.querySelector(".card").scrollIntoView({behavior:"smooth",block:"start"});
 }
 function limparFormulario(){
-    ["viabilidadeId","nome","endereco","telefone","observacao","observacaoPosAprovacao","tecnicoResponsavel","latitude","longitude","localizacaoTecnico"].forEach(id=>document.getElementById(id).value="");
+    ["viabilidadeId","nome","endereco","telefone","telefone2","localidade","observacao","observacaoPosAprovacao","tecnicoResponsavel","latitude","longitude","localizacaoTecnico"].forEach(id=>document.getElementById(id).value="");
     document.getElementById("status").value="PENDENTE";
     arquivosSelecionados=[];
     arquivosVisitaSelecionados=[];
@@ -324,13 +378,13 @@ function limparFormulario(){
 
 async function salvarViabilidade(){
     const id=document.getElementById("viabilidadeId").value;
-    const nome=document.getElementById("nome").value.trim(),endereco=document.getElementById("endereco").value.trim(),observacao=document.getElementById("observacao").value.trim(),observacao_pos_aprovacao=document.getElementById("observacaoPosAprovacao").value.trim(),telefone=document.getElementById("telefone").value.trim(),tecnico_responsavel=document.getElementById("tecnicoResponsavel").value.trim(),status=document.getElementById("status").value;
+    const nome=document.getElementById("nome").value.trim(),endereco=document.getElementById("endereco").value.trim(),observacao=document.getElementById("observacao").value.trim(),observacao_pos_aprovacao=document.getElementById("observacaoPosAprovacao").value.trim(),telefone=document.getElementById("telefone").value.trim(),telefone2=document.getElementById("telefone2").value.trim(),localidade=document.getElementById("localidade").value.trim(),tecnico_responsavel=document.getElementById("tecnicoResponsavel").value.trim(),status=document.getElementById("status").value;
     if(!nome||!endereco){alert("Preencha os campos Nome e Endereço.");return}
     const btn=document.getElementById("btnSalvar");btn.disabled=true;document.getElementById("textoBtnSalvar").textContent=id?"Atualizando...":"Salvando...";
     try{
         const latitude=document.getElementById("latitude").value;
         const longitude=document.getElementById("longitude").value;
-        const payload={nome,endereco,observacao,observacao_pos_aprovacao,telefone,tecnico_responsavel,status,latitude,longitude};
+        const payload={nome,endereco,observacao,observacao_pos_aprovacao,telefone,telefone2,localidade,tecnico_responsavel,status,latitude,longitude};
         const r=await fetch(id?`${API_VIABILIDADE}/${id}`:API_VIABILIDADE,{method:id?"PUT":"POST",headers:{"Content-Type":"application/json",...getAuthHeaders()},body:JSON.stringify(payload)});
         const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.erro||j.mensagem||`Erro ${r.status}`);
         const registroId=Number(id||j.id||j.viabilidade_id||j.insertId||j?.dados?.id);
@@ -341,37 +395,75 @@ async function salvarViabilidade(){
 }
 
 async function carregarViabilidades(){
-    const tbody=document.getElementById("tabelaViabilidades");tbody.innerHTML='<tr><td colspan="16" class="vazio">Carregando viabilidades...</td></tr>';
-    try{const r=await fetch(API_VIABILIDADE,{headers:getAuthHeaders()});if(!r.ok)throw new Error(`Erro ${r.status}`);viabilidades=normalizarLista(await r.json());renderTabela()}catch(e){console.error(e);tbody.innerHTML='<tr><td colspan="16" class="vazio">Erro ao carregar viabilidades.</td></tr>'}
+    const tbody=document.getElementById("tabelaViabilidades");tbody.innerHTML='<tr><td colspan="11" class="vazio">Carregando viabilidades...</td></tr>';
+    try{const r=await fetch(API_VIABILIDADE,{headers:getAuthHeaders()});if(!r.ok)throw new Error(`Erro ${r.status}`);viabilidades=normalizarLista(await r.json());renderTabela()}catch(e){console.error(e);tbody.innerHTML='<tr><td colspan="11" class="vazio">Erro ao carregar viabilidades.</td></tr>'}
 }
 function dentroDias(v,dias){if(!v)return false;const d=new Date(v);if(isNaN(d))return false;const ini=new Date();ini.setDate(ini.getDate()-(dias-1));ini.setHours(0,0,0,0);const fim=new Date();fim.setHours(23,59,59,999);return d>=ini&&d<=fim}
 function mesmoDia(v){if(!v)return false;const d=new Date(v),h=new Date();return !isNaN(d)&&d.toDateString()===h.toDateString()}
 function atualizarCards(lista){document.getElementById("cardTotal").innerText=lista.length;document.getElementById("card7Dias").innerText=viabilidades.filter(x=>dentroDias(dataRegistro(x),7)).length;document.getElementById("cardAnexos").innerText=lista.filter(x=>anexosDoRegistro(x).length).length;document.getElementById("cardHoje").innerText=viabilidades.filter(x=>mesmoDia(dataRegistro(x))).length}
 function renderTabela(){
-    const nome=document.getElementById("filtroNome").value.toLowerCase(),end=document.getElementById("filtroEndereco").value.toLowerCase(),di=document.getElementById("dataInicio").value,df=document.getElementById("dataFim").value;
-    const lista=viabilidades.filter(o=>{const d=dataRegistro(o)?new Date(dataRegistro(o)):null;let ok=(!nome||String(o.nome||"").toLowerCase().includes(nome))&&(!end||String(o.endereco||"").toLowerCase().includes(end));if(di)ok=ok&&d&&!isNaN(d)&&d>=new Date(di+"T00:00:00");if(df)ok=ok&&d&&!isNaN(d)&&d<=new Date(df+"T23:59:59");return ok}).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
+    const nome=document.getElementById("filtroNome").value.toLowerCase(),end=document.getElementById("filtroEndereco").value.toLowerCase(),loc=document.getElementById("filtroLocalidade").value.toLowerCase(),di=document.getElementById("dataInicio").value,df=document.getElementById("dataFim").value;
+    const lista=viabilidades.filter(o=>{const d=dataRegistro(o)?new Date(dataRegistro(o)):null;let ok=(!nome||String(o.nome||"").toLowerCase().includes(nome))&&(!end||String(o.endereco||"").toLowerCase().includes(end))&&(!loc||String(o.localidade||o.localidade_nome||"").toLowerCase()===loc);if(di)ok=ok&&d&&!isNaN(d)&&d>=new Date(di+"T00:00:00");if(df)ok=ok&&d&&!isNaN(d)&&d<=new Date(df+"T23:59:59");return ok}).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
     atualizarCards(lista);
     const tbody=document.getElementById("tabelaViabilidades");
-    if(!lista.length){tbody.innerHTML='<tr><td colspan="16" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
-    const renderAnexos=(listaAnexos)=>listaAnexos.length?`<div class="anexo-lista">${listaAnexos.map(a=>{const u=getUrl(typeof a==="object"?(a.url||a.caminho||a.arquivo):a);return (String(a?.tipo||"").startsWith("video/")||ehVideo(u))?`<div class="mini-video" title="Visualizar vídeo" onclick="abrirMidia('${escapar(u)}',true)">▶</div>`:`<img class="mini-anexo" src="${escapar(u)}" alt="Anexo" title="Visualizar imagem" onclick="abrirMidia('${escapar(u)}',false)">`}).join("")}</div>`:"-";
+    if(!lista.length){tbody.innerHTML='<tr><td colspan="11" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
     tbody.innerHTML=lista.map(o=>{
-        const analise=anexosPorCategoria(o,"ANALISE"),visita=anexosPorCategoria(o,"COMPROVACAO_VISITA");
+        const anexos=anexosDoRegistro(o).length;
         const st=String(o.status||"PENDENTE").toUpperCase();
-        const localizacao=coordenadasValidas(o)?`<button class="btn-localizacao" onclick="abrirMapaViabilidade(${Number(o.id)})">📍 Visualizar localização</button>`:"<span class='muted'>Não registrada</span>";
-        return `<tr>
-            <td>${o.id??"-"}</td><td><strong>${escapar(o.nome||"-")}</strong></td><td>${escapar(o.endereco||"-")}</td>
-            <td style="white-space:normal;min-width:220px">${escapar(o.observacao||o.observacoes||"-")}</td>
-            <td style="white-space:normal;min-width:220px">${escapar(o.observacao_pos_aprovacao||"-")}</td>
-            <td>${escapar(o.telefone||"-")}</td><td>${escapar(o.tecnico_responsavel||"-")}</td>
-            <td>${escapar(nomeCadastrador(o))}</td><td>${formatarData(dataRegistro(o))}</td>
-            <td>${escapar(nomeAtualizador(o))}</td><td>${formatarData(o.atualizado_em)}</td>
+        const localizacao=coordenadasValidas(o)?`<button class="btn-localizacao-icone" title="Visualizar localização" onclick="event.stopPropagation();abrirResumoViabilidade(${Number(o.id)},'localizacao')">📍</button>`:"<span class='muted'>-</span>";
+        const telefones=[o.telefone,o.telefone2||o.telefone_secundario].filter(Boolean).map(escapar).join("<br>")||"-";
+        return `<tr class="linha-viabilidade" onclick="abrirResumoViabilidade(${Number(o.id)})">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="checkbox-viabilidade chk-item" value="${Number(o.id)}" ${idsSelecionados.has(Number(o.id))?'checked':''} onchange="alternarSelecao(${Number(o.id)},this.checked)"></td>
+            <td><strong>${escapar(o.nome||"-")}</strong></td>
+            <td>${escapar(o.localidade||o.localidade_nome||"-")}</td>
+            <td>${escapar(o.endereco||"-")}</td>
+            <td>${telefones}</td>
+            <td>${escapar(o.tecnico_responsavel||"-")}</td>
+            <td>${formatarData(dataRegistro(o))}</td>
             <td><span class="status-box ${classeStatus(st)}">${escapar(st)}</span></td>
-            <td>${renderAnexos(analise)}</td><td>${renderAnexos(visita)}</td><td>${localizacao}</td>
-            <td><div class="acoes"><span class="icone-acao" title="Editar" onclick="editarViabilidade(${Number(o.id)})">✏️</span><span class="icone-acao" title="Excluir" onclick="excluirViabilidade(${Number(o.id)})">🗑️</span></div></td>
-        </tr>
-        <tr class="mapa-linha"><td colspan="16"><div class="mapa-inline" id="mapaViabilidade-${Number(o.id)}"></div></td></tr>`;
+            <td>${anexos?`📎 ${anexos}`:"-"}</td>
+            <td>${localizacao}</td>
+            <td onclick="event.stopPropagation()"><div class="acoes"><span class="icone-acao" title="Imprimir" onclick="imprimirViabilidade(${Number(o.id)})">🖨️</span><span class="icone-acao" title="Editar" onclick="editarViabilidade(${Number(o.id)})">✏️</span><span class="icone-acao" title="Excluir" onclick="excluirViabilidade(${Number(o.id)})">🗑️</span></div></td>
+        </tr>`;
     }).join("");
+    atualizarCheckboxTodas(lista);
 }
+function alternarSelecao(id,marcado){marcado?idsSelecionados.add(Number(id)):idsSelecionados.delete(Number(id));atualizarCheckboxTodas()}
+function atualizarCheckboxTodas(listaAtual){const check=document.getElementById("selecionarTodas");if(!check)return;const checks=[...document.querySelectorAll(".chk-item")];check.checked=checks.length>0&&checks.every(c=>c.checked);check.indeterminate=checks.some(c=>c.checked)&&!check.checked}
+function selecionarTodasViabilidades(marcado){document.querySelectorAll(".chk-item").forEach(c=>{c.checked=marcado;const id=Number(c.value);marcado?idsSelecionados.add(id):idsSelecionados.delete(id)});atualizarCheckboxTodas()}
+function renderAnexosResumo(lista){if(!lista.length)return '<div class="muted">Nenhum anexo.</div>';return `<div class="resumo-anexos">${lista.map(a=>{const u=getUrl(typeof a==="object"?(a.url||a.caminho||a.arquivo):a),video=String(a?.tipo||"").startsWith("video/")||ehVideo(u);return video?`<div class="resumo-anexo" onclick="abrirMidia('${escapar(u)}',true)">▶</div>`:`<div class="resumo-anexo" onclick="abrirMidia('${escapar(u)}',false)"><img src="${escapar(u)}" alt="Anexo"></div>`}).join("")}</div>`}
+function abrirResumoViabilidade(id,foco=""){
+    const o=viabilidades.find(v=>Number(v.id)===Number(id));if(!o)return;
+    const analise=anexosPorCategoria(o,"ANALISE"),visita=anexosPorCategoria(o,"COMPROVACAO_VISITA"),st=String(o.status||"PENDENTE").toUpperCase();
+    document.getElementById("resumoTitulo").textContent=o.nome||"Detalhes da viabilidade";
+    document.getElementById("resumoSubtitulo").textContent=`${o.localidade||o.localidade_nome||"Localidade não informada"} • ${formatarData(dataRegistro(o))}`;
+    const mapa=coordenadasValidas(o)?`<div class="resumo-mapa" id="resumoLocalizacao"><iframe loading="lazy" src="${urlMapaEmbed(Number(o.latitude),Number(o.longitude))}"></iframe><div class="resumo-mapa-info"><span>Latitude: ${Number(o.latitude).toFixed(8)} | Longitude: ${Number(o.longitude).toFixed(8)}</span><a class="mapa-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${Number(o.latitude)},${Number(o.longitude)}">Abrir no Google Maps</a></div></div>`:'<div class="muted">Localização ainda não registrada.</div>';
+    document.getElementById("resumoConteudo").innerHTML=`<div class="resumo-grid">
+        <div class="resumo-item"><small>Status</small><span class="status-box ${classeStatus(st)}">${escapar(st)}</span></div>
+        <div class="resumo-item"><small>Localidade</small><strong>${escapar(o.localidade||o.localidade_nome||"-")}</strong></div>
+        <div class="resumo-item span-2"><small>Endereço</small><div>${escapar(o.endereco||"-")}</div></div>
+        <div class="resumo-item"><small>Telefone principal</small><div>${escapar(o.telefone||"-")}</div></div>
+        <div class="resumo-item"><small>Telefone secundário</small><div>${escapar(o.telefone2||o.telefone_secundario||"-")}</div></div>
+        <div class="resumo-item"><small>Técnico responsável</small><div>${escapar(o.tecnico_responsavel||"-")}</div></div>
+        <div class="resumo-item"><small>Cadastrado por</small><div>${escapar(nomeCadastrador(o))}</div></div>
+        <div class="resumo-item"><small>Registrado em</small><div>${formatarData(dataRegistro(o))}</div></div>
+        <div class="resumo-item"><small>Última atualização</small><div>${formatarData(o.atualizado_em)}</div></div>
+        <div class="resumo-item span-2"><small>Observação</small><div>${escapar(o.observacao||o.observacoes||"-")}</div></div>
+        <div class="resumo-item span-2"><small>Observação pós-aprovação</small><div>${escapar(o.observacao_pos_aprovacao||"-")}</div></div>
+    </div>
+    <div class="resumo-secao"><h3>Anexos da análise</h3>${renderAnexosResumo(analise)}</div>
+    <div class="resumo-secao"><h3>Comprovação de visita</h3>${renderAnexosResumo(visita)}</div>
+    <div class="resumo-secao"><h3>Localização</h3>${mapa}</div>`;
+    document.getElementById("resumoAcoes").innerHTML=`<button class="btn btn-fechar-resumo" type="button" onclick="fecharResumo()">Fechar</button><button class="btn btn-imprimir" type="button" onclick="imprimirViabilidade(${Number(o.id)})">🖨️ Imprimir</button><button class="btn btn-secundario" type="button" onclick="fecharResumo();editarViabilidade(${Number(o.id)})">✏️ Editar</button><button class="btn btn-excluir" type="button" onclick="excluirViabilidade(${Number(o.id)})">🗑️ Excluir</button>`;
+    document.getElementById("popupResumo").classList.add("ativo");document.body.style.overflow="hidden";
+    if(foco==="localizacao")setTimeout(()=>document.getElementById("resumoLocalizacao")?.scrollIntoView({behavior:"smooth",block:"center"}),100);
+}
+function fecharResumo(){document.getElementById("popupResumo").classList.remove("ativo");document.body.style.overflow=""}
+function fecharResumoAoFundo(e){if(e.target.id==="popupResumo")fecharResumo()}
+function htmlImpressao(registros){return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Viabilidades</title><style>body{font-family:Arial;color:#111;padding:24px}.item{border:1px solid #bbb;border-radius:10px;padding:18px;margin-bottom:18px;page-break-inside:avoid}h1{font-size:22px}h2{font-size:18px;margin:0 0 12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px}.full{grid-column:1/-1}.label{font-size:11px;color:#666;text-transform:uppercase;font-weight:bold}.valor{margin:3px 0 8px}.status{font-weight:bold}@media print{button{display:none}}</style></head><body><h1>Relatório de Viabilidades</h1>${registros.map(o=>`<div class="item"><h2>${escapar(o.nome||"-")}</h2><div class="grid"><div><div class="label">Status</div><div class="valor status">${escapar(o.status||"PENDENTE")}</div></div><div><div class="label">Localidade</div><div class="valor">${escapar(o.localidade||o.localidade_nome||"-")}</div></div><div class="full"><div class="label">Endereço</div><div class="valor">${escapar(o.endereco||"-")}</div></div><div><div class="label">Telefone principal</div><div class="valor">${escapar(o.telefone||"-")}</div></div><div><div class="label">Telefone secundário</div><div class="valor">${escapar(o.telefone2||o.telefone_secundario||"-")}</div></div><div><div class="label">Técnico</div><div class="valor">${escapar(o.tecnico_responsavel||"-")}</div></div><div><div class="label">Registrado em</div><div class="valor">${formatarData(dataRegistro(o))}</div></div><div class="full"><div class="label">Observação</div><div class="valor">${escapar(o.observacao||o.observacoes||"-")}</div></div><div class="full"><div class="label">Observação pós-aprovação</div><div class="valor">${escapar(o.observacao_pos_aprovacao||"-")}</div></div></div></div>`).join("")}<script>window.onload=()=>window.print()<\/script></body></html>`}
+function abrirImpressao(registros){const w=window.open("","_blank");if(!w){alert("Permita pop-ups para imprimir.");return}w.document.open();w.document.write(htmlImpressao(registros));w.document.close()}
+function imprimirViabilidade(id){const o=viabilidades.find(v=>Number(v.id)===Number(id));if(o)abrirImpressao([o])}
+function imprimirSelecionadas(){const registros=viabilidades.filter(v=>idsSelecionados.has(Number(v.id)));if(!registros.length){alert("Selecione pelo menos uma viabilidade para imprimir.");return}abrirImpressao(registros)}
 async function excluirViabilidade(id){if(!id||!confirm("Deseja excluir esta viabilidade?"))return;try{const r=await fetch(`${API_VIABILIDADE}/${id}`,{method:"DELETE",headers:getAuthHeaders()});if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.erro||`Erro ${r.status}`)}alert("Viabilidade excluída com sucesso.");carregarViabilidades()}catch(e){console.error(e);alert("Não foi possível excluir: "+e.message)}}
 function abrirMidia(url,video){const c=document.getElementById("popupConteudo");c.innerHTML=video?`<video src="${escapar(url)}" controls autoplay></video>`:`<img src="${escapar(url)}" alt="Anexo">`;document.getElementById("popupMidia").classList.add("ativo")}
 function fecharMidia(){document.getElementById("popupMidia").classList.remove("ativo");document.getElementById("popupConteudo").innerHTML=""}
@@ -379,11 +471,12 @@ function fecharMidiaAoFundo(e){if(e.target.id==="popupMidia")fecharMidia()}
 
 document.addEventListener("DOMContentLoaded",()=>{
     const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");if(s&&l&&localStorage.getItem("sidebar_recolhida")==="1"){s.classList.add("recolhida");l.src=l.dataset.logoFechada}
-    atualizarHorario();setInterval(atualizarHorario,60000);carregarUsuario();carregarTecnicos();carregarUsuariosOnline();carregarViabilidades();
-    document.getElementById("telefone").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);document.getElementById("arquivosVisita").addEventListener("change",processarArquivosVisita);
-    document.querySelectorAll("#filtroNome,#filtroEndereco,#dataInicio,#dataFim").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
+    atualizarHorario();setInterval(atualizarHorario,60000);carregarUsuario();carregarTecnicos();carregarLocalidades();carregarUsuariosOnline();carregarViabilidades();
+    document.getElementById("telefone").addEventListener("input",aplicarMascaraTelefone);document.getElementById("telefone2").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);document.getElementById("arquivosVisita").addEventListener("change",processarArquivosVisita);
+    document.querySelectorAll("#filtroNome,#filtroEndereco,#filtroLocalidade,#dataInicio,#dataFim").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
     document.getElementById("buscaViabilidade").addEventListener("input",e=>{document.getElementById("filtroNome").value=e.target.value;renderTabela()});
-    document.addEventListener("keydown",e=>{if(e.key==="Escape")fecharMidia()});
+    document.getElementById("selecionarTodas").addEventListener("change",e=>selecionarTodasViabilidades(e.target.checked));
+    document.addEventListener("keydown",e=>{if(e.key==="Escape"){fecharMidia();fecharResumo()}});
 });
 setInterval(()=>{const id=localStorage.getItem("log_id");if(id)fetch("/api/ping",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({log_id:id})}).catch(()=>{});carregarUsuariosOnline()},300000);
 </script>
