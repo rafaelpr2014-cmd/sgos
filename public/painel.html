@@ -79,7 +79,7 @@ body{
     border-radius:9px;
     display:flex;
     align-items:center;
-    gap:12px;
+    gap:18px;
     font-size:14px;
     margin-bottom:2px;
     transition:.2s;
@@ -161,7 +161,7 @@ body{
     border-radius:8px;
     padding:6px 8px;
     cursor:pointer;
-    font-size:15px;
+    font-size:13px;
     color:#0f172a;
 }
 
@@ -403,11 +403,23 @@ body{
     padding:28px 18px 38px;
 }
 
+.painel-topo-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 320px;
+    gap:16px;
+    align-items:stretch;
+    margin-bottom:18px;
+}
+
+.painel-metricas{
+    min-width:0;
+}
+
 .top-row{
     display:grid;
-    grid-template-columns:240px repeat(4,1fr);
-    gap:18px;
-    margin-bottom:20px;
+    grid-template-columns:216px repeat(4,minmax(145px,1fr));
+    gap:16px;
+    margin-bottom:0;
 }
 
 .quick-actions{
@@ -461,7 +473,7 @@ body{
     border:1px solid #e5e7eb;
     border-radius:14px;
     padding:26px 24px 18px;
-    min-height:168px;
+    min-height:184px;
     box-shadow:0 8px 22px rgba(15,23,42,0.05);
     display:flex;
     flex-direction:column;
@@ -471,7 +483,7 @@ body{
 .card-top{
     display:flex;
     align-items:center;
-    gap:18px;
+    gap:12px;
 }
 
 .icon-box{
@@ -540,13 +552,20 @@ body{
 ================================ */
 .filtro-periodo{
     display:flex;
-    justify-content:flex-end;
-    margin-bottom:18px;
+    justify-content:stretch;
+    margin:12px 0 0;
+}
+
+.painel-lateral{
+    min-width:0;
+    display:flex;
+    flex-direction:column;
 }
 
 .filtro-box{
+    width:100%;
     background:white;
-    padding:12px 16px;
+    padding:12px 14px;
     border-radius:12px;
     border:1px solid var(--borda);
     display:flex;
@@ -561,6 +580,8 @@ body{
 }
 
 .filtro-box select{
+    flex:1;
+    min-width:0;
     padding:9px 12px;
     border-radius:8px;
     border:1px solid var(--borda);
@@ -942,8 +963,16 @@ tr:hover{ background:#f8fbff; }
    RESPONSIVO
 ================================ */
 @media(max-width:1300px){
+    .painel-topo-grid{
+        grid-template-columns:1fr;
+    }
+
+    .lembretes-area{
+        max-height:240px;
+    }
+
     .top-row{
-        grid-template-columns:1fr 1fr;
+        grid-template-columns:repeat(2,1fr);
     }
 
     .quick-actions{
@@ -989,6 +1018,7 @@ tr:hover{ background:#f8fbff; }
         padding:20px;
     }
 
+    .painel-topo-grid,
     .top-row{
         grid-template-columns:1fr;
     }
@@ -1034,6 +1064,336 @@ tr:hover{ background:#f8fbff; }
     margin:0;
     padding:0;
 }
+
+
+/* ===============================
+   LEMBRETES ENTRE USUÁRIOS
+================================ */
+.lembretes-area{
+    background:white;
+    border:1px solid var(--borda);
+    border-radius:14px;
+    padding:14px;
+    box-shadow:0 8px 20px rgba(15,23,42,0.05);
+    min-width:0;
+    height:100%;
+    height:184px;
+    max-height:184px;
+    display:flex;
+    flex-direction:column;
+}
+
+.lembretes-cabecalho{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:10px;
+    flex:0 0 auto;
+}
+
+.lembretes-titulo-wrap{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    min-width:0;
+}
+
+.lembretes-icone{
+    width:34px;
+    height:34px;
+    min-width:34px;
+    border-radius:10px;
+    background:#dbeafe;
+    color:#2563eb;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.lembretes-icone svg{
+    width:18px;
+    height:18px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:2;
+}
+
+.lembretes-titulo{
+    font-size:15px;
+    font-weight:800;
+    color:#0f172a;
+}
+
+.lembretes-subtitulo{
+    font-size:10px;
+    color:#64748b;
+    margin-top:2px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.btn-novo-lembrete{
+    width:34px;
+    height:34px;
+    min-width:34px;
+    border:none;
+    background:#2563eb;
+    color:white;
+    padding:0;
+    border-radius:9px;
+    font-size:22px;
+    line-height:1;
+    font-weight:500;
+    cursor:pointer;
+}
+
+.btn-novo-lembrete:hover{ background:#1d4ed8; }
+
+.lembretes-lista{
+    display:grid;
+    gap:7px;
+    overflow-y:auto;
+    min-height:0;
+    padding-right:4px;
+    scrollbar-width:thin;
+    scrollbar-color:#cbd5e1 transparent;
+}
+
+.lembretes-lista::-webkit-scrollbar{ width:6px; }
+.lembretes-lista::-webkit-scrollbar-thumb{
+    background:#cbd5e1;
+    border-radius:999px;
+}
+
+.lembrete-item{
+    border:1px solid #dbeafe;
+    border-left:3px solid #2563eb;
+    border-radius:9px;
+    padding:9px 10px;
+    background:#f8fbff;
+    cursor:pointer;
+    transition:.18s ease;
+}
+
+.lembrete-item:hover{
+    background:#eff6ff;
+    transform:translateY(-1px);
+    box-shadow:0 5px 12px rgba(37,99,235,.09);
+}
+
+.lembrete-item:focus{
+    outline:2px solid #93c5fd;
+    outline-offset:1px;
+}
+
+.lembrete-conteudo{ min-width:0; }
+
+.lembrete-texto{
+    font-size:11px;
+    line-height:1.35;
+    font-weight:700;
+    color:#0f172a;
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+}
+
+.lembrete-meta{
+    margin-top:5px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:3px 8px;
+    font-size:9px;
+    color:#64748b;
+}
+
+.lembrete-meta strong{ color:#334155; }
+
+.lembretes-vazio{
+    padding:18px 10px;
+    border:1px dashed #cbd5e1;
+    border-radius:9px;
+    text-align:center;
+    color:#64748b;
+    font-size:11px;
+}
+
+.modal-lembrete-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(15,23,42,.58);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:10000;
+}
+
+.modal-lembrete-overlay.ativo{ display:flex; }
+
+.modal-lembrete{
+    width:min(620px,100%);
+    max-height:90vh;
+    overflow:auto;
+    background:white;
+    border-radius:18px;
+    box-shadow:0 24px 70px rgba(15,23,42,.3);
+    padding:22px;
+}
+
+.modal-lembrete-topo{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:18px;
+}
+
+.modal-lembrete-topo h3{
+    margin:0;
+    font-size:20px;
+}
+
+.btn-fechar-modal{
+    width:36px;
+    height:36px;
+    border:none;
+    border-radius:10px;
+    background:#f1f5f9;
+    cursor:pointer;
+    font-size:22px;
+}
+
+.form-grupo{ margin-bottom:14px; }
+.form-grupo label{
+    display:block;
+    margin-bottom:7px;
+    font-size:13px;
+    font-weight:800;
+    color:#334155;
+}
+
+.form-grupo select,
+.form-grupo input,
+.form-grupo textarea{
+    width:100%;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    padding:11px 12px;
+    outline:none;
+    font:inherit;
+    background:white;
+}
+
+.form-grupo textarea{
+    min-height:140px;
+    resize:vertical;
+}
+
+.modal-acoes{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:18px;
+}
+
+.btn-secundario,
+.btn-salvar-lembrete{
+    border:none;
+    border-radius:10px;
+    padding:11px 16px;
+    font-weight:800;
+    cursor:pointer;
+}
+
+.btn-secundario{ background:#e2e8f0; color:#334155; }
+.btn-salvar-lembrete{ background:#2563eb; color:white; }
+
+
+.tipo-lembrete-opcoes{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+}
+
+.tipo-lembrete-opcao{
+    display:flex;
+    align-items:flex-start;
+    gap:9px;
+    border:1px solid #cbd5e1;
+    border-radius:11px;
+    padding:11px 12px;
+    cursor:pointer;
+    background:#fff;
+}
+
+.tipo-lembrete-opcao:has(input:checked){
+    border-color:#2563eb;
+    background:#eff6ff;
+}
+
+.tipo-lembrete-opcao input{
+    width:auto;
+    margin-top:2px;
+}
+
+.tipo-lembrete-opcao strong{
+    display:block;
+    font-size:13px;
+    color:#0f172a;
+}
+
+.tipo-lembrete-opcao small{
+    display:block;
+    margin-top:3px;
+    color:#64748b;
+    line-height:1.3;
+}
+
+.lembrete-badge-tipo{
+    display:inline-flex;
+    align-items:center;
+    margin-bottom:5px;
+    padding:3px 7px;
+    border-radius:999px;
+    background:#dbeafe;
+    color:#1d4ed8;
+    font-size:10px;
+    font-weight:800;
+}
+
+.popup-lembretes .modal-lembrete{
+    width:min(700px,100%);
+}
+
+.popup-destaque{
+    background:#eff6ff;
+    border:1px solid #bfdbfe;
+    border-radius:12px;
+    padding:14px;
+    margin-bottom:10px;
+}
+
+.popup-destaque:last-child{ margin-bottom:0; }
+
+@media(max-width:700px){
+    .lembretes-cabecalho,
+    .lembrete-item{
+        flex-direction:column;
+        align-items:stretch;
+    }
+    .btn-novo-lembrete,
+    .btn-marcar-lido{ width:100%; }
+}
+
+
+#lembreteDestinatario{width:100%;padding:11px 12px;border:1px solid #dbe3ee;border-radius:10px;background:#fff;color:#0f172a;font-size:14px;outline:none;}
+#lembreteDestinatario:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.10);}
 
 </style>
 </head>
@@ -1207,6 +1567,9 @@ let periodoAtual = "hoje";
 
     <section class="content">
 
+
+        <div class="painel-topo-grid">
+            <div class="painel-metricas">
         <div class="top-row">
 
             <div class="quick-actions">
@@ -1291,16 +1654,38 @@ let periodoAtual = "hoje";
 
         </div>
 
-        <div class="filtro-periodo">
-            <div class="filtro-box">
-                <label>Período:</label>
+            </div>
 
-                <select id="filtroPeriodo">
-                    <option value="hoje" selected>Hoje</option>
-                    <option value="ontem">Ontem</option>
-                    <option value="7dias">Últimos 7 dias</option>
-                    <option value="30dias">Últimos 30 dias</option>
-                </select>
+            <div class="painel-lateral">
+            <div class="lembretes-area" id="areaLembretes">
+            <div class="lembretes-cabecalho">
+                <div class="lembretes-titulo-wrap">
+                    <div class="lembretes-icone">
+                        <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+                    </div>
+                    <div>
+                        <div class="lembretes-titulo">Lembretes</div>
+                        <div class="lembretes-subtitulo">Salve para você ou envie para outro usuário.</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;"><a href="lembretes.html" title="Ver todos os lembretes" style="font-size:11px;font-weight:800;color:#2563eb;text-decoration:none;white-space:nowrap;">Ver todos</a><button class="btn-novo-lembrete" type="button" onclick="abrirModalNovoLembrete()" title="Adicionar lembrete" aria-label="Adicionar lembrete">+</button></div>
+            </div>
+            <div id="listaLembretes" class="lembretes-lista">
+                <div class="lembretes-vazio">Carregando lembretes...</div>
+            </div>
+            </div>
+
+            <div class="filtro-periodo">
+                <div class="filtro-box">
+                    <label>Período:</label>
+                    <select id="filtroPeriodo">
+                        <option value="hoje" selected>Hoje</option>
+                        <option value="ontem">Ontem</option>
+                        <option value="7dias">Últimos 7 dias</option>
+                        <option value="30dias">Últimos 30 dias</option>
+                    </select>
+                </div>
+            </div>
             </div>
         </div>
 
@@ -1472,7 +1857,207 @@ let periodoAtual = "hoje";
 
 </main>
 
+
+<div class="modal-lembrete-overlay" id="modalNovoLembrete" onclick="fecharModalAoClicarFora(event, 'modalNovoLembrete')">
+    <div class="modal-lembrete">
+        <div class="modal-lembrete-topo">
+            <h3>Novo lembrete</h3>
+            <button class="btn-fechar-modal" type="button" onclick="fecharModalLembrete('modalNovoLembrete')">×</button>
+        </div>
+        <form id="formNovoLembrete">
+            <div class="form-grupo">
+                <label>O que deseja fazer?</label>
+                <div class="tipo-lembrete-opcoes">
+                    <label class="tipo-lembrete-opcao">
+                        <input type="radio" name="tipoLembrete" value="salvo" checked>
+                        <span><strong>Salvar para mim</strong><small>Fica fixo no seu painel até você remover.</small></span>
+                    </label>
+                    <label class="tipo-lembrete-opcao">
+                        <input type="radio" name="tipoLembrete" value="enviado">
+                        <span><strong>Enviar para usuário</strong><small>Envie para um atendente ou administrador.</small></span>
+                    </label>
+                </div>
+            </div>
+            <div class="form-grupo" id="grupoDestinatarioLembrete" style="display:none;">
+                <label for="lembreteDestinatario">Usuário destinatário</label>
+                <select id="lembreteDestinatario"><option value="">Selecione o usuário...</option></select>
+            </div>
+            <div class="form-grupo">
+                <label for="lembreteTexto">Lembrete</label>
+                <textarea id="lembreteTexto" maxlength="2000" required placeholder="Ex.: TARARANGA/INSTA APP TV — FLORA — LOGIN: prof.flora ID: 1867 TEL: 7381134255"></textarea>
+            </div>
+            <div class="modal-acoes">
+                <button class="btn-secundario" type="button" onclick="fecharModalLembrete('modalNovoLembrete')">Cancelar</button>
+                <button class="btn-salvar-lembrete" type="submit">Salvar lembrete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-lembrete-overlay" id="modalVisualizarLembrete" onclick="fecharModalAoClicarFora(event, 'modalVisualizarLembrete')">
+    <div class="modal-lembrete">
+        <div class="modal-lembrete-topo">
+            <h3 id="tituloModalLembrete">Lembrete</h3>
+            <button class="btn-fechar-modal" type="button" onclick="fecharModalLembrete('modalVisualizarLembrete')">×</button>
+        </div>
+        <div class="popup-destaque">
+            <div id="lembreteModalTexto" style="font-size:16px;font-weight:800;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;"></div>
+            <div id="lembreteModalMeta" style="margin-top:14px;color:#64748b;font-size:12px;line-height:1.7;"></div>
+        </div>
+        <div class="modal-acoes">
+            <button class="btn-secundario" type="button" onclick="fecharModalLembrete('modalVisualizarLembrete')">Fechar</button>
+            <button class="btn-salvar-lembrete" id="btnAcaoLembrete" type="button">Marcar como lido</button>
+        </div>
+    </div>
+</div>
+
 <script>
+
+let lembretesCache = new Map();
+let lembreteAbertoId = null;
+let primeiraCargaLembretes = true;
+let idsRecebidosConhecidos = new Set();
+
+function obterUsuarioLocal(){
+    try { return JSON.parse(localStorage.getItem("usuario") || "{}"); }
+    catch { return {}; }
+}
+
+function escaparHtml(valor){
+    return String(valor ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+}
+
+function formatarDataHora(valor){
+    if(!valor) return "-";
+    const d = new Date(valor);
+    if(Number.isNaN(d.getTime())) return valor;
+    return d.toLocaleString("pt-BR", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"});
+}
+
+function fecharModalLembrete(id){ document.getElementById(id)?.classList.remove("ativo"); }
+function fecharModalAoClicarFora(event, id){ if(event.target?.id === id) fecharModalLembrete(id); }
+
+async function carregarUsuariosLembrete(){
+    const select = document.getElementById("lembreteDestinatario");
+    const usuario = obterUsuarioLocal();
+    if(!select || !usuario.id) return;
+    select.innerHTML = '<option value="">Carregando usuários...</option>';
+    try{
+        const res = await fetch("/api/lembretes/usuarios", {headers:{"x-usuario-id":usuario.id}});
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
+        const usuarios = data.usuarios || [];
+        select.innerHTML = '<option value="">Selecione o usuário...</option>' + usuarios.map(u => `<option value="${Number(u.id)}">${escaparHtml(u.nome)} — ${escaparHtml(u.tipo_usuario || "usuário")}</option>`).join("");
+    }catch(err){
+        console.error(err);
+        select.innerHTML = '<option value="">Não foi possível carregar usuários</option>';
+    }
+}
+
+function atualizarTipoLembrete(){
+    const tipo = document.querySelector('input[name="tipoLembrete"]:checked')?.value || "salvo";
+    const grupo = document.getElementById("grupoDestinatarioLembrete");
+    const select = document.getElementById("lembreteDestinatario");
+    const botao = document.querySelector('#formNovoLembrete .btn-salvar-lembrete');
+    const enviado = tipo === "enviado";
+    if(grupo) grupo.style.display = enviado ? "block" : "none";
+    if(select) select.required = enviado;
+    if(botao) botao.textContent = enviado ? "Enviar lembrete" : "Salvar lembrete";
+    if(enviado) carregarUsuariosLembrete();
+}
+
+function abrirModalNovoLembrete(){
+    document.getElementById("formNovoLembrete")?.reset();
+    atualizarTipoLembrete();
+    document.getElementById("modalNovoLembrete")?.classList.add("ativo");
+    setTimeout(() => document.getElementById("lembreteTexto")?.focus(), 50);
+}
+
+function descricaoStatusLembrete(item, usuarioId){
+    if(item.tipo === "salvo") return "Salvo para mim";
+    if(item.lido_em) return `Lido em ${formatarDataHora(item.lido_em)} — visível por 30 minutos`;
+    return Number(item.destinatario_id) === Number(usuarioId) ? "Recebido — não lido" : "Enviado — aguardando leitura";
+}
+
+function htmlLembrete(item, usuarioId){
+    const recebido = item.tipo === "enviado" && Number(item.destinatario_id) === Number(usuarioId);
+    const classe = recebido && !item.lido_em ? ' style="border-left:3px solid #2563eb;"' : '';
+    const badge = item.tipo === "salvo" ? "Salvo" : (recebido ? "Recebido" : "Enviado");
+    return `<div class="lembrete-item"${classe} data-lembrete-id="${Number(item.id)}" role="button" tabindex="0" onclick="abrirLembrete(${Number(item.id)})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirLembrete(${Number(item.id)});}">
+        <div class="lembrete-conteudo"><span class="lembrete-badge-tipo">${badge}</span><div class="lembrete-texto">${escaparHtml(item.mensagem)}</div><div class="lembrete-meta"><span>${escaparHtml(descricaoStatusLembrete(item, usuarioId))}</span></div></div></div>`;
+}
+
+function abrirLembrete(id, automatico = false){
+    const item = lembretesCache.get(Number(id));
+    const usuario = obterUsuarioLocal();
+    if(!item) return;
+    lembreteAbertoId = Number(id);
+    const recebido = item.tipo === "enviado" && Number(item.destinatario_id) === Number(usuario.id);
+    const enviado = item.tipo === "enviado" && Number(item.criado_por_id) === Number(usuario.id);
+    document.getElementById("tituloModalLembrete").textContent = item.tipo === "salvo" ? "Lembrete salvo" : (recebido ? "Lembrete recebido" : "Lembrete enviado");
+    document.getElementById("lembreteModalTexto").textContent = item.mensagem || "";
+    document.getElementById("lembreteModalMeta").innerHTML = `
+        <strong>Cadastrado por:</strong> ${escaparHtml(item.criado_por_nome)}<br>
+        <strong>Destinatário:</strong> ${escaparHtml(item.destinatario_nome)}<br>
+        <strong>Registrado em:</strong> ${escaparHtml(formatarDataHora(item.criado_em))}<br>
+        <strong>Status:</strong> ${escaparHtml(descricaoStatusLembrete(item, usuario.id))}`;
+    const btn = document.getElementById("btnAcaoLembrete");
+    if(item.tipo === "salvo"){
+        btn.style.display = "inline-flex"; btn.textContent = "Remover lembrete"; btn.dataset.acao = "remover";
+    }else if(recebido && !item.lido_em){
+        btn.style.display = "inline-flex"; btn.textContent = "Marcar como lido"; btn.dataset.acao = "lido";
+    }else{
+        btn.style.display = "none"; btn.dataset.acao = "";
+    }
+    document.getElementById("modalVisualizarLembrete")?.classList.add("ativo");
+    if(automatico) sessionStorage.setItem(`lembrete_popup_${id}`, "1");
+}
+
+async function carregarLembretes(){
+    const lista = document.getElementById("listaLembretes");
+    const usuario = obterUsuarioLocal();
+    if(!lista || !usuario.id) return;
+    try{
+        const res = await fetch("/api/lembretes/painel", {headers:{"x-usuario-id":usuario.id}});
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
+        const lembretes = data.lembretes || [];
+        const novosRecebidos = lembretes.filter(item => item.tipo === "enviado" && Number(item.destinatario_id) === Number(usuario.id) && !item.lido_em && !idsRecebidosConhecidos.has(Number(item.id)));
+        lembretesCache = new Map(lembretes.map(item => [Number(item.id), item]));
+        lista.innerHTML = lembretes.length ? lembretes.map(item => htmlLembrete(item, usuario.id)).join("") : '<div class="lembretes-vazio">Nenhum lembrete no painel.</div>';
+        const naoLidos = lembretes.filter(item => item.tipo === "enviado" && Number(item.destinatario_id) === Number(usuario.id) && !item.lido_em).length;
+        const badge = document.querySelector(".notificacao span");
+        if(badge){ badge.textContent = naoLidos; badge.style.display = naoLidos ? "flex" : "none"; }
+        if(primeiraCargaLembretes) idsRecebidosConhecidos = new Set(lembretes.filter(i => i.tipo === "enviado" && Number(i.destinatario_id) === Number(usuario.id)).map(i => Number(i.id)));
+        else novosRecebidos.forEach(i => idsRecebidosConhecidos.add(Number(i.id)));
+        const novo = novosRecebidos[0];
+        if(novo && !document.getElementById("modalNovoLembrete")?.classList.contains("ativo") && !sessionStorage.getItem(`lembrete_popup_${novo.id}`)) abrirLembrete(Number(novo.id), true);
+        primeiraCargaLembretes = false;
+    }catch(err){
+        console.error("Erro ao carregar lembretes:", err);
+        lista.innerHTML = '<div class="lembretes-vazio">O módulo de lembretes não está disponível.</div>';
+    }
+}
+
+async function executarAcaoLembrete(){
+    const item = lembretesCache.get(Number(lembreteAbertoId));
+    const usuario = obterUsuarioLocal();
+    const btn = document.getElementById("btnAcaoLembrete");
+    if(!item || !btn?.dataset.acao) return;
+    const acao = btn.dataset.acao;
+    if(acao === "remover" && !confirm("Remover este lembrete do painel?")) return;
+    try{
+        btn.disabled = true;
+        const url = acao === "lido" ? `/api/lembretes/${item.id}/lido` : `/api/lembretes/${item.id}`;
+        const method = acao === "lido" ? "PATCH" : "DELETE";
+        const res = await fetch(url, {method, headers:{"Content-Type":"application/json","x-usuario-id":usuario.id || ""}});
+        const data = await res.json().catch(() => ({}));
+        if(!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
+        fecharModalLembrete("modalVisualizarLembrete");
+        await carregarLembretes();
+    }catch(err){ alert(err.message || "Não foi possível atualizar o lembrete."); }
+    finally{ btn.disabled = false; }
+}
 
 function aplicarEstadoSidebar(){
     const sidebar = document.querySelector(".sidebar");
@@ -1725,10 +2310,32 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         `;
     };
-
-
     carregarUsuario();
     carregarUsuariosOnline();
+    carregarLembretes();
+
+    document.getElementById("btnAcaoLembrete")?.addEventListener("click", executarAcaoLembrete);
+    document.querySelectorAll('input[name="tipoLembrete"]').forEach(campo => campo.addEventListener("change", atualizarTipoLembrete));
+
+    const formNovoLembrete = document.getElementById("formNovoLembrete");
+    formNovoLembrete?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const usuario = obterUsuarioLocal();
+        const tipo = document.querySelector('input[name="tipoLembrete"]:checked')?.value || "salvo";
+        const destinatarioId = Number(document.getElementById("lembreteDestinatario")?.value || 0);
+        const mensagem = document.getElementById("lembreteTexto")?.value?.trim();
+        const botao = formNovoLembrete.querySelector('.btn-salvar-lembrete');
+        if(!mensagem) return alert("Informe o lembrete.");
+        if(tipo === "enviado" && !destinatarioId) return alert("Selecione o usuário destinatário.");
+        try{
+            botao.disabled = true; botao.textContent = tipo === "enviado" ? "Enviando..." : "Salvando...";
+            const res = await fetch("/api/lembretes", {method:"POST",headers:{"Content-Type":"application/json","x-usuario-id":usuario.id || ""},body:JSON.stringify({tipo,destinatario_id:tipo === "enviado" ? destinatarioId : null,mensagem})});
+            const data = await res.json().catch(() => ({}));
+            if(!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
+            formNovoLembrete.reset(); fecharModalLembrete("modalNovoLembrete"); alert(data.mensagem || "Lembrete salvo."); await carregarLembretes();
+        }catch(err){ alert(err.message || "Não foi possível salvar o lembrete."); }
+        finally{ botao.disabled = false; atualizarTipoLembrete(); }
+    });
 
     const busca = document.getElementById("buscaOS");
 
@@ -1763,8 +2370,9 @@ setInterval(async () => {
     }
 
     carregarUsuariosOnline();
+    carregarLembretes();
 
-}, 300000);
+}, 30000);
 
 function modoTV() {
     const sidebar = document.querySelector(".sidebar");

@@ -1,7 +1,5 @@
 const express = require('express');
 const router = express.Router();
-
-// SGOS: a conexão principal está em /root/sgos/database.js
 const pool = require('../database');
 
 async function executar(sql, params = []) {
@@ -22,83 +20,187 @@ function obterUsuarioId(req) {
 
 async function obterUsuario(usuarioId) {
     if (!usuarioId) return null;
-
     const rows = await executar(
-        `SELECT id, usuario, empresa_id
-           FROM usuarios
-          WHERE id = ?
-          LIMIT 1`,
+        `SELECT * FROM usuarios WHERE id = ? LIMIT 1`,
         [usuarioId]
     );
-
     return rows[0] || null;
 }
 
+let colunasUsuariosCache = null;
+async function obterColunasUsuarios() {
+    if (colunasUsuariosCache) return colunasUsuariosCache;
+    const colunas = await executar('SHOW COLUMNS FROM usuarios');
+    colunasUsuariosCache = new Set(colunas.map(c => c.Field));
+    return colunasUsuariosCache;
+}
+
+function primeiraColunaExistente(colunas, candidatas, fallback = null) {
+    return candidatas.find(nome => colunas.has(nome)) || fallback;
+}
+
 async function limparExpirados() {
-    await executar(
-        `DELETE FROM lembretes
-          WHERE excluir_em IS NOT NULL
-            AND excluir_em <= NOW()`
-    );
+    try {
+        await executar(
+            `DELETE FROM lembretes
+              WHERE excluir_em IS NOT NULL
+                AND excluir_em <= NOW()
+              LIMIT 100`
+        );
+    } catch (erro) {
+        console.error('Erro ao limpar lembretes expirados:', erro.message);
+    }
 }
 
 router.get('/usuarios', async (req, res) => {
     try {
         const usuarioId = obterUsuarioId(req);
         const usuario = await obterUsuario(usuarioId);
+        if (!usuario) return res.status(401).json({ erro: 'Usuário não autenticado.' });
 
-        if (!usuario) {
-            return res.status(401).json({ erro: 'Usuário não autenticado.' });
+        const colunas = await obterColunasUsuarios();
+        const colunaNome = primeiraColunaExistente(colunas, ['nome', 'usuario', 'username'], 'id');
+        const colunaTipo = primeiraColunaExistente(colunas, ['tipo', 'perfil', 'nivel', 'role', 'tipo_usuario']);
+        const colunaEmpresa = colunas.has('empresa_id') ? 'empresa_id' : null;
+        const colunaAtivo = primeiraColunaExistente(colunas, ['ativo', 'status']);
+
+        const filtros = ['id <> ?'];
+        const params = [usuario.id];
+
+        if (colunaEmpresa && usuario.empresa_id != null) {
+            filtros.push(`${colunaEmpresa} = ?`);
+            params.push(usuario.empresa_id);
         }
 
-        const usuarios = await executar(
-            `SELECT id, usuario AS nome
+        if (colunaTipo) {
+            filtros.push(`LOWER(COALESCE(${colunaTipo}, '')) IN ('admin','administrador','atendente')`);
+        }
+
+        if (colunaAtivo === 'ativo') {
+            filtros.push('(ativo = 1 OR ativo IS NULL)');
+        } else if (colunaAtivo === 'status') {
+            filtros.push(`LOWER(COALESCE(status, 'ativo')) NOT IN ('inativo','bloqueado','desativado')`);
+        }
+
+        const tipoSelect = colunaTipo ? `${colunaTipo} AS tipo_usuario` : `'usuario' AS tipo_usuario`;
+        const rows = await executar(
+            `SELECT id, ${colunaNome} AS nome, ${tipoSelect}
                FROM usuarios
-              WHERE empresa_id = ?
-                AND id <> ?
-              ORDER BY usuario ASC`,
-            [usuario.empresa_id, usuario.id]
+              WHERE ${filtros.join(' AND ')}
+              ORDER BY ${colunaNome} ASC`,
+            params
         );
 
-        return res.json({ usuarios });
+        return res.json({ usuarios: rows });
     } catch (erro) {
-        console.error('Erro ao listar usuários para lembretes:', erro);
+        console.error('Erro ao listar usuários para lembrete:', erro);
         return res.status(500).json({ erro: 'Erro ao carregar usuários.' });
     }
 });
 
-router.get('/me', async (req, res) => {
+router.get('/painel', async (req, res) => {
     try {
+        await limparExpirados();
         const usuarioId = obterUsuarioId(req);
         const usuario = await obterUsuario(usuarioId);
+        if (!usuario) return res.status(401).json({ erro: 'Usuário não autenticado.' });
 
-        if (!usuario) {
-            return res.status(401).json({ erro: 'Usuário não autenticado.' });
-        }
-
-        await limparExpirados();
+        const empresaFiltro = usuario.empresa_id != null ? 'AND l.empresa_id = ?' : '';
+        const params = [usuario.id, usuario.id];
+        if (usuario.empresa_id != null) params.push(usuario.empresa_id);
 
         const lembretes = await executar(
             `SELECT l.id,
                     l.mensagem,
+                    l.tipo,
+                    l.criado_por_id,
+                    l.destinatario_id,
                     l.criado_em,
                     l.lido_em,
-                    l.excluir_em,
-                    l.criado_por_id,
-                    COALESCE(NULLIF(u.usuario, ''), 'Usuário') AS criado_por_nome
+                    l.visivel_ate,
+                    l.removido_em,
+                    COALESCE(uc.usuario, CONCAT('Usuário ', l.criado_por_id)) AS criado_por_nome,
+                    COALESCE(ud.usuario, CONCAT('Usuário ', l.destinatario_id)) AS destinatario_nome
                FROM lembretes l
-               LEFT JOIN usuarios u ON u.id = l.criado_por_id
-              WHERE l.empresa_id = ?
-                AND l.destinatario_id = ?
-                AND (l.excluir_em IS NULL OR l.excluir_em > NOW())
-              ORDER BY (l.lido_em IS NULL) DESC, l.criado_em DESC`,
-            [usuario.empresa_id, usuario.id]
+               LEFT JOIN usuarios uc ON uc.id = l.criado_por_id
+               LEFT JOIN usuarios ud ON ud.id = l.destinatario_id
+              WHERE l.removido_em IS NULL
+                AND (
+                    (l.tipo = 'salvo' AND l.destinatario_id = ?)
+                    OR
+                    (l.tipo = 'enviado'
+                        AND (l.criado_por_id = ? OR l.destinatario_id = ?)
+                        AND (l.lido_em IS NULL OR l.visivel_ate > NOW())
+                    )
+                )
+                ${empresaFiltro}
+              ORDER BY
+                    CASE WHEN l.tipo = 'enviado' AND l.lido_em IS NULL AND l.destinatario_id = ? THEN 0 ELSE 1 END,
+                    l.criado_em DESC`,
+            usuario.empresa_id != null
+                ? [usuario.id, usuario.id, usuario.id, usuario.empresa_id, usuario.id]
+                : [usuario.id, usuario.id, usuario.id, usuario.id]
         );
 
-        return res.json({ lembretes });
+        return res.json({ lembretes, usuario_id: usuario.id });
     } catch (erro) {
-        console.error('Erro ao buscar lembretes:', erro);
+        console.error('Erro ao buscar lembretes do painel:', erro);
         return res.status(500).json({ erro: 'Erro ao carregar lembretes.' });
+    }
+});
+
+router.get('/historico', async (req, res) => {
+    try {
+        await limparExpirados();
+        const usuarioId = obterUsuarioId(req);
+        const usuario = await obterUsuario(usuarioId);
+        if (!usuario) return res.status(401).json({ erro: 'Usuário não autenticado.' });
+
+        const categoria = String(req.query.categoria || 'todos').toLowerCase();
+        let filtroCategoria = '';
+        const params = [usuario.id, usuario.id];
+
+        if (categoria === 'recebidos') {
+            filtroCategoria = `AND l.tipo = 'enviado' AND l.destinatario_id = ?`;
+            params.push(usuario.id);
+        } else if (categoria === 'enviados') {
+            filtroCategoria = `AND l.tipo = 'enviado' AND l.criado_por_id = ?`;
+            params.push(usuario.id);
+        } else if (categoria === 'salvos') {
+            filtroCategoria = `AND l.tipo = 'salvo' AND l.criado_por_id = ?`;
+            params.push(usuario.id);
+        }
+
+        if (usuario.empresa_id != null) params.push(usuario.empresa_id);
+
+        const rows = await executar(
+            `SELECT l.id,
+                    l.mensagem,
+                    l.tipo,
+                    l.criado_por_id,
+                    l.destinatario_id,
+                    l.criado_em,
+                    l.lido_em,
+                    l.visivel_ate,
+                    l.removido_em,
+                    l.excluir_em,
+                    COALESCE(uc.usuario, CONCAT('Usuário ', l.criado_por_id)) AS criado_por_nome,
+                    COALESCE(ud.usuario, CONCAT('Usuário ', l.destinatario_id)) AS destinatario_nome
+               FROM lembretes l
+               LEFT JOIN usuarios uc ON uc.id = l.criado_por_id
+               LEFT JOIN usuarios ud ON ud.id = l.destinatario_id
+              WHERE (l.criado_por_id = ? OR l.destinatario_id = ?)
+                ${filtroCategoria}
+                ${usuario.empresa_id != null ? 'AND l.empresa_id = ?' : ''}
+              ORDER BY l.criado_em DESC
+              LIMIT 500`,
+            params
+        );
+
+        return res.json({ lembretes: rows, usuario_id: usuario.id });
+    } catch (erro) {
+        console.error('Erro ao carregar histórico de lembretes:', erro);
+        return res.status(500).json({ erro: 'Erro ao carregar histórico.' });
     }
 });
 
@@ -106,42 +208,54 @@ router.post('/', async (req, res) => {
     try {
         const usuarioId = obterUsuarioId(req);
         const usuario = await obterUsuario(usuarioId);
-        const destinatarioId = Number(req.body?.destinatario_id);
         const mensagem = String(req.body?.mensagem || '').trim();
+        const tipo = String(req.body?.tipo || 'salvo').trim().toLowerCase();
+        const destinatarioId = tipo === 'enviado' ? Number(req.body?.destinatario_id) : usuarioId;
 
-        if (!usuario) {
-            return res.status(401).json({ erro: 'Usuário não autenticado.' });
-        }
-        if (!destinatarioId) {
-            return res.status(400).json({ erro: 'Selecione o usuário destinatário.' });
-        }
-        if (!mensagem) {
-            return res.status(400).json({ erro: 'Digite o lembrete.' });
-        }
-        if (mensagem.length > 2000) {
-            return res.status(400).json({ erro: 'O lembrete deve ter no máximo 2.000 caracteres.' });
-        }
-        if (destinatarioId === usuario.id) {
-            return res.status(400).json({ erro: 'Selecione outro usuário.' });
-        }
+        if (!usuario) return res.status(401).json({ erro: 'Usuário não autenticado.' });
+        if (!mensagem) return res.status(400).json({ erro: 'Digite o lembrete.' });
+        if (mensagem.length > 2000) return res.status(400).json({ erro: 'O lembrete deve ter no máximo 2.000 caracteres.' });
+        if (!['salvo', 'enviado'].includes(tipo)) return res.status(400).json({ erro: 'Tipo de lembrete inválido.' });
 
-        const destinatario = await obterUsuario(destinatarioId);
+        let destinatario = usuario;
+        if (tipo === 'enviado') {
+            if (!destinatarioId || destinatarioId === usuario.id) {
+                return res.status(400).json({ erro: 'Selecione outro usuário para receber o lembrete.' });
+            }
+            destinatario = await obterUsuario(destinatarioId);
+            if (!destinatario) return res.status(404).json({ erro: 'Usuário destinatário não encontrado.' });
+            if (usuario.empresa_id != null && destinatario.empresa_id !== usuario.empresa_id) {
+                return res.status(403).json({ erro: 'Não é permitido enviar lembretes para outra empresa.' });
+            }
 
-        if (!destinatario || Number(destinatario.empresa_id) !== Number(usuario.empresa_id)) {
-            return res.status(404).json({ erro: 'Usuário destinatário não encontrado nesta empresa.' });
+            const colunas = await obterColunasUsuarios();
+            const colunaTipo = primeiraColunaExistente(colunas, ['tipo', 'perfil', 'nivel', 'role', 'tipo_usuario']);
+            if (colunaTipo) {
+                const perfil = String(destinatario[colunaTipo] || '').toLowerCase();
+                if (!['admin', 'administrador', 'atendente'].includes(perfil)) {
+                    return res.status(403).json({ erro: 'O destinatário precisa ser atendente ou administrador.' });
+                }
+            }
         }
 
         const resultado = await executar(
             `INSERT INTO lembretes
-                (empresa_id, destinatario_id, criado_por_id, mensagem, criado_em)
-             VALUES (?, ?, ?, ?, NOW())`,
-            [usuario.empresa_id, destinatario.id, usuario.id, mensagem]
+                (empresa_id, criado_por_id, destinatario_id, mensagem, tipo, criado_em, excluir_em)
+             VALUES (?, ?, ?, ?, ?, NOW(), ?)` ,
+            [
+                usuario.empresa_id ?? 0,
+                usuario.id,
+                destinatario.id,
+                mensagem,
+                tipo,
+                tipo === 'enviado' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null
+            ]
         );
 
         return res.status(201).json({
             ok: true,
             id: resultado.insertId,
-            mensagem: 'Lembrete enviado com sucesso.'
+            mensagem: tipo === 'enviado' ? 'Lembrete enviado com sucesso.' : 'Lembrete salvo no seu painel.'
         });
     } catch (erro) {
         console.error('Erro ao criar lembrete:', erro);
@@ -154,32 +268,55 @@ router.patch('/:id/lido', async (req, res) => {
         const usuarioId = obterUsuarioId(req);
         const usuario = await obterUsuario(usuarioId);
         const lembreteId = Number(req.params.id);
-
-        if (!usuario) {
-            return res.status(401).json({ erro: 'Usuário não autenticado.' });
-        }
-        if (!lembreteId) {
-            return res.status(400).json({ erro: 'Lembrete inválido.' });
-        }
+        if (!usuario) return res.status(401).json({ erro: 'Usuário não autenticado.' });
 
         const resultado = await executar(
             `UPDATE lembretes
                 SET lido_em = COALESCE(lido_em, NOW()),
-                    excluir_em = COALESCE(excluir_em, DATE_ADD(NOW(), INTERVAL 30 DAY))
+                    visivel_ate = COALESCE(visivel_ate, DATE_ADD(NOW(), INTERVAL 30 MINUTE))
               WHERE id = ?
-                AND empresa_id = ?
-                AND destinatario_id = ?`,
-            [lembreteId, usuario.empresa_id, usuario.id]
+                AND tipo = 'enviado'
+                AND destinatario_id = ?
+                AND removido_em IS NULL`,
+            [lembreteId, usuario.id]
         );
 
         if (!resultado.affectedRows) {
-            return res.status(404).json({ erro: 'Lembrete não encontrado.' });
+            return res.status(404).json({ erro: 'Lembrete recebido não encontrado.' });
         }
-
-        return res.json({ ok: true, mensagem: 'Lembrete marcado como lido.' });
+        return res.json({ ok: true, mensagem: 'Lembrete marcado como lido. Ele ficará visível por mais 30 minutos.' });
     } catch (erro) {
         console.error('Erro ao marcar lembrete como lido:', erro);
         return res.status(500).json({ erro: 'Erro ao atualizar lembrete.' });
+    }
+});
+
+router.delete('/:id', async (req, res) => {
+    try {
+        const usuarioId = obterUsuarioId(req);
+        const usuario = await obterUsuario(usuarioId);
+        const lembreteId = Number(req.params.id);
+        if (!usuario) return res.status(401).json({ erro: 'Usuário não autenticado.' });
+
+        const resultado = await executar(
+            `UPDATE lembretes
+                SET removido_em = NOW(),
+                    excluir_em = COALESCE(excluir_em, DATE_ADD(NOW(), INTERVAL 30 DAY))
+              WHERE id = ?
+                AND tipo = 'salvo'
+                AND criado_por_id = ?
+                AND destinatario_id = ?
+                AND removido_em IS NULL`,
+            [lembreteId, usuario.id, usuario.id]
+        );
+
+        if (!resultado.affectedRows) {
+            return res.status(404).json({ erro: 'Somente lembretes salvos por você podem ser removidos.' });
+        }
+        return res.json({ ok: true, mensagem: 'Lembrete removido do painel e mantido no histórico por 30 dias.' });
+    } catch (erro) {
+        console.error('Erro ao remover lembrete:', erro);
+        return res.status(500).json({ erro: 'Erro ao remover lembrete.' });
     }
 });
 

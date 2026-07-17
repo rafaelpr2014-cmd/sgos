@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SGOS - Lembretes</title>
+<link rel="icon" type="image/png" href="/img/favicon.png">
+<script src="/js/auth.js" defer></script>
+<style>
+:root{--azul:#2563eb;--azul2:#1d4ed8;--texto:#0f172a;--muted:#64748b;--borda:#e5e7eb;--fundo:#f5f7fb;--verde:#16a34a;--laranja:#f59e0b;--vermelho:#ef4444}*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);color:var(--texto)}.sidebar{position:fixed;inset:0 auto 0 0;width:230px;background:linear-gradient(180deg,#081a31,#061426);padding:18px;color:#fff}.logo{width:185px;margin-bottom:28px}.sidebar a{display:flex;color:#dbeafe;text-decoration:none;padding:12px 13px;border-radius:9px;margin:3px 0;font-size:14px}.sidebar a:hover,.sidebar a.ativo{background:var(--azul);color:#fff}.main{margin-left:230px;min-height:100vh}.header{height:86px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;justify-content:space-between;padding:0 30px}.header h1{font-size:21px;margin:0}.header a{color:var(--azul);font-weight:800;text-decoration:none}.content{padding:26px}.hero{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border-radius:16px;padding:24px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:16px}.hero h2{margin:0 0 6px;font-size:22px}.hero p{margin:0;color:#dbeafe}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.tab{border:1px solid var(--borda);background:#fff;padding:10px 15px;border-radius:10px;font-weight:800;cursor:pointer;color:#334155}.tab.ativo{background:var(--azul);border-color:var(--azul);color:#fff}.card{background:#fff;border:1px solid var(--borda);border-radius:15px;box-shadow:0 8px 20px rgba(15,23,42,.04);overflow:hidden}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:1050px}th{background:#f8fafc;text-align:left;padding:13px;font-size:12px;border-bottom:1px solid var(--borda)}td{padding:14px 13px;border-bottom:1px solid #eef2f7;font-size:13px;vertical-align:top}.mensagem{max-width:420px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45}.badge{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800}.salvo{background:#dbeafe;color:#1d4ed8}.recebido{background:#ede9fe;color:#7c3aed}.enviado{background:#ffedd5;color:#c2410c}.nao-lido{background:#fee2e2;color:#dc2626}.lido{background:#dcfce7;color:#15803d}.removido{background:#e2e8f0;color:#475569}.vazio{text-align:center;padding:55px 20px;color:var(--muted)}.rodape-info{margin-top:14px;color:#64748b;font-size:12px}.loading{padding:45px;text-align:center;color:#64748b}@media(max-width:900px){.sidebar{display:none}.main{margin-left:0}.header{padding:0 18px}.content{padding:16px}.hero{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+<img class="logo" src="https://iili.io/CujQzXa.png" alt="SGOS">
+<a href="painel.html">Painel Inicial</a>
+<a href="lembretes.html" class="ativo">Todos os Lembretes</a>
+<a href="agendamentos.html">Agendamentos</a>
+<a href="relatorios.html">Relatórios</a>
+<a href="historico-os.html">Histórico de OS</a>
+</aside>
+<main class="main">
+<header class="header"><h1>Central de Lembretes</h1><a href="painel.html">← Voltar ao painel</a></header>
+<section class="content">
+<div class="hero"><div><h2>Lembretes recebidos, enviados e salvos</h2><p>Os lembretes enviados ficam guardados por 30 dias. Lembretes salvos permanecem ativos até serem removidos.</p></div></div>
+<div class="tabs">
+<button class="tab ativo" data-categoria="todos">Todos</button>
+<button class="tab" data-categoria="recebidos">Recebidos</button>
+<button class="tab" data-categoria="enviados">Enviados</button>
+<button class="tab" data-categoria="salvos">Salvos</button>
+</div>
+<div class="card"><div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Lembrete</th><th>De</th><th>Para</th><th>Registrado em</th><th>Status</th><th>Exclusão</th></tr></thead><tbody id="tabelaLembretes"><tr><td colspan="7" class="loading">Carregando lembretes...</td></tr></tbody></table></div></div>
+<div class="rodape-info">A limpeza é realizada gradativamente pelo sistema. Lembretes enviados expiram em até 30 dias; lembretes salvos removidos ficam no histórico por mais 30 dias.</div>
+</section>
+</main>
+<script>
+function usuarioLocal(){try{return JSON.parse(localStorage.getItem('usuario')||'{}')}catch{return{}}}
+function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
+function dataHora(v){if(!v)return'-';const d=new Date(v);return Number.isNaN(d.getTime())?v:d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+function linha(item,uid){let tipo='Salvo',classe='salvo';if(item.tipo==='enviado'&&Number(item.destinatario_id)===Number(uid)){tipo='Recebido';classe='recebido'}else if(item.tipo==='enviado'){tipo='Enviado';classe='enviado'}let status='Ativo',statusClasse='salvo';if(item.removido_em){status='Removido';statusClasse='removido'}else if(item.tipo==='enviado'&&!item.lido_em){status='Não lido';statusClasse='nao-lido'}else if(item.tipo==='enviado'&&item.lido_em){status=`Lido em ${dataHora(item.lido_em)}`;statusClasse='lido'}const exclusao=item.excluir_em?dataHora(item.excluir_em):(item.tipo==='salvo'?'Sem expiração enquanto ativo':'-');return `<tr><td><span class="badge ${classe}">${tipo}</span></td><td class="mensagem">${esc(item.mensagem)}</td><td>${esc(item.criado_por_nome)}</td><td>${esc(item.destinatario_nome)}</td><td>${esc(dataHora(item.criado_em))}</td><td><span class="badge ${statusClasse}">${esc(status)}</span></td><td>${esc(exclusao)}</td></tr>`}
+async function carregar(categoria='todos'){const tbody=document.getElementById('tabelaLembretes'),u=usuarioLocal();if(!u.id){location.href='login.html';return}tbody.innerHTML='<tr><td colspan="7" class="loading">Carregando lembretes...</td></tr>';try{const r=await fetch(`/api/lembretes/historico?categoria=${encodeURIComponent(categoria)}`,{headers:{'x-usuario-id':u.id}}),d=await r.json();if(!r.ok)throw new Error(d.erro||`HTTP ${r.status}`);const lista=d.lembretes||[];tbody.innerHTML=lista.length?lista.map(i=>linha(i,d.usuario_id||u.id)).join(''):'<tr><td colspan="7" class="vazio">Nenhum lembrete encontrado nesta categoria.</td></tr>'}catch(e){tbody.innerHTML=`<tr><td colspan="7" class="vazio">${esc(e.message||'Erro ao carregar lembretes.')}</td></tr>`}}
+document.addEventListener('DOMContentLoaded',()=>{carregar();document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(b=>b.classList.remove('ativo'));btn.classList.add('ativo');carregar(btn.dataset.categoria)}))})
+</script>
+</body>
+</html>
