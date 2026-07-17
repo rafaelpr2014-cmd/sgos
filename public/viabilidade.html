@@ -80,6 +80,11 @@ button,input,textarea,select{font:inherit}
 .form-actions{display:flex;gap:10px;margin-top:18px}.btn{border:0;padding:11px 16px;border-radius:10px;cursor:pointer;font-weight:800;color:#fff;display:inline-flex;align-items:center;gap:8px}.btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}.btn-salvar{background:var(--verde)}.btn-salvar:hover{background:#15803d}.btn-limpar{background:#64748b}.btn:disabled{opacity:.65;cursor:not-allowed}
 
 .filtros{display:grid;grid-template-columns:2fr 2fr 1fr 1fr;gap:12px}
+.filtro-periodo{grid-column:span 2;border:1px solid var(--borda);border-radius:12px;padding:11px 12px;background:#f8fafc}
+.filtro-periodo>label{display:block;font-size:12px;font-weight:800;color:#334155;margin-bottom:8px;text-transform:uppercase;letter-spacing:.2px}
+.periodo-duplo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.periodo-campo{display:flex;flex-direction:column;gap:5px}.periodo-campo span{font-size:11px;font-weight:700;color:#64748b}
+
 .table-wrap{width:100%;overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:1250px}th{background:#f8fafc;color:#0f172a;padding:14px 12px;text-align:left;font-size:12px;border-bottom:1px solid var(--borda);white-space:nowrap}td{padding:13px 12px;border-bottom:1px solid var(--borda);font-size:13px;color:#1e293b;vertical-align:top}tr:hover{background:#f8fbff}
 .status-box{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;display:inline-block}.status-pendente{background:#fef3c7;color:#b45309}.status-em-analise{background:#dbeafe;color:#1d4ed8}.status-aprovada{background:#dcfce7;color:#15803d}.status-reprovada{background:#fee2e2;color:#dc2626}.status-instalacao-pendente{background:#ede9fe;color:#6d28d9}.status-instalado{background:#ccfbf1;color:#0f766e}.anexo-existente{outline:2px solid #93c5fd}.anexo-lista{display:flex;gap:7px;flex-wrap:wrap}.mini-anexo{width:58px;height:58px;object-fit:cover;border-radius:9px;border:2px solid #e5e7eb;cursor:pointer}.mini-video{width:58px;height:58px;border-radius:9px;border:2px solid #e5e7eb;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px}.acoes{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;white-space:nowrap;min-width:92px}.icone-acao{cursor:pointer;font-size:16px;line-height:1;flex:0 0 auto}
 .btn-localizacao{border:0;border-radius:9px;padding:7px 10px;background:#dbeafe;color:#1d4ed8;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
@@ -94,7 +99,7 @@ button,input,textarea,select{font:inherit}
 .footer{display:flex;justify-content:space-between;padding:20px 34px;color:#475569;font-size:12px;border-top:1px solid var(--borda)}
 
 @media(max-width:1300px){.top-actions{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr 1fr}.campo.span-3{grid-column:span 2}.filtros{grid-template-columns:1fr 1fr}}
-@media(max-width:900px){.sidebar{display:none}.main{margin-left:0}.header{height:auto;flex-direction:column;align-items:flex-start;gap:15px;padding:20px}.header-actions{width:100%;justify-content:space-between;flex-wrap:wrap}.busca-wrap,.input-busca-menu{width:100%}.content{padding:20px}.top-actions,.form-grid,.filtros{grid-template-columns:1fr}.campo.span-2,.campo.span-3{grid-column:span 1}.footer{flex-direction:column;gap:8px}}
+@media(max-width:900px){.filtro-periodo{grid-column:span 1}.periodo-duplo{grid-template-columns:1fr}.sidebar{display:none}.main{margin-left:0}.header{height:auto;flex-direction:column;align-items:flex-start;gap:15px;padding:20px}.header-actions{width:100%;justify-content:space-between;flex-wrap:wrap}.busca-wrap,.input-busca-menu{width:100%}.content{padding:20px}.top-actions,.form-grid,.filtros{grid-template-columns:1fr}.campo.span-2,.campo.span-3{grid-column:span 1}.footer{flex-direction:column;gap:8px}}
 
 /* AJUSTES VIABILIDADE */
 .lista-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
@@ -215,7 +220,28 @@ button,input,textarea,select{font:inherit}
 
     <div class="card">
         <div class="card-header"><div class="titulo-card">Filtros</div></div>
-        <div class="filtros"><input type="text" id="filtroNome" placeholder="Filtrar por nome"><input type="text" id="filtroEndereco" placeholder="Filtrar por endereço"><select id="filtroLocalidade"><option value="">Todas as localidades</option></select><select id="filtroStatusViabilidade"><option value="">Todos os status da viabilidade</option><option value="PENDENTE">Pendente</option><option value="EM_ANALISE">Em análise</option><option value="APROVADA">Aprovada</option><option value="REPROVADA">Reprovada</option></select><select id="filtroStatusInstalacao"><option value="">Todas as instalações</option><option value="PENDENTE">Instalação pendente</option><option value="INSTALADO">Instalado</option></select><input type="date" id="dataInicio"><input type="date" id="dataFim"></div>
+        <div class="filtros">
+            <input type="text" id="filtroNome" placeholder="Filtrar por nome">
+            <input type="text" id="filtroEndereco" placeholder="Filtrar por endereço">
+            <select id="filtroLocalidade"><option value="">Todas as localidades</option></select>
+            <select id="filtroStatusViabilidade"><option value="">Todos os status da viabilidade</option><option value="PENDENTE">Pendente</option><option value="EM_ANALISE">Em análise</option><option value="APROVADA">Aprovada</option><option value="REPROVADA">Reprovada</option></select>
+            <select id="filtroStatusInstalacao"><option value="">Todas as instalações</option><option value="PENDENTE">Instalação pendente</option><option value="INSTALADO">Instalado</option></select>
+            <div></div>
+            <div class="filtro-periodo">
+                <label>Filtro pela data de registro</label>
+                <div class="periodo-duplo">
+                    <label class="periodo-campo"><span>Registro inicial</span><input type="date" id="registroDataInicio"></label>
+                    <label class="periodo-campo"><span>Registro final</span><input type="date" id="registroDataFim"></label>
+                </div>
+            </div>
+            <div class="filtro-periodo">
+                <label>Filtro pela data de atualização</label>
+                <div class="periodo-duplo">
+                    <label class="periodo-campo"><span>Atualização inicial</span><input type="date" id="atualizacaoDataInicio"></label>
+                    <label class="periodo-campo"><span>Atualização final</span><input type="date" id="atualizacaoDataFim"></label>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="card">
@@ -242,6 +268,7 @@ button,input,textarea,select{font:inherit}
 const API_VIABILIDADE = "/api/viabilidade";
 const API_UPLOAD = "/api/upload_viabilidade";
 let viabilidades = [];
+let viabilidadesFiltradas = [];
 let arquivosSelecionados = [];
 let arquivosVisitaSelecionados = [];
 let anexosExistentesEdicao = [];
@@ -448,8 +475,35 @@ function dentroDias(v,dias){if(!v)return false;const d=new Date(v);if(isNaN(d))r
 function mesmoDia(v){if(!v)return false;const d=new Date(v),h=new Date();return !isNaN(d)&&d.toDateString()===h.toDateString()}
 function atualizarCards(lista){document.getElementById("cardTotal").innerText=lista.length;document.getElementById("card7Dias").innerText=viabilidades.filter(x=>dentroDias(dataRegistro(x),7)).length;document.getElementById("cardAnexos").innerText=lista.filter(x=>anexosDoRegistro(x).length).length;document.getElementById("cardHoje").innerText=viabilidades.filter(x=>mesmoDia(dataRegistro(x))).length}
 function renderTabela(){
-    const nome=document.getElementById("filtroNome").value.toLowerCase(),end=document.getElementById("filtroEndereco").value.toLowerCase(),loc=document.getElementById("filtroLocalidade").value.toLowerCase(),statusViabilidade=document.getElementById("filtroStatusViabilidade").value,statusInstalacao=document.getElementById("filtroStatusInstalacao").value,di=document.getElementById("dataInicio").value,df=document.getElementById("dataFim").value;
-    const lista=viabilidades.filter(o=>{const d=dataRegistro(o)?new Date(dataRegistro(o)):null;const st=String(o.status||"PENDENTE").toUpperCase();const sti=statusInstalacaoRegistro(o);let ok=(!nome||String(o.nome||"").toLowerCase().includes(nome))&&(!end||String(o.endereco||"").toLowerCase().includes(end))&&(!loc||localidadeDoRegistro(o).toLowerCase()===loc)&&(!statusViabilidade||st===statusViabilidade)&&(!statusInstalacao||sti===statusInstalacao);if(di)ok=ok&&d&&!isNaN(d)&&d>=new Date(di+"T00:00:00");if(df)ok=ok&&d&&!isNaN(d)&&d<=new Date(df+"T23:59:59");return ok}).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
+    const nome=document.getElementById("filtroNome").value.toLowerCase();
+    const end=document.getElementById("filtroEndereco").value.toLowerCase();
+    const loc=document.getElementById("filtroLocalidade").value.toLowerCase();
+    const statusViabilidade=document.getElementById("filtroStatusViabilidade").value;
+    const statusInstalacao=document.getElementById("filtroStatusInstalacao").value;
+    const registroInicio=document.getElementById("registroDataInicio").value;
+    const registroFim=document.getElementById("registroDataFim").value;
+    const atualizacaoInicio=document.getElementById("atualizacaoDataInicio").value;
+    const atualizacaoFim=document.getElementById("atualizacaoDataFim").value;
+
+    const lista=viabilidades.filter(o=>{
+        const dataRegistroValor=dataRegistro(o)?new Date(dataRegistro(o)):null;
+        const dataAtualizacaoValor=o.atualizado_em?new Date(o.atualizado_em):null;
+        const st=String(o.status||"PENDENTE").toUpperCase();
+        const sti=statusInstalacaoRegistro(o);
+        let ok=(!nome||String(o.nome||"").toLowerCase().includes(nome))
+            &&(!end||String(o.endereco||"").toLowerCase().includes(end))
+            &&(!loc||localidadeDoRegistro(o).toLowerCase()===loc)
+            &&(!statusViabilidade||st===statusViabilidade)
+            &&(!statusInstalacao||sti===statusInstalacao);
+
+        if(registroInicio)ok=ok&&dataRegistroValor&&!isNaN(dataRegistroValor)&&dataRegistroValor>=new Date(registroInicio+"T00:00:00");
+        if(registroFim)ok=ok&&dataRegistroValor&&!isNaN(dataRegistroValor)&&dataRegistroValor<=new Date(registroFim+"T23:59:59");
+        if(atualizacaoInicio)ok=ok&&dataAtualizacaoValor&&!isNaN(dataAtualizacaoValor)&&dataAtualizacaoValor>=new Date(atualizacaoInicio+"T00:00:00");
+        if(atualizacaoFim)ok=ok&&dataAtualizacaoValor&&!isNaN(dataAtualizacaoValor)&&dataAtualizacaoValor<=new Date(atualizacaoFim+"T23:59:59");
+        return ok;
+    }).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
+
+    viabilidadesFiltradas=lista;
     atualizarCards(lista);
     const tbody=document.getElementById("tabelaViabilidades");
     if(!lista.length){tbody.innerHTML='<tr><td colspan="17" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
@@ -517,11 +571,46 @@ function fecharResumo(){document.getElementById("popupResumo").classList.remove(
 function fecharResumoAoFundo(e){if(e.target.id==="popupResumo")fecharResumo()}
 function classeStatusPdf(status){const s=String(status||"PENDENTE").toUpperCase();return s==="EM_ANALISE"?"pdf-analise":s==="APROVADA"?"pdf-verde":s==="REPROVADA"?"pdf-vermelho":"pdf-vermelho"}
 function classeStatusInstalacaoPdf(status){return String(status||"PENDENTE").toUpperCase()==="INSTALADO"?"pdf-verde":"pdf-vermelho"}
-function htmlImpressao(registros){
+function formatarDataFiltro(valor){if(!valor)return "NÃO INFORMADO";const [ano,mes,dia]=String(valor).split("-");return dia&&mes&&ano?`${dia}/${mes}/${ano}`:valor}
+function periodoFiltro(inicio,fim){
+    if(!inicio&&!fim)return "TODOS OS PERÍODOS";
+    return `${inicio?formatarDataFiltro(inicio):"INÍCIO"} - ${fim?formatarDataFiltro(fim):"HOJE"}`;
+}
+function obterContextoFiltrosPdf(){
+    return {
+        periodoRegistro:periodoFiltro(document.getElementById("registroDataInicio")?.value,document.getElementById("registroDataFim")?.value),
+        periodoAtualizacao:periodoFiltro(document.getElementById("atualizacaoDataInicio")?.value,document.getElementById("atualizacaoDataFim")?.value)
+    };
+}
+function contarResumoPdf(registros){
+    const status=o=>String(o.status||"PENDENTE").toUpperCase();
+    return {
+        total:registros.length,
+        aprovadas:registros.filter(o=>status(o)==="APROVADA").length,
+        instalados:registros.filter(o=>status(o)==="APROVADA"&&statusInstalacaoRegistro(o)==="INSTALADO").length,
+        instalacaoPendente:registros.filter(o=>status(o)==="APROVADA"&&statusInstalacaoRegistro(o)==="PENDENTE").length,
+        pendentes:registros.filter(o=>status(o)==="PENDENTE").length,
+        emAnalise:registros.filter(o=>status(o)==="EM_ANALISE").length,
+        reprovadas:registros.filter(o=>status(o)==="REPROVADA").length
+    };
+}
+function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
     const logo=document.getElementById("logoEmpresa")?.src||"/img/logo-default.png";
-    const emitidoEm=new Date().toLocaleString("pt-BR");
+    const emitidoEm=new Date().toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"});
+    const resumo=contarResumoPdf(registros);
     const paginas=[];
     for(let i=0;i<registros.length;i+=6)paginas.push(registros.slice(i,i+6));
+    const resumoHtml=`<section class="resumo-relatorio">
+        <div class="resumo-periodos"><strong>VIABILIDADES SELECIONADAS: ${resumo.total}</strong><span>PERÍODO DE REGISTRO: ${escapar(contextoFiltros.periodoRegistro)}</span><span>PERÍODO DE ATUALIZAÇÃO: ${escapar(contextoFiltros.periodoAtualizacao)}</span></div>
+        <div class="resumo-contagens">
+            <span><b>VIABILIDADES APROVADAS</b> ${resumo.aprovadas}</span>
+            <span><b>INSTALAÇÃO APROVADA / INSTALADO</b> ${resumo.instalados}</span>
+            <span><b>INSTALAÇÃO APROVADA / PENDENTE</b> ${resumo.instalacaoPendente}</span>
+            <span><b>PENDENTE</b> ${resumo.pendentes}</span>
+            <span><b>EM ANÁLISE</b> ${resumo.emAnalise}</span>
+            <span><b>REPROVADA</b> ${resumo.reprovadas}</span>
+        </div>
+    </section>`;
     const renderItem=o=>`<article class="item">
         <div class="item-topo"><h2>${escapar(o.nome||"-")}</h2><div class="status-grupo"><span class="status ${classeStatusPdf(o.status)}">${escapar(nomeStatus(o.status||"PENDENTE"))}</span>${String(o.status||"").toUpperCase()==="APROVADA"?`<span class="status ${classeStatusInstalacaoPdf(statusInstalacaoRegistro(o))}">${statusInstalacaoRegistro(o)==="INSTALADO"?"INSTALADO":"PENDENTE"}</span>`:""}</div></div>
         <div class="linha"><b>Localidade:</b> ${escapar(localidadeDoRegistro(o))}</div>
@@ -538,9 +627,9 @@ function htmlImpressao(registros){
         @page{size:A4 portrait;margin:8mm}
         *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#0f172a;background:#fff}
         .pagina{min-height:281mm;display:flex;flex-direction:column;page-break-after:always}.pagina:last-child{page-break-after:auto}
-        .cabecalho{height:23mm;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #2563eb;padding:0 2mm 3mm;margin-bottom:4mm}
+        .cabecalho{height:23mm;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #2563eb;padding:0 2mm 3mm;margin-bottom:3mm}
         .marca{display:flex;align-items:center;gap:4mm}.marca img{max-width:42mm;max-height:17mm;object-fit:contain}.marca h1{font-size:15pt;margin:0}.marca p{font-size:8pt;color:#64748b;margin:1mm 0 0}
-        .contador{font-size:8pt;color:#64748b;font-weight:bold}
+        .contador{font-size:8pt;color:#64748b;font-weight:bold}.resumo-relatorio{border:1px solid #cbd5e1;border-radius:2.5mm;background:#f8fafc;padding:2.2mm 3mm;margin-bottom:3mm;font-size:7.4pt}.resumo-periodos{display:flex;gap:3mm 6mm;align-items:center;flex-wrap:wrap;border-bottom:1px solid #dbe3ee;padding-bottom:1.5mm;margin-bottom:1.5mm}.resumo-periodos strong{color:#1d4ed8}.resumo-contagens{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2mm 4mm}.resumo-contagens span{white-space:nowrap}.resumo-contagens b{font-weight:800}
         .grade{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr);gap:3mm;flex:1;min-height:0}
         .item{border:1px solid #cbd5e1;border-radius:3mm;padding:3mm;overflow:hidden;page-break-inside:avoid;background:#fff}
         .item-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:2mm;border-bottom:1px solid #e2e8f0;padding-bottom:1.5mm;margin-bottom:1.5mm}.item h2{font-size:10.5pt;margin:0;line-height:1.15}.status-grupo{display:flex;gap:1mm;flex-wrap:wrap;justify-content:flex-end}.status{font-size:7pt;font-weight:bold;border-radius:999px;padding:1mm 2mm;white-space:nowrap;border:1px solid transparent}.pdf-vermelho{background:#fee2e2;color:#b91c1c;border-color:#fecaca}.pdf-analise{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}.pdf-verde{background:#dcfce7;color:#15803d;border-color:#bbf7d0}
@@ -549,13 +638,14 @@ function htmlImpressao(registros){
         @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
     </style></head><body>${paginas.map((pagina,indice)=>`<section class="pagina">
         <header class="cabecalho"><div class="marca"><img src="${escapar(logo)}" alt="Logo"><div><h1>Relatório de Viabilidades</h1><p>SGOS - Sistema de Gestão de Ordens de Serviço</p></div></div><div class="contador">Página ${indice+1} de ${paginas.length}</div></header>
+        ${indice===0?resumoHtml:""}
         <main class="grade">${pagina.map(renderItem).join("")}</main>
         <footer class="rodape">Emitido por SGOS - Sistemas de Ordens de Serviço - ${escapar(emitidoEm)}</footer>
     </section>`).join("")}<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script></body></html>`
 }
-function abrirImpressao(registros){const w=window.open("","_blank");if(!w){alert("Permita pop-ups para imprimir.");return}w.document.open();w.document.write(htmlImpressao(registros));w.document.close()}
+function abrirImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){const w=window.open("","_blank");if(!w){alert("Permita pop-ups para imprimir.");return}w.document.open();w.document.write(htmlImpressao(registros,contextoFiltros));w.document.close()}
 function imprimirViabilidade(id){const o=viabilidades.find(v=>Number(v.id)===Number(id));if(o)abrirImpressao([o])}
-function imprimirSelecionadas(){const registros=viabilidades.filter(v=>idsSelecionados.has(Number(v.id)));if(!registros.length){alert("Selecione pelo menos uma viabilidade para imprimir.");return}abrirImpressao(registros)}
+function imprimirSelecionadas(){const registros=viabilidadesFiltradas.filter(v=>idsSelecionados.has(Number(v.id)));if(!registros.length){alert("Selecione pelo menos uma viabilidade visível nos filtros para imprimir.");return}abrirImpressao(registros)}
 async function excluirViabilidade(id){if(!id||!confirm("Deseja excluir esta viabilidade?"))return;try{const r=await fetch(`${API_VIABILIDADE}/${id}`,{method:"DELETE",headers:getAuthHeaders()});if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.erro||`Erro ${r.status}`)}alert("Viabilidade excluída com sucesso.");carregarViabilidades()}catch(e){console.error(e);alert("Não foi possível excluir: "+e.message)}}
 function abrirMidia(url,video){const c=document.getElementById("popupConteudo");c.innerHTML=video?`<video src="${escapar(url)}" controls autoplay></video>`:`<img src="${escapar(url)}" alt="Anexo">`;document.getElementById("popupMidia").classList.add("ativo")}
 function fecharMidia(){document.getElementById("popupMidia").classList.remove("ativo");document.getElementById("popupConteudo").innerHTML=""}
@@ -567,7 +657,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById("telefone").addEventListener("input",aplicarMascaraTelefone);document.getElementById("tecnicoResponsavel").addEventListener("change",limitarSelecaoTecnicos);
     document.getElementById("status").addEventListener("change",atualizarCampoInstalacao);
     atualizarCampoInstalacao();document.getElementById("telefone2").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);document.getElementById("arquivosVisita").addEventListener("change",processarArquivosVisita);
-    document.querySelectorAll("#filtroNome,#filtroEndereco,#filtroLocalidade,#filtroStatusViabilidade,#filtroStatusInstalacao,#dataInicio,#dataFim").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
+    document.querySelectorAll("#filtroNome,#filtroEndereco,#filtroLocalidade,#filtroStatusViabilidade,#filtroStatusInstalacao,#registroDataInicio,#registroDataFim,#atualizacaoDataInicio,#atualizacaoDataFim").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
     document.getElementById("buscaViabilidade").addEventListener("input",e=>{document.getElementById("filtroNome").value=e.target.value;renderTabela()});
     document.getElementById("selecionarTodas").addEventListener("change",e=>selecionarTodasViabilidades(e.target.checked));
     document.addEventListener("keydown",e=>{if(e.key==="Escape"){fecharMidia();fecharResumo()}});
