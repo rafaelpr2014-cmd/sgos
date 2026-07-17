@@ -215,7 +215,7 @@ button,input,textarea,select{font:inherit}
 
     <div class="card">
         <div class="card-header"><div class="titulo-card">Filtros</div></div>
-        <div class="filtros"><input type="text" id="filtroNome" placeholder="Filtrar por nome"><input type="text" id="filtroEndereco" placeholder="Filtrar por endereço"><select id="filtroLocalidade"><option value="">Todas as localidades</option></select><input type="date" id="dataInicio"><input type="date" id="dataFim"></div>
+        <div class="filtros"><input type="text" id="filtroNome" placeholder="Filtrar por nome"><input type="text" id="filtroEndereco" placeholder="Filtrar por endereço"><select id="filtroLocalidade"><option value="">Todas as localidades</option></select><select id="filtroStatusViabilidade"><option value="">Todos os status da viabilidade</option><option value="PENDENTE">Pendente</option><option value="EM_ANALISE">Em análise</option><option value="APROVADA">Aprovada</option><option value="REPROVADA">Reprovada</option></select><select id="filtroStatusInstalacao"><option value="">Todas as instalações</option><option value="PENDENTE">Instalação pendente</option><option value="INSTALADO">Instalado</option></select><input type="date" id="dataInicio"><input type="date" id="dataFim"></div>
     </div>
 
     <div class="card">
@@ -448,8 +448,8 @@ function dentroDias(v,dias){if(!v)return false;const d=new Date(v);if(isNaN(d))r
 function mesmoDia(v){if(!v)return false;const d=new Date(v),h=new Date();return !isNaN(d)&&d.toDateString()===h.toDateString()}
 function atualizarCards(lista){document.getElementById("cardTotal").innerText=lista.length;document.getElementById("card7Dias").innerText=viabilidades.filter(x=>dentroDias(dataRegistro(x),7)).length;document.getElementById("cardAnexos").innerText=lista.filter(x=>anexosDoRegistro(x).length).length;document.getElementById("cardHoje").innerText=viabilidades.filter(x=>mesmoDia(dataRegistro(x))).length}
 function renderTabela(){
-    const nome=document.getElementById("filtroNome").value.toLowerCase(),end=document.getElementById("filtroEndereco").value.toLowerCase(),loc=document.getElementById("filtroLocalidade").value.toLowerCase(),di=document.getElementById("dataInicio").value,df=document.getElementById("dataFim").value;
-    const lista=viabilidades.filter(o=>{const d=dataRegistro(o)?new Date(dataRegistro(o)):null;let ok=(!nome||String(o.nome||"").toLowerCase().includes(nome))&&(!end||String(o.endereco||"").toLowerCase().includes(end))&&(!loc||localidadeDoRegistro(o).toLowerCase()===loc);if(di)ok=ok&&d&&!isNaN(d)&&d>=new Date(di+"T00:00:00");if(df)ok=ok&&d&&!isNaN(d)&&d<=new Date(df+"T23:59:59");return ok}).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
+    const nome=document.getElementById("filtroNome").value.toLowerCase(),end=document.getElementById("filtroEndereco").value.toLowerCase(),loc=document.getElementById("filtroLocalidade").value.toLowerCase(),statusViabilidade=document.getElementById("filtroStatusViabilidade").value,statusInstalacao=document.getElementById("filtroStatusInstalacao").value,di=document.getElementById("dataInicio").value,df=document.getElementById("dataFim").value;
+    const lista=viabilidades.filter(o=>{const d=dataRegistro(o)?new Date(dataRegistro(o)):null;const st=String(o.status||"PENDENTE").toUpperCase();const sti=statusInstalacaoRegistro(o);let ok=(!nome||String(o.nome||"").toLowerCase().includes(nome))&&(!end||String(o.endereco||"").toLowerCase().includes(end))&&(!loc||localidadeDoRegistro(o).toLowerCase()===loc)&&(!statusViabilidade||st===statusViabilidade)&&(!statusInstalacao||sti===statusInstalacao);if(di)ok=ok&&d&&!isNaN(d)&&d>=new Date(di+"T00:00:00");if(df)ok=ok&&d&&!isNaN(d)&&d<=new Date(df+"T23:59:59");return ok}).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
     atualizarCards(lista);
     const tbody=document.getElementById("tabelaViabilidades");
     if(!lista.length){tbody.innerHTML='<tr><td colspan="17" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
@@ -504,6 +504,7 @@ function abrirResumoViabilidade(id,foco=""){
         <div class="resumo-item"><small>Atualizado em</small><div>${formatarData(o.atualizado_em)}</div></div>
         <div class="resumo-item span-2"><small>Observação inicial</small><div>${escapar(o.observacao||o.observacoes||"-")}</div></div>
         <div class="resumo-item span-2"><small>Observação do técnico pós-visita</small><div>${escapar(o.observacao_pos_aprovacao||"-")}</div></div>
+        ${statusInstalacaoRegistro(o)==="INSTALADO"?`<div class="resumo-item span-2"><small>Instalação confirmada em</small><div>${formatarData(o.instalacao_aprovada_em)}</div></div>`:""}
     </div>
     <div class="resumo-secao"><h3>Anexo inicial</h3>${renderAnexosResumo(analise)}</div>
     <div class="resumo-secao"><h3>Anexo da comprovação de visita</h3>${renderAnexosResumo(visita)}</div>
@@ -514,22 +515,24 @@ function abrirResumoViabilidade(id,foco=""){
 }
 function fecharResumo(){document.getElementById("popupResumo").classList.remove("ativo");document.body.style.overflow=""}
 function fecharResumoAoFundo(e){if(e.target.id==="popupResumo")fecharResumo()}
+function classeStatusPdf(status){const s=String(status||"PENDENTE").toUpperCase();return s==="EM_ANALISE"?"pdf-analise":s==="APROVADA"?"pdf-verde":s==="REPROVADA"?"pdf-vermelho":"pdf-vermelho"}
+function classeStatusInstalacaoPdf(status){return String(status||"PENDENTE").toUpperCase()==="INSTALADO"?"pdf-verde":"pdf-vermelho"}
 function htmlImpressao(registros){
     const logo=document.getElementById("logoEmpresa")?.src||"/img/logo-default.png";
     const emitidoEm=new Date().toLocaleString("pt-BR");
     const paginas=[];
     for(let i=0;i<registros.length;i+=6)paginas.push(registros.slice(i,i+6));
     const renderItem=o=>`<article class="item">
-        <div class="item-topo"><h2>${escapar(o.nome||"-")}</h2><span class="status">${escapar(nomeStatus(o.status||"PENDENTE"))}</span></div>
+        <div class="item-topo"><h2>${escapar(o.nome||"-")}</h2><div class="status-grupo"><span class="status ${classeStatusPdf(o.status)}">${escapar(nomeStatus(o.status||"PENDENTE"))}</span>${String(o.status||"").toUpperCase()==="APROVADA"?`<span class="status ${classeStatusInstalacaoPdf(statusInstalacaoRegistro(o))}">${statusInstalacaoRegistro(o)==="INSTALADO"?"INSTALADO":"PENDENTE"}</span>`:""}</div></div>
         <div class="linha"><b>Localidade:</b> ${escapar(localidadeDoRegistro(o))}</div>
         <div class="linha"><b>Endereço:</b> ${escapar(o.endereco||"-")}</div>
         <div class="duas"><div><b>Telefone:</b> ${escapar(o.telefone||"-")}</div><div><b>Telefone 2:</b> ${escapar(o.telefone2||o.telefone_secundario||"-")}</div></div>
         <div class="duas"><div><b>Técnicos:</b> ${escapar(o.tecnico_responsavel||"-")}</div><div><b>Registro:</b> ${formatarData(dataRegistro(o))}</div></div>
-        ${statusInstalacaoRegistro(o)==="INSTALADO"?`<div class="linha instalacao-data"><b>Instalação aprovada em:</b> ${formatarData(o.instalacao_aprovada_em)}</div>`:""}
         <div class="duas"><div><b>Cadastrado por:</b> ${escapar(nomeCadastrador(o))}</div><div><b>Atualizado por:</b> ${escapar(nomeAtualizador(o))}</div></div>
         <div class="linha"><b>Atualizado em:</b> ${formatarData(o.atualizado_em)}</div>
         <div class="obs"><b>Observação inicial:</b> ${escapar(o.observacao||o.observacoes||"-")}</div>
         ${o.observacao_pos_aprovacao?`<div class="obs pos"><b>Observação do técnico pós-visita:</b> ${escapar(o.observacao_pos_aprovacao)}</div>`:""}
+        ${statusInstalacaoRegistro(o)==="INSTALADO"?`<div class="linha instalacao-data"><b>Instalação confirmada em:</b> ${formatarData(o.instalacao_aprovada_em)}</div>`:""}
     </article>`;
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relatório de Viabilidades</title><style>
         @page{size:A4 portrait;margin:8mm}
@@ -540,7 +543,7 @@ function htmlImpressao(registros){
         .contador{font-size:8pt;color:#64748b;font-weight:bold}
         .grade{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr);gap:3mm;flex:1;min-height:0}
         .item{border:1px solid #cbd5e1;border-radius:3mm;padding:3mm;overflow:hidden;page-break-inside:avoid;background:#fff}
-        .item-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:2mm;border-bottom:1px solid #e2e8f0;padding-bottom:1.5mm;margin-bottom:1.5mm}.item h2{font-size:10.5pt;margin:0;line-height:1.15}.status{font-size:7pt;font-weight:bold;background:#e2e8f0;border-radius:999px;padding:1mm 2mm;white-space:nowrap}
+        .item-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:2mm;border-bottom:1px solid #e2e8f0;padding-bottom:1.5mm;margin-bottom:1.5mm}.item h2{font-size:10.5pt;margin:0;line-height:1.15}.status-grupo{display:flex;gap:1mm;flex-wrap:wrap;justify-content:flex-end}.status{font-size:7pt;font-weight:bold;border-radius:999px;padding:1mm 2mm;white-space:nowrap;border:1px solid transparent}.pdf-vermelho{background:#fee2e2;color:#b91c1c;border-color:#fecaca}.pdf-analise{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}.pdf-verde{background:#dcfce7;color:#15803d;border-color:#bbf7d0}
         .linha,.duas,.obs{font-size:7.5pt;line-height:1.25;margin-top:1.2mm}.duas{display:grid;grid-template-columns:1fr 1fr;gap:2mm}.instalacao-data{background:#ecfdf5;border:1px solid #a7f3d0;border-radius:2mm;padding:1.2mm;color:#065f46}.obs{border-top:1px dashed #cbd5e1;padding-top:1.3mm;max-height:15mm;overflow:hidden}.obs.pos{max-height:11mm}
         .rodape{height:9mm;margin-top:3mm;border-top:1px solid #cbd5e1;display:flex;align-items:flex-end;justify-content:center;font-size:7.5pt;color:#475569;text-align:center}
         @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
@@ -564,7 +567,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById("telefone").addEventListener("input",aplicarMascaraTelefone);document.getElementById("tecnicoResponsavel").addEventListener("change",limitarSelecaoTecnicos);
     document.getElementById("status").addEventListener("change",atualizarCampoInstalacao);
     atualizarCampoInstalacao();document.getElementById("telefone2").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);document.getElementById("arquivosVisita").addEventListener("change",processarArquivosVisita);
-    document.querySelectorAll("#filtroNome,#filtroEndereco,#filtroLocalidade,#dataInicio,#dataFim").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
+    document.querySelectorAll("#filtroNome,#filtroEndereco,#filtroLocalidade,#filtroStatusViabilidade,#filtroStatusInstalacao,#dataInicio,#dataFim").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
     document.getElementById("buscaViabilidade").addEventListener("input",e=>{document.getElementById("filtroNome").value=e.target.value;renderTabela()});
     document.getElementById("selecionarTodas").addEventListener("change",e=>selecionarTodasViabilidades(e.target.checked));
     document.addEventListener("keydown",e=>{if(e.key==="Escape"){fecharMidia();fecharResumo()}});
