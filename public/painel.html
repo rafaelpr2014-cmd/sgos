@@ -1883,6 +1883,23 @@ let periodoAtual = "hoje";
                 <select id="lembreteDestinatario"><option value="">Selecione o usuário...</option></select>
             </div>
             <div class="form-grupo">
+                <label>Quando o lembrete deve aparecer?</label>
+                <div class="tipo-lembrete-opcoes">
+                    <label class="tipo-lembrete-opcao">
+                        <input type="radio" name="quandoLembrete" value="agora" checked>
+                        <span><strong>Agora</strong><small>Fica disponível imediatamente no painel.</small></span>
+                    </label>
+                    <label class="tipo-lembrete-opcao">
+                        <input type="radio" name="quandoLembrete" value="agendado">
+                        <span><strong>Agendar</strong><small>Só aparece e abre em popup na data escolhida.</small></span>
+                    </label>
+                </div>
+            </div>
+            <div class="form-grupo" id="grupoAgendamentoLembrete" style="display:none;">
+                <label for="lembreteAgendadoPara">Data e hora do agendamento</label>
+                <input type="datetime-local" id="lembreteAgendadoPara">
+            </div>
+            <div class="form-grupo">
                 <label for="lembreteTexto">Lembrete</label>
                 <textarea id="lembreteTexto" maxlength="2000" required placeholder="Ex.: TARARANGA/INSTA APP TV — FLORA — LOGIN: prof.flora ID: 1867 TEL: 7381134255"></textarea>
             </div>
@@ -1917,6 +1934,7 @@ let lembretesCache = new Map();
 let lembreteAbertoId = null;
 let primeiraCargaLembretes = true;
 let idsRecebidosConhecidos = new Set();
+let idsPopupsConhecidos = new Set();
 
 function obterUsuarioLocal(){
     try { return JSON.parse(localStorage.getItem("usuario") || "{}"); }
@@ -1954,6 +1972,20 @@ async function carregarUsuariosLembrete(){
     }
 }
 
+function atualizarAgendamentoLembrete(){
+    const quando = document.querySelector('input[name="quandoLembrete"]:checked')?.value || "agora";
+    const grupo = document.getElementById("grupoAgendamentoLembrete");
+    const campo = document.getElementById("lembreteAgendadoPara");
+    const agendado = quando === "agendado";
+    if(grupo) grupo.style.display = agendado ? "block" : "none";
+    if(campo){
+        campo.required = agendado;
+        const agora = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
+        campo.min = agora.toISOString().slice(0,16);
+        if(!agendado) campo.value = "";
+    }
+}
+
 function atualizarTipoLembrete(){
     const tipo = document.querySelector('input[name="tipoLembrete"]:checked')?.value || "salvo";
     const grupo = document.getElementById("grupoDestinatarioLembrete");
@@ -1964,19 +1996,22 @@ function atualizarTipoLembrete(){
     if(select) select.required = enviado;
     if(botao) botao.textContent = enviado ? "Enviar lembrete" : "Salvar lembrete";
     if(enviado) carregarUsuariosLembrete();
+    atualizarAgendamentoLembrete();
 }
 
 function abrirModalNovoLembrete(){
     document.getElementById("formNovoLembrete")?.reset();
     atualizarTipoLembrete();
+    atualizarAgendamentoLembrete();
     document.getElementById("modalNovoLembrete")?.classList.add("ativo");
     setTimeout(() => document.getElementById("lembreteTexto")?.focus(), 50);
 }
 
 function descricaoStatusLembrete(item, usuarioId){
-    if(item.tipo === "salvo") return "Salvo para mim";
-    if(item.lido_em) return `Lido em ${formatarDataHora(item.lido_em)} — visível por 30 minutos`;
-    return Number(item.destinatario_id) === Number(usuarioId) ? "Recebido — não lido" : "Enviado — aguardando leitura";
+    const agendamento = item.agendado_para ? `Agendado para ${formatarDataHora(item.agendado_para)} — ` : "";
+    if(item.tipo === "salvo") return `${agendamento}Salvo para mim`;
+    if(item.lido_em) return `${agendamento}Lido em ${formatarDataHora(item.lido_em)} — visível por 30 minutos`;
+    return `${agendamento}${Number(item.destinatario_id) === Number(usuarioId) ? "Recebido — não lido" : "Enviado — aguardando leitura"}`;
 }
 
 function htmlLembrete(item, usuarioId){
@@ -2000,6 +2035,7 @@ function abrirLembrete(id, automatico = false){
         <strong>Cadastrado por:</strong> ${escaparHtml(item.criado_por_nome)}<br>
         <strong>Destinatário:</strong> ${escaparHtml(item.destinatario_nome)}<br>
         <strong>Registrado em:</strong> ${escaparHtml(formatarDataHora(item.criado_em))}<br>
+        ${item.agendado_para ? `<strong>Agendado para:</strong> ${escaparHtml(formatarDataHora(item.agendado_para))}<br>` : ""}
         <strong>Status:</strong> ${escaparHtml(descricaoStatusLembrete(item, usuario.id))}`;
     const btn = document.getElementById("btnAcaoLembrete");
     if(item.tipo === "salvo"){
@@ -2022,16 +2058,30 @@ async function carregarLembretes(){
         const data = await res.json();
         if(!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
         const lembretes = data.lembretes || [];
-        const novosRecebidos = lembretes.filter(item => item.tipo === "enviado" && Number(item.destinatario_id) === Number(usuario.id) && !item.lido_em && !idsRecebidosConhecidos.has(Number(item.id)));
+
+        const candidatosPopup = lembretes.filter(item => {
+            const recebidoNaoLido = item.tipo === "enviado" && Number(item.destinatario_id) === Number(usuario.id) && !item.lido_em;
+            const pessoalAgendado = item.tipo === "salvo" && Number(item.destinatario_id) === Number(usuario.id) && !!item.agendado_para;
+            return recebidoNaoLido || pessoalAgendado;
+        });
+        const novosPopups = candidatosPopup.filter(item => !idsPopupsConhecidos.has(Number(item.id)));
+
         lembretesCache = new Map(lembretes.map(item => [Number(item.id), item]));
         lista.innerHTML = lembretes.length ? lembretes.map(item => htmlLembrete(item, usuario.id)).join("") : '<div class="lembretes-vazio">Nenhum lembrete no painel.</div>';
+
         const naoLidos = lembretes.filter(item => item.tipo === "enviado" && Number(item.destinatario_id) === Number(usuario.id) && !item.lido_em).length;
         const badge = document.querySelector(".notificacao span");
         if(badge){ badge.textContent = naoLidos; badge.style.display = naoLidos ? "flex" : "none"; }
-        if(primeiraCargaLembretes) idsRecebidosConhecidos = new Set(lembretes.filter(i => i.tipo === "enviado" && Number(i.destinatario_id) === Number(usuario.id)).map(i => Number(i.id)));
-        else novosRecebidos.forEach(i => idsRecebidosConhecidos.add(Number(i.id)));
-        const novo = novosRecebidos[0];
-        if(novo && !document.getElementById("modalNovoLembrete")?.classList.contains("ativo") && !sessionStorage.getItem(`lembrete_popup_${novo.id}`)) abrirLembrete(Number(novo.id), true);
+
+        if(primeiraCargaLembretes){
+            idsRecebidosConhecidos = new Set(lembretes.filter(i => i.tipo === "enviado" && Number(i.destinatario_id) === Number(usuario.id)).map(i => Number(i.id)));
+        }
+        candidatosPopup.forEach(i => idsPopupsConhecidos.add(Number(i.id)));
+
+        const novo = novosPopups[0];
+        if(novo && !document.getElementById("modalNovoLembrete")?.classList.contains("ativo") && !sessionStorage.getItem(`lembrete_popup_${novo.id}`)){
+            abrirLembrete(Number(novo.id), true);
+        }
         primeiraCargaLembretes = false;
     }catch(err){
         console.error("Erro ao carregar lembretes:", err);
@@ -2316,6 +2366,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("btnAcaoLembrete")?.addEventListener("click", executarAcaoLembrete);
     document.querySelectorAll('input[name="tipoLembrete"]').forEach(campo => campo.addEventListener("change", atualizarTipoLembrete));
+    document.querySelectorAll('input[name="quandoLembrete"]').forEach(campo => campo.addEventListener("change", atualizarAgendamentoLembrete));
 
     const formNovoLembrete = document.getElementById("formNovoLembrete");
     formNovoLembrete?.addEventListener("submit", async (event) => {
@@ -2324,12 +2375,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const tipo = document.querySelector('input[name="tipoLembrete"]:checked')?.value || "salvo";
         const destinatarioId = Number(document.getElementById("lembreteDestinatario")?.value || 0);
         const mensagem = document.getElementById("lembreteTexto")?.value?.trim();
+        const quando = document.querySelector('input[name="quandoLembrete"]:checked')?.value || "agora";
+        const agendadoPara = quando === "agendado" ? document.getElementById("lembreteAgendadoPara")?.value : null;
         const botao = formNovoLembrete.querySelector('.btn-salvar-lembrete');
         if(!mensagem) return alert("Informe o lembrete.");
         if(tipo === "enviado" && !destinatarioId) return alert("Selecione o usuário destinatário.");
+        if(quando === "agendado" && !agendadoPara) return alert("Informe a data e hora do agendamento.");
+        if(agendadoPara && new Date(agendadoPara).getTime() <= Date.now()) return alert("Escolha uma data e hora futura.");
         try{
-            botao.disabled = true; botao.textContent = tipo === "enviado" ? "Enviando..." : "Salvando...";
-            const res = await fetch("/api/lembretes", {method:"POST",headers:{"Content-Type":"application/json","x-usuario-id":usuario.id || ""},body:JSON.stringify({tipo,destinatario_id:tipo === "enviado" ? destinatarioId : null,mensagem})});
+            botao.disabled = true; botao.textContent = quando === "agendado" ? "Agendando..." : (tipo === "enviado" ? "Enviando..." : "Salvando...");
+            const res = await fetch("/api/lembretes", {method:"POST",headers:{"Content-Type":"application/json","x-usuario-id":usuario.id || ""},body:JSON.stringify({tipo,destinatario_id:tipo === "enviado" ? destinatarioId : null,mensagem,agendado_para:agendadoPara || null})});
             const data = await res.json().catch(() => ({}));
             if(!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
             formNovoLembrete.reset(); fecharModalLembrete("modalNovoLembrete"); alert(data.mensagem || "Lembrete salvo."); await carregarLembretes();
