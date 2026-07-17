@@ -525,6 +525,7 @@ function htmlImpressao(registros){
         <div class="linha"><b>Endereço:</b> ${escapar(o.endereco||"-")}</div>
         <div class="duas"><div><b>Telefone:</b> ${escapar(o.telefone||"-")}</div><div><b>Telefone 2:</b> ${escapar(o.telefone2||o.telefone_secundario||"-")}</div></div>
         <div class="duas"><div><b>Técnicos:</b> ${escapar(o.tecnico_responsavel||"-")}</div><div><b>Registro:</b> ${formatarData(dataRegistro(o))}</div></div>
+        ${statusInstalacaoRegistro(o)==="INSTALADO"?`<div class="linha instalacao-data"><b>Instalação aprovada em:</b> ${formatarData(o.instalacao_aprovada_em)}</div>`:""}
         <div class="duas"><div><b>Cadastrado por:</b> ${escapar(nomeCadastrador(o))}</div><div><b>Atualizado por:</b> ${escapar(nomeAtualizador(o))}</div></div>
         <div class="linha"><b>Atualizado em:</b> ${formatarData(o.atualizado_em)}</div>
         <div class="obs"><b>Observação inicial:</b> ${escapar(o.observacao||o.observacoes||"-")}</div>
@@ -540,7 +541,7 @@ function htmlImpressao(registros){
         .grade{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr);gap:3mm;flex:1;min-height:0}
         .item{border:1px solid #cbd5e1;border-radius:3mm;padding:3mm;overflow:hidden;page-break-inside:avoid;background:#fff}
         .item-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:2mm;border-bottom:1px solid #e2e8f0;padding-bottom:1.5mm;margin-bottom:1.5mm}.item h2{font-size:10.5pt;margin:0;line-height:1.15}.status{font-size:7pt;font-weight:bold;background:#e2e8f0;border-radius:999px;padding:1mm 2mm;white-space:nowrap}
-        .linha,.duas,.obs{font-size:7.5pt;line-height:1.25;margin-top:1.2mm}.duas{display:grid;grid-template-columns:1fr 1fr;gap:2mm}.obs{border-top:1px dashed #cbd5e1;padding-top:1.3mm;max-height:15mm;overflow:hidden}.obs.pos{max-height:11mm}
+        .linha,.duas,.obs{font-size:7.5pt;line-height:1.25;margin-top:1.2mm}.duas{display:grid;grid-template-columns:1fr 1fr;gap:2mm}.instalacao-data{background:#ecfdf5;border:1px solid #a7f3d0;border-radius:2mm;padding:1.2mm;color:#065f46}.obs{border-top:1px dashed #cbd5e1;padding-top:1.3mm;max-height:15mm;overflow:hidden}.obs.pos{max-height:11mm}
         .rodape{height:9mm;margin-top:3mm;border-top:1px solid #cbd5e1;display:flex;align-items:flex-end;justify-content:center;font-size:7.5pt;color:#475569;text-align:center}
         @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
     </style></head><body>${paginas.map((pagina,indice)=>`<section class="pagina">

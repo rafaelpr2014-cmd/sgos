@@ -80,7 +80,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const [viabilidades] = await pool.query(
                 `SELECT v.id, v.nome, v.endereco, v.observacao, v.telefone, v.telefone2, v.localidade,
                         COALESCE(l.nome, NULLIF(v.localidade, '')) AS localidade_nome,
-                        v.empresa_id, v.cadastrado_por, v.registrado_em, v.status, v.status_instalacao,
+                        v.empresa_id, v.cadastrado_por, v.registrado_em, v.status, v.status_instalacao, v.instalacao_aprovada_em,
                         v.atualizado_em, v.atualizado_por, v.tecnico_responsavel, v.observacao_pos_aprovacao,
                         v.latitude, v.longitude
                  FROM viabilidade v
@@ -124,7 +124,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const [rows] = await pool.query(
                 `SELECT v.id, v.nome, v.endereco, v.observacao, v.telefone, v.telefone2, v.localidade,
                         COALESCE(l.nome, NULLIF(v.localidade, '')) AS localidade_nome,
-                        v.empresa_id, v.cadastrado_por, v.registrado_em, v.status, v.status_instalacao,
+                        v.empresa_id, v.cadastrado_por, v.registrado_em, v.status, v.status_instalacao, v.instalacao_aprovada_em,
                         v.atualizado_em, v.atualizado_por, v.tecnico_responsavel, v.observacao_pos_aprovacao,
                         v.latitude, v.longitude
                  FROM viabilidade v
@@ -188,10 +188,10 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const cadastradoPor = req.usuario.usuario || String(req.usuario.id);
             const [resultado] = await pool.query(
                 `INSERT INTO viabilidade
-                    (nome, endereco, observacao, telefone, telefone2, localidade, tecnico_responsavel, observacao_pos_aprovacao, status, status_instalacao,
+                    (nome, endereco, observacao, telefone, telefone2, localidade, tecnico_responsavel, observacao_pos_aprovacao, status, status_instalacao, instalacao_aprovada_em,
                      latitude, longitude, empresa_id, cadastrado_por, registrado_em, atualizado_em, atualizado_por)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)`,
-                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status, statusInstalacao,
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)`,
+                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status, statusInstalacao, statusInstalacao === "INSTALADO" ? new Date() : null,
                  latitude, longitude, req.usuario.empresa_id, cadastradoPor, cadastradoPor]
             );
 
@@ -241,10 +241,15 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                 `UPDATE viabilidade
                  SET nome = ?, endereco = ?, observacao = ?, telefone = ?, telefone2 = ?, localidade = ?,
                      tecnico_responsavel = ?, observacao_pos_aprovacao = ?, status = ?, status_instalacao = ?,
+                     instalacao_aprovada_em = CASE
+                         WHEN ? = 'INSTALADO' AND COALESCE(status_instalacao, '') <> 'INSTALADO' THEN NOW()
+                         WHEN ? <> 'INSTALADO' THEN NULL
+                         ELSE instalacao_aprovada_em
+                     END,
                      latitude = ?, longitude = ?, atualizado_em = NOW(), atualizado_por = ?
                  WHERE id = ? AND empresa_id = ?`,
                 [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status, statusInstalacao,
-                 latitude, longitude, atualizadoPor, req.params.id, req.usuario.empresa_id]
+                 statusInstalacao, statusInstalacao, latitude, longitude, atualizadoPor, req.params.id, req.usuario.empresa_id]
             );
 
             if (!resultado.affectedRows) {
