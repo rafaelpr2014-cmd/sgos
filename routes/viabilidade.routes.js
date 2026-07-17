@@ -57,8 +57,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             data_upload: anexo.data_upload,
             cadastrado_por: anexo.cadastrado_por,
             registrado_em: anexo.registrado_em,
-            categoria: anexo.categoria || "ANALISE",
-            comprovacao_data_hora: anexo.registrado_em || anexo.data_upload || null
+            categoria: anexo.categoria || "ANALISE"
         };
     }
 
@@ -82,9 +81,6 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                 `SELECT v.id, v.nome, v.endereco, v.observacao, v.telefone, v.telefone2, v.localidade,
                         COALESCE(l.nome, NULLIF(v.localidade, '')) AS localidade_nome,
                         v.empresa_id, v.cadastrado_por, v.registrado_em, v.status, v.status_instalacao, v.instalacao_aprovada_em,
-                        DATE_FORMAT(v.instalacao_aprovada_em, '%d/%m/%Y') AS data_instalacao,
-                        DATE_FORMAT(v.instalacao_aprovada_em, '%H:%i:%s') AS hora_instalacao,
-                        DATE_FORMAT(v.instalacao_aprovada_em, '%d/%m/%Y %H:%i:%s') AS comprovacao_instalacao_em,
                         v.atualizado_em, v.atualizado_por, v.tecnico_responsavel, v.observacao_pos_aprovacao,
                         v.latitude, v.longitude
                  FROM viabilidade v
@@ -129,9 +125,6 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                 `SELECT v.id, v.nome, v.endereco, v.observacao, v.telefone, v.telefone2, v.localidade,
                         COALESCE(l.nome, NULLIF(v.localidade, '')) AS localidade_nome,
                         v.empresa_id, v.cadastrado_por, v.registrado_em, v.status, v.status_instalacao, v.instalacao_aprovada_em,
-                        DATE_FORMAT(v.instalacao_aprovada_em, '%d/%m/%Y') AS data_instalacao,
-                        DATE_FORMAT(v.instalacao_aprovada_em, '%H:%i:%s') AS hora_instalacao,
-                        DATE_FORMAT(v.instalacao_aprovada_em, '%d/%m/%Y %H:%i:%s') AS comprovacao_instalacao_em,
                         v.atualizado_em, v.atualizado_por, v.tecnico_responsavel, v.observacao_pos_aprovacao,
                         v.latitude, v.longitude
                  FROM viabilidade v
@@ -197,19 +190,17 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                 `INSERT INTO viabilidade
                     (nome, endereco, observacao, telefone, telefone2, localidade, tecnico_responsavel, observacao_pos_aprovacao, status, status_instalacao, instalacao_aprovada_em,
                      latitude, longitude, empresa_id, cadastrado_por, registrado_em, atualizado_em, atualizado_por)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)`,
-                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status, statusInstalacao, statusInstalacao === "INSTALADO" ? new Date() : null,
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                         CASE WHEN ? = 'INSTALADO'
+                              THEN DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 HOUR)
+                              ELSE NULL
+                         END,
+                         ?, ?, ?, ?, NOW(), NOW(), ?)`,
+                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status, statusInstalacao, statusInstalacao,
                  latitude, longitude, req.usuario.empresa_id, cadastradoPor, cadastradoPor]
             );
 
-            return res.status(201).json({
-                sucesso: true,
-                id: resultado.insertId,
-                viabilidade_id: resultado.insertId,
-                status,
-                status_instalacao: statusInstalacao,
-                instalacao_aprovada_em: statusInstalacao === "INSTALADO" ? new Date().toISOString() : null
-            });
+            return res.status(201).json({ sucesso: true, id: resultado.insertId, viabilidade_id: resultado.insertId });
         } catch (erro) {
             console.error("Erro ao criar viabilidade:", erro);
             return res.status(erro.statusCode || 500).json({ erro: erro.message });
@@ -254,33 +245,26 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const [resultado] = await pool.query(
                 `UPDATE viabilidade
                  SET nome = ?, endereco = ?, observacao = ?, telefone = ?, telefone2 = ?, localidade = ?,
-                     tecnico_responsavel = ?, observacao_pos_aprovacao = ?, status = ?, status_instalacao = ?,
+                     tecnico_responsavel = ?, observacao_pos_aprovacao = ?, status = ?,
                      instalacao_aprovada_em = CASE
-                         WHEN ? = 'INSTALADO' AND COALESCE(status_instalacao, '') <> 'INSTALADO' THEN NOW()
+                         WHEN ? = 'INSTALADO'
+                              AND (COALESCE(status_instalacao, '') <> 'INSTALADO' OR instalacao_aprovada_em IS NULL)
+                             THEN DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 HOUR)
                          WHEN ? <> 'INSTALADO' THEN NULL
                          ELSE instalacao_aprovada_em
                      END,
+                     status_instalacao = ?,
                      latitude = ?, longitude = ?, atualizado_em = NOW(), atualizado_por = ?
                  WHERE id = ? AND empresa_id = ?`,
-                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status, statusInstalacao,
-                 statusInstalacao, statusInstalacao, latitude, longitude, atualizadoPor, req.params.id, req.usuario.empresa_id]
+                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status,
+                 statusInstalacao, statusInstalacao, statusInstalacao, latitude, longitude, atualizadoPor, req.params.id, req.usuario.empresa_id]
             );
 
             if (!resultado.affectedRows) {
                 return res.status(404).json({ erro: "Viabilidade não encontrada." });
             }
 
-            const [registroAtualizado] = await pool.query(
-                `SELECT id, status, status_instalacao, instalacao_aprovada_em,
-                        DATE_FORMAT(instalacao_aprovada_em, '%d/%m/%Y') AS data_instalacao,
-                        DATE_FORMAT(instalacao_aprovada_em, '%H:%i:%s') AS hora_instalacao,
-                        DATE_FORMAT(instalacao_aprovada_em, '%d/%m/%Y %H:%i:%s') AS comprovacao_instalacao_em
-                 FROM viabilidade
-                 WHERE id = ? AND empresa_id = ? LIMIT 1`,
-                [req.params.id, req.usuario.empresa_id]
-            );
-
-            return res.json({ sucesso: true, ...registroAtualizado[0] });
+            return res.json({ sucesso: true, id: Number(req.params.id) });
         } catch (erro) {
             console.error("Erro ao editar viabilidade:", erro);
             return res.status(erro.statusCode || 500).json({ erro: erro.message });

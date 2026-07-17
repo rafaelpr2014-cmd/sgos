@@ -252,7 +252,7 @@ function usuarioLocal(){try{return JSON.parse(localStorage.getItem("usuario")||"
 function getAuthHeaders(){const u=usuarioLocal();return {"x-usuario-id":u.id||"","x-usuario-nome":u.usuario||u.nome||"","x-usuario-cargo":u.cargo||""}}
 function escapar(v){return String(v??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}
 function normalizarLista(r){if(Array.isArray(r))return r;if(Array.isArray(r?.dados))return r.dados;if(Array.isArray(r?.viabilidades))return r.viabilidades;if(Array.isArray(r?.data))return r.data;return []}
-function formatarData(v){if(!v)return "-";const d=new Date(v);return isNaN(d)?"-":d.toLocaleString("pt-BR")}
+function formatarData(v){if(!v)return "-";const d=new Date(v);return isNaN(d)?"-":d.toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"})}
 function dataRegistro(o){return o.registrado_em||o.criado_em||o.created_at||o.data_cadastro||null}
 function nomeCadastrador(o){return o.cadastrado_por_nome||o.usuario_nome||o.cadastrado_por||"-"}
 function nomeAtualizador(o){return o.atualizado_por||"-"}
