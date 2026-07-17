@@ -79,7 +79,7 @@ body{
     border-radius:9px;
     display:flex;
     align-items:center;
-    gap:12px;
+    gap:18px;
     font-size:14px;
     margin-bottom:2px;
     transition:.2s;
@@ -405,7 +405,7 @@ body{
 
 .painel-topo-grid{
     display:grid;
-    grid-template-columns:minmax(0,1fr) 340px;
+    grid-template-columns:minmax(0,1fr) 320px;
     gap:16px;
     align-items:stretch;
     margin-bottom:18px;
@@ -417,18 +417,18 @@ body{
 
 .top-row{
     display:grid;
-    grid-template-columns:210px repeat(4,minmax(145px,1fr));
-    gap:12px;
-    margin-bottom:10px;
+    grid-template-columns:216px repeat(4,minmax(145px,1fr));
+    gap:16px;
+    margin-bottom:0;
 }
 
 .quick-actions{
     display:grid;
-    gap:10px;
+    gap:16px;
 }
 
 .action-card{
-    height:68px;
+    height:84px;
     border:none;
     border-radius:12px;
     background:linear-gradient(135deg,#2563eb,#1263ff);
@@ -438,8 +438,8 @@ body{
     font-size:15px;
     display:flex;
     align-items:center;
-    gap:11px;
-    padding:0 16px;
+    gap:14px;
+    padding:0 22px;
     cursor:pointer;
     box-shadow:0 10px 22px rgba(37,99,235,0.22);
 }
@@ -472,8 +472,8 @@ body{
     background:white;
     border:1px solid #e5e7eb;
     border-radius:14px;
-    padding:16px 15px 12px;
-    min-height:146px;
+    padding:26px 24px 18px;
+    min-height:184px;
     box-shadow:0 8px 22px rgba(15,23,42,0.05);
     display:flex;
     flex-direction:column;
@@ -487,17 +487,17 @@ body{
 }
 
 .icon-box{
-    width:46px;
-    height:46px;
-    border-radius:15px;
+    width:58px;
+    height:58px;
+    border-radius:20px;
     display:flex;
     align-items:center;
     justify-content:center;
 }
 
 .icon-box svg{
-    width:24px;
-    height:24px;
+    width:31px;
+    height:31px;
     fill:none;
     stroke:currentColor;
     stroke-width:2;
@@ -518,8 +518,8 @@ body{
 
 .card-info strong{
     display:block;
-    font-size:28px;
-    margin:4px 0;
+    font-size:34px;
+    margin:6px 0;
     color:#0f172a;
     line-height:1;
 }
@@ -531,8 +531,8 @@ body{
 
 .sparkline{
     width:100%;
-    height:30px;
-    margin-top:8px;
+    height:42px;
+    margin-top:18px;
 }
 
 .sparkline polyline{
@@ -552,13 +552,20 @@ body{
 ================================ */
 .filtro-periodo{
     display:flex;
-    justify-content:flex-end;
-    margin:0;
+    justify-content:stretch;
+    margin:12px 0 0;
+}
+
+.painel-lateral{
+    min-width:0;
+    display:flex;
+    flex-direction:column;
 }
 
 .filtro-box{
+    width:100%;
     background:white;
-    padding:8px 10px;
+    padding:12px 14px;
     border-radius:12px;
     border:1px solid var(--borda);
     display:flex;
@@ -573,6 +580,8 @@ body{
 }
 
 .filtro-box select{
+    flex:1;
+    min-width:0;
     padding:9px 12px;
     border-radius:8px;
     border:1px solid var(--borda);
@@ -1068,7 +1077,8 @@ tr:hover{ background:#f8fbff; }
     box-shadow:0 8px 20px rgba(15,23,42,0.05);
     min-width:0;
     height:100%;
-    max-height:224px;
+    height:184px;
+    max-height:184px;
     display:flex;
     flex-direction:column;
 }
@@ -1586,21 +1596,9 @@ let periodoAtual = "hoje";
 
         </div>
 
-        <div class="filtro-periodo">
-            <div class="filtro-box">
-                <label>Período:</label>
-
-                <select id="filtroPeriodo">
-                    <option value="hoje" selected>Hoje</option>
-                    <option value="ontem">Ontem</option>
-                    <option value="7dias">Últimos 7 dias</option>
-                    <option value="30dias">Últimos 30 dias</option>
-                </select>
-            </div>
-        </div>
-
             </div>
 
+            <div class="painel-lateral">
             <div class="lembretes-area" id="areaLembretes">
             <div class="lembretes-cabecalho">
                 <div class="lembretes-titulo-wrap">
@@ -1609,13 +1607,26 @@ let periodoAtual = "hoje";
                     </div>
                     <div>
                         <div class="lembretes-titulo">Lembretes</div>
-                        <div class="lembretes-subtitulo">Clique no lembrete para marcar como lido.</div>
+                        <div class="lembretes-subtitulo">Clique para abrir o lembrete.</div>
                     </div>
                 </div>
                 <button class="btn-novo-lembrete" type="button" onclick="abrirModalNovoLembrete()" title="Adicionar lembrete" aria-label="Adicionar lembrete">+</button>
             </div>
             <div id="listaLembretes" class="lembretes-lista">
                 <div class="lembretes-vazio">Carregando lembretes...</div>
+            </div>
+            </div>
+
+            <div class="filtro-periodo">
+                <div class="filtro-box">
+                    <label>Período:</label>
+                    <select id="filtroPeriodo">
+                        <option value="hoje" selected>Hoje</option>
+                        <option value="ontem">Ontem</option>
+                        <option value="7dias">Últimos 7 dias</option>
+                        <option value="30dias">Últimos 30 dias</option>
+                    </select>
+                </div>
             </div>
             </div>
         </div>
@@ -1814,8 +1825,28 @@ let periodoAtual = "hoje";
     </div>
 </div>
 
+<div class="modal-lembrete-overlay" id="modalVisualizarLembrete" onclick="fecharModalAoClicarFora(event, 'modalVisualizarLembrete')">
+    <div class="modal-lembrete">
+        <div class="modal-lembrete-topo">
+            <h3>Lembrete</h3>
+            <button class="btn-fechar-modal" type="button" onclick="fecharModalLembrete('modalVisualizarLembrete')">×</button>
+        </div>
+        <div class="popup-destaque">
+            <div id="lembreteModalTexto" style="font-size:16px;font-weight:800;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;"></div>
+            <div id="lembreteModalMeta" style="margin-top:14px;color:#64748b;font-size:12px;line-height:1.7;"></div>
+        </div>
+        <div class="modal-acoes">
+            <button class="btn-secundario" type="button" onclick="fecharModalLembrete('modalVisualizarLembrete')">Fechar</button>
+            <button class="btn-salvar-lembrete" id="btnMarcarLembreteLido" type="button">Marcar como lido</button>
+        </div>
+    </div>
+</div>
+
 <script>
 
+let lembretesPendentesCache = new Map();
+let lembreteAbertoId = null;
+let primeiraCargaLembretes = true;
 
 function obterUsuarioLocal(){
     try { return JSON.parse(localStorage.getItem("usuario") || "{}"); }
@@ -1888,15 +1919,14 @@ async function carregarUsuariosLembretes(){
 }
 
 function htmlLembrete(item){
-    const classe = item.lido_em ? "lembrete-item lido" : "lembrete-item";
     const autor = item.criado_por_nome || item.cadastrado_por || "Usuário";
     const registrado = formatarDataHora(item.criado_em || item.registrado_em);
 
     return `
-        <div class="${classe}" data-lembrete-id="${Number(item.id)}" role="button" tabindex="0"
-             title="Clique para marcar como lido"
-             onclick="marcarLembreteComoLido(${Number(item.id)})"
-             onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); marcarLembreteComoLido(${Number(item.id)}); }">
+        <div class="lembrete-item" data-lembrete-id="${Number(item.id)}" role="button" tabindex="0"
+             title="Clique para abrir o lembrete"
+             onclick="abrirLembrete(${Number(item.id)})"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); abrirLembrete(${Number(item.id)}); }">
             <div class="lembrete-conteudo">
                 <div class="lembrete-texto">${escaparHtml(item.mensagem || item.texto || item.lembrete)}</div>
                 <div class="lembrete-meta">
@@ -1906,6 +1936,32 @@ function htmlLembrete(item){
             </div>
         </div>`;
 }
+
+function abrirLembrete(id, automatico = false){
+    const item = lembretesPendentesCache.get(Number(id));
+    if(!item) return;
+
+    lembreteAbertoId = Number(id);
+    const autor = item.criado_por_nome || item.cadastrado_por || "Usuário";
+    const registrado = formatarDataHora(item.criado_em || item.registrado_em);
+    const texto = item.mensagem || item.texto || item.lembrete || "";
+
+    const textoEl = document.getElementById("lembreteModalTexto");
+    const metaEl = document.getElementById("lembreteModalMeta");
+    if(textoEl) textoEl.textContent = texto;
+    if(metaEl) metaEl.innerHTML = `<strong>Cadastrado por:</strong> ${escaparHtml(autor)}<br><strong>Registrado em:</strong> ${escaparHtml(registrado)}`;
+
+    document.getElementById("modalVisualizarLembrete")?.classList.add("ativo");
+
+    if(automatico){
+        const vistos = JSON.parse(sessionStorage.getItem("lembretes_popup_exibidos") || "[]");
+        if(!vistos.includes(Number(id))){
+            vistos.push(Number(id));
+            sessionStorage.setItem("lembretes_popup_exibidos", JSON.stringify(vistos));
+        }
+    }
+}
+
 
 async function carregarLembretes(){
     const lista = document.getElementById("listaLembretes");
@@ -1921,24 +1977,41 @@ async function carregarLembretes(){
 
         const data = await res.json();
         const lembretes = Array.isArray(data) ? data : (data.lembretes || []);
-
         const naoLidos = lembretes.filter(item => !item.lido_em);
+
+        const idsAnteriores = new Set(lembretesPendentesCache.keys());
+        lembretesPendentesCache = new Map(naoLidos.map(item => [Number(item.id), item]));
 
         lista.innerHTML = naoLidos.length
             ? naoLidos.map(item => htmlLembrete(item)).join("")
             : '<div class="lembretes-vazio">Nenhum lembrete pendente.</div>';
+
         const badge = document.querySelector(".notificacao span");
         if(badge){
             badge.textContent = naoLidos.length;
             badge.style.display = naoLidos.length ? "flex" : "none";
         }
 
+        const exibidos = new Set(JSON.parse(sessionStorage.getItem("lembretes_popup_exibidos") || "[]").map(Number));
+        let novoParaPopup = null;
+
+        if(primeiraCargaLembretes){
+            novoParaPopup = naoLidos.find(item => !exibidos.has(Number(item.id)));
+            primeiraCargaLembretes = false;
+        }else{
+            novoParaPopup = naoLidos.find(item => !idsAnteriores.has(Number(item.id)) && !exibidos.has(Number(item.id)));
+        }
+
+        if(novoParaPopup && !document.getElementById("modalNovoLembrete")?.classList.contains("ativo")){
+            abrirLembrete(Number(novoParaPopup.id), true);
+        }
 
     }catch(err){
         console.error("Erro ao carregar lembretes:", err);
         lista.innerHTML = '<div class="lembretes-vazio">O módulo de lembretes ainda não está disponível no servidor.</div>';
     }
 }
+
 
 async function marcarLembreteComoLido(id){
     const usuario = obterUsuarioLocal();
@@ -1957,6 +2030,8 @@ async function marcarLembreteComoLido(id){
             throw new Error(erro.erro || erro.message || `HTTP ${res.status}`);
         }
 
+        fecharModalLembrete("modalVisualizarLembrete");
+        lembreteAbertoId = null;
         await carregarLembretes();
     }catch(err){
         console.error("Erro ao marcar lembrete como lido:", err);
@@ -2222,6 +2297,12 @@ document.addEventListener("DOMContentLoaded", () => {
     carregarUsuariosOnline();
     carregarLembretes();
 
+    const btnMarcarLido = document.getElementById("btnMarcarLembreteLido");
+    if(btnMarcarLido){
+        btnMarcarLido.addEventListener("click", async () => {
+            if(lembreteAbertoId) await marcarLembreteComoLido(lembreteAbertoId);
+        });
+    }
 
     const formNovoLembrete = document.getElementById("formNovoLembrete");
     if(formNovoLembrete){
@@ -2304,8 +2385,9 @@ setInterval(async () => {
     }
 
     carregarUsuariosOnline();
+    carregarLembretes();
 
-}, 300000);
+}, 30000);
 
 function modoTV() {
     const sidebar = document.querySelector(".sidebar");
