@@ -35,7 +35,7 @@ button,input,textarea,select{font:inherit}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.muted{color:var(--muted)}.empty{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:26px 14px;text-align:center;color:#64748b;font-weight:800}
 .list-card{background:#fff;border:1px solid var(--borda);border-radius:18px;padding:14px;margin-bottom:10px;box-shadow:0 10px 24px rgba(15,23,42,.06);font-size:13px;line-height:1.55;position:relative;overflow:hidden}
 .list-card:before{content:"";position:absolute;left:0;top:0;width:5px;height:100%;background:#2563eb}.list-card h3{margin:0 0 8px;padding-left:6px;font-size:16px}.list-card p{margin:4px 0;padding-left:6px}.list-card .endereco{white-space:normal;color:#334155}
-.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.pill{display:inline-block;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:900;white-space:nowrap}.pill.green{background:#dcfce7;color:#15803d}.pill.orange{background:#ffedd5;color:#c2410c}.pill.red{background:#fee2e2;color:#dc2626}.pill.blue{background:#dbeafe;color:#1d4ed8}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.pill{display:inline-block;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:900;white-space:nowrap}.pill.teal{background:#ccfbf1;color:#0f766e}.pill.purple{background:#ede9fe;color:#6d28d9}.pill.green{background:#dcfce7;color:#15803d}.pill.orange{background:#ffedd5;color:#c2410c}.pill.red{background:#fee2e2;color:#dc2626}.pill.blue{background:#dbeafe;color:#1d4ed8}
 .btn{border:none;border-radius:13px;padding:12px 14px;font-weight:900;color:#fff;background:#2563eb;cursor:pointer}.btn.block{width:100%}.btn-row{display:flex;gap:8px;margin-top:12px}.btn-light{background:#f1f5f9;color:#0f172a}.btn-green{background:#16a34a}.btn-red{background:#ef4444}.btn-roxo{background:#7c3aed}.btn:disabled{opacity:.6;cursor:not-allowed}.encerrada-box{margin-top:11px;padding:11px 12px;border-radius:13px;background:#f1f5f9;color:#475569;font-size:12px;font-weight:900;text-align:center;border:1px solid var(--borda)}
 .telefone{color:#2563eb;text-decoration:none;font-weight:900}.detalhes{background:#f8fafc;border:1px solid var(--borda);border-radius:14px;padding:12px;margin-top:10px}.detalhes p{padding-left:0}.label{font-size:12px;font-weight:900;color:#334155;margin:12px 0 6px;display:block}
 .file-box{border:1px dashed #93c5fd;border-radius:14px;background:#eff6ff;padding:12px;margin-top:8px}.file-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.file-btn{border:none;border-radius:12px;padding:11px 8px;font-weight:900;background:#fff;color:#1e3a8a;border:1px solid #bfdbfe}
@@ -75,7 +75,7 @@ button,input,textarea,select{font:inherit}
   <div class="mini-card"><strong id="cardPendentes">0</strong><span>Pendentes</span></div>
   <div class="mini-card"><strong id="cardEmAnalise">0</strong><span>Em análise</span></div>
   <div class="mini-card"><strong id="cardAprovadas">0</strong><span>Aprovadas</span></div>
-  <div class="mini-card"><strong id="cardVisitadas">0</strong><span>Com visita</span></div>
+  <div class="mini-card"><strong id="cardInstalacoes">0</strong><span>Instalações</span></div>
  </div>
 
  <div class="card-box">
@@ -88,6 +88,8 @@ button,input,textarea,select{font:inherit}
     <option value="EM ANALISE">Em análise</option>
     <option value="APROVADA">Aprovadas</option>
     <option value="REPROVADA">Reprovadas</option>
+    <option value="INSTALACAO_PENDENTE">Instalação pendente</option>
+    <option value="INSTALADO">Instaladas</option>
    </select>
    <button class="btn" onclick="carregarViabilidades()">Atualizar</button>
   </div>
@@ -109,7 +111,16 @@ button,input,textarea,select{font:inherit}
     <option value="APROVADA">Aprovada</option>
     <option value="REPROVADA">Reprovada</option>
    </select>
-   <div class="muted" style="font-size:12px;margin-top:7px">Pendente e Em análise continuam editáveis. Após salvar como aprovada ou reprovada, a edição será encerrada para o técnico.</div>
+   <div class="muted" id="ajudaStatusTecnico" style="font-size:12px;margin-top:7px">Pendente e Em análise continuam editáveis. Ao aprovar, a instalação será criada automaticamente como pendente.</div>
+
+   <div id="blocoInstalacao" style="display:none">
+    <label class="label" for="statusInstalacaoTecnico">Status da instalação</label>
+    <select id="statusInstalacaoTecnico" class="select">
+     <option value="PENDENTE">Pendente</option>
+     <option value="INSTALADO">Instalado</option>
+    </select>
+    <div class="muted" style="font-size:12px;margin-top:7px">Após marcar como instalado, o registro será encerrado para edição pelo técnico.</div>
+   </div>
 
    <label class="label" for="observacaoPos">Observação do técnico após visita</label>
    <textarea id="observacaoPos" class="textarea" placeholder="Descreva o que foi verificado durante a visita, passagem de cabo, postes, distância, materiais e conclusão técnica."></textarea>
@@ -172,7 +183,10 @@ function telefoneLink(v){const n=String(v||"").replace(/\D/g,"");return n?`<a cl
 function normalizarStatus(s){return String(s||"PENDENTE").trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/_/g," ").replace(/\s+/g," ")}
 function statusTexto(s){const n=normalizarStatus(s);return n==="EM ANALISE"?"EM ANÁLISE":n}
 function statusClasse(s){const n=normalizarStatus(s);return n==="APROVADA"?"green":n==="REPROVADA"?"red":n==="EM ANALISE"?"blue":"orange"}
-function statusEditavelTecnico(s){const n=normalizarStatus(s);return n==="PENDENTE"||n==="EM ANALISE"}
+function statusInstalacao(v){return normalizarStatus(v?.status_instalacao||v?.instalacao_status||"PENDENTE")}
+function statusEditavelTecnico(s,v){const n=normalizarStatus(s);if(n==="REPROVADA")return false;if(n==="APROVADA")return statusInstalacao(v)!=="INSTALADO";return n==="PENDENTE"||n==="EM ANALISE"}
+function statusInstalacaoClasse(v){return statusInstalacao(v)==="INSTALADO"?"teal":"purple"}
+function atualizarFluxoModal(){const aprovado=normalizarStatus(document.getElementById("statusTecnico").value)==="APROVADA";document.getElementById("blocoInstalacao").style.display=aprovado?"block":"none"}
 function localidadeNome(v){return v.localidade_nome||v.nome_localidade||v.localidade||"-"}
 function coordenadasValidas(v){const lat=Number(v?.latitude),lon=Number(v?.longitude);return Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180}
 function urlMapaEmbed(lat,lon){const m=.006;return `https://www.openstreetmap.org/export/embed.html?bbox=${lon-m}%2C${lat-m}%2C${lon+m}%2C${lat+m}&layer=mapnik&marker=${lat}%2C${lon}`}
@@ -232,20 +246,23 @@ function renderLista(){
  const busca=document.getElementById("busca").value.trim().toLowerCase(),status=document.getElementById("filtroStatus").value;
  const lista=viabilidades.filter(v=>{
   const texto=`${v.nome||""} ${v.endereco||""} ${v.telefone||""} ${v.telefone2||v.telefone_secundario||""} ${localidadeNome(v)} ${v.tecnico_responsavel||""}`.toLowerCase();
-  return(!busca||texto.includes(busca))&&(!status||normalizarStatus(v.status)===normalizarStatus(status));
+  const filtro=normalizarStatus(status);
+  const bateStatus=!filtro||(filtro==="INSTALACAO PENDENTE"?(normalizarStatus(v.status)==="APROVADA"&&statusInstalacao(v)!=="INSTALADO"):filtro==="INSTALADO"?(normalizarStatus(v.status)==="APROVADA"&&statusInstalacao(v)==="INSTALADO"):normalizarStatus(v.status)===filtro);
+  return(!busca||texto.includes(busca))&&bateStatus;
  }).sort((a,b)=>new Date(b.atualizado_em||b.registrado_em||0)-new Date(a.atualizado_em||a.registrado_em||0));
  document.getElementById("cardPendentes").innerText=viabilidades.filter(v=>normalizarStatus(v.status)==="PENDENTE").length;
  document.getElementById("cardEmAnalise").innerText=viabilidades.filter(v=>normalizarStatus(v.status)==="EM ANALISE").length;
  document.getElementById("cardAprovadas").innerText=viabilidades.filter(v=>normalizarStatus(v.status)==="APROVADA").length;
- document.getElementById("cardVisitadas").innerText=viabilidades.filter(v=>anexosCategoria(v,"COMPROVACAO_VISITA").length||String(v.observacao_pos_aprovacao||"").trim()).length;
+ document.getElementById("cardInstalacoes").innerText=viabilidades.filter(v=>normalizarStatus(v.status)==="APROVADA").length;
  const box=document.getElementById("listaViabilidades");
  if(!lista.length){box.innerHTML='<div class="empty">Nenhuma viabilidade atribuída a este técnico.</div>';return}
  box.innerHTML=lista.map(v=>{
   const analise=anexosCategoria(v,"ANALISE"),visita=anexosCategoria(v,"COMPROVACAO_VISITA");
   const telefone2=v.telefone2||v.telefone_secundario||"";
-  const editavel=statusEditavelTecnico(v.status);
+  const editavel=statusEditavelTecnico(v.status,v);
   return `<article class="list-card">
    <div class="card-top"><h3>${escapar(v.nome||"Cliente")}</h3><span class="pill ${statusClasse(v.status)}">${escapar(statusTexto(v.status))}</span></div>
+   ${normalizarStatus(v.status)==="APROVADA"?`<p><b>Instalação:</b> <span class="pill ${statusInstalacaoClasse(v)}">${statusInstalacao(v)==="INSTALADO"?"INSTALADO":"PENDENTE"}</span></p>`:""}
    <p><b>Localidade:</b> ${escapar(localidadeNome(v))}</p>
    <p class="endereco"><b>Endereço:</b> ${escapar(v.endereco||"-")}</p>
    <p><b>Telefone principal:</b> ${telefoneLink(v.telefone)}</p>
@@ -263,10 +280,10 @@ function renderLista(){
    </div>
    ${editavel?`
    <div class="btn-row">
-    <button class="btn btn-green" style="flex:1" onclick="abrirViabilidade(${Number(v.id)})">📝 Registrar visita</button>
+    <button class="btn btn-green" style="flex:1" onclick="abrirViabilidade(${Number(v.id)})">${normalizarStatus(v.status)==="APROVADA"?"🛠️ Atualizar instalação":"📝 Registrar visita"}</button>
     ${coordenadasValidas(v)?`<button class="btn btn-light" style="flex:1" onclick="alternarMapaCard(${Number(v.id)})">🗺️ Localização</button>`:""}
    </div>`:`
-   <div class="encerrada-box">🔒 Viabilidade finalizada — edição encerrada para o técnico</div>
+   <div class="encerrada-box">${normalizarStatus(v.status)==="REPROVADA"?"🔒 Viabilidade reprovada — edição encerrada":"✅ Instalação concluída — edição encerrada"}</div>
    ${coordenadasValidas(v)?`<button class="btn btn-light block" style="margin-top:8px" onclick="alternarMapaCard(${Number(v.id)})">🗺️ Visualizar localização</button>`:""}`}
    <div id="mapaCard-${Number(v.id)}" class="mapa-card"></div>
   </article>`;
@@ -275,11 +292,14 @@ function renderLista(){
 function abrirViabilidade(id){
  viabilidadeAtual=viabilidades.find(v=>Number(v.id)===Number(id));if(!viabilidadeAtual)return;
  const statusAtual=normalizarStatus(viabilidadeAtual.status);
- if(!statusEditavelTecnico(statusAtual)){alert("Esta viabilidade já foi finalizada e não pode mais ser editada pelo técnico.");return;}
+ if(!statusEditavelTecnico(statusAtual,viabilidadeAtual)){alert("Esta viabilidade já foi finalizada e não pode mais ser editada pelo técnico.");return;}
  arquivosVisita=[];localizacaoAtual=coordenadasValidas(viabilidadeAtual)?{latitude:Number(viabilidadeAtual.latitude),longitude:Number(viabilidadeAtual.longitude),precisao:null}:null;
  renderPreview();
  document.getElementById("observacaoPos").value=viabilidadeAtual.observacao_pos_aprovacao||"";
  document.getElementById("statusTecnico").value=statusAtual==="EM ANALISE"?"EM ANALISE":statusAtual;
+ document.getElementById("statusInstalacaoTecnico").value=statusInstalacao(viabilidadeAtual)==="INSTALADO"?"INSTALADO":"PENDENTE";
+ document.getElementById("statusTecnico").disabled=statusAtual==="APROVADA";
+ atualizarFluxoModal();
  document.getElementById("mapaModal").classList.remove("show");document.getElementById("mapaModal").innerHTML="";
  document.getElementById("statusLocalizacao").innerText=localizacaoAtual?`Localização registrada: ${localizacaoAtual.latitude.toFixed(6)}, ${localizacaoAtual.longitude.toFixed(6)}`:"Localização ainda não coletada.";
  document.getElementById("btnVisualizarLocalizacaoModal").style.display=localizacaoAtual?"block":"none";
@@ -294,9 +314,10 @@ function abrirViabilidade(id){
  <p><b>Observação inicial:</b><br>${escapar(viabilidadeAtual.observacao||"-")}</p>
  <p><b>Anexo inicial:</b></p>${renderAnexos(anexosCategoria(viabilidadeAtual,"ANALISE"))}
  <p><b>Anexos atuais da visita:</b></p>${renderAnexos(anexosCategoria(viabilidadeAtual,"COMPROVACAO_VISITA"))}`;
+ document.querySelector("#modalViabilidade .modal-head h2").textContent=statusAtual==="APROVADA"?"Atualizar instalação":"Registrar visita";
  document.getElementById("modalViabilidade").classList.add("show");
 }
-function fecharModal(){document.getElementById("modalViabilidade").classList.remove("show")}
+function fecharModal(){document.getElementById("modalViabilidade").classList.remove("show");document.getElementById("statusTecnico").disabled=false}
 function fecharModalFundo(e){if(e.target.id==="modalViabilidade")fecharModal()}
 function adicionarArquivos(files){
  for(const f of [...files]){if(f.size>30*1024*1024){alert(`${f.name} ultrapassa 30 MB.`);continue}if(!f.type.startsWith("image/")&&!f.type.startsWith("video/")){alert(`Formato não permitido: ${f.name}`);continue}arquivosVisita.push(f)}
@@ -316,9 +337,10 @@ async function salvarVisita(){
  if(!viabilidadeAtual)return;
  const obs=document.getElementById("observacaoPos").value.trim();
  const statusTecnico=normalizarStatus(document.getElementById("statusTecnico").value||"PENDENTE");
+ const status_instalacao=statusTecnico==="APROVADA"?normalizarStatus(document.getElementById("statusInstalacaoTecnico").value||"PENDENTE"):"";
  if(!obs&&!arquivosVisita.length){alert("Preencha a observação ou adicione um anexo da visita.");return}
- if(statusTecnico==="APROVADA"||statusTecnico==="REPROVADA"){
-  const texto=statusTecnico==="APROVADA"?"APROVAR":"REPROVAR";
+ if(statusTecnico==="APROVADA"||statusTecnico==="REPROVADA"||status_instalacao==="INSTALADO"){
+  const texto=status_instalacao==="INSTALADO"?"MARCAR A INSTALAÇÃO COMO CONCLUÍDA":(statusTecnico==="APROVADA"?"APROVAR":"REPROVAR");
   if(!confirm(`Deseja realmente ${texto} esta viabilidade? Após salvar, a edição será encerrada para o técnico.`))return;
  }
  const overlay=document.getElementById("loadingOverlay"),btn=document.getElementById("btnSalvarVisita");overlay.classList.add("show");btn.disabled=true;
@@ -334,6 +356,7 @@ async function salvarVisita(){
    tecnico_responsavel:viabilidadeAtual.tecnico_responsavel||"",
    observacao_pos_aprovacao:observacaoFinal,
    status:statusTecnico,
+   status_instalacao,
    latitude:localizacaoAtual?.latitude??viabilidadeAtual.latitude??null,
    longitude:localizacaoAtual?.longitude??viabilidadeAtual.longitude??null
   };
@@ -343,7 +366,7 @@ async function salvarVisita(){
    const fd=new FormData();fd.append("arquivo",arquivo);fd.append("viabilidade_id",viabilidadeAtual.id);fd.append("categoria","COMPROVACAO_VISITA");
    const up=await apiFetch(API_UPLOAD,{method:"POST",headers:authHeaders(),body:fd});const uj=await up.json().catch(()=>({}));if(!up.ok)throw new Error(uj.erro||`Falha ao enviar ${arquivo.name}`);
   }
-  alert((statusTecnico==="PENDENTE"||statusTecnico==="EM ANALISE")?"Visita salva com sucesso!":"Viabilidade finalizada com sucesso. A edição foi encerrada para o técnico.");fecharModal();await carregarViabilidades();
+  alert(status_instalacao==="INSTALADO"?"Instalação concluída com sucesso!":statusTecnico==="APROVADA"?"Viabilidade aprovada! A instalação ficou com status pendente.":statusTecnico==="REPROVADA"?"Viabilidade reprovada e encerrada.":"Visita salva com sucesso!");fecharModal();await carregarViabilidades();
  }catch(e){console.error(e);alert("Erro ao salvar a visita: "+e.message)}
  finally{overlay.classList.remove("show");btn.disabled=false}
 }
@@ -356,6 +379,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
  document.getElementById("busca").addEventListener("input",renderLista);document.getElementById("filtroStatus").addEventListener("change",renderLista);
  document.getElementById("cameraFoto").addEventListener("change",e=>{adicionarArquivos(e.target.files);e.target.value=""});
  document.getElementById("cameraVideo").addEventListener("change",e=>{adicionarArquivos(e.target.files);e.target.value=""});
+ document.getElementById("statusTecnico").addEventListener("change",atualizarFluxoModal);
  document.getElementById("arquivosVisita").addEventListener("change",e=>{adicionarArquivos(e.target.files);e.target.value=""});
  document.addEventListener("keydown",e=>{if(e.key==="Escape"){fecharModal();fecharMidia()}});
  carregarViabilidades();
