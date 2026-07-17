@@ -80,7 +80,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const [viabilidades] = await pool.query(
                 `SELECT v.id, v.nome, v.endereco, v.observacao, v.telefone, v.telefone2, v.localidade,
                         COALESCE(l.nome, NULLIF(v.localidade, '')) AS localidade_nome,
-                        v.empresa_id, v.cadastrado_por, v.registrado_em, v.status,
+                        v.empresa_id, v.cadastrado_por, v.registrado_em, v.status, v.status_instalacao,
                         v.atualizado_em, v.atualizado_por, v.tecnico_responsavel, v.observacao_pos_aprovacao,
                         v.latitude, v.longitude
                  FROM viabilidade v
@@ -124,7 +124,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const [rows] = await pool.query(
                 `SELECT v.id, v.nome, v.endereco, v.observacao, v.telefone, v.telefone2, v.localidade,
                         COALESCE(l.nome, NULLIF(v.localidade, '')) AS localidade_nome,
-                        v.empresa_id, v.cadastrado_por, v.registrado_em, v.status,
+                        v.empresa_id, v.cadastrado_por, v.registrado_em, v.status, v.status_instalacao,
                         v.atualizado_em, v.atualizado_por, v.tecnico_responsavel, v.observacao_pos_aprovacao,
                         v.latitude, v.longitude
                  FROM viabilidade v
@@ -174,6 +174,13 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const statusRecebido = String(req.body.status || "PENDENTE").trim().toUpperCase();
             const statusPermitidos = ["PENDENTE", "EM_ANALISE", "APROVADA", "REPROVADA"];
             const status = statusPermitidos.includes(statusRecebido) ? statusRecebido : "PENDENTE";
+
+            const statusInstalacaoPermitidos = ["PENDENTE", "INSTALADO"];
+            let statusInstalacao = null;
+            if (status === "APROVADA") {
+                const recebido = String(req.body.status_instalacao || "PENDENTE").trim().toUpperCase();
+                statusInstalacao = statusInstalacaoPermitidos.includes(recebido) ? recebido : "PENDENTE";
+            }
             if (!nome || !endereco || !localidade) {
                 return res.status(400).json({ erro: "Nome, endereço e localidade são obrigatórios." });
             }
@@ -181,10 +188,10 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const cadastradoPor = req.usuario.usuario || String(req.usuario.id);
             const [resultado] = await pool.query(
                 `INSERT INTO viabilidade
-                    (nome, endereco, observacao, telefone, telefone2, localidade, tecnico_responsavel, observacao_pos_aprovacao, status,
+                    (nome, endereco, observacao, telefone, telefone2, localidade, tecnico_responsavel, observacao_pos_aprovacao, status, status_instalacao,
                      latitude, longitude, empresa_id, cadastrado_por, registrado_em, atualizado_em, atualizado_por)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)`,
-                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status,
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)`,
+                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status, statusInstalacao,
                  latitude, longitude, req.usuario.empresa_id, cadastradoPor, cadastradoPor]
             );
 
@@ -218,6 +225,13 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const statusPermitidos = ["PENDENTE", "EM_ANALISE", "APROVADA", "REPROVADA"];
             const status = statusPermitidos.includes(statusRecebido) ? statusRecebido : "PENDENTE";
 
+            const statusInstalacaoPermitidos = ["PENDENTE", "INSTALADO"];
+            let statusInstalacao = null;
+            if (status === "APROVADA") {
+                const recebido = String(req.body.status_instalacao || "PENDENTE").trim().toUpperCase();
+                statusInstalacao = statusInstalacaoPermitidos.includes(recebido) ? recebido : "PENDENTE";
+            }
+
             if (!nome || !endereco || !localidade) {
                 return res.status(400).json({ erro: "Nome, endereço e localidade são obrigatórios." });
             }
@@ -226,10 +240,10 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const [resultado] = await pool.query(
                 `UPDATE viabilidade
                  SET nome = ?, endereco = ?, observacao = ?, telefone = ?, telefone2 = ?, localidade = ?,
-                     tecnico_responsavel = ?, observacao_pos_aprovacao = ?, status = ?,
+                     tecnico_responsavel = ?, observacao_pos_aprovacao = ?, status = ?, status_instalacao = ?,
                      latitude = ?, longitude = ?, atualizado_em = NOW(), atualizado_por = ?
                  WHERE id = ? AND empresa_id = ?`,
-                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status,
+                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status, statusInstalacao,
                  latitude, longitude, atualizadoPor, req.params.id, req.usuario.empresa_id]
             );
 
