@@ -89,7 +89,7 @@ button,input,textarea,select{font:inherit}
     <option value="APROVADA">Aprovadas</option>
     <option value="REPROVADA">Reprovadas</option>
     <option value="INSTALACAO_PENDENTE">Instalação pendente</option>
-    <option value="INSTALADO">Instaladas</option>
+    <option value="INSTALADO">Instalação realizada</option>
    </select>
    <button class="btn" onclick="carregarViabilidades()">Atualizar</button>
   </div>
@@ -117,9 +117,9 @@ button,input,textarea,select{font:inherit}
     <label class="label" for="statusInstalacaoTecnico">Status da instalação</label>
     <select id="statusInstalacaoTecnico" class="select">
      <option value="PENDENTE">Pendente</option>
-     <option value="INSTALADO">Instalado</option>
+     <option value="INSTALADO">Instalação realizada</option>
     </select>
-    <div class="muted" style="font-size:12px;margin-top:7px">Após marcar como instalado, o registro será encerrado para edição pelo técnico.</div>
+    <div class="muted" style="font-size:12px;margin-top:7px">Após marcar como instalação realizada, o registro será encerrado para edição pelo técnico.</div>
    </div>
 
    <label class="label" for="observacaoPos">Observação do técnico após visita</label>
@@ -262,7 +262,7 @@ function renderLista(){
   const editavel=statusEditavelTecnico(v.status,v);
   return `<article class="list-card">
    <div class="card-top"><h3>${escapar(v.nome||"Cliente")}</h3><span class="pill ${statusClasse(v.status)}">${escapar(statusTexto(v.status))}</span></div>
-   ${normalizarStatus(v.status)==="APROVADA"?`<p><b>Instalação:</b> <span class="pill ${statusInstalacaoClasse(v)}">${statusInstalacao(v)==="INSTALADO"?"INSTALADO":"PENDENTE"}</span></p>`:""}
+   ${normalizarStatus(v.status)==="APROVADA"?`<p><b>Instalação:</b> <span class="pill ${statusInstalacaoClasse(v)}">${statusInstalacao(v)==="INSTALADO"?"INSTALAÇÃO REALIZADA":"PENDENTE"}</span></p>`:""}
    <p><b>Localidade:</b> ${escapar(localidadeNome(v))}</p>
    <p class="endereco"><b>Endereço:</b> ${escapar(v.endereco||"-")}</p>
    <p><b>Telefone principal:</b> ${telefoneLink(v.telefone)}</p>
@@ -340,7 +340,7 @@ async function salvarVisita(){
  const status_instalacao=statusTecnico==="APROVADA"?normalizarStatus(document.getElementById("statusInstalacaoTecnico").value||"PENDENTE"):"";
  if(!obs&&!arquivosVisita.length){alert("Preencha a observação ou adicione um anexo da visita.");return}
  if(statusTecnico==="APROVADA"||statusTecnico==="REPROVADA"||status_instalacao==="INSTALADO"){
-  const texto=status_instalacao==="INSTALADO"?"MARCAR A INSTALAÇÃO COMO CONCLUÍDA":(statusTecnico==="APROVADA"?"APROVAR":"REPROVAR");
+  const texto=status_instalacao==="INSTALADO"?"MARCAR COMO INSTALAÇÃO REALIZADA":(statusTecnico==="APROVADA"?"APROVAR":"REPROVAR");
   if(!confirm(`Deseja realmente ${texto} esta viabilidade? Após salvar, a edição será encerrada para o técnico.`))return;
  }
  const overlay=document.getElementById("loadingOverlay"),btn=document.getElementById("btnSalvarVisita");overlay.classList.add("show");btn.disabled=true;
@@ -366,7 +366,7 @@ async function salvarVisita(){
    const fd=new FormData();fd.append("arquivo",arquivo);fd.append("viabilidade_id",viabilidadeAtual.id);fd.append("categoria","COMPROVACAO_VISITA");
    const up=await apiFetch(API_UPLOAD,{method:"POST",headers:authHeaders(),body:fd});const uj=await up.json().catch(()=>({}));if(!up.ok)throw new Error(uj.erro||`Falha ao enviar ${arquivo.name}`);
   }
-  alert(status_instalacao==="INSTALADO"?"Instalação concluída com sucesso!":statusTecnico==="APROVADA"?"Viabilidade aprovada! A instalação ficou com status pendente.":statusTecnico==="REPROVADA"?"Viabilidade reprovada e encerrada.":"Visita salva com sucesso!");fecharModal();await carregarViabilidades();
+  alert(status_instalacao==="INSTALADO"?"Instalação realizada com sucesso!":statusTecnico==="APROVADA"?"Viabilidade aprovada! A instalação ficou com status pendente.":statusTecnico==="REPROVADA"?"Viabilidade reprovada e encerrada.":"Visita salva com sucesso!");fecharModal();await carregarViabilidades();
  }catch(e){console.error(e);alert("Erro ao salvar a visita: "+e.message)}
  finally{overlay.classList.remove("show");btn.disabled=false}
 }
