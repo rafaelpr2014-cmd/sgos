@@ -293,6 +293,58 @@ router.post('/', async (req, res) => {
     }
 });
 
+
+router.patch('/:id', async (req, res) => {
+    try {
+        const usuarioId = obterUsuarioId(req);
+        const usuario = await obterUsuario(usuarioId);
+        const lembreteId = Number(req.params.id);
+        const mensagem = String(req.body?.mensagem || '').trim();
+        const tipo = String(req.body?.tipo || 'salvo').trim().toLowerCase();
+        const destinatarioId = tipo === 'enviado' ? Number(req.body?.destinatario_id) : usuarioId;
+        const agendadoPara = normalizarDataMysql(req.body?.agendado_para);
+
+        if (!usuario) return res.status(401).json({ erro: 'Usuário não autenticado.' });
+        if (!mensagem) return res.status(400).json({ erro: 'Digite o lembrete.' });
+        if (mensagem.length > 2000) return res.status(400).json({ erro: 'O lembrete deve ter no máximo 2.000 caracteres.' });
+        if (!['salvo', 'enviado'].includes(tipo)) return res.status(400).json({ erro: 'Tipo de lembrete inválido.' });
+        if (req.body?.agendado_para && !agendadoPara) return res.status(400).json({ erro: 'Data de agendamento inválida.' });
+
+        const atual = (await executar('SELECT * FROM lembretes WHERE id = ? LIMIT 1', [lembreteId]))[0];
+        if (!atual || Number(atual.criado_por_id) !== Number(usuario.id) || atual.removido_em) {
+            return res.status(404).json({ erro: 'Lembrete não encontrado ou você não pode editá-lo.' });
+        }
+        if (atual.tipo === 'enviado' && atual.lido_em) {
+            return res.status(409).json({ erro: 'Um lembrete já lido não pode ser editado.' });
+        }
+
+        let destinatario = usuario;
+        if (tipo === 'enviado') {
+            if (!destinatarioId || destinatarioId === usuario.id) return res.status(400).json({ erro: 'Selecione outro usuário destinatário.' });
+            destinatario = await obterUsuario(destinatarioId);
+            if (!destinatario) return res.status(404).json({ erro: 'Usuário destinatário não encontrado.' });
+            if (usuario.empresa_id != null && Number(destinatario.empresa_id) !== Number(usuario.empresa_id)) return res.status(403).json({ erro: 'Não é permitido enviar para outra empresa.' });
+            const colunas = await obterColunasUsuarios();
+            const colunaCargo = primeiraColunaExistente(colunas, ['cargo', 'tipo', 'perfil', 'nivel', 'role', 'tipo_usuario']);
+            const perfil = colunaCargo ? String(destinatario[colunaCargo] || '').trim().toLowerCase() : '';
+            if (!['admin', 'administrador', 'atendente'].includes(perfil)) return res.status(403).json({ erro: 'O destinatário precisa ser Atendente ou Administrador.' });
+        }
+
+        await executar(
+            `UPDATE lembretes
+                SET mensagem = ?, tipo = ?, destinatario_id = ?, agendado_para = ?,
+                    lido_em = NULL, visivel_ate = NULL,
+                    excluir_em = CASE WHEN ? = 'enviado' THEN DATE_ADD(COALESCE(?, NOW()), INTERVAL 30 DAY) ELSE NULL END
+              WHERE id = ? AND criado_por_id = ? AND removido_em IS NULL`,
+            [mensagem, tipo, destinatario.id, agendadoPara, tipo, agendadoPara, lembreteId, usuario.id]
+        );
+        return res.json({ ok: true, mensagem: 'Lembrete atualizado com sucesso.' });
+    } catch (erro) {
+        console.error('Erro ao editar lembrete:', erro);
+        return res.status(500).json({ erro: 'Erro ao editar lembrete.' });
+    }
+});
+
 router.patch('/:id/lido', async (req, res) => {
     try {
         const usuarioId = obterUsuarioId(req);
@@ -334,17 +386,15 @@ router.delete('/:id', async (req, res) => {
                 SET removido_em = NOW(),
                     excluir_em = COALESCE(excluir_em, DATE_ADD(NOW(), INTERVAL 30 DAY))
               WHERE id = ?
-                AND tipo = 'salvo'
                 AND criado_por_id = ?
-                AND destinatario_id = ?
                 AND removido_em IS NULL`,
-            [lembreteId, usuario.id, usuario.id]
+            [lembreteId, usuario.id]
         );
 
         if (!resultado.affectedRows) {
-            return res.status(404).json({ erro: 'Somente lembretes salvos por você podem ser removidos.' });
+            return res.status(404).json({ erro: 'Lembrete não encontrado ou você não pode excluí-lo.' });
         }
-        return res.json({ ok: true, mensagem: 'Lembrete removido do painel e mantido no histórico por 30 dias.' });
+        return res.json({ ok: true, mensagem: 'Lembrete excluído do painel e mantido no histórico por 30 dias.' });
     } catch (erro) {
         console.error('Erro ao remover lembrete:', erro);
         return res.status(500).json({ erro: 'Erro ao remover lembrete.' });

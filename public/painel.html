@@ -1313,6 +1313,9 @@ tr:hover{ background:#f8fbff; }
 
 .btn-secundario{ background:#e2e8f0; color:#334155; }
 .btn-salvar-lembrete{ background:#2563eb; color:white; }
+.btn-editar-lembrete{background:#f59e0b;color:white;border:none;border-radius:10px;padding:11px 16px;font-weight:800;cursor:pointer;}
+.btn-excluir-lembrete{background:#ef4444;color:white;border:none;border-radius:10px;padding:11px 16px;font-weight:800;cursor:pointer;}
+.btn-editar-lembrete:hover{background:#d97706}.btn-excluir-lembrete:hover{background:#dc2626}
 
 
 .tipo-lembrete-opcoes{
@@ -1861,7 +1864,7 @@ let periodoAtual = "hoje";
 <div class="modal-lembrete-overlay" id="modalNovoLembrete" onclick="fecharModalAoClicarFora(event, 'modalNovoLembrete')">
     <div class="modal-lembrete">
         <div class="modal-lembrete-topo">
-            <h3>Novo lembrete</h3>
+            <h3 id="tituloModalNovoLembrete">Novo lembrete</h3>
             <button class="btn-fechar-modal" type="button" onclick="fecharModalLembrete('modalNovoLembrete')">×</button>
         </div>
         <form id="formNovoLembrete">
@@ -1923,6 +1926,8 @@ let periodoAtual = "hoje";
         </div>
         <div class="modal-acoes">
             <button class="btn-secundario" type="button" onclick="fecharModalLembrete('modalVisualizarLembrete')">Fechar</button>
+            <button class="btn-editar-lembrete" id="btnEditarLembrete" type="button" style="display:none;">Editar</button>
+            <button class="btn-excluir-lembrete" id="btnExcluirLembrete" type="button" style="display:none;">Excluir</button>
             <button class="btn-salvar-lembrete" id="btnAcaoLembrete" type="button">Marcar como lido</button>
         </div>
     </div>
@@ -1932,6 +1937,7 @@ let periodoAtual = "hoje";
 
 let lembretesCache = new Map();
 let lembreteAbertoId = null;
+let lembreteEditandoId = null;
 let primeiraCargaLembretes = true;
 let idsRecebidosConhecidos = new Set();
 let idsPopupsConhecidos = new Set();
@@ -2000,6 +2006,8 @@ function atualizarTipoLembrete(){
 }
 
 function abrirModalNovoLembrete(){
+    lembreteEditandoId = null;
+    const titulo = document.getElementById("tituloModalNovoLembrete"); if(titulo) titulo.textContent = "Novo lembrete";
     document.getElementById("formNovoLembrete")?.reset();
     atualizarTipoLembrete();
     atualizarAgendamentoLembrete();
@@ -2018,8 +2026,11 @@ function htmlLembrete(item, usuarioId){
     const recebido = item.tipo === "enviado" && Number(item.destinatario_id) === Number(usuarioId);
     const classe = recebido && !item.lido_em ? ' style="border-left:3px solid #2563eb;"' : '';
     const badge = item.tipo === "salvo" ? "Salvo" : (recebido ? "Recebido" : "Enviado");
+    const nomes = item.tipo === "salvo"
+        ? `Usuário: ${item.criado_por_nome || item.destinatario_nome || "-"}`
+        : `De: ${item.criado_por_nome || "-"} • Para: ${item.destinatario_nome || "-"}`;
     return `<div class="lembrete-item"${classe} data-lembrete-id="${Number(item.id)}" role="button" tabindex="0" onclick="abrirLembrete(${Number(item.id)})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirLembrete(${Number(item.id)});}">
-        <div class="lembrete-conteudo"><span class="lembrete-badge-tipo">${badge}</span><div class="lembrete-texto">${escaparHtml(item.mensagem)}</div><div class="lembrete-meta"><span>${escaparHtml(descricaoStatusLembrete(item, usuarioId))}</span></div></div></div>`;
+        <div class="lembrete-conteudo"><span class="lembrete-badge-tipo">${badge}</span><div class="lembrete-texto">${escaparHtml(item.mensagem)}</div><div class="lembrete-meta"><span>${escaparHtml(nomes)}</span><span>${escaparHtml(descricaoStatusLembrete(item, usuarioId))}</span></div></div></div>`;
 }
 
 function abrirLembrete(id, automatico = false){
@@ -2038,15 +2049,64 @@ function abrirLembrete(id, automatico = false){
         ${item.agendado_para ? `<strong>Agendado para:</strong> ${escaparHtml(formatarDataHora(item.agendado_para))}<br>` : ""}
         <strong>Status:</strong> ${escaparHtml(descricaoStatusLembrete(item, usuario.id))}`;
     const btn = document.getElementById("btnAcaoLembrete");
-    if(item.tipo === "salvo"){
-        btn.style.display = "inline-flex"; btn.textContent = "Remover lembrete"; btn.dataset.acao = "remover";
-    }else if(recebido && !item.lido_em){
+    const btnEditar = document.getElementById("btnEditarLembrete");
+    const btnExcluir = document.getElementById("btnExcluirLembrete");
+    const criador = Number(item.criado_por_id) === Number(usuario.id);
+    const podeEditar = criador && !item.removido_em && (item.tipo === "salvo" || !item.lido_em);
+    if(btnEditar) btnEditar.style.display = podeEditar ? "inline-flex" : "none";
+    if(btnExcluir) btnExcluir.style.display = criador && !item.removido_em ? "inline-flex" : "none";
+    if(recebido && !item.lido_em){
         btn.style.display = "inline-flex"; btn.textContent = "Marcar como lido"; btn.dataset.acao = "lido";
     }else{
         btn.style.display = "none"; btn.dataset.acao = "";
     }
     document.getElementById("modalVisualizarLembrete")?.classList.add("ativo");
     if(automatico) sessionStorage.setItem(`lembrete_popup_${id}`, "1");
+}
+
+
+function dataParaInput(valor){
+    if(!valor) return "";
+    const d = new Date(valor);
+    if(Number.isNaN(d.getTime())) return "";
+    const pad = n => String(n).padStart(2,"0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function editarLembreteAberto(){
+    const item = lembretesCache.get(Number(lembreteAbertoId));
+    const usuario = obterUsuarioLocal();
+    if(!item || Number(item.criado_por_id) !== Number(usuario.id)) return;
+    lembreteEditandoId = Number(item.id);
+    fecharModalLembrete("modalVisualizarLembrete");
+    document.getElementById("tituloModalNovoLembrete").textContent = "Editar lembrete";
+    const tipoCampo = document.querySelector(`input[name="tipoLembrete"][value="${item.tipo}"]`);
+    if(tipoCampo) tipoCampo.checked = true;
+    atualizarTipoLembrete();
+    await carregarUsuariosLembrete();
+    if(item.tipo === "enviado") document.getElementById("lembreteDestinatario").value = String(item.destinatario_id || "");
+    const agendado = !!item.agendado_para && new Date(item.agendado_para).getTime() > Date.now();
+    const quandoCampo = document.querySelector(`input[name="quandoLembrete"][value="${agendado ? "agendado" : "agora"}"]`);
+    if(quandoCampo) quandoCampo.checked = true;
+    atualizarAgendamentoLembrete();
+    document.getElementById("lembreteAgendadoPara").value = agendado ? dataParaInput(item.agendado_para) : "";
+    document.getElementById("lembreteTexto").value = item.mensagem || "";
+    document.querySelector('#formNovoLembrete .btn-salvar-lembrete').textContent = "Salvar alterações";
+    document.getElementById("modalNovoLembrete").classList.add("ativo");
+}
+
+async function excluirLembreteAberto(){
+    const item = lembretesCache.get(Number(lembreteAbertoId));
+    const usuario = obterUsuarioLocal();
+    if(!item || Number(item.criado_por_id) !== Number(usuario.id)) return;
+    if(!confirm("Excluir este lembrete? Ele ficará somente no histórico por 30 dias.")) return;
+    try{
+        const res = await fetch(`/api/lembretes/${item.id}`, {method:"DELETE",headers:{"x-usuario-id":usuario.id || ""}});
+        const data = await res.json().catch(() => ({}));
+        if(!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
+        fecharModalLembrete("modalVisualizarLembrete");
+        await carregarLembretes();
+    }catch(err){ alert(err.message || "Não foi possível excluir o lembrete."); }
 }
 
 async function carregarLembretes(){
@@ -2365,6 +2425,8 @@ document.addEventListener("DOMContentLoaded", () => {
     carregarLembretes();
 
     document.getElementById("btnAcaoLembrete")?.addEventListener("click", executarAcaoLembrete);
+    document.getElementById("btnEditarLembrete")?.addEventListener("click", editarLembreteAberto);
+    document.getElementById("btnExcluirLembrete")?.addEventListener("click", excluirLembreteAberto);
     document.querySelectorAll('input[name="tipoLembrete"]').forEach(campo => campo.addEventListener("change", atualizarTipoLembrete));
     document.querySelectorAll('input[name="quandoLembrete"]').forEach(campo => campo.addEventListener("change", atualizarAgendamentoLembrete));
 
@@ -2384,10 +2446,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if(agendadoPara && new Date(agendadoPara).getTime() <= Date.now()) return alert("Escolha uma data e hora futura.");
         try{
             botao.disabled = true; botao.textContent = quando === "agendado" ? "Agendando..." : (tipo === "enviado" ? "Enviando..." : "Salvando...");
-            const res = await fetch("/api/lembretes", {method:"POST",headers:{"Content-Type":"application/json","x-usuario-id":usuario.id || ""},body:JSON.stringify({tipo,destinatario_id:tipo === "enviado" ? destinatarioId : null,mensagem,agendado_para:agendadoPara || null})});
+            const editando = Number(lembreteEditandoId) > 0;
+            const url = editando ? `/api/lembretes/${lembreteEditandoId}` : "/api/lembretes";
+            const res = await fetch(url, {method:editando ? "PATCH" : "POST",headers:{"Content-Type":"application/json","x-usuario-id":usuario.id || ""},body:JSON.stringify({tipo,destinatario_id:tipo === "enviado" ? destinatarioId : null,mensagem,agendado_para:agendadoPara || null})});
             const data = await res.json().catch(() => ({}));
             if(!res.ok) throw new Error(data.erro || `HTTP ${res.status}`);
-            formNovoLembrete.reset(); fecharModalLembrete("modalNovoLembrete"); alert(data.mensagem || "Lembrete salvo."); await carregarLembretes();
+            formNovoLembrete.reset(); lembreteEditandoId = null; document.getElementById("tituloModalNovoLembrete").textContent = "Novo lembrete"; fecharModalLembrete("modalNovoLembrete"); alert(data.mensagem || "Lembrete salvo."); await carregarLembretes();
         }catch(err){ alert(err.message || "Não foi possível salvar o lembrete."); }
         finally{ botao.disabled = false; atualizarTipoLembrete(); }
     });
