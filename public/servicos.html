@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>SGOS - Serviços Pendentes</title>
+<title>SGOS - Serviços</title>
 
 <link rel="icon" type="image/png" href="/img/favicon.png">
 
@@ -409,6 +409,84 @@ body{
     max-width:360px;
 }
 
+
+.filtros-servicos{
+    display:grid;
+    grid-template-columns:1.4fr repeat(4,minmax(150px,1fr)) auto;
+    gap:12px;
+    align-items:end;
+    margin-bottom:18px;
+    padding:16px;
+    background:#f8fafc;
+    border:1px solid var(--borda);
+    border-radius:12px;
+}
+
+.campo-filtro label{
+    display:block;
+    font-size:11px;
+    font-weight:800;
+    color:#475569;
+    margin-bottom:6px;
+    text-transform:uppercase;
+}
+
+.acoes-filtro{ display:flex; gap:8px; flex-wrap:wrap; }
+.btn-filtrar{ background:#2563eb; }
+.btn-limpar{ background:#64748b; }
+.btn-imprimir-selecionados{ background:#0f766e; }
+
+.selecao-resumo{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    margin:0 0 14px;
+    color:#475569;
+    font-size:13px;
+}
+
+.check-servico{ width:18px; height:18px; cursor:pointer; accent-color:#2563eb; }
+
+.select-lista{
+    border:1px solid var(--borda);
+    border-radius:10px;
+    padding:10px;
+    max-height:170px;
+    overflow:auto;
+    background:#fff;
+}
+
+.item-check{
+    display:flex !important;
+    align-items:center;
+    gap:9px;
+    padding:7px 5px;
+    margin:0 !important;
+    font-weight:600 !important;
+    cursor:pointer;
+}
+.item-check input{ width:17px; height:17px; margin:0; accent-color:#2563eb; }
+.contador-tecnicos{ margin-top:7px; font-size:12px; color:#64748b; }
+.linha-dupla{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.check-destaque{
+    display:flex !important;
+    align-items:center;
+    gap:10px;
+    padding:12px;
+    border:1px solid #bfdbfe;
+    border-radius:10px;
+    background:#eff6ff;
+    color:#1d4ed8 !important;
+}
+.check-destaque input{ width:18px; height:18px; margin:0; }
+
+@media(max-width:1200px){
+    .filtros-servicos{ grid-template-columns:1fr 1fr 1fr; }
+}
+@media(max-width:700px){
+    .filtros-servicos,.linha-dupla{ grid-template-columns:1fr; }
+}
 .table-wrap{
     width:100%;
     overflow-x:auto;
@@ -682,7 +760,7 @@ textarea:focus{
 
     <a href="servicos_pendentes.html" class="ativo">
         <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg>
-        <span>Serviços Pendentes</span>
+        <span>Serviços</span>
     </a>
 
     <a href="viabilidade.html">
@@ -758,7 +836,7 @@ textarea:focus{
 
         <div class="divisor"></div>
 
-        <div class="header-title">Serviços Pendentes</div>
+        <div class="header-title">Serviços</div>
     </div>
 
     <div class="usuario-dropdown" id="usuarioDropdown">
@@ -791,7 +869,7 @@ textarea:focus{
             <span>
                 <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             </span>
-            Novo Serviço Pendente
+            Novo Serviço
         </button>
 
         <div class="card-indicador">
@@ -831,16 +909,54 @@ textarea:focus{
     <div class="card">
         <div class="card-header">
             <div>
-                <div class="titulo-card">Serviços Pendentes</div>
-                <div class="subtitulo-card">Serviços que ainda precisam ser realizados.</div>
+                <div class="titulo-card">Serviços</div>
+                <div class="subtitulo-card">Consulte, filtre, selecione e imprima os serviços cadastrados.</div>
             </div>
-            <input class="filtro" id="filtroBusca" placeholder="Buscar por serviço, localidade, descrição, prioridade..." oninput="renderizarTabelas()">
+        </div>
+
+        <div class="filtros-servicos">
+            <div class="campo-filtro">
+                <label>Pesquisa</label>
+                <input id="filtroBusca" placeholder="Serviço, descrição, prioridade ou técnico" oninput="renderizarTabelas()">
+            </div>
+            <div class="campo-filtro">
+                <label>Período rápido</label>
+                <select id="filtroPeriodo" onchange="aplicarPeriodoRapido()">
+                    <option value="">Personalizado / todos</option>
+                    <option value="hoje">Hoje</option>
+                    <option value="ontem">Ontem</option>
+                    <option value="7">Últimos 7 dias</option>
+                    <option value="30">Últimos 30 dias</option>
+                    <option value="mes">Este mês</option>
+                </select>
+            </div>
+            <div class="campo-filtro">
+                <label>Data inicial</label>
+                <input type="date" id="filtroDataInicio" onchange="renderizarTabelas()">
+            </div>
+            <div class="campo-filtro">
+                <label>Data final</label>
+                <input type="date" id="filtroDataFim" onchange="renderizarTabelas()">
+            </div>
+            <div class="campo-filtro">
+                <label>Localidade</label>
+                <select id="filtroLocalidade" onchange="renderizarTabelas()"><option value="">Todas</option></select>
+            </div>
+            <div class="acoes-filtro">
+                <button class="btn btn-limpar" type="button" onclick="limparFiltros()">Limpar</button>
+            </div>
+        </div>
+
+        <div class="selecao-resumo">
+            <span><strong id="contadorSelecionados">0</strong> serviço(s) selecionado(s)</span>
+            <button class="btn btn-imprimir-selecionados" type="button" onclick="imprimirSelecionados()">Imprimir selecionados</button>
         </div>
 
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
+                        <th><input class="check-servico" type="checkbox" onchange="selecionarTodos(this, 'pendente')"></th>
                         <th>Serviço</th>
                         <th>Localidade</th>
                         <th>Descrição</th>
@@ -855,7 +971,7 @@ textarea:focus{
 
                 <tbody id="tabelaPendentes">
                     <tr>
-                        <td colspan="9">Carregando...</td>
+                        <td colspan="10">Carregando...</td>
                     </tr>
                 </tbody>
             </table>
@@ -874,6 +990,7 @@ textarea:focus{
             <table>
                 <thead>
                     <tr>
+                        <th><input class="check-servico" type="checkbox" onchange="selecionarTodos(this, 'realizado')"></th>
                         <th>Serviço</th>
                         <th>Localidade</th>
                         <th>Descrição</th>
@@ -888,7 +1005,7 @@ textarea:focus{
 
                 <tbody id="tabelaHistorico">
                     <tr>
-                        <td colspan="9">Carregando...</td>
+                        <td colspan="10">Carregando...</td>
                     </tr>
                 </tbody>
             </table>
@@ -907,15 +1024,32 @@ textarea:focus{
 <div class="modal" id="modalServico">
     <div class="modal-content">
 
-        <h3 id="modalTitulo">Novo Serviço Pendente</h3>
+        <h3 id="modalTitulo">Novo Serviço</h3>
 
         <input type="hidden" id="editId">
 
         <label>Serviço</label>
         <input type="text" id="servico" placeholder="Ex: Colocar CTO">
 
-        <label>Localidade</label>
-        <input type="text" id="localidade" placeholder="Ex: Gandu">
+        <div class="linha-dupla">
+            <div>
+                <label>Localidade</label>
+                <select id="localidade"><option value="">Selecione a localidade</option></select>
+            </div>
+            <div>
+                <label>Data do serviço</label>
+                <input type="date" id="dataServico">
+            </div>
+        </div>
+
+        <label class="check-destaque">
+            <input type="checkbox" id="novaViabilidade">
+            Este serviço é uma nova viabilidade
+        </label>
+
+        <label>Técnicos responsáveis (até 4)</label>
+        <div id="listaTecnicos" class="select-lista"><span style="color:#64748b;">Carregando técnicos...</span></div>
+        <div class="contador-tecnicos"><strong id="qtdTecnicos">0</strong>/4 técnicos selecionados</div>
 
         <label>Descrição</label>
         <textarea id="descricao" placeholder="Descreva o que precisa ser feito..."></textarea>
@@ -959,414 +1093,89 @@ textarea:focus{
 
 <script>
 let servicosPendentes = [];
+let localidadesCadastradas = [];
+let tecnicosCadastrados = [];
+const servicosSelecionados = new Set();
 
 function escapeHTML(valor){
-    return String(valor ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+    return String(valor ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 }
-
-function toggleSidebar(){
-    const sidebar = document.querySelector(".sidebar");
-    const logo = document.getElementById("logoSidebar");
-
-    if(!sidebar || !logo) return;
-
-    sidebar.classList.toggle("recolhida");
-
-    if(sidebar.classList.contains("recolhida")){
-        logo.src = logo.dataset.logoFechada;
-        localStorage.setItem("sidebar_recolhida", "1");
-    }else{
-        logo.src = logo.dataset.logoAberta;
-        localStorage.setItem("sidebar_recolhida", "0");
-    }
+function toggleSidebar(){ const sidebar=document.querySelector(".sidebar"),logo=document.getElementById("logoSidebar"); if(!sidebar||!logo)return; sidebar.classList.toggle("recolhida"); const fechada=sidebar.classList.contains("recolhida"); logo.src=fechada?logo.dataset.logoFechada:logo.dataset.logoAberta; localStorage.setItem("sidebar_recolhida",fechada?"1":"0"); }
+function toggleUserDropdown(){ document.getElementById("usuarioMenuDropdown").classList.toggle("ativo"); document.getElementById("usuarioDropdown").classList.toggle("aberto"); }
+document.addEventListener("click",e=>{ const box=document.getElementById("usuarioDropdown"),menu=document.getElementById("usuarioMenuDropdown"); if(box&&menu&&!box.contains(e.target)){menu.classList.remove("ativo");box.classList.remove("aberto");}});
+async function carregarUsuario(){ try{ const u=JSON.parse(localStorage.getItem("usuario")||"{}"); if(!u?.id){location.href="login.html";return;} const r=await fetch("/api/me",{headers:{"x-usuario-id":u.id}}),d=await r.json(); if(d?.usuario){ userEmpresa.innerText=d.usuario; empresaLogada.innerText=d.empresa_nome||u.empresa_nome||"Empresa"; logoEmpresa.src=d.empresa_logo?(d.empresa_logo.startsWith("/")?d.empresa_logo:"/"+d.empresa_logo):"/img/logo-default.png"; }}catch(e){console.error(e);userEmpresa.innerText="Administrador";} }
+async function carregarUsuariosOnline(){ try{const r=await fetch("/api/logs"),logs=await r.json(),lista=[...new Set(logs.filter(l=>!l.logout).map(l=>l.usuario))]; usuariosOnline.innerHTML=lista.length?lista.map(u=>`🟢 ${escapeHTML(u)}`).join("<br>"):"Nenhum usuário online";}catch{usuariosOnline.innerText="Online indisponível";} }
+function logout(){const id=localStorage.getItem("log_id");if(id)fetch("/api/logout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({log_id:id})}).catch(()=>{});sessionStorage.clear();localStorage.clear();location.href="login.html";}
+function formatarData(data){if(!data)return "-";const d=new Date(data);return isNaN(d)?"-":d.toLocaleString("pt-BR");}
+function dataISO(data){if(!data)return "";const d=new Date(data);if(isNaN(d))return "";return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
+function classePrioridade(v){const p=String(v||"").toLowerCase();return p.includes("alta")?"badge badge-alta":p.includes("baixa")?"badge badge-baixa":"badge badge-media";}
+function classeStatus(v){return String(v||"").toLowerCase().includes("realizado")?"badge badge-realizado":"badge badge-pendente";}
+function nomesTecnicos(item){ if(Array.isArray(item.tecnicos_nomes))return item.tecnicos_nomes.join(", "); if(item.tecnicos_nomes)return String(item.tecnicos_nomes); if(item.tecnicos)return Array.isArray(item.tecnicos)?item.tecnicos.map(t=>t.nome||t).join(", "):String(item.tecnicos); return "-"; }
+function atualizarCards(d){cardTotal.innerText=d.length;cardPendentes.innerText=d.filter(i=>String(i.status||"").toLowerCase()==="pendente").length;cardRealizados.innerText=d.filter(i=>String(i.status||"").toLowerCase()==="realizado").length;}
+async function carregarCadastros(){
+    const tentar=async(url)=>{try{const d=await fetchAuth(url);return Array.isArray(d)?d:(d?.dados||d?.data||[]);}catch{return [];}};
+    [localidadesCadastradas,tecnicosCadastrados]=await Promise.all([tentar("/api/localidades"),tentar("/api/tecnicos")]);
+    preencherLocalidades(); preencherTecnicos();
 }
-
-function toggleUserDropdown(){
-    document.getElementById("usuarioMenuDropdown").classList.toggle("ativo");
-    document.getElementById("usuarioDropdown").classList.toggle("aberto");
+function preencherLocalidades(){
+    const nomes=[...new Set(localidadesCadastradas.map(l=>l.nome||l.localidade||l.descricao).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+    const opts=nomes.map(n=>`<option value="${escapeHTML(n)}">${escapeHTML(n)}</option>`).join("");
+    filtroLocalidade.innerHTML='<option value="">Todas</option>'+opts;
+    localidade.innerHTML='<option value="">Selecione a localidade</option>'+opts;
 }
-
-document.addEventListener("click", function(e){
-    const box = document.getElementById("usuarioDropdown");
-    const menu = document.getElementById("usuarioMenuDropdown");
-
-    if(box && menu && !box.contains(e.target)){
-        menu.classList.remove("ativo");
-        box.classList.remove("aberto");
-    }
-});
-
-async function carregarUsuario(){
-    try{
-        const userLocal = JSON.parse(localStorage.getItem("usuario") || "{}");
-
-        if(!userLocal?.id){
-            window.location.href = "login.html";
-            return;
-        }
-
-        const res = await fetch("/api/me", {
-            headers:{ "x-usuario-id": userLocal.id }
-        });
-
-        const data = await res.json();
-
-        if(data?.usuario){
-            document.getElementById("userEmpresa").innerText = data.usuario;
-
-            document.getElementById("empresaLogada").innerText =
-                data.empresa_nome ||
-                userLocal.empresa_nome ||
-                "Empresa";
-
-            const logoEl = document.getElementById("logoEmpresa");
-
-            const logoFinal = data.empresa_logo
-                ? (data.empresa_logo.startsWith("/") ? data.empresa_logo : "/" + data.empresa_logo)
-                : "/img/logo-default.png";
-
-            if(logoEl) logoEl.src = logoFinal;
-        }
-
-    }catch(err){
-        console.error("Erro ao carregar usuário:", err);
-        document.getElementById("userEmpresa").innerText = "Administrador";
-    }
+function preencherTecnicos(selecionados=[]){
+    const ids=new Set((selecionados||[]).map(String));
+    listaTecnicos.innerHTML=tecnicosCadastrados.length?tecnicosCadastrados.map(t=>{const id=t.id??t.usuario_id;const nome=t.nome||t.usuario||t.name||`Técnico ${id}`;return `<label class="item-check"><input type="checkbox" class="tecnico-check" value="${escapeHTML(id)}" data-nome="${escapeHTML(nome)}" ${ids.has(String(id))?'checked':''} onchange="limitarTecnicos(this)">${escapeHTML(nome)}</label>`;}).join(""): '<span style="color:#64748b;">Nenhum técnico cadastrado.</span>';
+    atualizarContadorTecnicos();
 }
-
-async function carregarUsuariosOnline(){
-    try{
-        const res = await fetch("/api/logs");
-        const logs = await res.json();
-
-        const online = logs
-            .filter(l => !l.logout)
-            .map(l => l.usuario);
-
-        const listaUnica = [...new Set(online)];
-        const container = document.getElementById("usuariosOnline");
-
-        if(!container) return;
-
-        container.innerHTML = listaUnica.length
-            ? listaUnica.map(u => `🟢 ${escapeHTML(u)}`).join("<br>")
-            : "Nenhum usuário online";
-
-    }catch(err){
-        const container = document.getElementById("usuariosOnline");
-        if(container) container.innerText = "Online indisponível";
-    }
+function limitarTecnicos(el){const marcados=[...document.querySelectorAll(".tecnico-check:checked")];if(marcados.length>4){el.checked=false;alert("É permitido selecionar no máximo 4 técnicos.");}atualizarContadorTecnicos();}
+function atualizarContadorTecnicos(){qtdTecnicos.innerText=document.querySelectorAll(".tecnico-check:checked").length;}
+async function carregar(){try{const d=await fetchAuth("/api/servicos-pendentes");servicosPendentes=Array.isArray(d)?d:[];atualizarCards(servicosPendentes);renderizarTabelas();}catch(e){console.error(e);tabelaPendentes.innerHTML='<tr><td colspan="10">Erro ao carregar serviços</td></tr>';tabelaHistorico.innerHTML='<tr><td colspan="10">Erro ao carregar histórico</td></tr>';}}
+function aplicarPeriodoRapido(){
+    const v=filtroPeriodo.value,hoje=new Date();hoje.setHours(0,0,0,0);let ini=null,fim=new Date(hoje);
+    if(v==="hoje")ini=new Date(hoje); else if(v==="ontem"){ini=new Date(hoje);ini.setDate(ini.getDate()-1);fim=new Date(ini);} else if(v==="7"){ini=new Date(hoje);ini.setDate(ini.getDate()-6);} else if(v==="30"){ini=new Date(hoje);ini.setDate(ini.getDate()-29);} else if(v==="mes"){ini=new Date(hoje.getFullYear(),hoje.getMonth(),1);} else {filtroDataInicio.value="";filtroDataFim.value="";renderizarTabelas();return;}
+    filtroDataInicio.value=dataISO(ini);filtroDataFim.value=dataISO(fim);renderizarTabelas();
 }
-
-function logout(){
-    const logId = localStorage.getItem("log_id");
-
-    if(logId){
-        fetch("/api/logout", {
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            body:JSON.stringify({ log_id:logId })
-        }).catch(console.error);
-    }
-
-    sessionStorage.clear();
-    localStorage.clear();
-    window.location.href = "login.html";
-}
-
-function formatarData(data){
-    if(!data) return "-";
-
-    const d = new Date(data);
-
-    if(isNaN(d.getTime())) return "-";
-
-    return d.toLocaleString("pt-BR");
-}
-
-function classePrioridade(valor){
-    const p = String(valor || "").toLowerCase();
-
-    if(p.includes("alta")) return "badge badge-alta";
-    if(p.includes("baixa")) return "badge badge-baixa";
-
-    return "badge badge-media";
-}
-
-function classeStatus(valor){
-    const s = String(valor || "").toLowerCase();
-
-    if(s.includes("realizado")) return "badge badge-realizado";
-
-    return "badge badge-pendente";
-}
-
-function atualizarCards(dados){
-    const total = dados.length || 0;
-
-    const pendentes = dados.filter(item => String(item.status || "").toLowerCase() === "pendente").length;
-    const realizados = dados.filter(item => String(item.status || "").toLowerCase() === "realizado").length;
-
-    document.getElementById("cardTotal").innerText = total;
-    document.getElementById("cardPendentes").innerText = pendentes;
-    document.getElementById("cardRealizados").innerText = realizados;
-}
-
-async function carregar(){
-    try{
-        const dados = await fetchAuth("/api/servicos-pendentes");
-
-        servicosPendentes = Array.isArray(dados) ? dados : [];
-
-        atualizarCards(servicosPendentes);
-        renderizarTabelas();
-
-    }catch(err){
-        console.error("Erro ao carregar serviços pendentes:", err);
-
-        document.getElementById("tabelaPendentes").innerHTML = `
-            <tr>
-                <td colspan="9">Erro ao carregar serviços pendentes</td>
-            </tr>
-        `;
-
-        document.getElementById("tabelaHistorico").innerHTML = `
-            <tr>
-                <td colspan="9">Erro ao carregar histórico</td>
-            </tr>
-        `;
-    }
-}
-
+function limparFiltros(){filtroBusca.value="";filtroPeriodo.value="";filtroDataInicio.value="";filtroDataFim.value="";filtroLocalidade.value="";renderizarTabelas();}
 function filtrarDados(){
-    const termo = document.getElementById("filtroBusca")?.value?.toLowerCase().trim() || "";
-
-    if(!termo) return servicosPendentes;
-
-    return servicosPendentes.filter(item => {
-        const texto = [
-            item.servico,
-            item.localidade,
-            item.descricao,
-            item.prioridade,
-            item.enviado_por,
-            item.status
-        ].join(" ").toLowerCase();
-
-        return texto.includes(termo);
+    const termo=filtroBusca.value.toLowerCase().trim(),loc=filtroLocalidade.value.toLowerCase(),ini=filtroDataInicio.value,fim=filtroDataFim.value;
+    return servicosPendentes.filter(i=>{
+        const texto=[i.servico,i.localidade,i.descricao,i.prioridade,i.enviado_por,i.status,nomesTecnicos(i)].join(" ").toLowerCase();
+        const data=dataISO(i.data_servico||i.criado_em);
+        return (!termo||texto.includes(termo))&&(!loc||String(i.localidade||"").toLowerCase()===loc)&&(!ini||data>=ini)&&(!fim||data<=fim);
     });
 }
-
-function montarLinha(item){
-    return `
-        <tr>
-            <td><strong>${escapeHTML(item.servico || "-")}</strong></td>
-            <td>${escapeHTML(item.localidade || "-")}</td>
-            <td style="min-width:300px;">${escapeHTML(item.descricao || "-")}</td>
-            <td><span class="${classePrioridade(item.prioridade)}">${escapeHTML(item.prioridade || "Média")}</span></td>
-            <td>${escapeHTML(item.enviado_por || "-")}</td>
-            <td><span class="${classeStatus(item.status)}">${escapeHTML(item.status || "Pendente")}</span></td>
-            <td>${formatarData(item.criado_em)}</td>
-            <td>${formatarData(item.atualizado_em)}</td>
-            <td>
-                <div class="acoes">
-                    <button class="btn btn-editar" onclick="abrirModalEditar(${item.id})">Editar</button>
-                    <button class="btn btn-imprimir" onclick="imprimirServico(${item.id})">Imprimir</button>
-                    <button class="btn btn-anexo" onclick="visualizarAnexo(${item.id})">Visualizar Anexo</button>
-                    <button class="btn btn-excluir" onclick="excluir(${item.id})">Excluir</button>
-                </div>
-            </td>
-        </tr>
-    `;
+function montarLinha(item){return `<tr><td><input class="check-servico item-selecao" type="checkbox" data-status="${escapeHTML(String(item.status||'').toLowerCase())}" value="${item.id}" ${servicosSelecionados.has(Number(item.id))?'checked':''} onchange="alternarSelecao(${item.id},this.checked)"></td><td><strong>${escapeHTML(item.servico||"-")}</strong>${item.nova_viabilidade?'<br><small style="color:#2563eb;font-weight:800;">NOVA VIABILIDADE</small>':''}</td><td>${escapeHTML(item.localidade||"-")}</td><td style="min-width:260px;">${escapeHTML(item.descricao||"-")}<br><small style="color:#64748b;"><strong>Técnicos:</strong> ${escapeHTML(nomesTecnicos(item))}</small></td><td><span class="${classePrioridade(item.prioridade)}">${escapeHTML(item.prioridade||"Média")}</span></td><td>${escapeHTML(item.enviado_por||"-")}</td><td><span class="${classeStatus(item.status)}">${escapeHTML(item.status||"Pendente")}</span></td><td>${formatarData(item.data_servico||item.criado_em)}</td><td>${formatarData(item.atualizado_em)}</td><td><div class="acoes"><button class="btn btn-editar" onclick="abrirModalEditar(${item.id})">Editar</button><button class="btn btn-imprimir" onclick="imprimirServico(${item.id})">Imprimir</button><button class="btn btn-anexo" onclick="visualizarAnexo(${item.id})">Anexo</button><button class="btn btn-excluir" onclick="excluir(${item.id})">Excluir</button></div></td></tr>`;}
+function renderizarTabelas(){const d=filtrarDados(),p=d.filter(i=>String(i.status||"").toLowerCase()==="pendente"),h=d.filter(i=>String(i.status||"").toLowerCase()==="realizado");tabelaPendentes.innerHTML=p.length?p.map(montarLinha).join(""):'<tr><td colspan="10">Nenhum serviço pendente encontrado</td></tr>';tabelaHistorico.innerHTML=h.length?h.map(montarLinha).join(""):'<tr><td colspan="10">Nenhum serviço realizado encontrado</td></tr>';atualizarContadorSelecionados();}
+function alternarSelecao(id,marcado){marcado?servicosSelecionados.add(Number(id)):servicosSelecionados.delete(Number(id));atualizarContadorSelecionados();}
+function selecionarTodos(el,status){document.querySelectorAll(`.item-selecao[data-status="${status}"]`).forEach(c=>{c.checked=el.checked;alternarSelecao(Number(c.value),el.checked);});}
+function atualizarContadorSelecionados(){contadorSelecionados.innerText=servicosSelecionados.size;}
+function visualizarAnexo(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i?.anexo){alert("Este serviço não possui anexo.");return;}frameAnexo.src=i.anexo;modalAnexo.style.display="flex";}
+function fecharModalAnexo(){frameAnexo.src="";modalAnexo.style.display="none";}
+function periodoRelatorio(lista){const datas=lista.map(i=>new Date(i.data_servico||i.criado_em)).filter(d=>!isNaN(d)).sort((a,b)=>a-b);return datas.length?`${datas[0].toLocaleDateString("pt-BR")} a ${datas.at(-1).toLocaleDateString("pt-BR")}`:"Período não informado";}
+function gerarRelatorio(lista){
+    const empresa=empresaLogada.innerText||"Empresa",logo=logoEmpresa.src;
+    return `<div style="font-family:Arial;color:#0f172a;"><div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #2563eb;padding-bottom:14px;"><img src="${logo}" style="max-height:65px;max-width:200px;object-fit:contain"><div style="text-align:right"><h1 style="margin:0;font-size:23px;color:#1d4ed8;">RELATÓRIO DE SERVIÇOS</h1><div style="font-size:13px;color:#64748b;margin-top:5px;">${escapeHTML(empresa)}</div></div></div><div style="margin:18px 0;padding:12px 15px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:8px;font-weight:800;">SERVIÇOS SELECIONADOS: ${lista.length} &nbsp;|&nbsp; PERÍODO: ${periodoRelatorio(lista)}</div>${lista.map((i,n)=>`<section style="border:1px solid #dbe3ef;border-radius:10px;margin:0 0 14px;overflow:hidden;page-break-inside:avoid;"><div style="background:#f1f5f9;padding:11px 14px;font-weight:800;">${n+1}. ${escapeHTML(i.servico||"Serviço")}</div><div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;font-size:13px;"><div><strong>Localidade:</strong> ${escapeHTML(i.localidade||"-")}</div><div><strong>Data:</strong> ${formatarData(i.data_servico||i.criado_em)}</div><div><strong>Prioridade:</strong> ${escapeHTML(i.prioridade||"Média")}</div><div><strong>Status:</strong> ${escapeHTML(i.status||"Pendente")}</div><div><strong>Técnicos:</strong> ${escapeHTML(nomesTecnicos(i))}</div><div><strong>Nova viabilidade:</strong> ${i.nova_viabilidade?'Sim':'Não'}</div><div style="grid-column:1/-1"><strong>Descrição:</strong><div style="margin-top:5px;padding:10px;border:1px solid #e5e7eb;border-radius:7px;min-height:45px;">${escapeHTML(i.descricao||"-")}</div></div></div></section>`).join("")}<div style="margin-top:22px;font-size:11px;color:#64748b;text-align:center;">Relatório gerado pelo SGOS em ${new Date().toLocaleString("pt-BR")}</div></div>`;
 }
-
-function renderizarTabelas(){
-    const dados = filtrarDados();
-
-    const pendentes = dados.filter(item => String(item.status || "").toLowerCase() === "pendente");
-    const historico = dados.filter(item => String(item.status || "").toLowerCase() === "realizado");
-
-    const tabelaPendentes = document.getElementById("tabelaPendentes");
-    const tabelaHistorico = document.getElementById("tabelaHistorico");
-
-    tabelaPendentes.innerHTML = pendentes.length
-        ? pendentes.map(montarLinha).join("")
-        : `<tr><td colspan="9">Nenhum serviço pendente cadastrado</td></tr>`;
-
-    tabelaHistorico.innerHTML = historico.length
-        ? historico.map(montarLinha).join("")
-        : `<tr><td colspan="9">Nenhum serviço realizado no histórico</td></tr>`;
-}
-
-function visualizarAnexo(id){
-    const item = servicosPendentes.find(i => Number(i.id) === Number(id));
-
-    if(!item || !item.anexo){
-        alert("Este serviço não possui anexo.");
-        return;
-    }
-
-    document.getElementById("frameAnexo").src = item.anexo;
-    document.getElementById("modalAnexo").style.display = "flex";
-}
-
-function fecharModalAnexo(){
-    document.getElementById("frameAnexo").src = "";
-    document.getElementById("modalAnexo").style.display = "none";
-}
-
-function imprimirServico(id){
-    const item = servicosPendentes.find(i => Number(i.id) === Number(id));
-
-    if(!item){
-        alert("Serviço não encontrado.");
-        return;
-    }
-
-    const area = document.getElementById("areaImpressao");
-
-    area.innerHTML = `
-        <div style="font-family:Arial, Helvetica, sans-serif; color:#0f172a;">
-            <h2 style="margin-bottom:5px;">SGOS - Serviço Pendente</h2>
-            <p style="margin-top:0; color:#64748b;">Ficha de serviço registrado</p>
-
-            <hr style="border:none; border-top:1px solid #e5e7eb; margin:18px 0;">
-
-            <p><strong>Serviço:</strong> ${escapeHTML(item.servico || "-")}</p>
-            <p><strong>Localidade:</strong> ${escapeHTML(item.localidade || "-")}</p>
-            <p><strong>Prioridade:</strong> ${escapeHTML(item.prioridade || "Média")}</p>
-            <p><strong>Status:</strong> ${escapeHTML(item.status || "Pendente")}</p>
-            <p><strong>Enviado por:</strong> ${escapeHTML(item.enviado_por || "-")}</p>
-            <p><strong>Criado em:</strong> ${formatarData(item.criado_em)}</p>
-            <p><strong>Atualizado em:</strong> ${formatarData(item.atualizado_em)}</p>
-
-            <h3 style="margin-top:22px;">Descrição</h3>
-            <div style="border:1px solid #e5e7eb; border-radius:10px; padding:14px; min-height:90px;">
-                ${escapeHTML(item.descricao || "-")}
-            </div>
-
-            <p style="margin-top:22px;"><strong>Anexo:</strong> ${item.anexo ? escapeHTML(item.anexo) : "Sem anexo"}</p>
-        </div>
-    `;
-
-    area.style.display = "block";
-    window.print();
-    area.style.display = "none";
-}
-
-async function excluir(id){
-    if(!confirm("Excluir este serviço?")) return;
-
-    await fetchAuth(`/api/servicos-pendentes/${id}`, {
-        method:"DELETE"
-    });
-
-    carregar();
-}
-
-function abrirModalNovo(){
-    document.getElementById("modalTitulo").innerText = "Novo Serviço Pendente";
-    document.getElementById("editId").value = "";
-
-    document.getElementById("servico").value = "";
-    document.getElementById("localidade").value = "";
-    document.getElementById("descricao").value = "";
-    document.getElementById("prioridade").value = "Média";
-    document.getElementById("status").value = "Pendente";
-    document.getElementById("anexo").value = "";
-    document.getElementById("anexoAtual").innerText = "";
-
-    document.getElementById("modalServico").style.display = "flex";
-    document.getElementById("servico").focus();
-}
-
-function abrirModalEditar(id){
-    const item = servicosPendentes.find(i => Number(i.id) === Number(id));
-
-    if(!item){
-        alert("Serviço não encontrado.");
-        return;
-    }
-
-    document.getElementById("modalTitulo").innerText = "Editar Serviço";
-    document.getElementById("editId").value = item.id;
-
-    document.getElementById("servico").value = item.servico || "";
-    document.getElementById("localidade").value = item.localidade || "";
-    document.getElementById("descricao").value = item.descricao || "";
-    document.getElementById("prioridade").value = item.prioridade || "Média";
-    document.getElementById("status").value = item.status || "Pendente";
-    document.getElementById("anexo").value = "";
-
-    document.getElementById("anexoAtual").innerText = item.anexo
-        ? "Anexo atual será mantido se nenhum novo arquivo for enviado."
-        : "Nenhum anexo atual.";
-
-    document.getElementById("modalServico").style.display = "flex";
-}
-
-function fecharModalServico(){
-    document.getElementById("modalServico").style.display = "none";
-}
-
+function imprimirLista(lista){if(!lista.length){alert("Selecione pelo menos um serviço para imprimir.");return;}areaImpressao.innerHTML=gerarRelatorio(lista);areaImpressao.style.display="block";window.print();areaImpressao.style.display="none";}
+function imprimirServico(id){imprimirLista(servicosPendentes.filter(i=>Number(i.id)===Number(id)));}
+function imprimirSelecionados(){imprimirLista(servicosPendentes.filter(i=>servicosSelecionados.has(Number(i.id))));}
+async function excluir(id){if(!confirm("Excluir este serviço?"))return;await fetchAuth(`/api/servicos-pendentes/${id}`,{method:"DELETE"});servicosSelecionados.delete(Number(id));carregar();}
+function hojeISO(){return dataISO(new Date());}
+function abrirModalNovo(){modalTitulo.innerText="Novo Serviço";editId.value="";servico.value="";localidade.value="";dataServico.value=hojeISO();novaViabilidade.checked=false;descricao.value="";prioridade.value="Média";status.value="Pendente";anexo.value="";anexoAtual.innerText="";preencherTecnicos();modalServico.style.display="flex";servico.focus();}
+function idsTecnicosItem(item){if(Array.isArray(item.tecnicos_ids))return item.tecnicos_ids;if(Array.isArray(item.tecnicos))return item.tecnicos.map(t=>typeof t==='object'?(t.id??t.usuario_id):t);if(typeof item.tecnicos_ids==='string')return item.tecnicos_ids.split(',').map(x=>x.trim());return [];}
+function abrirModalEditar(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i)return alert("Serviço não encontrado.");modalTitulo.innerText="Editar Serviço";editId.value=i.id;servico.value=i.servico||"";localidade.value=i.localidade||"";dataServico.value=dataISO(i.data_servico||i.criado_em);novaViabilidade.checked=Boolean(Number(i.nova_viabilidade)||i.nova_viabilidade===true);descricao.value=i.descricao||"";prioridade.value=i.prioridade||"Média";status.value=i.status||"Pendente";anexo.value="";anexoAtual.innerText=i.anexo?"Anexo atual será mantido se nenhum novo arquivo for enviado.":"Nenhum anexo atual.";preencherTecnicos(idsTecnicosItem(i));modalServico.style.display="flex";}
+function fecharModalServico(){modalServico.style.display="none";}
 async function salvarServico(){
-    const id = document.getElementById("editId").value;
-    const servico = document.getElementById("servico").value.trim();
-
-    if(!servico){
-        alert("Informe o serviço");
-        return;
-    }
-
-    const formData = new FormData();
-
-    formData.append("servico", servico);
-    formData.append("localidade", document.getElementById("localidade").value);
-    formData.append("descricao", document.getElementById("descricao").value);
-    formData.append("prioridade", document.getElementById("prioridade").value);
-    formData.append("status", document.getElementById("status").value);
-
-    const arquivo = document.getElementById("anexo").files[0];
-
-    if(arquivo){
-        formData.append("anexo", arquivo);
-    }
-
-    const url = id
-        ? `/api/servicos-pendentes/${id}`
-        : "/api/servicos-pendentes";
-
-    const method = id ? "PUT" : "POST";
-
-    await fetchAuth(url, {
-        method,
-        body:formData
-    });
-
-    fecharModalServico();
-    carregar();
+    const id=editId.value,nome=servico.value.trim(),tecs=[...document.querySelectorAll(".tecnico-check:checked")];
+    if(!nome)return alert("Informe o serviço."); if(!localidade.value)return alert("Selecione a localidade."); if(tecs.length>4)return alert("Selecione no máximo 4 técnicos.");
+    const fd=new FormData();fd.append("servico",nome);fd.append("localidade",localidade.value);fd.append("data_servico",dataServico.value);fd.append("nova_viabilidade",novaViabilidade.checked?"1":"0");fd.append("descricao",descricao.value);fd.append("prioridade",prioridade.value);fd.append("status",status.value);
+    const ids=tecs.map(t=>t.value),nomes=tecs.map(t=>t.dataset.nome);fd.append("tecnicos_ids",JSON.stringify(ids));fd.append("tecnicos_nomes",JSON.stringify(nomes));fd.append("tecnicos",JSON.stringify(ids));
+    if(anexo.files[0])fd.append("anexo",anexo.files[0]);
+    await fetchAuth(id?`/api/servicos-pendentes/${id}`:"/api/servicos-pendentes",{method:id?"PUT":"POST",body:fd});fecharModalServico();carregar();
 }
-
-document.addEventListener("DOMContentLoaded", () => {
-    const sidebar = document.querySelector(".sidebar");
-    const logo = document.getElementById("logoSidebar");
-
-    if(sidebar && logo && localStorage.getItem("sidebar_recolhida") === "1"){
-        sidebar.classList.add("recolhida");
-        logo.src = logo.dataset.logoFechada;
-    }
-
-    carregarUsuario();
-    carregarUsuariosOnline();
-    carregar();
-});
-
-setInterval(carregarUsuariosOnline, 300000);
+document.addEventListener("DOMContentLoaded",async()=>{const sb=document.querySelector(".sidebar"),lg=document.getElementById("logoSidebar");if(sb&&lg&&localStorage.getItem("sidebar_recolhida")==="1"){sb.classList.add("recolhida");lg.src=lg.dataset.logoFechada;}carregarUsuario();carregarUsuariosOnline();await carregarCadastros();carregar();});
+setInterval(carregarUsuariosOnline,300000);
 </script>
 
 </body>
