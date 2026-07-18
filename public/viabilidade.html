@@ -138,6 +138,47 @@ button,input,textarea,select{font:inherit}
 #tecnicoResponsavel{min-height:118px;padding:8px}
 #tecnicoResponsavel option{padding:8px;border-radius:7px;margin:2px 0}
 #tecnicoResponsavel option:checked{background:#2563eb linear-gradient(0deg,#2563eb 0%,#2563eb 100%);color:#fff}
+
+
+/* ===== AJUSTE COMPACTO E ÍCONES EM SVG ===== */
+.content{padding:16px 18px 28px}
+.top-actions{gap:12px;margin-bottom:12px}
+.card-indicador{padding:14px 16px;min-height:82px;border-radius:12px;gap:12px}
+.icon-box{width:44px;height:44px;border-radius:14px}
+.icon-box svg{width:24px;height:24px}
+.card-info strong{font-size:25px;margin:3px 0}
+.card-info small,.card-info span{font-size:11px}
+.card{padding:14px 16px;margin-bottom:12px;border-radius:12px}
+.card-header{margin-bottom:11px}
+.titulo-card{font-size:17px}.sub-card{font-size:12px;margin-top:2px}
+.form-grid{gap:9px 12px}
+.campo{gap:4px}.campo label{font-size:12px}
+.campo input,.campo select,.filtros input,.filtros select{padding:8px 11px;border-radius:8px;font-size:13px;min-height:36px}
+.campo textarea{padding:9px 11px;border-radius:8px;font-size:13px;min-height:58px;max-height:90px}
+#observacao,#observacaoPosAprovacao{min-height:58px}
+#tecnicoResponsavel{min-height:88px;height:88px;padding:4px}
+#tecnicoResponsavel option{padding:5px 7px;margin:1px 0}
+.arquivo-box{padding:9px 11px;border-radius:9px}
+.arquivo-ajuda{font-size:10px;margin-top:4px}
+.preview-lista{margin-top:7px}
+.form-actions{margin-top:11px}.btn{padding:9px 13px;border-radius:9px;font-size:13px}
+.filtros{gap:9px}.filtro-periodo{padding:8px 10px}.filtro-periodo>label{margin-bottom:6px}
+th{padding:10px 8px;font-size:11px}td{padding:8px 8px;font-size:12px}
+.linha-viabilidade td{padding:8px 7px}
+.status-box{padding:4px 7px;border-radius:8px;font-size:10px;line-height:1.15;display:inline-flex;align-items:center;justify-content:center;text-align:center;white-space:normal;max-width:92px;min-width:0}
+.status-box.status-instalado{max-width:88px}
+.acoes{gap:7px;min-width:112px}
+.icone-acao,.btn-localizacao-icone{width:34px;height:34px;border:0;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:.18s ease;flex:0 0 34px}
+.icone-acao svg,.btn-localizacao-icone svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.icone-imprimir{background:#dcfce7;color:#047857}.icone-imprimir:hover{background:#bbf7d0;transform:translateY(-1px)}
+.icone-editar{background:#fef3c7;color:#d97706}.icone-editar:hover{background:#fde68a;transform:translateY(-1px)}
+.icone-excluir{background:#fee2e2;color:#dc2626}.icone-excluir:hover{background:#fecaca;transform:translateY(-1px)}
+.btn-localizacao-icone{background:#dbeafe;color:#1d4ed8;font-size:0}.btn-localizacao-icone:hover{background:#bfdbfe;transform:translateY(-1px)}
+.btn .btn-icon-svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.resumo-fechar,.popup-fechar{font-size:0}
+.resumo-fechar svg,.popup-fechar svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.3;stroke-linecap:round}
+@media(max-width:1300px){.card-indicador{min-height:76px}.campo textarea{min-height:66px}}
+
 </style>
 </head>
 <body>
@@ -245,7 +286,7 @@ button,input,textarea,select{font:inherit}
     </div>
 
     <div class="card">
-        <div class="card-header lista-toolbar"><div><div class="titulo-card">Lista de Viabilidades</div><div class="sub-card">Clique em uma viabilidade para abrir o resumo completo.</div></div><div class="lista-toolbar-acoes"><button class="btn btn-imprimir" type="button" onclick="imprimirSelecionadas()">🖨️ Imprimir selecionadas</button></div></div>
+        <div class="card-header lista-toolbar"><div><div class="titulo-card">Lista de Viabilidades</div><div class="sub-card">Clique em uma viabilidade para abrir o resumo completo.</div></div><div class="lista-toolbar-acoes"><button class="btn btn-imprimir" type="button" onclick="imprimirSelecionadas()"><svg class="btn-icon-svg" viewBox="0 0 24 24"><path d="M7 8V4h10v4"/><rect x="5" y="12" width="14" height="8" rx="1"/><path d="M5 16H3V9h18v7h-2"/><path d="M17 11h.01"/></svg> Imprimir selecionadas</button></div></div>
         <div class="table-wrap">
             <table><thead><tr><th><input type="checkbox" class="checkbox-viabilidade" id="selecionarTodas" title="Selecionar todas"></th><th>Nome</th><th>Localidade</th><th>Endereço</th><th>Observação inicial</th><th>Observação do técnico pós-visita</th><th>Telefones</th><th>Técnicos</th><th>Cadastrado por</th><th>Registrado em</th><th>Atualizado por</th><th>Atualizado em</th><th>Viabilidade</th><th>Instalação</th><th>Anexos</th><th>Localização</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="17" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
         </div>
@@ -256,13 +297,13 @@ button,input,textarea,select{font:inherit}
 
 <div class="popup-resumo" id="popupResumo" onclick="fecharResumoAoFundo(event)">
     <div class="resumo-card">
-        <div class="resumo-topo"><div><h2 id="resumoTitulo">Detalhes da viabilidade</h2><p id="resumoSubtitulo"></p></div><button class="resumo-fechar" type="button" onclick="fecharResumo()">✕</button></div>
+        <div class="resumo-topo"><div><h2 id="resumoTitulo">Detalhes da viabilidade</h2><p id="resumoSubtitulo"></p></div><button class="resumo-fechar" type="button" onclick="fecharResumo()"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
         <div class="resumo-conteudo" id="resumoConteudo"></div>
         <div class="resumo-acoes" id="resumoAcoes"></div>
     </div>
 </div>
 
-<div class="popup" id="popupMidia" onclick="fecharMidiaAoFundo(event)"><button class="popup-fechar" onclick="fecharMidia()">✕</button><div id="popupConteudo"></div></div>
+<div class="popup" id="popupMidia" onclick="fecharMidiaAoFundo(event)"><button class="popup-fechar" onclick="fecharMidia()"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div id="popupConteudo"></div></div>
 
 <script>
 const API_VIABILIDADE = "/api/viabilidade";
@@ -510,7 +551,7 @@ function renderTabela(){
     tbody.innerHTML=lista.map(o=>{
         const anexos=anexosDoRegistro(o).length;
         const st=String(o.status||"PENDENTE").toUpperCase();
-        const localizacao=coordenadasValidas(o)?`<button class="btn-localizacao-icone" title="Visualizar localização" onclick="event.stopPropagation();abrirResumoViabilidade(${Number(o.id)},'localizacao')">📍</button>`:"<span class='muted'>-</span>";
+        const localizacao=coordenadasValidas(o)?`<button class="btn-localizacao-icone" title="Visualizar localização" onclick="event.stopPropagation();abrirResumoViabilidade(${Number(o.id)},'localizacao')"><svg viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></button>`:"<span class='muted'>-</span>";
         const telefones=[o.telefone,o.telefone2||o.telefone_secundario].filter(Boolean).map(escapar).join("<br>")||"-";
         return `<tr class="linha-viabilidade" onclick="abrirResumoViabilidade(${Number(o.id)})">
             <td onclick="event.stopPropagation()"><input type="checkbox" class="checkbox-viabilidade chk-item" value="${Number(o.id)}" ${idsSelecionados.has(Number(o.id))?'checked':''} onchange="alternarSelecao(${Number(o.id)},this.checked)"></td>
@@ -527,9 +568,9 @@ function renderTabela(){
             <td>${formatarData(o.atualizado_em)}</td>
             <td><span class="status-box ${classeStatus(st)}">${escapar(nomeStatus(st))}</span></td>
             <td>${st==="APROVADA"?`<span class="status-box ${classeStatusInstalacao(statusInstalacaoRegistro(o))}">${escapar(statusInstalacaoRegistro(o)==="INSTALADO"?"INSTALAÇÃO REALIZADA":"PENDENTE")}</span>`:"-"}</td>
-            <td>${anexos?`📎 ${anexos}`:"-"}</td>
+            <td>${anexos?`<span class="anexo-contagem"><svg viewBox="0 0 24 24" style="width:15px;height:15px;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:2"><path d="M21.4 11.6l-8.5 8.5a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg> ${anexos}</span>`:"-"}</td>
             <td>${localizacao}</td>
-            <td class="col-acoes" onclick="event.stopPropagation()"><div class="acoes"><span class="icone-acao" title="Imprimir" onclick="imprimirViabilidade(${Number(o.id)})">🖨️</span><span class="icone-acao" title="Editar" onclick="editarViabilidade(${Number(o.id)})">✏️</span><span class="icone-acao" title="Excluir" onclick="excluirViabilidade(${Number(o.id)})">🗑️</span></div></td>
+            <td class="col-acoes" onclick="event.stopPropagation()"><div class="acoes"><button type="button" class="icone-acao icone-imprimir" title="Imprimir" onclick="imprimirViabilidade(${Number(o.id)})"><svg viewBox="0 0 24 24"><path d="M7 8V4h10v4"/><rect x="5" y="12" width="14" height="8" rx="1"/><path d="M5 16H3V9h18v7h-2"/><path d="M17 11h.01"/></svg></button><button type="button" class="icone-acao icone-editar" title="Editar" onclick="editarViabilidade(${Number(o.id)})"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/></svg></button><button type="button" class="icone-acao icone-excluir" title="Excluir" onclick="excluirViabilidade(${Number(o.id)})"><svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M7 7l1 13h8l1-13"/><path d="M10 11v5M14 11v5"/></svg></button></div></td>
         </tr>`;
     }).join("");
     atualizarCheckboxTodas(lista);
