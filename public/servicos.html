@@ -703,6 +703,14 @@ textarea:focus{
 
 .servico-link{background:none;border:none;padding:0;color:#0f172a;font:inherit;font-weight:800;cursor:pointer;text-align:left;}
 .servico-link:hover{color:#2563eb;text-decoration:underline;}
+.linha-servico{cursor:pointer;}
+.linha-servico:hover{background:#eef5ff;}
+.linha-servico button,.linha-servico input,.linha-servico a{cursor:pointer;}
+.modal-localizacao-content{width:520px;}
+.localizacao-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.localizacao-form-grid .campo-altitude{grid-column:1/-1;}
+@media(max-width:600px){.localizacao-form-grid{grid-template-columns:1fr}.localizacao-form-grid .campo-altitude{grid-column:auto;}}
+
 .tecnicos-destaque{font-weight:800;color:#1d4ed8;line-height:1.55;min-width:170px;}
 .resumo-modal-content{width:760px;max-height:90vh;overflow:auto;}
 .resumo-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 22px;margin-top:14px;}
@@ -1104,6 +1112,35 @@ textarea:focus{
     </div>
 </div>
 
+<div class="modal" id="modalLocalizacao">
+    <div class="modal-content modal-localizacao-content">
+        <div class="anexo-topo">
+            <h3>Localização do Serviço</h3>
+            <button class="btn btn-cancelar" type="button" onclick="fecharModalLocalizacao()">Fechar</button>
+        </div>
+        <input type="hidden" id="localizacaoServicoId">
+        <div class="localizacao-form-grid">
+            <div>
+                <label>Latitude</label>
+                <input type="number" step="any" id="campoLatitude" placeholder="Ex: -14.7885347">
+            </div>
+            <div>
+                <label>Longitude</label>
+                <input type="number" step="any" id="campoLongitude" placeholder="Ex: -39.2797463">
+            </div>
+            <div class="campo-altitude">
+                <label>Altitude (metros) — opcional</label>
+                <input type="number" step="any" id="campoAltitude" placeholder="Ex: 185.5">
+            </div>
+        </div>
+        <small style="display:block;margin-top:10px;color:#64748b;">Latitude deve ficar entre -90 e 90. Longitude entre -180 e 180.</small>
+        <div class="modal-actions">
+            <button class="btn btn-salvar" type="button" onclick="salvarLocalizacaoManual()">Salvar localização</button>
+            <button class="btn btn-cancelar" type="button" onclick="fecharModalLocalizacao()">Cancelar</button>
+        </div>
+    </div>
+</div>
+
 <div id="areaImpressao" style="display:none;"></div>
 
 <script>
@@ -1148,7 +1185,7 @@ function aplicarPeriodoRapido(){const v=filtroPeriodo.value,h=new Date();h.setHo
 function limparFiltros(){filtroBusca.value="";filtroPeriodo.value="";filtroDataInicio.value="";filtroDataFim.value="";filtroLocalidade.value="";filtroStatus.value="";renderizarTabela();}
 function filtrarDados(){const termo=filtroBusca.value.toLowerCase().trim(),loc=filtroLocalidade.value.toLowerCase(),st=filtroStatus.value.toLowerCase(),ini=filtroDataInicio.value,fim=filtroDataFim.value;return servicosPendentes.filter(i=>{const texto=[i.servico,nomeLocalidade(i),i.descricao,i.prioridade,i.enviado_por,i.atualizado_por,i.status,nomesTecnicos(i)].join(" ").toLowerCase();const data=dataISO(i.data_servico||i.criado_em);return(!termo||texto.includes(termo))&&(!loc||nomeLocalidade(i).toLowerCase()===loc)&&(!st||String(i.status||"").toLowerCase()===st)&&(!ini||data>=ini)&&(!fim||data<=fim);});}
 function iconeLocalizacao(i){return possuiLocalizacao(i)?`<span class="localizacao-icone" title="Serviço com localização"><svg viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>`:"";}
-function montarLinha(i){return `<tr><td><input class="check-servico item-selecao" type="checkbox" value="${i.id}" ${servicosSelecionados.has(Number(i.id))?'checked':''} onchange="alternarSelecao(${i.id},this.checked)"></td><td><button class="servico-link" onclick="abrirResumoServico(${i.id})">${escapeHTML(i.servico||"-")}${iconeLocalizacao(i)}</button>${i.nova_viabilidade?'<br><small style="color:#2563eb;font-weight:800">NOVA VIABILIDADE</small>':''}</td><td>${escapeHTML(nomeLocalidade(i))}</td><td style="min-width:230px">${escapeHTML(i.descricao||"-")}</td><td><div class="tecnicos-destaque">${escapeHTML(nomesTecnicos(i))}</div></td><td><span class="${classePrioridade(i.prioridade)}">${escapeHTML(i.prioridade||"Média")}</span></td><td>${escapeHTML(i.enviado_por||"-")}</td><td><span class="${classeStatus(i.status)}">${escapeHTML(i.status||"Pendente")}</span></td><td>${formatarData(i.criado_em)}</td><td>${formatarData(i.atualizado_em)}</td><td>${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</td><td><div class="acoes"><button class="btn btn-editar" onclick="abrirModalEditar(${i.id})">Editar</button><button class="btn btn-imprimir" onclick="imprimirServico(${i.id})">Imprimir</button><button class="btn btn-anexo" onclick="visualizarAnexo(${i.id})">Anexo</button><button class="btn btn-excluir" onclick="excluir(${i.id})">Excluir</button></div></td></tr>`;}
+function montarLinha(i){return `<tr class="linha-servico" onclick="abrirResumoServico(${i.id})"><td onclick="event.stopPropagation()"><input class="check-servico item-selecao" type="checkbox" value="${i.id}" ${servicosSelecionados.has(Number(i.id))?'checked':''} onchange="alternarSelecao(${i.id},this.checked)"></td><td><strong>${escapeHTML(i.servico||"-")}${iconeLocalizacao(i)}</strong>${i.nova_viabilidade?'<br><small style="color:#2563eb;font-weight:800">NOVA VIABILIDADE</small>':''}</td><td>${escapeHTML(nomeLocalidade(i))}</td><td style="min-width:230px">${escapeHTML(i.descricao||"-")}</td><td><div class="tecnicos-destaque">${escapeHTML(nomesTecnicos(i))}</div></td><td><span class="${classePrioridade(i.prioridade)}">${escapeHTML(i.prioridade||"Média")}</span></td><td>${escapeHTML(i.enviado_por||"-")}</td><td><span class="${classeStatus(i.status)}">${escapeHTML(i.status||"Pendente")}</span></td><td>${formatarData(i.criado_em)}</td><td>${formatarData(i.atualizado_em)}</td><td>${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</td><td onclick="event.stopPropagation()"><div class="acoes"><button class="btn btn-editar" onclick="abrirModalEditar(${i.id})">Editar</button><button class="btn btn-imprimir" onclick="imprimirServico(${i.id})">Imprimir</button><button class="btn btn-anexo" onclick="visualizarAnexo(${i.id})">Anexo</button><button class="btn btn-localizacao" onclick="abrirModalLocalizacao(${i.id})">Localização</button><button class="btn btn-excluir" onclick="excluir(${i.id})">Excluir</button></div></td></tr>`;}
 function renderizarTabela(){const d=filtrarDados();tabelaPendentes.innerHTML=d.length?d.map(montarLinha).join(""):'<tr><td colspan="12">Nenhum serviço encontrado</td></tr>';atualizarContadorSelecionados();}
 function alternarSelecao(id,m){m?servicosSelecionados.add(Number(id)):servicosSelecionados.delete(Number(id));atualizarContadorSelecionados();}
 function selecionarTodos(el){document.querySelectorAll(".item-selecao").forEach(c=>{c.checked=el.checked;alternarSelecao(Number(c.value),el.checked);});}
@@ -1156,12 +1193,37 @@ function atualizarContadorSelecionados(){contadorSelecionados.innerText=servicos
 
 function tipoAnexo(url){const x=String(url||"").toLowerCase().split("?")[0];if(/\.(png|jpe?g|webp|gif)$/.test(x))return"imagem";if(/\.(mp4|mov|webm)$/.test(x))return"video";if(x.endsWith(".pdf"))return"pdf";return"outro";}
 function previaAnexo(i){if(!i.anexo)return `<div class="anexo-preview"><h4>Prévia do anexo</h4><div style="color:#64748b">Nenhum anexo enviado.</div></div>`;const u=escapeHTML(i.anexo),t=tipoAnexo(i.anexo);let midia=t==="imagem"?`<img class="preview-midia" src="${u}" alt="Prévia do anexo">`:t==="video"?`<video class="preview-midia" controls src="${u}"></video>`:t==="pdf"?`<iframe class="preview-pdf" src="${u}"></iframe>`:`<a href="${u}" target="_blank" rel="noopener">Abrir anexo</a>`;return `<div class="anexo-preview"><h4>Prévia do anexo</h4>${midia}<div style="margin-top:10px"><button class="btn btn-anexo" onclick="visualizarAnexo(${i.id})">Abrir anexo</button></div></div>`;}
-function blocoLocalizacao(i){if(!possuiLocalizacao(i))return `<div class="localizacao-box"><h4>📍 Localização</h4><div style="color:#475569;margin-bottom:12px">Nenhuma localização anexada.</div><button class="btn btn-localizacao" onclick="capturarLocalizacao(${i.id})">Anexar localização atual</button></div>`;const maps=`https://www.google.com/maps?q=${encodeURIComponent(i.latitude)},${encodeURIComponent(i.longitude)}`;return `<div class="localizacao-box"><h4>📍 Localização</h4><div class="localizacao-grid"><div class="resumo-item"><small>Latitude</small><strong>${escapeHTML(i.latitude)}</strong></div><div class="resumo-item"><small>Longitude</small><strong>${escapeHTML(i.longitude)}</strong></div><div class="resumo-item"><small>Altitude</small><strong>${i.altitude??"-"} m</strong></div></div><div style="font-size:12px;color:#64748b;margin-bottom:12px">Atualizada em: ${formatarData(i.localizacao_atualizada_em)}</div><div class="acoes"><a class="btn btn-localizacao" href="${maps}" target="_blank" rel="noopener">Abrir no mapa</a><button class="btn btn-localizacao" onclick="capturarLocalizacao(${i.id})">Atualizar localização</button><button class="btn btn-remover-localizacao" onclick="removerLocalizacao(${i.id})">Remover</button></div></div>`;}
-function abrirResumoServico(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i)return alert("Serviço não encontrado.");resumoServicoId=Number(id);resumoTitulo.innerText=i.servico||"Resumo do Serviço";resumoConteudo.innerHTML=`<div class="resumo-grid"><div class="resumo-item"><small>Localidade</small><strong>${escapeHTML(nomeLocalidade(i))}</strong></div><div class="resumo-item"><small>Técnicos responsáveis</small><strong style="color:#1d4ed8">${escapeHTML(nomesTecnicos(i))}</strong></div><div class="resumo-item"><small>Data do serviço</small><div>${formatarData(i.data_servico,true)}</div></div><div class="resumo-item"><small>Status</small><span class="${classeStatus(i.status)}">${escapeHTML(i.status||"Pendente")}</span></div><div class="resumo-item"><small>Prioridade</small><span class="${classePrioridade(i.prioridade)}">${escapeHTML(i.prioridade||"Média")}</span></div><div class="resumo-item"><small>Enviado por</small><div>${escapeHTML(i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Registrado em</small><div>${formatarData(i.criado_em)}</div></div><div class="resumo-item"><small>Atualizado em</small><div>${formatarData(i.atualizado_em)}</div></div><div class="resumo-item"><small>Atualizado por</small><div>${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Nova viabilidade</small><div>${i.nova_viabilidade?'Sim':'Não'}</div></div><div class="resumo-item full"><small>Descrição</small><div>${escapeHTML(i.descricao||"-")}</div></div></div>${previaAnexo(i)}${blocoLocalizacao(i)}`;resumoAcoes.innerHTML=`<button class="btn btn-editar" onclick="fecharResumoServico();abrirModalEditar(${i.id})">Editar</button><button class="btn btn-imprimir" onclick="imprimirServico(${i.id})">Imprimir</button><button class="btn btn-excluir" onclick="fecharResumoServico();excluir(${i.id})">Excluir</button>`;modalResumoServico.style.display="flex";}
+function blocoLocalizacao(i){if(!possuiLocalizacao(i))return `<div class="localizacao-box"><h4>📍 Localização</h4><div style="color:#475569;margin-bottom:12px">Nenhuma localização anexada.</div><button class="btn btn-localizacao" onclick="abrirModalLocalizacao(${i.id})">Adicionar localização</button></div>`;const maps=`https://www.google.com/maps?q=${encodeURIComponent(i.latitude)},${encodeURIComponent(i.longitude)}`;return `<div class="localizacao-box"><h4>📍 Localização</h4><div class="localizacao-grid"><div class="resumo-item"><small>Latitude</small><strong>${escapeHTML(i.latitude)}</strong></div><div class="resumo-item"><small>Longitude</small><strong>${escapeHTML(i.longitude)}</strong></div><div class="resumo-item"><small>Altitude</small><strong>${i.altitude??"-"} m</strong></div></div><div style="font-size:12px;color:#64748b;margin-bottom:12px">Atualizada em: ${formatarData(i.localizacao_atualizada_em)}</div><div class="acoes"><a class="btn btn-localizacao" href="${maps}" target="_blank" rel="noopener">Abrir no mapa</a><button class="btn btn-localizacao" onclick="abrirModalLocalizacao(${i.id})">Editar localização</button><button class="btn btn-remover-localizacao" onclick="removerLocalizacao(${i.id})">Remover</button></div></div>`;}
+function abrirResumoServico(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i)return alert("Serviço não encontrado.");resumoServicoId=Number(id);resumoTitulo.innerText=i.servico||"Resumo do Serviço";resumoConteudo.innerHTML=`<div class="resumo-grid"><div class="resumo-item"><small>Localidade</small><strong>${escapeHTML(nomeLocalidade(i))}</strong></div><div class="resumo-item"><small>Técnicos responsáveis</small><strong style="color:#1d4ed8">${escapeHTML(nomesTecnicos(i))}</strong></div><div class="resumo-item"><small>Data do serviço</small><div>${formatarData(i.data_servico,true)}</div></div><div class="resumo-item"><small>Status</small><span class="${classeStatus(i.status)}">${escapeHTML(i.status||"Pendente")}</span></div><div class="resumo-item"><small>Prioridade</small><span class="${classePrioridade(i.prioridade)}">${escapeHTML(i.prioridade||"Média")}</span></div><div class="resumo-item"><small>Enviado por</small><div>${escapeHTML(i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Registrado em</small><div>${formatarData(i.criado_em)}</div></div><div class="resumo-item"><small>Atualizado em</small><div>${formatarData(i.atualizado_em)}</div></div><div class="resumo-item"><small>Atualizado por</small><div>${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Nova viabilidade</small><div>${i.nova_viabilidade?'Sim':'Não'}</div></div><div class="resumo-item full"><small>Descrição</small><div>${escapeHTML(i.descricao||"-")}</div></div></div>${previaAnexo(i)}${blocoLocalizacao(i)}`;resumoAcoes.innerHTML=`<button class="btn btn-editar" onclick="fecharResumoServico();abrirModalEditar(${i.id})">Editar</button><button class="btn btn-imprimir" onclick="imprimirServico(${i.id})">Imprimir</button><button class="btn btn-localizacao" onclick="abrirModalLocalizacao(${i.id})">Localização</button><button class="btn btn-excluir" onclick="fecharResumoServico();excluir(${i.id})">Excluir</button>`;modalResumoServico.style.display="flex";}
 function fecharResumoServico(){modalResumoServico.style.display="none";resumoServicoId=null;}
 function visualizarAnexo(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i?.anexo)return alert("Este serviço não possui anexo.");frameAnexo.src=i.anexo;modalAnexo.style.display="flex";}
 function fecharModalAnexo(){frameAnexo.src="";modalAnexo.style.display="none";}
-async function capturarLocalizacao(id){if(!navigator.geolocation)return alert("Este navegador não permite obter localização.");navigator.geolocation.getCurrentPosition(async pos=>{try{await fetchAuth(`/api/servicos-pendentes/${id}/localizacao`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({latitude:pos.coords.latitude,longitude:pos.coords.longitude,altitude:pos.coords.altitude})});await carregar();alert("Localização anexada com sucesso.");}catch(e){console.error(e);alert(e.message||"Erro ao salvar localização.");}},err=>alert(err.code===1?"Permissão de localização negada.":"Não foi possível obter a localização."),{enableHighAccuracy:true,timeout:15000,maximumAge:0});}
+function abrirModalLocalizacao(id){
+    const i=servicosPendentes.find(x=>Number(x.id)===Number(id));
+    if(!i)return alert("Serviço não encontrado.");
+    localizacaoServicoId.value=String(id);
+    campoLatitude.value=i.latitude??"";
+    campoLongitude.value=i.longitude??"";
+    campoAltitude.value=i.altitude??"";
+    modalLocalizacao.style.display="flex";
+    setTimeout(()=>campoLatitude.focus(),50);
+}
+function fecharModalLocalizacao(){modalLocalizacao.style.display="none";}
+async function salvarLocalizacaoManual(){
+    const id=Number(localizacaoServicoId.value);
+    const latitude=Number(campoLatitude.value);
+    const longitude=Number(campoLongitude.value);
+    const altitude=campoAltitude.value.trim()===""?null:Number(campoAltitude.value);
+    if(!Number.isFinite(latitude)||latitude < -90||latitude > 90)return alert("Informe uma latitude válida entre -90 e 90.");
+    if(!Number.isFinite(longitude)||longitude < -180||longitude > 180)return alert("Informe uma longitude válida entre -180 e 180.");
+    if(altitude!==null&&!Number.isFinite(altitude))return alert("Informe uma altitude válida.");
+    try{
+        await fetchAuth(`/api/servicos-pendentes/${id}/localizacao`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({latitude,longitude,altitude})});
+        fecharModalLocalizacao();
+        await carregar();
+        alert("Localização salva com sucesso.");
+    }catch(e){console.error(e);alert(e.message||"Erro ao salvar localização.");}
+}
 async function removerLocalizacao(id){if(!confirm("Remover a localização deste serviço?"))return;await fetchAuth(`/api/servicos-pendentes/${id}/localizacao`,{method:"DELETE"});await carregar();}
 
 function periodoRelatorio(lista){const ds=lista.map(i=>parseDataLocal(i.data_servico||i.criado_em)).filter(Boolean).sort((a,b)=>a-b);return ds.length?`${ds[0].toLocaleDateString("pt-BR")} a ${ds.at(-1).toLocaleDateString("pt-BR")}`:"Período não informado";}
@@ -1175,7 +1237,7 @@ function abrirModalNovo(){modalTitulo.innerText="Novo Serviço";editId.value="";
 function idsTecnicosItem(i){if(Array.isArray(i.tecnicos_ids))return i.tecnicos_ids;if(typeof i.tecnicos_ids==="string")return i.tecnicos_ids.split(",").map(x=>x.trim());return[];}
 function abrirModalEditar(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i)return alert("Serviço não encontrado.");modalTitulo.innerText="Editar Serviço";editId.value=i.id;servico.value=i.servico||"";localidade.value=nomeLocalidade(i)==="-"?"":nomeLocalidade(i);dataServico.value=dataISO(i.data_servico);novaViabilidade.checked=Boolean(Number(i.nova_viabilidade)||i.nova_viabilidade===true);descricao.value=i.descricao||"";prioridade.value=i.prioridade||"Média";status.value=String(i.status||"Pendente").toLowerCase()==="realizado"?"Realizado":"Pendente";anexo.value="";anexoAtual.innerText=i.anexo?"Anexo atual será mantido se nenhum novo arquivo for enviado.":"Nenhum anexo atual.";preencherTecnicos(idsTecnicosItem(i));modalServico.style.display="flex";}
 function fecharModalServico(){modalServico.style.display="none";}
-async function salvarServico(){const id=editId.value,nome=servico.value.trim(),tecs=[...document.querySelectorAll(".tecnico-check:checked")];if(!nome)return alert("Informe o serviço.");if(!localidade.value.trim())return alert("Informe a localidade.");const fd=new FormData();fd.append("servico",nome);fd.append("localidade",localidade.value.trim());fd.append("data_servico",dataServico.value);fd.append("nova_viabilidade",novaViabilidade.checked?"1":"0");fd.append("descricao",descricao.value);fd.append("prioridade",prioridade.value);fd.append("status",status.value);fd.append("tecnicos_ids",JSON.stringify(tecs.map(t=>t.value)));fd.append("tecnicos_nomes",JSON.stringify(tecs.map(t=>t.dataset.nome)));if(anexo.files[0])fd.append("anexo",anexo.files[0]);try{await fetchAuth(id?`/api/servicos-pendentes/${id}`:"/api/servicos-pendentes",{method:id?"PUT":"POST",body:fd});fecharModalServico();await carregar();}catch(e){console.error(e);alert(e.message||"Erro ao salvar serviço.");}}
+async function salvarServico(){const id=editId.value,nome=servico.value.trim(),tecs=[...document.querySelectorAll(".tecnico-check:checked")];if(!nome)return alert("Informe o serviço.");if(!localidade.value.trim())return alert("Informe a localidade.");const fd=new FormData();fd.append("servico",nome);fd.append("localidade",localidade.value.trim());fd.append("data_servico",dataServico.value);fd.append("nova_viabilidade",novaViabilidade.checked?"1":"0");fd.append("descricao",descricao.value);fd.append("prioridade",prioridade.value);fd.append("status",status.value);fd.append("tecnicos_ids",JSON.stringify(tecs.map(t=>t.value)));fd.append("tecnicos_nomes",JSON.stringify(tecs.map(t=>t.dataset.nome)));if(anexo.files[0])fd.append("anexo",anexo.files[0]);try{const resposta=await fetchAuth(id?`/api/servicos-pendentes/${id}`:"/api/servicos-pendentes",{method:id?"PUT":"POST",body:fd});if(id&&resposta?.servico?.status&&String(resposta.servico.status).toLowerCase()!==String(status.value).toLowerCase()){throw new Error(`O servidor retornou o status ${resposta.servico.status} em vez de ${status.value}.`);}fecharModalServico();await carregar();}catch(e){console.error(e);alert(e.message||"Erro ao salvar serviço.");}}
 
 document.addEventListener("DOMContentLoaded",async()=>{const sb=document.querySelector(".sidebar"),lg=document.getElementById("logoSidebar");if(sb&&lg&&localStorage.getItem("sidebar_recolhida")==="1"){sb.classList.add("recolhida");lg.src=lg.dataset.logoFechada;}carregarUsuario();carregarUsuariosOnline();await carregarCadastros();carregar();});
 setInterval(carregarUsuariosOnline,300000);

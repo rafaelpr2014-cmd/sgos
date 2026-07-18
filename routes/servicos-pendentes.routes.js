@@ -45,7 +45,8 @@ function garantirSchema() {
             "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS latitude DECIMAL(10,7) NULL AFTER atualizado_por",
             "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS longitude DECIMAL(10,7) NULL AFTER latitude",
             "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS altitude DECIMAL(10,2) NULL AFTER longitude",
-            "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS localizacao_atualizada_em DATETIME NULL AFTER altitude"
+            "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS localizacao_atualizada_em DATETIME NULL AFTER altitude",
+            "ALTER TABLE servicos_pendentes MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'Pendente'"
         ];
         for (const sql of comandos) await pool.query(sql);
     })().catch(err => { schemaPromise = null; throw err; });
@@ -67,7 +68,11 @@ function normalizarPrioridade(v) {
     return "Média";
 }
 function normalizarStatus(v) {
-    return String(v || "").trim().toLowerCase() === "realizado" ? "Realizado" : "Pendente";
+    const status = String(v || "").trim().toLowerCase();
+    if (["realizado", "realizada", "concluido", "concluído", "finalizado", "finalizada"].includes(status)) {
+        return "Realizado";
+    }
+    return "Pendente";
 }
 function normalizarBooleano(v) {
     const x = typeof v === "string" ? v.toLowerCase().trim() : v;
@@ -204,7 +209,11 @@ router.put("/:id", upload.single("anexo"), async (req, res) => {
             normalizarStatus(req.body.status), caminhoAnexo, usuario.usuario || "Usuário", id, usuario.empresa_id]);
         if (!result.affectedRows) return res.status(404).json({ erro: "Serviço não encontrado" });
         if (req.file && anexoAntigo && anexoAntigo !== caminhoAnexo) removerArquivo(anexoAntigo);
-        res.json({ sucesso: true });
+        const [atualizado] = await pool.query(
+            "SELECT id, status, atualizado_por, DATE_FORMAT(atualizado_em, '%Y-%m-%d %H:%i:%s') AS atualizado_em FROM servicos_pendentes WHERE id=? AND empresa_id=? LIMIT 1",
+            [id, usuario.empresa_id]
+        );
+        res.json({ sucesso: true, servico: atualizado[0] || { id, status: normalizarStatus(req.body.status) } });
     } catch (err) {
         if (req.file) removerArquivo(`/uploads/servicos-pendentes/${req.file.filename}`);
         responderErro(res, err, "Erro ao editar serviço");
