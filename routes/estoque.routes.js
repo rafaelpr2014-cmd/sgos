@@ -7,28 +7,99 @@ const router = express.Router();
  */
 const pool = require('../database');
 
+function normalizarCargo(valor) {
+  return String(valor || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 function getEmpresaId(req) {
-  return Number(req.user?.empresa_id || req.session?.user?.empresa_id || req.session?.usuario?.empresa_id || 0);
+  return Number(
+    req.usuario?.empresa_id ||
+    req.user?.empresa_id ||
+    req.session?.user?.empresa_id ||
+    req.session?.usuario?.empresa_id ||
+    0
+  );
 }
 
 function getUsuarioId(req) {
-  return Number(req.user?.id || req.session?.user?.id || req.session?.usuario?.id || 0);
+  return Number(
+    req.usuario?.id ||
+    req.user?.id ||
+    req.session?.user?.id ||
+    req.session?.usuario?.id ||
+    req.headers['x-usuario-id'] ||
+    0
+  );
 }
 
 function getUsuarioNome(req) {
-  return String(req.user?.usuario || req.session?.user?.usuario || req.session?.usuario?.usuario || 'Sistema');
+  return String(
+    req.usuario?.usuario ||
+    req.usuario?.nome ||
+    req.user?.usuario ||
+    req.session?.user?.usuario ||
+    req.session?.usuario?.usuario ||
+    'Sistema'
+  );
 }
 
 function getCargo(req) {
-  return String(req.user?.cargo || req.session?.user?.cargo || req.session?.usuario?.cargo || '').toLowerCase();
+  return normalizarCargo(
+    req.usuario?.cargo ||
+    req.user?.cargo ||
+    req.session?.user?.cargo ||
+    req.session?.usuario?.cargo ||
+    ''
+  );
+}
+
+async function carregarUsuarioEstoque(req, res, next) {
+  try {
+    if (req.usuario?.id && req.usuario?.empresa_id) return next();
+
+    const usuarioId = getUsuarioId(req);
+    if (!usuarioId) {
+      return res.status(401).json({ erro: 'Usuário não autenticado.' });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT id, usuario, nome, cargo, empresa_id, ativo
+         FROM usuarios
+        WHERE id = ?
+        LIMIT 1`,
+      [usuarioId]
+    );
+
+    const usuario = rows?.[0];
+    if (!usuario || Number(usuario.ativo) === 0) {
+      return res.status(401).json({ erro: 'Usuário inválido ou inativo.' });
+    }
+
+    req.usuario = usuario;
+    next();
+  } catch (error) {
+    console.error('Erro ao identificar usuário do estoque:', error);
+    return res.status(500).json({ erro: 'Erro ao validar usuário.' });
+  }
 }
 
 function somenteAdmin(req, res, next) {
-  if (getCargo(req) !== 'administrador') {
+  const cargo = getCargo(req);
+  if (!['administrador', 'admin'].includes(cargo)) {
+    console.warn('Acesso ao estoque bloqueado:', {
+      usuario_id: getUsuarioId(req),
+      cargo: cargo || '(vazio)'
+    });
     return res.status(403).json({ erro: 'Acesso permitido apenas para administradores.' });
   }
   next();
 }
+
+router.use(carregarUsuarioEstoque);
 
 function normalizarIds(valor) {
   const lista = Array.isArray(valor) ? valor : [];
