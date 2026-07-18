@@ -46,6 +46,22 @@ async function buscarClientePorId(config, id) {
 }
 
 function normalizarClienteMikWeb(cliente) {
+    const planoNome =
+        cliente.plan?.name ||
+        cliente.plan_name ||
+        cliente.plano_nome ||
+        cliente.plano ||
+        cliente.service?.plan?.name ||
+        cliente.service?.name ||
+        "";
+
+    const planoId =
+        cliente.plan?.id ||
+        cliente.plan_id ||
+        cliente.plano_id ||
+        cliente.service?.plan?.id ||
+        null;
+
     return {
         origem_erp: "mikweb",
         id: cliente.id || null,
@@ -67,8 +83,10 @@ function normalizarClienteMikWeb(cliente) {
         bairro: cliente.neighborhood || "-",
         referencia: cliente.complement || "-",
 
-        plano: cliente.plan?.name || "-",
-        plano_id_erp: cliente.plan?.id || cliente.plan_id || null,
+        plano: planoNome || "-",
+        plano_nome: planoNome,
+        plano_nome_erp: planoNome,
+        plano_id_erp: planoId,
 
         login: cliente.login || cliente.user || cliente.name || "-",
 

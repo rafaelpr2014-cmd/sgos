@@ -280,6 +280,8 @@ function normalizarClienteSGP(c) {
         referencia: referencia || "-",
 
         plano: plano || "-",
+        plano_nome: plano || "",
+        plano_nome_erp: plano || "",
         plano_id_erp: primeiro(
             c.planoId,
             c.plano_id,

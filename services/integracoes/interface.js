@@ -104,6 +104,10 @@ function normalizarListaResposta(resposta, origem = ""){
 function normalizarClientePadrao(cliente = {}, origem = ""){
     const contrato = cliente.contrato && typeof cliente.contrato === "object" ? cliente.contrato : {};
     const plano = cliente.plano && typeof cliente.plano === "object" ? cliente.plano : {};
+    const planoTexto = typeof cliente.plano === "string" ? cliente.plano.trim() : "";
+    const planoBruto = cliente.bruto && typeof cliente.bruto === "object" ? cliente.bruto : {};
+    const planoBrutoObj = planoBruto.plano && typeof planoBruto.plano === "object" ? planoBruto.plano : {};
+    const planoBrutoTexto = typeof planoBruto.plano === "string" ? planoBruto.plano.trim() : "";
     const login = cliente.login && typeof cliente.login === "object" ? cliente.login : {};
     const endereco = cliente.endereco && typeof cliente.endereco === "object" ? cliente.endereco : {};
 
@@ -119,9 +123,54 @@ function normalizarClientePadrao(cliente = {}, origem = ""){
         login: primeiroValor(cliente.login, login.login, login.usuario, login.username),
         senha: primeiroValor(cliente.senha, cliente.senha_pppoe, login.senha, login.password),
         senha_pppoe: primeiroValor(cliente.senha_pppoe, cliente.senha, login.senha, login.password),
-        plano_nome: primeiroValor(cliente.plano_nome, plano.nome, plano.descricao),
-        plano_nome_erp: primeiroValor(cliente.plano_nome_erp, cliente.plano_nome, plano.nome, plano.descricao),
-        plano_id_erp: primeiroValor(cliente.plano_id_erp, plano.id, cliente.id_plano),
+        plano_nome: primeiroValor(
+            cliente.plano_nome,
+            cliente.plano_nome_erp,
+            planoTexto,
+            plano.nome,
+            plano.descricao,
+            cliente.nome_plano,
+            cliente.plano_descricao,
+            cliente.servico_plano,
+            cliente.servico_nome,
+            planoBrutoTexto,
+            planoBrutoObj.nome,
+            planoBrutoObj.descricao,
+            planoBruto.plan?.name,
+            planoBruto.nome_plano,
+            planoBruto.plano_nome,
+            planoBruto.servico_plano,
+            planoBruto.servico_nome
+        ),
+        plano_nome_erp: primeiroValor(
+            cliente.plano_nome_erp,
+            cliente.plano_nome,
+            planoTexto,
+            plano.nome,
+            plano.descricao,
+            cliente.nome_plano,
+            cliente.plano_descricao,
+            cliente.servico_plano,
+            cliente.servico_nome,
+            planoBrutoTexto,
+            planoBrutoObj.nome,
+            planoBrutoObj.descricao,
+            planoBruto.plan?.name,
+            planoBruto.nome_plano,
+            planoBruto.plano_nome,
+            planoBruto.servico_plano,
+            planoBruto.servico_nome
+        ),
+        plano_id_erp: primeiroValor(
+            cliente.plano_id_erp,
+            plano.id,
+            cliente.id_plano,
+            cliente.plano_id,
+            planoBrutoObj.id,
+            planoBruto.plan?.id,
+            planoBruto.plano_id,
+            planoBruto.id_plano
+        ),
         endereco: typeof cliente.endereco === "string" ? cliente.endereco : primeiroValor(endereco.completo, cliente.endereco_completo),
         cidade: primeiroValor(cliente.cidade, endereco.cidade),
         cidade_id_erp: primeiroValor(cliente.cidade_id_erp, endereco.cidade_id),
