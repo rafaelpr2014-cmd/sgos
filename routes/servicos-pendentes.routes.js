@@ -38,6 +38,7 @@ function garantirSchema() {
     schemaPromise = (async () => {
         const comandos = [
             "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS data_servico DATE NULL AFTER localidade",
+            "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS data_agendamento DATETIME NULL AFTER data_servico",
             "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS nova_viabilidade TINYINT(1) NOT NULL DEFAULT 0 AFTER data_servico",
             "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS tecnicos_ids LONGTEXT NULL AFTER nova_viabilidade",
             "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS tecnicos_nomes LONGTEXT NULL AFTER tecnicos_ids",
@@ -81,6 +82,13 @@ function normalizarBooleano(v) {
 function dataValidaOuNull(v) {
     const x = String(v || "").trim();
     return /^\d{4}-\d{2}-\d{2}$/.test(x) ? x : null;
+}
+function dataHoraValidaOuNull(v) {
+    const x = String(v || "").trim();
+    if (!x) return null;
+    const m = x.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/);
+    if (!m) return null;
+    return `${m[1]} ${m[2]}:${m[3]}:${m[4] || "00"}`;
 }
 function numeroOuNull(v, min, max) {
     if (v === "" || v === null || v === undefined) return null;
@@ -135,18 +143,24 @@ router.get("/", async (req, res) => {
         const localidade = String(req.query.localidade || "").trim();
         const inicio = dataValidaOuNull(req.query.data_inicio);
         const fim = dataValidaOuNull(req.query.data_fim);
+        const agendamento = dataValidaOuNull(req.query.data_agendamento);
+        const prioridade = String(req.query.prioridade || "").trim();
         const busca = String(req.query.busca || "").trim();
         if (status) { where.push("status = ?"); params.push(normalizarStatus(status)); }
         if (localidade) { where.push("localidade = ?"); params.push(localidade); }
         if (inicio) { where.push("COALESCE(data_servico, DATE(criado_em)) >= ?"); params.push(inicio); }
         if (fim) { where.push("COALESCE(data_servico, DATE(criado_em)) <= ?"); params.push(fim); }
+        if (agendamento) { where.push("DATE(data_agendamento) = ?"); params.push(agendamento); }
+        if (prioridade) { where.push("prioridade = ?"); params.push(normalizarPrioridade(prioridade)); }
         if (busca) {
             const t = `%${busca}%`;
             where.push("(servico LIKE ? OR localidade LIKE ? OR descricao LIKE ? OR prioridade LIKE ? OR enviado_por LIKE ? OR atualizado_por LIKE ? OR tecnicos_nomes LIKE ?)");
             params.push(t, t, t, t, t, t, t);
         }
         const [rows] = await pool.query(`
-            SELECT id, empresa_id, servico, localidade, data_servico, nova_viabilidade,
+            SELECT id, empresa_id, servico, localidade, data_servico,
+                   DATE_FORMAT(data_agendamento, '%Y-%m-%d %H:%i:%s') AS data_agendamento,
+                   nova_viabilidade,
                    tecnicos_ids, tecnicos_nomes, descricao, prioridade, enviado_por,
                    anexo, status, criado_por, atualizado_por, latitude, longitude, altitude,
                    DATE_FORMAT(criado_em, '%Y-%m-%d %H:%i:%s') AS criado_em,
@@ -170,15 +184,25 @@ router.post("/", upload.single("anexo"), async (req, res) => {
         const caminhoAnexo = req.file ? `/uploads/servicos-pendentes/${req.file.filename}` : null;
         const [result] = await pool.query(`
             INSERT INTO servicos_pendentes
-            (empresa_id, servico, localidade, data_servico, nova_viabilidade, tecnicos_ids,
-             tecnicos_nomes, descricao, prioridade, enviado_por, anexo, status, criado_por, atualizado_por)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (empresa_id, servico, localidade, data_servico, data_agendamento, nova_viabilidade, tecnicos_ids,
+             tecnicos_nomes, descricao, prioridade, enviado_por, anexo, status, criado_por, atualizado_por,
+             latitude, longitude, altitude, localizacao_atualizada_em)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [usuario.empresa_id, servico, String(req.body.localidade || "").trim() || null,
-            dataValidaOuNull(req.body.data_servico), normalizarBooleano(req.body.nova_viabilidade),
-            serializarArray(ids), serializarArray(nomes), String(req.body.descricao || "").trim() || null,
-            normalizarPrioridade(req.body.prioridade), usuario.usuario || "Usuário", caminhoAnexo,
-            normalizarStatus(req.body.status), usuario.id, usuario.usuario || "Usuário"]);
-        res.status(201).json({ sucesso: true, id: result.insertId });
+            dataValidaOuNull(req.body.data_servico), dataHoraValidaOuNull(req.body.data_agendamento),
+            normalizarBooleano(req.body.nova_viabilidade), serializarArray(ids), serializarArray(nomes),
+            String(req.body.descricao || "").trim() || null, normalizarPrioridade(req.body.prioridade),
+            usuario.usuario || "Usuário", caminhoAnexo, normalizarStatus(req.body.status),
+            usuario.id, usuario.usuario || "Usuário",
+            numeroOuNull(req.body.latitude, -90, 90), numeroOuNull(req.body.longitude, -180, 180),
+            numeroOuNull(req.body.altitude, -10000, 100000),
+            (numeroOuNull(req.body.latitude, -90, 90) !== null && numeroOuNull(req.body.longitude, -180, 180) !== null)
+                ? new Date() : null]);
+        const [criado] = await pool.query(
+            "SELECT id, status, DATE_FORMAT(data_agendamento, '%Y-%m-%d %H:%i:%s') AS data_agendamento FROM servicos_pendentes WHERE id=? LIMIT 1",
+            [result.insertId]
+        );
+        res.status(201).json({ sucesso: true, id: result.insertId, servico: criado[0] });
     } catch (err) {
         if (req.file) removerArquivo(`/uploads/servicos-pendentes/${req.file.filename}`);
         responderErro(res, err, "Erro ao criar serviço");
@@ -199,18 +223,28 @@ router.put("/:id", upload.single("anexo"), async (req, res) => {
         const anexoAntigo = existente[0].anexo;
         const caminhoAnexo = req.file ? `/uploads/servicos-pendentes/${req.file.filename}` : anexoAntigo;
         const [result] = await pool.query(`
-            UPDATE servicos_pendentes SET servico=?, localidade=?, data_servico=?, nova_viabilidade=?,
+            UPDATE servicos_pendentes SET servico=?, localidade=?, data_servico=?, data_agendamento=?, nova_viabilidade=?,
                 tecnicos_ids=?, tecnicos_nomes=?, descricao=?, prioridade=?, status=?, anexo=?,
+                latitude=?, longitude=?, altitude=?,
+                localizacao_atualizada_em=CASE
+                    WHEN ? IS NOT NULL AND ? IS NOT NULL THEN CURRENT_TIMESTAMP
+                    ELSE localizacao_atualizada_em
+                END,
                 atualizado_por=?, atualizado_em=CURRENT_TIMESTAMP
             WHERE id=? AND empresa_id=?
-        `, [servico, String(req.body.localidade || "").trim() || null, dataValidaOuNull(req.body.data_servico),
+        `, [servico, String(req.body.localidade || "").trim() || null,
+            dataValidaOuNull(req.body.data_servico), dataHoraValidaOuNull(req.body.data_agendamento),
             normalizarBooleano(req.body.nova_viabilidade), serializarArray(ids), serializarArray(nomes),
             String(req.body.descricao || "").trim() || null, normalizarPrioridade(req.body.prioridade),
-            normalizarStatus(req.body.status), caminhoAnexo, usuario.usuario || "Usuário", id, usuario.empresa_id]);
+            normalizarStatus(req.body.status), caminhoAnexo,
+            numeroOuNull(req.body.latitude, -90, 90), numeroOuNull(req.body.longitude, -180, 180),
+            numeroOuNull(req.body.altitude, -10000, 100000),
+            numeroOuNull(req.body.latitude, -90, 90), numeroOuNull(req.body.longitude, -180, 180),
+            usuario.usuario || "Usuário", id, usuario.empresa_id]);
         if (!result.affectedRows) return res.status(404).json({ erro: "Serviço não encontrado" });
         if (req.file && anexoAntigo && anexoAntigo !== caminhoAnexo) removerArquivo(anexoAntigo);
         const [atualizado] = await pool.query(
-            "SELECT id, status, atualizado_por, DATE_FORMAT(atualizado_em, '%Y-%m-%d %H:%i:%s') AS atualizado_em FROM servicos_pendentes WHERE id=? AND empresa_id=? LIMIT 1",
+            "SELECT id, status, atualizado_por, DATE_FORMAT(data_agendamento, '%Y-%m-%d %H:%i:%s') AS data_agendamento, DATE_FORMAT(atualizado_em, '%Y-%m-%d %H:%i:%s') AS atualizado_em FROM servicos_pendentes WHERE id=? AND empresa_id=? LIMIT 1",
             [id, usuario.empresa_id]
         );
         res.json({ sucesso: true, servico: atualizado[0] || { id, status: normalizarStatus(req.body.status) } });
