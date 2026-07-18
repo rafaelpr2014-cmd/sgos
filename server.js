@@ -14,7 +14,6 @@ const lembretesRoutes = require("./routes/lembretes.routes");
 const estoqueRoutes = require('./routes/estoque.routes');
 const escritoriosRoutesFactory = require('./routes/escritorios.routes');
 const financeiroRoutesFactory = require('./routes/financeiro.routes');
-const financeiroRoutes = require('./routes/financeiro.routes')(pool, verificarAutenticacao);
 
 
 const pool = require("./database");
@@ -167,7 +166,6 @@ app.use('/api/relatorios-automaticos', relatoriosAutomaticosRoutes(pool, verific
 app.use("/api/svas", svasRoutes);
 app.use("/api/lembretes", lembretesRoutes);
 app.use('/api/estoque', estoqueRoutes);
-app.use('/api/financeiro', financeiroRoutes);
 
 
 
