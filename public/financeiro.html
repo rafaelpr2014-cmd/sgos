@@ -53,6 +53,54 @@ html,body{width:100%;margin:0!important;padding:0!important;background:#fff;colo
 .audit-section table th,.audit-section table td{font-size:6.8px!important;line-height:1.16!important;padding:3px 2.5px!important}
 .relatorio-centro h1{font-size:17px!important}.relatorio-centro div{font-size:8px!important}.relatorio-info{font-size:7.5px!important}
 }
+
+
+/* ===== AJUSTE FINAL: LINHAS CLICÁVEIS E PDF MAIS LEGÍVEL ===== */
+#tb tr{cursor:pointer}
+#tb tr:hover{background:#eff6ff}
+#tb tr td:first-child,
+#tb tr td:last-child,
+#tb tr button,
+#tb tr input,
+#tb tr a{cursor:default}
+#tb tr button,#tb tr input,#tb tr a{cursor:pointer}
+
+@media print{
+  #relatorios table:first-of-type th,
+  #relatorios table:first-of-type td{
+    font-size:7.8px!important;
+    line-height:1.22!important;
+    padding:3.8px 2.8px!important;
+  }
+  #relatorios table:first-of-type th{font-size:7.3px!important}
+  #relatorios table:first-of-type td:nth-child(3) .pill{
+    font-size:7.5px!important;
+    padding:3px 5px!important;
+    font-weight:900!important;
+  }
+  #relatorios table:first-of-type td:nth-child(5){
+    font-size:9px!important;
+    font-weight:900!important;
+  }
+
+  .audit-section table{table-layout:fixed!important;width:100%!important}
+  .audit-section table th,
+  .audit-section table td{
+    font-size:7.6px!important;
+    line-height:1.24!important;
+    padding:3.8px 3px!important;
+    white-space:normal!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+    word-break:normal!important;
+    overflow-wrap:anywhere!important;
+  }
+  .audit-section table th:nth-child(1),.audit-section table td:nth-child(1){width:12%!important;white-space:nowrap!important}
+  .audit-section table th:nth-child(2),.audit-section table td:nth-child(2){width:15%!important}
+  .audit-section table th:nth-child(3),.audit-section table td:nth-child(3){width:8%!important}
+  .audit-section table th:nth-child(4),.audit-section table td:nth-child(4){width:8%!important}
+  .audit-section table th:nth-child(5),.audit-section table td:nth-child(5){width:57%!important;font-size:8px!important;font-weight:700!important}
+}
 </style></head><body>
 <aside class="sidebar">
 <div class="sidebar-logo"><img id="logoSidebar" src="https://iili.io/CujQzXa.png" data-logo-aberta="https://iili.io/CujQzXa.png" data-logo-fechada="https://iili.io/CuwvauR.png" alt="SGOS"></div>
