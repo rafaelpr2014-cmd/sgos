@@ -103,15 +103,22 @@ module.exports = function criarFinanceiroService(pool) {
       if (!u) throw Object.assign(new Error('Destinatário inválido.'), { statusCode: 400 });
       destinatarioNome = u.usuario;
     }
-    const produtoId = b.estoque_produto_id ? Number(b.estoque_produto_id) : null;
+    let produtoId = b.estoque_produto_id ? Number(b.estoque_produto_id) : null;
     let produtoNome = null;
     if (produtoId) {
       const [[p]] = await pool.query('SELECT nome FROM estoque_produtos WHERE id=? AND empresa_id=? AND ativo=1', [produtoId, ctx.empresaId]);
       if (!p) throw Object.assign(new Error('Item do estoque inválido.'), { statusCode: 400 });
       produtoNome = p.nome;
     }
-    if (tipo === 'entrada' && produtoId) throw Object.assign(new Error('Estoque só pode ser vinculado a saídas.'), { statusCode: 400 });
+    if (tipo === 'saida' && produtoId) throw Object.assign(new Error('Item de estoque só pode ser vinculado a entradas financeiras.'), { statusCode: 400 });
     const qtd = b.estoque_quantidade ? Number(b.estoque_quantidade) : null;
+    if (tipo === 'saida') {
+      produtoId = null;
+      produtoNome = null;
+    }
+    if ((produtoId && (!Number.isFinite(qtd) || qtd <= 0)) || (!produtoId && Number.isFinite(qtd) && qtd > 0)) {
+      throw Object.assign(new Error('Informe o item e uma quantidade válida para a retirada do estoque.'), { statusCode: 400 });
+    }
     if (qtd != null && (!Number.isFinite(qtd) || qtd <= 0)) throw Object.assign(new Error('Quantidade inválida.'), { statusCode: 400 });
 
     const conn = await pool.getConnection();
