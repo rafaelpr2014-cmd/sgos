@@ -726,8 +726,7 @@ textarea:focus{
 .linha-servico button,.linha-servico input,.linha-servico a{cursor:pointer;}
 .modal-localizacao-content{width:520px;}
 .localizacao-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.localizacao-form-grid .campo-altitude{grid-column:1/-1;}
-@media(max-width:600px){.localizacao-form-grid{grid-template-columns:1fr}.localizacao-form-grid .campo-altitude{grid-column:auto;}}
+@media(max-width:600px){.localizacao-form-grid{grid-template-columns:1fr}}
 
 .tecnicos-destaque{font-weight:800;color:#1d4ed8;line-height:1.55;min-width:170px;}
 .resumo-modal-content{width:760px;max-height:90vh;overflow:auto;}
@@ -745,12 +744,29 @@ textarea:focus{
 .preview-midia{width:100%;max-height:320px;object-fit:contain;border-radius:10px;background:#f8fafc;border:1px solid var(--borda)}
 .preview-pdf{width:100%;height:330px;border:1px solid var(--borda);border-radius:10px}
 .localizacao-box{margin-top:14px;border:1px solid #bfdbfe;border-radius:12px;padding:14px;background:#eff6ff}
-.localizacao-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.localizacao-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
 .localizacao-grid .resumo-item{background:#fff}
 .btn-localizacao{background:#1d4ed8}.btn-remover-localizacao{background:#dc2626}
 .localizacao-icone{display:inline-flex;vertical-align:middle;margin-left:5px;color:#2563eb}
 .localizacao-icone svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
 @media(max-width:650px){.localizacao-grid{grid-template-columns:1fr}}
+
+.mapa-localizacao{
+    width:100%;
+    height:300px;
+    border:1px solid var(--borda);
+    border-radius:12px;
+    overflow:hidden;
+    background:#e2e8f0;
+    margin:12px 0;
+}
+.mapa-localizacao iframe{
+    width:100%;
+    height:100%;
+    border:0;
+    display:block;
+}
+
 
 @media print{
     body *{
@@ -1035,7 +1051,6 @@ textarea:focus{
                         <th>Descrição</th>
                         <th>Técnicos</th>
                         <th>Prioridade</th>
-                        <th>Data do serviço</th>
                         <th>Agendamento</th>
                         <th>Enviado por</th>
                         <th>Status</th>
@@ -1050,7 +1065,7 @@ textarea:focus{
 
                 <tbody id="tabelaPendentes">
                     <tr>
-                        <td colspan="16">Carregando...</td>
+                        <td colspan="15">Carregando...</td>
                     </tr>
                 </tbody>
             </table>
@@ -1076,18 +1091,10 @@ textarea:focus{
         <label>Serviço</label>
         <input type="text" id="servico" placeholder="Ex: Colocar CTO">
 
-        <div class="linha-dupla">
-            <div>
-                <label>Localidade</label>
-                <input type="text" id="localidade" list="listaLocalidades" placeholder="Selecione ou digite uma nova localidade" autocomplete="off">
-                <datalist id="listaLocalidades"></datalist>
-                <small style="display:block;margin-top:6px;color:#64748b;">Novas localidades serão salvas somente neste serviço.</small>
-            </div>
-            <div>
-                <label>Data do serviço</label>
-                <input type="date" id="dataServico">
-            </div>
-        </div>
+        <label>Localidade</label>
+        <input type="text" id="localidade" list="listaLocalidades" placeholder="Selecione ou digite uma nova localidade" autocomplete="off">
+        <datalist id="listaLocalidades"></datalist>
+        <small style="display:block;margin-top:6px;color:#64748b;">Novas localidades serão salvas somente neste serviço.</small>
 
         <label>Data e hora de agendamento</label>
         <input type="datetime-local" id="dataAgendamento">
@@ -1102,9 +1109,6 @@ textarea:focus{
                 <input type="number" step="any" id="longitudeServico" placeholder="Ex: -38.523456">
             </div>
         </div>
-        <label>Altitude (metros) — opcional</label>
-        <input type="number" step="any" id="altitudeServico" placeholder="Ex: 185.5">
-
         <label class="check-destaque">
             <input type="checkbox" id="novaViabilidade">
             Este serviço é uma nova viabilidade
@@ -1179,10 +1183,6 @@ textarea:focus{
                 <label>Longitude</label>
                 <input type="number" step="any" id="campoLongitude" placeholder="Ex: -39.2797463">
             </div>
-            <div class="campo-altitude">
-                <label>Altitude (metros) — opcional</label>
-                <input type="number" step="any" id="campoAltitude" placeholder="Ex: 185.5">
-            </div>
         </div>
         <small style="display:block;margin-top:10px;color:#64748b;">Latitude deve ficar entre -90 e 90. Longitude entre -180 e 180.</small>
         <div class="modal-actions">
@@ -1236,7 +1236,7 @@ function preencherTecnicos(sel=[]){const ids=new Set((sel||[]).map(String));list
 function limitarTecnicos(el){const m=[...document.querySelectorAll(".tecnico-check:checked")];if(m.length>4){el.checked=false;alert("É permitido selecionar no máximo 4 técnicos.");}atualizarContadorTecnicos();}
 function atualizarContadorTecnicos(){qtdTecnicos.innerText=document.querySelectorAll(".tecnico-check:checked").length;}
 function atualizarOpcoesLocalidades(){const a=localidadesCadastradas.map(l=>l.nome||l.localidade||l.descricao).filter(Boolean),b=servicosPendentes.map(nomeLocalidade).filter(n=>n&&n!=="-");const nomes=[...new Set([...a,...b].map(n=>String(n).trim()))].sort((x,y)=>x.localeCompare(y,"pt-BR"));const atual=filtroLocalidade.value;filtroLocalidade.innerHTML='<option value="">Todas</option>'+nomes.map(n=>`<option value="${escapeHTML(n)}">${escapeHTML(n)}</option>`).join("");if(nomes.includes(atual))filtroLocalidade.value=atual;listaLocalidades.innerHTML=nomes.map(n=>`<option value="${escapeHTML(n)}"></option>`).join("");}
-async function carregar(){try{const d=await fetchAuth("/api/servicos-pendentes");servicosPendentes=Array.isArray(d)?d:[];atualizarOpcoesLocalidades();atualizarCards(servicosPendentes);renderizarTabela();if(resumoServicoId&&modalResumoServico.style.display==="flex")abrirResumoServico(resumoServicoId);}catch(e){console.error(e);tabelaPendentes.innerHTML='<tr><td colspan="16">Erro ao carregar serviços</td></tr>';}}
+async function carregar(){try{const d=await fetchAuth("/api/servicos-pendentes");servicosPendentes=Array.isArray(d)?d:[];atualizarOpcoesLocalidades();atualizarCards(servicosPendentes);renderizarTabela();if(resumoServicoId&&modalResumoServico.style.display==="flex")abrirResumoServico(resumoServicoId);}catch(e){console.error(e);tabelaPendentes.innerHTML='<tr><td colspan="15">Erro ao carregar serviços</td></tr>';}}
 
 function aplicarPeriodoRapido(){const v=filtroPeriodo.value,h=new Date();h.setHours(0,0,0,0);let ini=null,fim=new Date(h);if(v==="hoje")ini=new Date(h);else if(v==="ontem"){ini=new Date(h);ini.setDate(ini.getDate()-1);fim=new Date(ini);}else if(v==="7"){ini=new Date(h);ini.setDate(ini.getDate()-6);}else if(v==="30"){ini=new Date(h);ini.setDate(ini.getDate()-29);}else if(v==="mes")ini=new Date(h.getFullYear(),h.getMonth(),1);else{filtroDataInicio.value="";filtroDataFim.value="";renderizarTabela();return;}filtroDataInicio.value=dataISO(ini);filtroDataFim.value=dataISO(fim);renderizarTabela();}
 function limparFiltros(){filtroBusca.value="";filtroPeriodo.value="";filtroDataInicio.value="";filtroDataFim.value="";filtroLocalidade.value="";filtroStatus.value="";filtroPrioridade.value="";filtroAgendamento.value="";renderizarTabela();}
@@ -1250,7 +1250,7 @@ function filtrarDados(){
     const fim=document.getElementById("filtroDataFim").value;
     return servicosPendentes.filter(i=>{
         const texto=[i.servico,nomeLocalidade(i),i.descricao,i.prioridade,i.enviado_por,i.atualizado_por,i.status,nomesTecnicos(i)].join(" ").toLowerCase();
-        const data=dataISO(i.data_servico||i.criado_em);
+        const data=dataISO(i.criado_em);
         const dataAg=dataISO(i.data_agendamento);
         return (!termo||texto.includes(termo))
             &&(!loc||nomeLocalidade(i).toLowerCase()===loc)
@@ -1282,7 +1282,6 @@ function montarLinha(i){
         <td style="min-width:230px">${escapeHTML(i.descricao||"-")}</td>
         <td><div class="tecnicos-destaque">${escapeHTML(nomesTecnicos(i))}</div></td>
         <td><span class="${classePrioridade(i.prioridade)}">${escapeHTML(i.prioridade||"Média")}</span></td>
-        <td>${formatarData(i.data_servico,true)}</td>
         <td>${formatarData(i.data_agendamento)}</td>
         <td>${escapeHTML(i.enviado_por||"-")}</td>
         <td><span class="${classeStatus(i.status)}">${escapeHTML(i.status||"Pendente")}</span></td>
@@ -1298,15 +1297,70 @@ function montarLinha(i){
         </div></td>
     </tr>`;
 }
-function renderizarTabela(){const d=filtrarDados();tabelaPendentes.innerHTML=d.length?d.map(montarLinha).join(""):'<tr><td colspan="16">Nenhum serviço encontrado</td></tr>';atualizarContadorSelecionados();}
+function renderizarTabela(){const d=filtrarDados();tabelaPendentes.innerHTML=d.length?d.map(montarLinha).join(""):'<tr><td colspan="15">Nenhum serviço encontrado</td></tr>';atualizarContadorSelecionados();}
 function alternarSelecao(id,m){m?servicosSelecionados.add(Number(id)):servicosSelecionados.delete(Number(id));atualizarContadorSelecionados();}
 function selecionarTodos(el){document.querySelectorAll(".item-selecao").forEach(c=>{c.checked=el.checked;alternarSelecao(Number(c.value),el.checked);});}
 function atualizarContadorSelecionados(){contadorSelecionados.innerText=servicosSelecionados.size;}
 
 function tipoAnexo(url){const x=String(url||"").toLowerCase().split("?")[0];if(/\.(png|jpe?g|webp|gif)$/.test(x))return"imagem";if(/\.(mp4|mov|webm)$/.test(x))return"video";if(x.endsWith(".pdf"))return"pdf";return"outro";}
 function previaAnexo(i){if(!i.anexo)return `<div class="anexo-preview"><h4>Prévia do anexo</h4><div style="color:#64748b">Nenhum anexo enviado.</div></div>`;const u=escapeHTML(i.anexo),t=tipoAnexo(i.anexo);let midia=t==="imagem"?`<img class="preview-midia" src="${u}" alt="Prévia do anexo">`:t==="video"?`<video class="preview-midia" controls src="${u}"></video>`:t==="pdf"?`<iframe class="preview-pdf" src="${u}"></iframe>`:`<a href="${u}" target="_blank" rel="noopener">Abrir anexo</a>`;return `<div class="anexo-preview"><h4>Prévia do anexo</h4>${midia}<div style="margin-top:10px"><button class="btn btn-anexo" onclick="visualizarAnexo(${i.id})">Abrir anexo</button></div></div>`;}
-function blocoLocalizacao(i){if(!possuiLocalizacao(i))return `<div class="localizacao-box"><h4>📍 Localização</h4><div style="color:#475569;margin-bottom:12px">Nenhuma localização anexada.</div><button class="btn btn-localizacao" onclick="abrirModalLocalizacao(${i.id})">Adicionar localização</button></div>`;const maps=`https://www.google.com/maps?q=${encodeURIComponent(i.latitude)},${encodeURIComponent(i.longitude)}`;return `<div class="localizacao-box"><h4>📍 Localização</h4><div class="localizacao-grid"><div class="resumo-item"><small>Latitude</small><strong>${escapeHTML(i.latitude)}</strong></div><div class="resumo-item"><small>Longitude</small><strong>${escapeHTML(i.longitude)}</strong></div><div class="resumo-item"><small>Altitude</small><strong>${i.altitude??"-"} m</strong></div></div><div style="font-size:12px;color:#64748b;margin-bottom:12px">Atualizada em: ${formatarData(i.localizacao_atualizada_em)}</div><div class="acoes"><a class="btn btn-localizacao" href="${maps}" target="_blank" rel="noopener">Abrir no mapa</a><button class="btn btn-localizacao" onclick="abrirModalLocalizacao(${i.id})">Editar localização</button><button class="btn btn-remover-localizacao" onclick="removerLocalizacao(${i.id})">Remover</button></div></div>`;}
-function abrirResumoServico(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i)return alert("Serviço não encontrado.");resumoServicoId=Number(id);resumoTitulo.innerText=i.servico||"Resumo do Serviço";resumoConteudo.innerHTML=`<div class="resumo-grid"><div class="resumo-item"><small>Localidade</small><strong>${escapeHTML(nomeLocalidade(i))}</strong></div><div class="resumo-item"><small>Técnicos responsáveis</small><strong style="color:#1d4ed8">${escapeHTML(nomesTecnicos(i))}</strong></div><div class="resumo-item"><small>Data do serviço</small><div>${formatarData(i.data_servico,true)}</div></div><div class="resumo-item"><small>Agendamento</small><div>${formatarData(i.data_agendamento)}</div></div><div class="resumo-item"><small>Status</small><span class="${classeStatus(i.status)}">${escapeHTML(i.status||"Pendente")}</span></div><div class="resumo-item"><small>Prioridade</small><span class="${classePrioridade(i.prioridade)}">${escapeHTML(i.prioridade||"Média")}</span></div><div class="resumo-item"><small>Enviado por</small><div>${escapeHTML(i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Registrado em</small><div>${formatarData(i.criado_em)}</div></div><div class="resumo-item"><small>Atualizado em</small><div>${formatarData(i.atualizado_em)}</div></div><div class="resumo-item"><small>Atualizado por</small><div>${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Nova viabilidade</small><div>${i.nova_viabilidade?'Sim':'Não'}</div></div><div class="resumo-item full"><small>Descrição</small><div>${escapeHTML(i.descricao||"-")}</div></div></div>${previaAnexo(i)}${blocoLocalizacao(i)}`;resumoAcoes.innerHTML=`<button class="btn btn-editar" onclick="fecharResumoServico();abrirModalEditar(${i.id})">Editar</button><button class="btn btn-imprimir" onclick="imprimirServico(${i.id})">Imprimir</button><button class="btn btn-localizacao" onclick="abrirModalLocalizacao(${i.id})">Localização</button><button class="btn btn-excluir" onclick="fecharResumoServico();excluir(${i.id})">Excluir</button>`;modalResumoServico.style.display="flex";}
+function blocoLocalizacao(i){
+    if(!possuiLocalizacao(i)){
+        return `<div class="localizacao-box">
+            <h4>📍 Localização</h4>
+            <div style="color:#475569;margin-bottom:12px">Nenhuma localização anexada.</div>
+            <button class="btn btn-localizacao" onclick="abrirModalLocalizacao(${i.id})">Adicionar localização</button>
+        </div>`;
+    }
+
+    const lat=Number(i.latitude);
+    const lng=Number(i.longitude);
+    const delta=0.008;
+    const bbox=[
+        (lng-delta).toFixed(6),
+        (lat-delta).toFixed(6),
+        (lng+delta).toFixed(6),
+        (lat+delta).toFixed(6)
+    ].join("%2C");
+
+    const mapaEmbed=`https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${encodeURIComponent(lat)}%2C${encodeURIComponent(lng)}`;
+    const maps=`https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}`;
+
+    return `<div class="localizacao-box">
+        <h4>📍 Localização</h4>
+
+        <div class="localizacao-grid">
+            <div class="resumo-item">
+                <small>Latitude</small>
+                <strong>${escapeHTML(i.latitude)}</strong>
+            </div>
+            <div class="resumo-item">
+                <small>Longitude</small>
+                <strong>${escapeHTML(i.longitude)}</strong>
+            </div>
+        </div>
+
+        <div class="mapa-localizacao">
+            <iframe
+                src="${mapaEmbed}"
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+                title="Mapa da localização do serviço">
+            </iframe>
+        </div>
+
+        <div style="font-size:12px;color:#64748b;margin-bottom:12px">
+            Atualizada em: ${formatarData(i.localizacao_atualizada_em)}
+        </div>
+
+        <div class="acoes">
+            <a class="btn btn-localizacao" href="${maps}" target="_blank" rel="noopener">Abrir no Google Maps</a>
+            <button class="btn btn-localizacao" onclick="abrirModalLocalizacao(${i.id})">Editar localização</button>
+            <button class="btn btn-remover-localizacao" onclick="removerLocalizacao(${i.id})">Remover</button>
+        </div>
+    </div>`;
+}
+function abrirResumoServico(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i)return alert("Serviço não encontrado.");resumoServicoId=Number(id);resumoTitulo.innerText=i.servico||"Resumo do Serviço";resumoConteudo.innerHTML=`<div class="resumo-grid"><div class="resumo-item"><small>Localidade</small><strong>${escapeHTML(nomeLocalidade(i))}</strong></div><div class="resumo-item"><small>Técnicos responsáveis</small><strong style="color:#1d4ed8">${escapeHTML(nomesTecnicos(i))}</strong></div><div class="resumo-item"><small>Agendamento</small><div>${formatarData(i.data_agendamento)}</div></div><div class="resumo-item"><small>Status</small><span class="${classeStatus(i.status)}">${escapeHTML(i.status||"Pendente")}</span></div><div class="resumo-item"><small>Prioridade</small><span class="${classePrioridade(i.prioridade)}">${escapeHTML(i.prioridade||"Média")}</span></div><div class="resumo-item"><small>Enviado por</small><div>${escapeHTML(i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Registrado em</small><div>${formatarData(i.criado_em)}</div></div><div class="resumo-item"><small>Atualizado em</small><div>${formatarData(i.atualizado_em)}</div></div><div class="resumo-item"><small>Atualizado por</small><div>${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Nova viabilidade</small><div>${i.nova_viabilidade?'Sim':'Não'}</div></div><div class="resumo-item full"><small>Descrição</small><div>${escapeHTML(i.descricao||"-")}</div></div></div>${previaAnexo(i)}${blocoLocalizacao(i)}`;resumoAcoes.innerHTML=`<button class="btn btn-editar" onclick="fecharResumoServico();abrirModalEditar(${i.id})">Editar</button><button class="btn btn-imprimir" onclick="imprimirServico(${i.id})">Imprimir</button><button class="btn btn-localizacao" onclick="abrirModalLocalizacao(${i.id})">Localização</button><button class="btn btn-excluir" onclick="fecharResumoServico();excluir(${i.id})">Excluir</button>`;modalResumoServico.style.display="flex";}
 function fecharResumoServico(){modalResumoServico.style.display="none";resumoServicoId=null;}
 function visualizarAnexo(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i?.anexo)return alert("Este serviço não possui anexo.");frameAnexo.src=i.anexo;modalAnexo.style.display="flex";}
 function fecharModalAnexo(){frameAnexo.src="";modalAnexo.style.display="none";}
@@ -1316,7 +1370,6 @@ function abrirModalLocalizacao(id){
     localizacaoServicoId.value=String(id);
     campoLatitude.value=i.latitude??"";
     campoLongitude.value=i.longitude??"";
-    campoAltitude.value=i.altitude??"";
     modalLocalizacao.style.display="flex";
     setTimeout(()=>campoLatitude.focus(),50);
 }
@@ -1325,12 +1378,10 @@ async function salvarLocalizacaoManual(){
     const id=Number(localizacaoServicoId.value);
     const latitude=Number(campoLatitude.value);
     const longitude=Number(campoLongitude.value);
-    const altitude=campoAltitude.value.trim()===""?null:Number(campoAltitude.value);
     if(!Number.isFinite(latitude)||latitude < -90||latitude > 90)return alert("Informe uma latitude válida entre -90 e 90.");
     if(!Number.isFinite(longitude)||longitude < -180||longitude > 180)return alert("Informe uma longitude válida entre -180 e 180.");
-    if(altitude!==null&&!Number.isFinite(altitude))return alert("Informe uma altitude válida.");
     try{
-        await fetchAuth(`/api/servicos-pendentes/${id}/localizacao`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({latitude,longitude,altitude})});
+        await fetchAuth(`/api/servicos-pendentes/${id}/localizacao`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({latitude,longitude})});
         fecharModalLocalizacao();
         await carregar();
         alert("Localização salva com sucesso.");
@@ -1338,8 +1389,8 @@ async function salvarLocalizacaoManual(){
 }
 async function removerLocalizacao(id){if(!confirm("Remover a localização deste serviço?"))return;await fetchAuth(`/api/servicos-pendentes/${id}/localizacao`,{method:"DELETE"});await carregar();}
 
-function periodoRelatorio(lista){const ds=lista.map(i=>parseDataLocal(i.data_servico||i.criado_em)).filter(Boolean).sort((a,b)=>a-b);return ds.length?`${ds[0].toLocaleDateString("pt-BR")} a ${ds.at(-1).toLocaleDateString("pt-BR")}`:"Período não informado";}
-function gerarRelatorio(lista){const empresa=empresaLogada.innerText||"Empresa",logo=logoEmpresa.src;return `<div style="font-family:Arial;color:#0f172a"><div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #2563eb;padding-bottom:14px"><img src="${logo}" style="max-height:65px;max-width:200px"><div style="text-align:right"><h1 style="margin:0;font-size:23px;color:#1d4ed8">RELATÓRIO DE SERVIÇOS</h1><div>${escapeHTML(empresa)}</div></div></div><div style="margin:18px 0;padding:12px;border:1px solid #bfdbfe;background:#eff6ff"><b>SERVIÇOS: ${lista.length}</b> | PERÍODO: ${periodoRelatorio(lista)}</div>${lista.map((i,n)=>`<section style="border:1px solid #dbe3ef;border-radius:10px;margin-bottom:14px;overflow:hidden;page-break-inside:avoid"><div style="background:#f1f5f9;padding:11px 14px;font-weight:800">${n+1}. ${escapeHTML(i.servico||"Serviço")}</div><div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;font-size:13px"><div><b>Localidade:</b> ${escapeHTML(nomeLocalidade(i))}</div><div><b>Data do serviço:</b> ${formatarData(i.data_servico,true)}</div><div><b>Agendamento:</b> ${formatarData(i.data_agendamento)}</div><div><b>Status:</b> ${escapeHTML(i.status||"Pendente")}</div><div><b>Técnicos:</b> ${escapeHTML(nomesTecnicos(i))}</div><div><b>Registrado em:</b> ${formatarData(i.criado_em)}</div><div><b>Atualizado por:</b> ${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</div><div style="grid-column:1/-1"><b>Descrição:</b><div style="margin-top:5px;padding:10px;border:1px solid #e5e7eb">${escapeHTML(i.descricao||"-")}</div></div>${possuiLocalizacao(i)?`<div style="grid-column:1/-1"><b>Localização:</b> ${i.latitude}, ${i.longitude} | Altitude: ${i.altitude??"-"} m</div>`:""}</div></section>`).join("")}</div>`;}
+function periodoRelatorio(lista){const ds=lista.map(i=>parseDataLocal(i.data_agendamento||i.criado_em)).filter(Boolean).sort((a,b)=>a-b);return ds.length?`${ds[0].toLocaleDateString("pt-BR")} a ${ds.at(-1).toLocaleDateString("pt-BR")}`:"Período não informado";}
+function gerarRelatorio(lista){const empresa=empresaLogada.innerText||"Empresa",logo=logoEmpresa.src;return `<div style="font-family:Arial;color:#0f172a"><div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #2563eb;padding-bottom:14px"><img src="${logo}" style="max-height:65px;max-width:200px"><div style="text-align:right"><h1 style="margin:0;font-size:23px;color:#1d4ed8">RELATÓRIO DE SERVIÇOS</h1><div>${escapeHTML(empresa)}</div></div></div><div style="margin:18px 0;padding:12px;border:1px solid #bfdbfe;background:#eff6ff"><b>SERVIÇOS: ${lista.length}</b> | PERÍODO: ${periodoRelatorio(lista)}</div>${lista.map((i,n)=>`<section style="border:1px solid #dbe3ef;border-radius:10px;margin-bottom:14px;overflow:hidden;page-break-inside:avoid"><div style="background:#f1f5f9;padding:11px 14px;font-weight:800">${n+1}. ${escapeHTML(i.servico||"Serviço")}</div><div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;font-size:13px"><div><b>Localidade:</b> ${escapeHTML(nomeLocalidade(i))}</div><div><b>Agendamento:</b> ${formatarData(i.data_agendamento)}</div><div><b>Status:</b> ${escapeHTML(i.status||"Pendente")}</div><div><b>Técnicos:</b> ${escapeHTML(nomesTecnicos(i))}</div><div><b>Registrado em:</b> ${formatarData(i.criado_em)}</div><div><b>Atualizado por:</b> ${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</div><div style="grid-column:1/-1"><b>Descrição:</b><div style="margin-top:5px;padding:10px;border:1px solid #e5e7eb">${escapeHTML(i.descricao||"-")}</div></div>${possuiLocalizacao(i)?`<div style="grid-column:1/-1"><b>Localização:</b> ${i.latitude}, ${i.longitude}</div>`:""}</div></section>`).join("")}</div>`;}
 function imprimirLista(lista){if(!lista.length)return alert("Selecione pelo menos um serviço.");areaImpressao.innerHTML=gerarRelatorio(lista);areaImpressao.style.display="block";window.print();areaImpressao.style.display="none";}
 function imprimirServico(id){imprimirLista(servicosPendentes.filter(i=>Number(i.id)===Number(id)));}
 function imprimirSelecionados(){imprimirLista(servicosPendentes.filter(i=>servicosSelecionados.has(Number(i.id))));}
@@ -1350,11 +1401,9 @@ function abrirModalNovo(){
     document.getElementById("editId").value="";
     document.getElementById("servico").value="";
     document.getElementById("localidade").value="";
-    document.getElementById("dataServico").value=hojeISO();
     document.getElementById("dataAgendamento").value="";
     document.getElementById("latitudeServico").value="";
     document.getElementById("longitudeServico").value="";
-    document.getElementById("altitudeServico").value="";
     document.getElementById("novaViabilidade").checked=false;
     document.getElementById("descricao").value="";
     document.getElementById("prioridade").value="Média";
@@ -1373,11 +1422,9 @@ function abrirModalEditar(id){
     document.getElementById("editId").value=i.id;
     document.getElementById("servico").value=i.servico||"";
     document.getElementById("localidade").value=nomeLocalidade(i)==="-"?"":nomeLocalidade(i);
-    document.getElementById("dataServico").value=dataISO(i.data_servico);
     document.getElementById("dataAgendamento").value=dataHoraInput(i.data_agendamento);
     document.getElementById("latitudeServico").value=i.latitude??"";
     document.getElementById("longitudeServico").value=i.longitude??"";
-    document.getElementById("altitudeServico").value=i.altitude??"";
     document.getElementById("novaViabilidade").checked=Boolean(Number(i.nova_viabilidade)||i.nova_viabilidade===true);
     document.getElementById("descricao").value=i.descricao||"";
     document.getElementById("prioridade").value=i.prioridade||"Média";
@@ -1399,7 +1446,6 @@ async function salvarServico(){
 
     const latitudeTexto=document.getElementById("latitudeServico").value.trim();
     const longitudeTexto=document.getElementById("longitudeServico").value.trim();
-    const altitudeTexto=document.getElementById("altitudeServico").value.trim();
 
     if((latitudeTexto&&!longitudeTexto)||(!latitudeTexto&&longitudeTexto)){
         return alert("Preencha latitude e longitude juntas.");
@@ -1408,7 +1454,6 @@ async function salvarServico(){
     const fd=new FormData();
     fd.append("servico",nome);
     fd.append("localidade",localidadeValor);
-    fd.append("data_servico",document.getElementById("dataServico").value);
     fd.append("data_agendamento",document.getElementById("dataAgendamento").value);
     fd.append("nova_viabilidade",document.getElementById("novaViabilidade").checked?"1":"0");
     fd.append("descricao",document.getElementById("descricao").value);
@@ -1416,7 +1461,6 @@ async function salvarServico(){
     fd.append("status",statusSelecionado);
     fd.append("latitude",latitudeTexto);
     fd.append("longitude",longitudeTexto);
-    fd.append("altitude",altitudeTexto);
     fd.append("tecnicos_ids",JSON.stringify(tecs.map(t=>t.value)));
     fd.append("tecnicos_nomes",JSON.stringify(tecs.map(t=>t.dataset.nome)));
     const arquivo=document.getElementById("anexo").files[0];
