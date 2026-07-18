@@ -11,6 +11,7 @@ const inviabilidadeRoutes = require("./routes/inviabilidades.routes");
 const viabilidadeRoutes = require("./routes/viabilidade.routes");
 const svasRoutes = require("./routes/svas.routes");
 const lembretesRoutes = require("./routes/lembretes.routes");
+const estoqueRoutes = require('./routes/estoque.routes');
 
 
 const pool = require("./database");
@@ -162,6 +163,8 @@ app.use("/api", viabilidadeRoutes(pool, verificarAutenticacao));
 app.use('/api/relatorios-automaticos', relatoriosAutomaticosRoutes(pool, verificarAutenticacao));
 app.use("/api/svas", svasRoutes);
 app.use("/api/lembretes", lembretesRoutes);
+app.use('/api/estoque', estoqueRoutes);
+
 
 
 // ===============================
