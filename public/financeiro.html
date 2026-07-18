@@ -47,6 +47,7 @@
 const $=id=>document.getElementById(id),api='/api/financeiro';let movs=[],rel=[],arquivoColado=null,usuarioLogado=null;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 const moeda=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v)||0);const dt=v=>v?new Date(v).toLocaleString('pt-BR'):'-';
+function pagamento(valor){const mapa={dinheiro:'Dinheiro',pix:'Pix',cartao_credito:'Cartão de crédito',cartao_debito:'Cartão de débito',cheque:'Cheque'};return esc(mapa[String(valor||'').toLowerCase()]||valor||'-')}
 function show(t,e=false){$('toast').textContent=t;$('toast').className='toast on'+(e?' err':'');setTimeout(()=>$('toast').className='toast',3000)}
 async function get(url,opt={}){return fetchAuth(url,opt)}
 function abrirTab(n){document.querySelectorAll('.painel').forEach(x=>x.classList.remove('ativo'));document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('ativo',x.dataset.tab===n));$(n).classList.add('ativo');if(n==='relatorios')carregarRelatorio()}
