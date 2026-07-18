@@ -412,7 +412,7 @@ body{
 
 .filtros-servicos{
     display:grid;
-    grid-template-columns:1.4fr repeat(4,minmax(150px,1fr)) auto;
+    grid-template-columns:1.4fr repeat(5,minmax(140px,1fr)) auto;
     gap:12px;
     align-items:end;
     margin-bottom:18px;
@@ -713,6 +713,19 @@ textarea:focus{
 .resumo-acoes{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid #e5e7eb;}
 @media(max-width:650px){.resumo-grid{grid-template-columns:1fr}.resumo-item.full{grid-column:auto}}
 
+
+.anexo-preview{margin-top:14px;border:1px solid var(--borda);border-radius:12px;padding:14px;background:#fff}
+.anexo-preview h4,.localizacao-box h4{margin:0 0 10px;font-size:14px}
+.preview-midia{width:100%;max-height:320px;object-fit:contain;border-radius:10px;background:#f8fafc;border:1px solid var(--borda)}
+.preview-pdf{width:100%;height:330px;border:1px solid var(--borda);border-radius:10px}
+.localizacao-box{margin-top:14px;border:1px solid #bfdbfe;border-radius:12px;padding:14px;background:#eff6ff}
+.localizacao-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.localizacao-grid .resumo-item{background:#fff}
+.btn-localizacao{background:#1d4ed8}.btn-remover-localizacao{background:#dc2626}
+.localizacao-icone{display:inline-flex;vertical-align:middle;margin-left:5px;color:#2563eb}
+.localizacao-icone svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+@media(max-width:650px){.localizacao-grid{grid-template-columns:1fr}}
+
 @media print{
     body *{
         visibility:hidden;
@@ -771,7 +784,7 @@ textarea:focus{
         <span>Escala</span>
     </a>
 
-    <a href="servicos_pendentes.html" class="ativo">
+    <a href="servicos.html" class="ativo">
         <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg>
         <span>Serviços</span>
     </a>
@@ -930,7 +943,7 @@ textarea:focus{
         <div class="filtros-servicos">
             <div class="campo-filtro">
                 <label>Pesquisa</label>
-                <input id="filtroBusca" placeholder="Serviço, descrição, prioridade ou técnico" oninput="renderizarTabelas()">
+                <input id="filtroBusca" placeholder="Serviço, descrição, prioridade ou técnico" oninput="renderizarTabela()">
             </div>
             <div class="campo-filtro">
                 <label>Período rápido</label>
@@ -945,15 +958,23 @@ textarea:focus{
             </div>
             <div class="campo-filtro">
                 <label>Data inicial</label>
-                <input type="date" id="filtroDataInicio" onchange="renderizarTabelas()">
+                <input type="date" id="filtroDataInicio" onchange="renderizarTabela()">
             </div>
             <div class="campo-filtro">
                 <label>Data final</label>
-                <input type="date" id="filtroDataFim" onchange="renderizarTabelas()">
+                <input type="date" id="filtroDataFim" onchange="renderizarTabela()">
             </div>
             <div class="campo-filtro">
                 <label>Localidade</label>
-                <select id="filtroLocalidade" onchange="renderizarTabelas()"><option value="">Todas</option></select>
+                <select id="filtroLocalidade" onchange="renderizarTabela()"><option value="">Todas</option></select>
+            </div>
+            <div class="campo-filtro">
+                <label>Status</label>
+                <select id="filtroStatus" onchange="renderizarTabela()">
+                    <option value="">Todos</option>
+                    <option value="Pendente">Pendente</option>
+                    <option value="Realizado">Realizado</option>
+                </select>
             </div>
             <div class="acoes-filtro">
                 <button class="btn btn-limpar" type="button" onclick="limparFiltros()">Limpar</button>
@@ -969,7 +990,7 @@ textarea:focus{
             <table>
                 <thead>
                     <tr>
-                        <th><input class="check-servico" type="checkbox" onchange="selecionarTodos(this, 'pendente')"></th>
+                        <th><input class="check-servico" type="checkbox" onchange="selecionarTodos(this)"></th>
                         <th>Serviço</th>
                         <th>Localidade</th>
                         <th>Descrição</th>
@@ -977,50 +998,16 @@ textarea:focus{
                         <th>Prioridade</th>
                         <th>Enviado por</th>
                         <th>Status</th>
-                        <th>Criado</th>
-                        <th>Atualizado</th>
+                        <th>Registrado em</th>
+                        <th>Atualizado em</th>
+                        <th>Atualizado por</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
 
                 <tbody id="tabelaPendentes">
                     <tr>
-                        <td colspan="11">Carregando...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header">
-            <div>
-                <div class="titulo-card">Histórico de Serviços Realizados</div>
-                <div class="subtitulo-card">Serviços marcados como realizado ficam salvos aqui.</div>
-            </div>
-        </div>
-
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th><input class="check-servico" type="checkbox" onchange="selecionarTodos(this, 'realizado')"></th>
-                        <th>Serviço</th>
-                        <th>Localidade</th>
-                        <th>Descrição</th>
-                        <th>Técnicos</th>
-                        <th>Prioridade</th>
-                        <th>Enviado por</th>
-                        <th>Status</th>
-                        <th>Criado</th>
-                        <th>Atualizado</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-
-                <tbody id="tabelaHistorico">
-                    <tr>
-                        <td colspan="11">Carregando...</td>
+                        <td colspan="12">Carregando...</td>
                     </tr>
                 </tbody>
             </table>
@@ -1124,118 +1111,72 @@ let servicosPendentes = [];
 let localidadesCadastradas = [];
 let tecnicosCadastrados = [];
 const servicosSelecionados = new Set();
+let resumoServicoId = null;
 
-function escapeHTML(valor){
-    return String(valor ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
-}
-function toggleSidebar(){ const sidebar=document.querySelector(".sidebar"),logo=document.getElementById("logoSidebar"); if(!sidebar||!logo)return; sidebar.classList.toggle("recolhida"); const fechada=sidebar.classList.contains("recolhida"); logo.src=fechada?logo.dataset.logoFechada:logo.dataset.logoAberta; localStorage.setItem("sidebar_recolhida",fechada?"1":"0"); }
-function toggleUserDropdown(){ document.getElementById("usuarioMenuDropdown").classList.toggle("ativo"); document.getElementById("usuarioDropdown").classList.toggle("aberto"); }
-document.addEventListener("click",e=>{ const box=document.getElementById("usuarioDropdown"),menu=document.getElementById("usuarioMenuDropdown"); if(box&&menu&&!box.contains(e.target)){menu.classList.remove("ativo");box.classList.remove("aberto");}});
-async function carregarUsuario(){ try{ const u=JSON.parse(localStorage.getItem("usuario")||"{}"); if(!u?.id){location.href="login.html";return;} const r=await fetch("/api/me",{headers:{"x-usuario-id":u.id}}),d=await r.json(); if(d?.usuario){ userEmpresa.innerText=d.usuario; empresaLogada.innerText=d.empresa_nome||u.empresa_nome||"Empresa"; logoEmpresa.src=d.empresa_logo?(d.empresa_logo.startsWith("/")?d.empresa_logo:"/"+d.empresa_logo):"/img/logo-default.png"; }}catch(e){console.error(e);userEmpresa.innerText="Administrador";} }
-async function carregarUsuariosOnline(){ try{const r=await fetch("/api/logs"),logs=await r.json(),lista=[...new Set(logs.filter(l=>!l.logout).map(l=>l.usuario))]; usuariosOnline.innerHTML=lista.length?lista.map(u=>`🟢 ${escapeHTML(u)}`).join("<br>"):"Nenhum usuário online";}catch{usuariosOnline.innerText="Online indisponível";} }
+function escapeHTML(valor){return String(valor??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");}
+function toggleSidebar(){const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");if(!s||!l)return;s.classList.toggle("recolhida");const f=s.classList.contains("recolhida");l.src=f?l.dataset.logoFechada:l.dataset.logoAberta;localStorage.setItem("sidebar_recolhida",f?"1":"0");}
+function toggleUserDropdown(){usuarioMenuDropdown.classList.toggle("ativo");usuarioDropdown.classList.toggle("aberto");}
+document.addEventListener("click",e=>{if(usuarioDropdown&&!usuarioDropdown.contains(e.target)){usuarioMenuDropdown.classList.remove("ativo");usuarioDropdown.classList.remove("aberto");}});
+async function carregarUsuario(){try{const u=JSON.parse(localStorage.getItem("usuario")||"{}");if(!u?.id){location.href="login.html";return;}const r=await fetch("/api/me",{headers:{"x-usuario-id":u.id}}),d=await r.json();if(d?.usuario){userEmpresa.innerText=d.usuario;empresaLogada.innerText=d.empresa_nome||u.empresa_nome||"Empresa";logoEmpresa.src=d.empresa_logo?(d.empresa_logo.startsWith("/")?d.empresa_logo:"/"+d.empresa_logo):"/img/logo-default.png";}}catch(e){console.error(e);userEmpresa.innerText="Administrador";}}
+async function carregarUsuariosOnline(){try{const r=await fetch("/api/logs"),logs=await r.json(),lista=[...new Set(logs.filter(l=>!l.logout).map(l=>l.usuario))];usuariosOnline.innerHTML=lista.length?lista.map(u=>`🟢 ${escapeHTML(u)}`).join("<br>"):"Nenhum usuário online";}catch{usuariosOnline.innerText="Online indisponível";}}
 function logout(){const id=localStorage.getItem("log_id");if(id)fetch("/api/logout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({log_id:id})}).catch(()=>{});sessionStorage.clear();localStorage.clear();location.href="login.html";}
-function formatarData(data){if(!data)return "-";const d=new Date(data);return isNaN(d)?"-":d.toLocaleString("pt-BR");}
-function dataISO(data){if(!data)return "";const d=new Date(data);if(isNaN(d))return "";return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
+
+function parseDataLocal(valor){
+    if(!valor)return null;
+    const texto=String(valor).trim();
+    const m=texto.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if(m)return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),Number(m[4]||0),Number(m[5]||0),Number(m[6]||0));
+    const d=new Date(valor);return isNaN(d.getTime())?null:d;
+}
+function formatarData(data, somenteData=false){const d=parseDataLocal(data);if(!d)return "-";return somenteData?d.toLocaleDateString("pt-BR"):d.toLocaleString("pt-BR");}
+function dataISO(data){const d=parseDataLocal(data);if(!d)return "";return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
 function classePrioridade(v){const p=String(v||"").toLowerCase();return p.includes("alta")?"badge badge-alta":p.includes("baixa")?"badge badge-baixa":"badge badge-media";}
-function classeStatus(v){return String(v||"").toLowerCase().includes("realizado")?"badge badge-realizado":"badge badge-pendente";}
-function nomesTecnicos(item){ if(Array.isArray(item.tecnicos_nomes))return item.tecnicos_nomes.join(", "); if(item.tecnicos_nomes)return String(item.tecnicos_nomes); if(item.tecnicos)return Array.isArray(item.tecnicos)?item.tecnicos.map(t=>t.nome||t).join(", "):String(item.tecnicos); return "-"; }
-function nomeLocalidade(item){
-    const valor=String(item?.localidade??"").trim();
-    if(!valor)return "-";
-    const cadastro=localidadesCadastradas.find(l=>String(l.id??l.localidade_id??"")===valor);
-    return cadastro ? String(cadastro.nome||cadastro.localidade||cadastro.descricao||valor) : valor;
-}
+function classeStatus(v){return String(v||"").toLowerCase()==="realizado"?"badge badge-realizado":"badge badge-pendente";}
+function nomesTecnicos(i){if(Array.isArray(i.tecnicos_nomes))return i.tecnicos_nomes.join(", ");if(i.tecnicos_nomes)return String(i.tecnicos_nomes);return "-";}
+function nomeLocalidade(i){const v=String(i?.localidade??"").trim();if(!v)return "-";const c=localidadesCadastradas.find(l=>String(l.id??l.localidade_id??"")===v);return c?String(c.nome||c.localidade||c.descricao||v):v;}
+function possuiLocalizacao(i){return Number.isFinite(Number(i.latitude))&&Number.isFinite(Number(i.longitude));}
 function atualizarCards(d){cardTotal.innerText=d.length;cardPendentes.innerText=d.filter(i=>String(i.status||"").toLowerCase()==="pendente").length;cardRealizados.innerText=d.filter(i=>String(i.status||"").toLowerCase()==="realizado").length;}
-async function carregarCadastros(){
-    const tentar=async(url)=>{try{const d=await fetchAuth(url);return Array.isArray(d)?d:(d?.dados||d?.data||[]);}catch{return [];}};
-    [localidadesCadastradas,tecnicosCadastrados]=await Promise.all([tentar("/api/localidades"),tentar("/api/tecnicos")]);
-    preencherLocalidades(); preencherTecnicos();
-}
-function preencherLocalidades(){
-    const nomes=[...new Set(localidadesCadastradas.map(l=>l.nome||l.localidade||l.descricao).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
-    const opts=nomes.map(n=>`<option value="${escapeHTML(n)}">${escapeHTML(n)}</option>`).join("");
-    filtroLocalidade.innerHTML='<option value="">Todas</option>'+opts;
-    listaLocalidades.innerHTML=nomes.map(n=>`<option value="${escapeHTML(n)}"></option>`).join("");
-}
-function preencherTecnicos(selecionados=[]){
-    const ids=new Set((selecionados||[]).map(String));
-    listaTecnicos.innerHTML=tecnicosCadastrados.length?tecnicosCadastrados.map(t=>{const id=t.id??t.usuario_id;const nome=t.nome||t.usuario||t.name||`Técnico ${id}`;return `<label class="item-check"><input type="checkbox" class="tecnico-check" value="${escapeHTML(id)}" data-nome="${escapeHTML(nome)}" ${ids.has(String(id))?'checked':''} onchange="limitarTecnicos(this)">${escapeHTML(nome)}</label>`;}).join(""): '<span style="color:#64748b;">Nenhum técnico cadastrado.</span>';
-    atualizarContadorTecnicos();
-}
-function limitarTecnicos(el){const marcados=[...document.querySelectorAll(".tecnico-check:checked")];if(marcados.length>4){el.checked=false;alert("É permitido selecionar no máximo 4 técnicos.");}atualizarContadorTecnicos();}
+
+async function carregarCadastros(){const tentar=async u=>{try{const d=await fetchAuth(u);return Array.isArray(d)?d:(d?.dados||d?.data||[]);}catch{return[];}};[localidadesCadastradas,tecnicosCadastrados]=await Promise.all([tentar("/api/localidades"),tentar("/api/tecnicos")]);preencherTecnicos();}
+function preencherTecnicos(sel=[]){const ids=new Set((sel||[]).map(String));listaTecnicos.innerHTML=tecnicosCadastrados.length?tecnicosCadastrados.map(t=>{const id=t.id??t.usuario_id,n=t.nome||t.usuario||t.name||`Técnico ${id}`;return `<label class="item-check"><input type="checkbox" class="tecnico-check" value="${escapeHTML(id)}" data-nome="${escapeHTML(n)}" ${ids.has(String(id))?'checked':''} onchange="limitarTecnicos(this)">${escapeHTML(n)}</label>`;}).join(""):'<span style="color:#64748b">Nenhum técnico cadastrado.</span>';atualizarContadorTecnicos();}
+function limitarTecnicos(el){const m=[...document.querySelectorAll(".tecnico-check:checked")];if(m.length>4){el.checked=false;alert("É permitido selecionar no máximo 4 técnicos.");}atualizarContadorTecnicos();}
 function atualizarContadorTecnicos(){qtdTecnicos.innerText=document.querySelectorAll(".tecnico-check:checked").length;}
-function atualizarOpcoesLocalidades(){
-    const nomesCadastro=localidadesCadastradas.map(l=>l.nome||l.localidade||l.descricao).filter(Boolean);
-    const nomesServicos=servicosPendentes.map(i=>nomeLocalidade(i)).filter(n=>n&&n!=="-");
-    const nomes=[...new Set([...nomesCadastro,...nomesServicos].map(n=>String(n).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
-    const atualFiltro=filtroLocalidade.value;
-    filtroLocalidade.innerHTML='<option value="">Todas</option>'+nomes.map(n=>`<option value="${escapeHTML(n)}">${escapeHTML(n)}</option>`).join("");
-    if(nomes.includes(atualFiltro))filtroLocalidade.value=atualFiltro;
-    listaLocalidades.innerHTML=nomes.map(n=>`<option value="${escapeHTML(n)}"></option>`).join("");
-}
-async function carregar(){try{const d=await fetchAuth("/api/servicos-pendentes");servicosPendentes=Array.isArray(d)?d:[];atualizarOpcoesLocalidades();atualizarCards(servicosPendentes);renderizarTabelas();}catch(e){console.error(e);tabelaPendentes.innerHTML='<tr><td colspan="11">Erro ao carregar serviços</td></tr>';tabelaHistorico.innerHTML='<tr><td colspan="11">Erro ao carregar histórico</td></tr>';}}
-function aplicarPeriodoRapido(){
-    const v=filtroPeriodo.value,hoje=new Date();hoje.setHours(0,0,0,0);let ini=null,fim=new Date(hoje);
-    if(v==="hoje")ini=new Date(hoje); else if(v==="ontem"){ini=new Date(hoje);ini.setDate(ini.getDate()-1);fim=new Date(ini);} else if(v==="7"){ini=new Date(hoje);ini.setDate(ini.getDate()-6);} else if(v==="30"){ini=new Date(hoje);ini.setDate(ini.getDate()-29);} else if(v==="mes"){ini=new Date(hoje.getFullYear(),hoje.getMonth(),1);} else {filtroDataInicio.value="";filtroDataFim.value="";renderizarTabelas();return;}
-    filtroDataInicio.value=dataISO(ini);filtroDataFim.value=dataISO(fim);renderizarTabelas();
-}
-function limparFiltros(){filtroBusca.value="";filtroPeriodo.value="";filtroDataInicio.value="";filtroDataFim.value="";filtroLocalidade.value="";renderizarTabelas();}
-function filtrarDados(){
-    const termo=filtroBusca.value.toLowerCase().trim(),loc=filtroLocalidade.value.toLowerCase(),ini=filtroDataInicio.value,fim=filtroDataFim.value;
-    return servicosPendentes.filter(i=>{
-        const localidadeNome=nomeLocalidade(i); const texto=[i.servico,localidadeNome,i.descricao,i.prioridade,i.enviado_por,i.status,nomesTecnicos(i)].join(" ").toLowerCase();
-        const data=dataISO(i.data_servico||i.criado_em);
-        return (!termo||texto.includes(termo))&&(!loc||nomeLocalidade(i).toLowerCase()===loc)&&(!ini||data>=ini)&&(!fim||data<=fim);
-    });
-}
-function montarLinha(item){return `<tr><td><input class="check-servico item-selecao" type="checkbox" data-status="${escapeHTML(String(item.status||'').toLowerCase())}" value="${item.id}" ${servicosSelecionados.has(Number(item.id))?'checked':''} onchange="alternarSelecao(${item.id},this.checked)"></td><td><button class="servico-link" type="button" onclick="abrirResumoServico(${item.id})">${escapeHTML(item.servico||"-")}</button>${item.nova_viabilidade?'<br><small style="color:#2563eb;font-weight:800;">NOVA VIABILIDADE</small>':''}</td><td>${escapeHTML(nomeLocalidade(item))}</td><td style="min-width:260px;">${escapeHTML(item.descricao||"-")}</td><td><div class="tecnicos-destaque">${escapeHTML(nomesTecnicos(item))}</div></td><td><span class="${classePrioridade(item.prioridade)}">${escapeHTML(item.prioridade||"Média")}</span></td><td>${escapeHTML(item.enviado_por||"-")}</td><td><span class="${classeStatus(item.status)}">${escapeHTML(item.status||"Pendente")}</span></td><td>${formatarData(item.data_servico||item.criado_em)}</td><td>${formatarData(item.atualizado_em)}</td><td><div class="acoes"><button class="btn btn-editar" onclick="abrirModalEditar(${item.id})">Editar</button><button class="btn btn-imprimir" onclick="imprimirServico(${item.id})">Imprimir</button><button class="btn btn-anexo" onclick="visualizarAnexo(${item.id})">Anexo</button><button class="btn btn-excluir" onclick="excluir(${item.id})">Excluir</button></div></td></tr>`;}
-function renderizarTabelas(){const d=filtrarDados(),p=d.filter(i=>String(i.status||"").toLowerCase()==="pendente"),h=d.filter(i=>String(i.status||"").toLowerCase()==="realizado");tabelaPendentes.innerHTML=p.length?p.map(montarLinha).join(""):'<tr><td colspan="11">Nenhum serviço pendente encontrado</td></tr>';tabelaHistorico.innerHTML=h.length?h.map(montarLinha).join(""):'<tr><td colspan="11">Nenhum serviço realizado encontrado</td></tr>';atualizarContadorSelecionados();}
-function alternarSelecao(id,marcado){marcado?servicosSelecionados.add(Number(id)):servicosSelecionados.delete(Number(id));atualizarContadorSelecionados();}
-function selecionarTodos(el,status){document.querySelectorAll(`.item-selecao[data-status="${status}"]`).forEach(c=>{c.checked=el.checked;alternarSelecao(Number(c.value),el.checked);});}
+function atualizarOpcoesLocalidades(){const a=localidadesCadastradas.map(l=>l.nome||l.localidade||l.descricao).filter(Boolean),b=servicosPendentes.map(nomeLocalidade).filter(n=>n&&n!=="-");const nomes=[...new Set([...a,...b].map(n=>String(n).trim()))].sort((x,y)=>x.localeCompare(y,"pt-BR"));const atual=filtroLocalidade.value;filtroLocalidade.innerHTML='<option value="">Todas</option>'+nomes.map(n=>`<option value="${escapeHTML(n)}">${escapeHTML(n)}</option>`).join("");if(nomes.includes(atual))filtroLocalidade.value=atual;listaLocalidades.innerHTML=nomes.map(n=>`<option value="${escapeHTML(n)}"></option>`).join("");}
+async function carregar(){try{const d=await fetchAuth("/api/servicos-pendentes");servicosPendentes=Array.isArray(d)?d:[];atualizarOpcoesLocalidades();atualizarCards(servicosPendentes);renderizarTabela();if(resumoServicoId&&modalResumoServico.style.display==="flex")abrirResumoServico(resumoServicoId);}catch(e){console.error(e);tabelaPendentes.innerHTML='<tr><td colspan="12">Erro ao carregar serviços</td></tr>';}}
+
+function aplicarPeriodoRapido(){const v=filtroPeriodo.value,h=new Date();h.setHours(0,0,0,0);let ini=null,fim=new Date(h);if(v==="hoje")ini=new Date(h);else if(v==="ontem"){ini=new Date(h);ini.setDate(ini.getDate()-1);fim=new Date(ini);}else if(v==="7"){ini=new Date(h);ini.setDate(ini.getDate()-6);}else if(v==="30"){ini=new Date(h);ini.setDate(ini.getDate()-29);}else if(v==="mes")ini=new Date(h.getFullYear(),h.getMonth(),1);else{filtroDataInicio.value="";filtroDataFim.value="";renderizarTabela();return;}filtroDataInicio.value=dataISO(ini);filtroDataFim.value=dataISO(fim);renderizarTabela();}
+function limparFiltros(){filtroBusca.value="";filtroPeriodo.value="";filtroDataInicio.value="";filtroDataFim.value="";filtroLocalidade.value="";filtroStatus.value="";renderizarTabela();}
+function filtrarDados(){const termo=filtroBusca.value.toLowerCase().trim(),loc=filtroLocalidade.value.toLowerCase(),st=filtroStatus.value.toLowerCase(),ini=filtroDataInicio.value,fim=filtroDataFim.value;return servicosPendentes.filter(i=>{const texto=[i.servico,nomeLocalidade(i),i.descricao,i.prioridade,i.enviado_por,i.atualizado_por,i.status,nomesTecnicos(i)].join(" ").toLowerCase();const data=dataISO(i.data_servico||i.criado_em);return(!termo||texto.includes(termo))&&(!loc||nomeLocalidade(i).toLowerCase()===loc)&&(!st||String(i.status||"").toLowerCase()===st)&&(!ini||data>=ini)&&(!fim||data<=fim);});}
+function iconeLocalizacao(i){return possuiLocalizacao(i)?`<span class="localizacao-icone" title="Serviço com localização"><svg viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>`:"";}
+function montarLinha(i){return `<tr><td><input class="check-servico item-selecao" type="checkbox" value="${i.id}" ${servicosSelecionados.has(Number(i.id))?'checked':''} onchange="alternarSelecao(${i.id},this.checked)"></td><td><button class="servico-link" onclick="abrirResumoServico(${i.id})">${escapeHTML(i.servico||"-")}${iconeLocalizacao(i)}</button>${i.nova_viabilidade?'<br><small style="color:#2563eb;font-weight:800">NOVA VIABILIDADE</small>':''}</td><td>${escapeHTML(nomeLocalidade(i))}</td><td style="min-width:230px">${escapeHTML(i.descricao||"-")}</td><td><div class="tecnicos-destaque">${escapeHTML(nomesTecnicos(i))}</div></td><td><span class="${classePrioridade(i.prioridade)}">${escapeHTML(i.prioridade||"Média")}</span></td><td>${escapeHTML(i.enviado_por||"-")}</td><td><span class="${classeStatus(i.status)}">${escapeHTML(i.status||"Pendente")}</span></td><td>${formatarData(i.criado_em)}</td><td>${formatarData(i.atualizado_em)}</td><td>${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</td><td><div class="acoes"><button class="btn btn-editar" onclick="abrirModalEditar(${i.id})">Editar</button><button class="btn btn-imprimir" onclick="imprimirServico(${i.id})">Imprimir</button><button class="btn btn-anexo" onclick="visualizarAnexo(${i.id})">Anexo</button><button class="btn btn-excluir" onclick="excluir(${i.id})">Excluir</button></div></td></tr>`;}
+function renderizarTabela(){const d=filtrarDados();tabelaPendentes.innerHTML=d.length?d.map(montarLinha).join(""):'<tr><td colspan="12">Nenhum serviço encontrado</td></tr>';atualizarContadorSelecionados();}
+function alternarSelecao(id,m){m?servicosSelecionados.add(Number(id)):servicosSelecionados.delete(Number(id));atualizarContadorSelecionados();}
+function selecionarTodos(el){document.querySelectorAll(".item-selecao").forEach(c=>{c.checked=el.checked;alternarSelecao(Number(c.value),el.checked);});}
 function atualizarContadorSelecionados(){contadorSelecionados.innerText=servicosSelecionados.size;}
-function abrirResumoServico(id){
-    const i=servicosPendentes.find(x=>Number(x.id)===Number(id));
-    if(!i)return alert("Serviço não encontrado.");
-    resumoTitulo.innerText=i.servico||"Resumo do Serviço";
-    resumoConteudo.innerHTML=`<div class="resumo-grid">
-        <div class="resumo-item"><small>Localidade</small><strong>${escapeHTML(nomeLocalidade(i))}</strong></div>
-        <div class="resumo-item"><small>Técnicos responsáveis</small><strong style="color:#1d4ed8">${escapeHTML(nomesTecnicos(i))}</strong></div>
-        <div class="resumo-item"><small>Data do serviço</small><div>${formatarData(i.data_servico||i.criado_em)}</div></div>
-        <div class="resumo-item"><small>Status</small><div><span class="${classeStatus(i.status)}">${escapeHTML(i.status||"Pendente")}</span></div></div>
-        <div class="resumo-item"><small>Prioridade</small><div><span class="${classePrioridade(i.prioridade)}">${escapeHTML(i.prioridade||"Média")}</span></div></div>
-        <div class="resumo-item"><small>Enviado por</small><div>${escapeHTML(i.enviado_por||"-")}</div></div>
-        <div class="resumo-item"><small>Nova viabilidade</small><div>${i.nova_viabilidade?'Sim':'Não'}</div></div>
-        <div class="resumo-item"><small>Atualizado em</small><div>${formatarData(i.atualizado_em)}</div></div>
-        <div class="resumo-item full"><small>Descrição</small><div>${escapeHTML(i.descricao||"-")}</div></div>
-    </div>`;
-    resumoAcoes.innerHTML=`<button class="btn btn-editar" onclick="fecharResumoServico();abrirModalEditar(${i.id})">Editar</button><button class="btn btn-imprimir" onclick="imprimirServico(${i.id})">Imprimir</button><button class="btn btn-anexo" onclick="visualizarAnexo(${i.id})">Visualizar anexo</button><button class="btn btn-excluir" onclick="fecharResumoServico();excluir(${i.id})">Excluir</button>`;
-    modalResumoServico.style.display="flex";
-}
-function fecharResumoServico(){modalResumoServico.style.display="none";}
-function visualizarAnexo(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i?.anexo){alert("Este serviço não possui anexo.");return;}frameAnexo.src=i.anexo;modalAnexo.style.display="flex";}
+
+function tipoAnexo(url){const x=String(url||"").toLowerCase().split("?")[0];if(/\.(png|jpe?g|webp|gif)$/.test(x))return"imagem";if(/\.(mp4|mov|webm)$/.test(x))return"video";if(x.endsWith(".pdf"))return"pdf";return"outro";}
+function previaAnexo(i){if(!i.anexo)return `<div class="anexo-preview"><h4>Prévia do anexo</h4><div style="color:#64748b">Nenhum anexo enviado.</div></div>`;const u=escapeHTML(i.anexo),t=tipoAnexo(i.anexo);let midia=t==="imagem"?`<img class="preview-midia" src="${u}" alt="Prévia do anexo">`:t==="video"?`<video class="preview-midia" controls src="${u}"></video>`:t==="pdf"?`<iframe class="preview-pdf" src="${u}"></iframe>`:`<a href="${u}" target="_blank" rel="noopener">Abrir anexo</a>`;return `<div class="anexo-preview"><h4>Prévia do anexo</h4>${midia}<div style="margin-top:10px"><button class="btn btn-anexo" onclick="visualizarAnexo(${i.id})">Abrir anexo</button></div></div>`;}
+function blocoLocalizacao(i){if(!possuiLocalizacao(i))return `<div class="localizacao-box"><h4>📍 Localização</h4><div style="color:#475569;margin-bottom:12px">Nenhuma localização anexada.</div><button class="btn btn-localizacao" onclick="capturarLocalizacao(${i.id})">Anexar localização atual</button></div>`;const maps=`https://www.google.com/maps?q=${encodeURIComponent(i.latitude)},${encodeURIComponent(i.longitude)}`;return `<div class="localizacao-box"><h4>📍 Localização</h4><div class="localizacao-grid"><div class="resumo-item"><small>Latitude</small><strong>${escapeHTML(i.latitude)}</strong></div><div class="resumo-item"><small>Longitude</small><strong>${escapeHTML(i.longitude)}</strong></div><div class="resumo-item"><small>Altitude</small><strong>${i.altitude??"-"} m</strong></div></div><div style="font-size:12px;color:#64748b;margin-bottom:12px">Atualizada em: ${formatarData(i.localizacao_atualizada_em)}</div><div class="acoes"><a class="btn btn-localizacao" href="${maps}" target="_blank" rel="noopener">Abrir no mapa</a><button class="btn btn-localizacao" onclick="capturarLocalizacao(${i.id})">Atualizar localização</button><button class="btn btn-remover-localizacao" onclick="removerLocalizacao(${i.id})">Remover</button></div></div>`;}
+function abrirResumoServico(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i)return alert("Serviço não encontrado.");resumoServicoId=Number(id);resumoTitulo.innerText=i.servico||"Resumo do Serviço";resumoConteudo.innerHTML=`<div class="resumo-grid"><div class="resumo-item"><small>Localidade</small><strong>${escapeHTML(nomeLocalidade(i))}</strong></div><div class="resumo-item"><small>Técnicos responsáveis</small><strong style="color:#1d4ed8">${escapeHTML(nomesTecnicos(i))}</strong></div><div class="resumo-item"><small>Data do serviço</small><div>${formatarData(i.data_servico,true)}</div></div><div class="resumo-item"><small>Status</small><span class="${classeStatus(i.status)}">${escapeHTML(i.status||"Pendente")}</span></div><div class="resumo-item"><small>Prioridade</small><span class="${classePrioridade(i.prioridade)}">${escapeHTML(i.prioridade||"Média")}</span></div><div class="resumo-item"><small>Enviado por</small><div>${escapeHTML(i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Registrado em</small><div>${formatarData(i.criado_em)}</div></div><div class="resumo-item"><small>Atualizado em</small><div>${formatarData(i.atualizado_em)}</div></div><div class="resumo-item"><small>Atualizado por</small><div>${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Nova viabilidade</small><div>${i.nova_viabilidade?'Sim':'Não'}</div></div><div class="resumo-item full"><small>Descrição</small><div>${escapeHTML(i.descricao||"-")}</div></div></div>${previaAnexo(i)}${blocoLocalizacao(i)}`;resumoAcoes.innerHTML=`<button class="btn btn-editar" onclick="fecharResumoServico();abrirModalEditar(${i.id})">Editar</button><button class="btn btn-imprimir" onclick="imprimirServico(${i.id})">Imprimir</button><button class="btn btn-excluir" onclick="fecharResumoServico();excluir(${i.id})">Excluir</button>`;modalResumoServico.style.display="flex";}
+function fecharResumoServico(){modalResumoServico.style.display="none";resumoServicoId=null;}
+function visualizarAnexo(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i?.anexo)return alert("Este serviço não possui anexo.");frameAnexo.src=i.anexo;modalAnexo.style.display="flex";}
 function fecharModalAnexo(){frameAnexo.src="";modalAnexo.style.display="none";}
-function periodoRelatorio(lista){const datas=lista.map(i=>new Date(i.data_servico||i.criado_em)).filter(d=>!isNaN(d)).sort((a,b)=>a-b);return datas.length?`${datas[0].toLocaleDateString("pt-BR")} a ${datas.at(-1).toLocaleDateString("pt-BR")}`:"Período não informado";}
-function gerarRelatorio(lista){
-    const empresa=empresaLogada.innerText||"Empresa",logo=logoEmpresa.src;
-    return `<div style="font-family:Arial;color:#0f172a;"><div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #2563eb;padding-bottom:14px;"><img src="${logo}" style="max-height:65px;max-width:200px;object-fit:contain"><div style="text-align:right"><h1 style="margin:0;font-size:23px;color:#1d4ed8;">RELATÓRIO DE SERVIÇOS</h1><div style="font-size:13px;color:#64748b;margin-top:5px;">${escapeHTML(empresa)}</div></div></div><div style="margin:18px 0;padding:12px 15px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:8px;font-weight:800;">SERVIÇOS SELECIONADOS: ${lista.length} &nbsp;|&nbsp; PERÍODO: ${periodoRelatorio(lista)}</div>${lista.map((i,n)=>`<section style="border:1px solid #dbe3ef;border-radius:10px;margin:0 0 14px;overflow:hidden;page-break-inside:avoid;"><div style="background:#f1f5f9;padding:11px 14px;font-weight:800;">${n+1}. ${escapeHTML(i.servico||"Serviço")}</div><div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;font-size:13px;"><div><strong>Localidade:</strong> ${escapeHTML(nomeLocalidade(i))}</div><div><strong>Data:</strong> ${formatarData(i.data_servico||i.criado_em)}</div><div><strong>Prioridade:</strong> ${escapeHTML(i.prioridade||"Média")}</div><div><strong>Status:</strong> ${escapeHTML(i.status||"Pendente")}</div><div><strong>Técnicos:</strong> ${escapeHTML(nomesTecnicos(i))}</div><div><strong>Nova viabilidade:</strong> ${i.nova_viabilidade?'Sim':'Não'}</div><div style="grid-column:1/-1"><strong>Descrição:</strong><div style="margin-top:5px;padding:10px;border:1px solid #e5e7eb;border-radius:7px;min-height:45px;">${escapeHTML(i.descricao||"-")}</div></div></div></section>`).join("")}<div style="margin-top:22px;font-size:11px;color:#64748b;text-align:center;">Relatório gerado pelo SGOS em ${new Date().toLocaleString("pt-BR")}</div></div>`;
-}
-function imprimirLista(lista){if(!lista.length){alert("Selecione pelo menos um serviço para imprimir.");return;}areaImpressao.innerHTML=gerarRelatorio(lista);areaImpressao.style.display="block";window.print();areaImpressao.style.display="none";}
+async function capturarLocalizacao(id){if(!navigator.geolocation)return alert("Este navegador não permite obter localização.");navigator.geolocation.getCurrentPosition(async pos=>{try{await fetchAuth(`/api/servicos-pendentes/${id}/localizacao`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({latitude:pos.coords.latitude,longitude:pos.coords.longitude,altitude:pos.coords.altitude})});await carregar();alert("Localização anexada com sucesso.");}catch(e){console.error(e);alert(e.message||"Erro ao salvar localização.");}},err=>alert(err.code===1?"Permissão de localização negada.":"Não foi possível obter a localização."),{enableHighAccuracy:true,timeout:15000,maximumAge:0});}
+async function removerLocalizacao(id){if(!confirm("Remover a localização deste serviço?"))return;await fetchAuth(`/api/servicos-pendentes/${id}/localizacao`,{method:"DELETE"});await carregar();}
+
+function periodoRelatorio(lista){const ds=lista.map(i=>parseDataLocal(i.data_servico||i.criado_em)).filter(Boolean).sort((a,b)=>a-b);return ds.length?`${ds[0].toLocaleDateString("pt-BR")} a ${ds.at(-1).toLocaleDateString("pt-BR")}`:"Período não informado";}
+function gerarRelatorio(lista){const empresa=empresaLogada.innerText||"Empresa",logo=logoEmpresa.src;return `<div style="font-family:Arial;color:#0f172a"><div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #2563eb;padding-bottom:14px"><img src="${logo}" style="max-height:65px;max-width:200px"><div style="text-align:right"><h1 style="margin:0;font-size:23px;color:#1d4ed8">RELATÓRIO DE SERVIÇOS</h1><div>${escapeHTML(empresa)}</div></div></div><div style="margin:18px 0;padding:12px;border:1px solid #bfdbfe;background:#eff6ff"><b>SERVIÇOS: ${lista.length}</b> | PERÍODO: ${periodoRelatorio(lista)}</div>${lista.map((i,n)=>`<section style="border:1px solid #dbe3ef;border-radius:10px;margin-bottom:14px;overflow:hidden;page-break-inside:avoid"><div style="background:#f1f5f9;padding:11px 14px;font-weight:800">${n+1}. ${escapeHTML(i.servico||"Serviço")}</div><div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;font-size:13px"><div><b>Localidade:</b> ${escapeHTML(nomeLocalidade(i))}</div><div><b>Data do serviço:</b> ${formatarData(i.data_servico,true)}</div><div><b>Status:</b> ${escapeHTML(i.status||"Pendente")}</div><div><b>Técnicos:</b> ${escapeHTML(nomesTecnicos(i))}</div><div><b>Registrado em:</b> ${formatarData(i.criado_em)}</div><div><b>Atualizado por:</b> ${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</div><div style="grid-column:1/-1"><b>Descrição:</b><div style="margin-top:5px;padding:10px;border:1px solid #e5e7eb">${escapeHTML(i.descricao||"-")}</div></div>${possuiLocalizacao(i)?`<div style="grid-column:1/-1"><b>Localização:</b> ${i.latitude}, ${i.longitude} | Altitude: ${i.altitude??"-"} m</div>`:""}</div></section>`).join("")}</div>`;}
+function imprimirLista(lista){if(!lista.length)return alert("Selecione pelo menos um serviço.");areaImpressao.innerHTML=gerarRelatorio(lista);areaImpressao.style.display="block";window.print();areaImpressao.style.display="none";}
 function imprimirServico(id){imprimirLista(servicosPendentes.filter(i=>Number(i.id)===Number(id)));}
 function imprimirSelecionados(){imprimirLista(servicosPendentes.filter(i=>servicosSelecionados.has(Number(i.id))));}
 async function excluir(id){if(!confirm("Excluir este serviço?"))return;await fetchAuth(`/api/servicos-pendentes/${id}`,{method:"DELETE"});servicosSelecionados.delete(Number(id));carregar();}
 function hojeISO(){return dataISO(new Date());}
 function abrirModalNovo(){modalTitulo.innerText="Novo Serviço";editId.value="";servico.value="";localidade.value="";dataServico.value=hojeISO();novaViabilidade.checked=false;descricao.value="";prioridade.value="Média";status.value="Pendente";anexo.value="";anexoAtual.innerText="";preencherTecnicos();modalServico.style.display="flex";servico.focus();}
-function idsTecnicosItem(item){if(Array.isArray(item.tecnicos_ids))return item.tecnicos_ids;if(Array.isArray(item.tecnicos))return item.tecnicos.map(t=>typeof t==='object'?(t.id??t.usuario_id):t);if(typeof item.tecnicos_ids==='string')return item.tecnicos_ids.split(',').map(x=>x.trim());return [];}
-function abrirModalEditar(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i)return alert("Serviço não encontrado.");modalTitulo.innerText="Editar Serviço";editId.value=i.id;servico.value=i.servico||"";localidade.value=nomeLocalidade(i)==="-"?"":nomeLocalidade(i);dataServico.value=dataISO(i.data_servico||i.criado_em);novaViabilidade.checked=Boolean(Number(i.nova_viabilidade)||i.nova_viabilidade===true);descricao.value=i.descricao||"";prioridade.value=i.prioridade||"Média";status.value=i.status||"Pendente";anexo.value="";anexoAtual.innerText=i.anexo?"Anexo atual será mantido se nenhum novo arquivo for enviado.":"Nenhum anexo atual.";preencherTecnicos(idsTecnicosItem(i));modalServico.style.display="flex";}
+function idsTecnicosItem(i){if(Array.isArray(i.tecnicos_ids))return i.tecnicos_ids;if(typeof i.tecnicos_ids==="string")return i.tecnicos_ids.split(",").map(x=>x.trim());return[];}
+function abrirModalEditar(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i)return alert("Serviço não encontrado.");modalTitulo.innerText="Editar Serviço";editId.value=i.id;servico.value=i.servico||"";localidade.value=nomeLocalidade(i)==="-"?"":nomeLocalidade(i);dataServico.value=dataISO(i.data_servico);novaViabilidade.checked=Boolean(Number(i.nova_viabilidade)||i.nova_viabilidade===true);descricao.value=i.descricao||"";prioridade.value=i.prioridade||"Média";status.value=String(i.status||"Pendente").toLowerCase()==="realizado"?"Realizado":"Pendente";anexo.value="";anexoAtual.innerText=i.anexo?"Anexo atual será mantido se nenhum novo arquivo for enviado.":"Nenhum anexo atual.";preencherTecnicos(idsTecnicosItem(i));modalServico.style.display="flex";}
 function fecharModalServico(){modalServico.style.display="none";}
-async function salvarServico(){
-    const id=editId.value,nome=servico.value.trim(),tecs=[...document.querySelectorAll(".tecnico-check:checked")];
-    if(!nome)return alert("Informe o serviço."); if(!localidade.value.trim())return alert("Selecione ou digite a localidade."); if(tecs.length>4)return alert("Selecione no máximo 4 técnicos.");
-    const fd=new FormData();fd.append("servico",nome);fd.append("localidade",localidade.value.trim());fd.append("data_servico",dataServico.value);fd.append("nova_viabilidade",novaViabilidade.checked?"1":"0");fd.append("descricao",descricao.value);fd.append("prioridade",prioridade.value);fd.append("status",status.value);
-    const ids=tecs.map(t=>t.value),nomes=tecs.map(t=>t.dataset.nome);fd.append("tecnicos_ids",JSON.stringify(ids));fd.append("tecnicos_nomes",JSON.stringify(nomes));fd.append("tecnicos",JSON.stringify(ids));
-    if(anexo.files[0])fd.append("anexo",anexo.files[0]);
-    await fetchAuth(id?`/api/servicos-pendentes/${id}`:"/api/servicos-pendentes",{method:id?"PUT":"POST",body:fd});fecharModalServico();carregar();
-}
+async function salvarServico(){const id=editId.value,nome=servico.value.trim(),tecs=[...document.querySelectorAll(".tecnico-check:checked")];if(!nome)return alert("Informe o serviço.");if(!localidade.value.trim())return alert("Informe a localidade.");const fd=new FormData();fd.append("servico",nome);fd.append("localidade",localidade.value.trim());fd.append("data_servico",dataServico.value);fd.append("nova_viabilidade",novaViabilidade.checked?"1":"0");fd.append("descricao",descricao.value);fd.append("prioridade",prioridade.value);fd.append("status",status.value);fd.append("tecnicos_ids",JSON.stringify(tecs.map(t=>t.value)));fd.append("tecnicos_nomes",JSON.stringify(tecs.map(t=>t.dataset.nome)));if(anexo.files[0])fd.append("anexo",anexo.files[0]);try{await fetchAuth(id?`/api/servicos-pendentes/${id}`:"/api/servicos-pendentes",{method:id?"PUT":"POST",body:fd});fecharModalServico();await carregar();}catch(e){console.error(e);alert(e.message||"Erro ao salvar serviço.");}}
+
 document.addEventListener("DOMContentLoaded",async()=>{const sb=document.querySelector(".sidebar"),lg=document.getElementById("logoSidebar");if(sb&&lg&&localStorage.getItem("sidebar_recolhida")==="1"){sb.classList.add("recolhida");lg.src=lg.dataset.logoFechada;}carregarUsuario();carregarUsuariosOnline();await carregarCadastros();carregar();});
 setInterval(carregarUsuariosOnline,300000);
 </script>
