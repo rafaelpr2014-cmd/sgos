@@ -39,7 +39,6 @@ function getUsuarioId(req) {
 function getUsuarioNome(req) {
   return String(
     req.usuario?.usuario ||
-    req.usuario?.nome ||
     req.user?.usuario ||
     req.session?.user?.usuario ||
     req.session?.usuario?.usuario ||
@@ -67,7 +66,7 @@ async function carregarUsuarioEstoque(req, res, next) {
     }
 
     const [rows] = await pool.query(
-      `SELECT id, usuario, nome, cargo, empresa_id, ativo
+      `SELECT id, usuario, cargo, empresa_id, ativo
          FROM usuarios
         WHERE id = ?
         LIMIT 1`,
