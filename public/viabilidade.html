@@ -140,44 +140,51 @@ button,input,textarea,select{font:inherit}
 #tecnicoResponsavel option:checked{background:#2563eb linear-gradient(0deg,#2563eb 0%,#2563eb 100%);color:#fff}
 
 
-/* ===== AJUSTE COMPACTO E ÍCONES EM SVG ===== */
-.content{padding:16px 18px 28px}
+/* ===== FORMULÁRIO ORGANIZADO E ÍCONES FORTES ===== */
+.content{padding:18px 18px 30px}
 .top-actions{gap:12px;margin-bottom:12px}
-.card-indicador{padding:14px 16px;min-height:82px;border-radius:12px;gap:12px}
-.icon-box{width:44px;height:44px;border-radius:14px}
-.icon-box svg{width:24px;height:24px}
-.card-info strong{font-size:25px;margin:3px 0}
-.card-info small,.card-info span{font-size:11px}
-.card{padding:14px 16px;margin-bottom:12px;border-radius:12px}
-.card-header{margin-bottom:11px}
-.titulo-card{font-size:17px}.sub-card{font-size:12px;margin-top:2px}
-.form-grid{gap:9px 12px}
-.campo{gap:4px}.campo label{font-size:12px}
-.campo input,.campo select,.filtros input,.filtros select{padding:8px 11px;border-radius:8px;font-size:13px;min-height:36px}
-.campo textarea{padding:9px 11px;border-radius:8px;font-size:13px;min-height:58px;max-height:90px}
-#observacao,#observacaoPosAprovacao{min-height:58px}
-#tecnicoResponsavel{min-height:88px;height:88px;padding:4px}
-#tecnicoResponsavel option{padding:5px 7px;margin:1px 0}
-.arquivo-box{padding:9px 11px;border-radius:9px}
-.arquivo-ajuda{font-size:10px;margin-top:4px}
-.preview-lista{margin-top:7px}
-.form-actions{margin-top:11px}.btn{padding:9px 13px;border-radius:9px;font-size:13px}
-.filtros{gap:9px}.filtro-periodo{padding:8px 10px}.filtro-periodo>label{margin-bottom:6px}
-th{padding:10px 8px;font-size:11px}td{padding:8px 8px;font-size:12px}
-.linha-viabilidade td{padding:8px 7px}
-.status-box{padding:4px 7px;border-radius:8px;font-size:10px;line-height:1.15;display:inline-flex;align-items:center;justify-content:center;text-align:center;white-space:normal;max-width:92px;min-width:0}
-.status-box.status-instalado{max-width:88px}
-.acoes{gap:7px;min-width:112px}
-.icone-acao,.btn-localizacao-icone{width:34px;height:34px;border:0;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:.18s ease;flex:0 0 34px}
-.icone-acao svg,.btn-localizacao-icone svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.icone-imprimir{background:#dcfce7;color:#047857}.icone-imprimir:hover{background:#bbf7d0;transform:translateY(-1px)}
-.icone-editar{background:#fef3c7;color:#d97706}.icone-editar:hover{background:#fde68a;transform:translateY(-1px)}
-.icone-excluir{background:#fee2e2;color:#dc2626}.icone-excluir:hover{background:#fecaca;transform:translateY(-1px)}
-.btn-localizacao-icone{background:#dbeafe;color:#1d4ed8;font-size:0}.btn-localizacao-icone:hover{background:#bfdbfe;transform:translateY(-1px)}
-.btn .btn-icon-svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.card-indicador{padding:15px 16px;min-height:86px;border-radius:12px;gap:13px}
+.icon-box{width:46px;height:46px;border-radius:14px}
+.icon-box svg{width:25px;height:25px}
+.card-info strong{font-size:27px;margin:3px 0}
+.card-info small{font-size:13px}.card-info span{font-size:12px}
+.card{padding:16px 18px;margin-bottom:13px;border-radius:12px}
+.card-header{margin-bottom:12px}
+.titulo-card{font-size:18px}.sub-card{font-size:13px;margin-top:3px}
+
+.form-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:11px 12px;align-items:start}
+.campo{gap:5px}.campo label{font-size:13px}
+.campo input,.campo select,.filtros input,.filtros select{padding:10px 12px;border-radius:9px;font-size:14px;min-height:40px}
+.campo textarea{padding:10px 12px;border-radius:9px;font-size:14px;min-height:70px;max-height:110px}
+.campo.linha1{grid-column:span 3}
+.campo.linha2{grid-column:span 4}
+.campo.linha-cheia{grid-column:1/-1}
+.campo.anexo-metade{grid-column:span 6}
+#observacao,#observacaoPosAprovacao{min-height:70px}
+#tecnicoResponsavel{min-height:96px;height:96px;padding:5px;font-size:14px}
+#tecnicoResponsavel option{padding:6px 8px;margin:1px 0}
+#campoStatusInstalacao{margin-top:8px;padding-top:8px;border-top:1px dashed var(--borda)}
+.arquivo-box{padding:10px 12px;border-radius:9px;min-height:74px}
+.arquivo-ajuda{font-size:11px;margin-top:5px}
+.preview-lista{margin-top:8px}
+.form-actions{margin-top:13px}.btn{padding:10px 15px;border-radius:9px;font-size:14px}
+.filtros{gap:10px}.filtro-periodo{padding:9px 11px}.filtro-periodo>label{margin-bottom:7px}
+th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
+.linha-viabilidade td{padding:9px 8px}
+.status-box{padding:5px 8px;border-radius:8px;font-size:11px;line-height:1.15;display:inline-flex;align-items:center;justify-content:center;text-align:center;white-space:normal;max-width:104px;min-width:0}
+.status-box.status-instalado{max-width:100px}
+.acoes{gap:7px;min-width:116px}
+.icone-acao,.btn-localizacao-icone{width:36px;height:36px;border:0;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:.18s ease;flex:0 0 36px;box-shadow:0 4px 10px rgba(15,23,42,.12)}
+.icone-acao svg,.btn-localizacao-icone svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.icone-imprimir{background:#0f8a78;color:#fff}.icone-imprimir:hover{background:#087567;transform:translateY(-1px)}
+.icone-editar{background:#f59e0b;color:#fff}.icone-editar:hover{background:#d97706;transform:translateY(-1px)}
+.icone-excluir{background:#ef4444;color:#fff}.icone-excluir:hover{background:#dc2626;transform:translateY(-1px)}
+.btn-localizacao-icone{background:#2563eb;color:#fff;font-size:0}.btn-localizacao-icone:hover{background:#1d4ed8;transform:translateY(-1px)}
+.btn .btn-icon-svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .resumo-fechar,.popup-fechar{font-size:0}
 .resumo-fechar svg,.popup-fechar svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.3;stroke-linecap:round}
-@media(max-width:1300px){.card-indicador{min-height:76px}.campo textarea{min-height:66px}}
+@media(max-width:1300px){.campo.linha1{grid-column:span 6}.campo.linha2{grid-column:span 4}.campo.anexo-metade{grid-column:span 6}}
+@media(max-width:900px){.campo.linha1,.campo.linha2,.campo.anexo-metade,.campo.linha-cheia{grid-column:1/-1}.form-grid{grid-template-columns:1fr}.campo textarea{min-height:78px}}
 
 </style>
 </head>
@@ -231,29 +238,32 @@ th{padding:10px 8px;font-size:11px}td{padding:8px 8px;font-size:12px}
     <div class="card">
         <div class="card-header"><div><div class="titulo-card">Nova Viabilidade</div><div class="sub-card">Cadastre os dados e anexe fotos ou vídeos da análise.</div></div></div>
         <div class="form-grid">
-            <div class="campo"><label for="nome">Nome <span class="obrigatorio">*</span></label><input id="nome" maxlength="160" placeholder="Nome do cliente"></div>
-            <div class="campo span-2"><label for="endereco">Endereço <span class="obrigatorio">*</span></label><input id="endereco" maxlength="255" placeholder="Rua, número, bairro, localidade e referência"></div>
+            <div class="campo linha1"><label for="nome">Nome <span class="obrigatorio">*</span></label><input id="nome" maxlength="160" placeholder="Nome do cliente"></div>
+            <div class="campo linha1"><label for="endereco">Endereço <span class="obrigatorio">*</span></label><input id="endereco" maxlength="255" placeholder="Rua, número, bairro, localidade e referência"></div>
+            <div class="campo linha1"><label for="telefone">Telefone principal</label><input id="telefone" maxlength="30" inputmode="tel" placeholder="(00) 00000-0000"></div>
+            <div class="campo linha1"><label for="telefone2">Telefone secundário</label><input id="telefone2" maxlength="30" inputmode="tel" placeholder="(00) 00000-0000"></div>
+
             <input type="hidden" id="viabilidadeId">
             <input type="hidden" id="latitude">
             <input type="hidden" id="longitude">
-            <div class="campo"><label for="telefone">Telefone principal</label><input id="telefone" maxlength="30" inputmode="tel" placeholder="(00) 00000-0000"></div>
-            <div class="campo"><label for="telefone2">Telefone secundário</label><input id="telefone2" maxlength="30" inputmode="tel" placeholder="(00) 00000-0000"></div>
-            <div class="campo"><label for="localidade">Localidade <span class="obrigatorio">*</span></label><select id="localidade" required><option value="">Selecione a localidade</option></select></div>
-            <div class="campo"><label for="tecnicoResponsavel">Técnicos responsáveis <span style="font-weight:400;color:#64748b">(até 4)</span></label><select id="tecnicoResponsavel" multiple size="4" aria-describedby="ajudaTecnicos"></select><div id="ajudaTecnicos" class="arquivo-ajuda">Selecione de 1 a 4 técnicos. Use Ctrl no Windows ou Command no Mac para selecionar mais de um.</div></div>
-            <div class="campo"><label for="status">Status</label><select id="status"><option value="PENDENTE">Pendente</option><option value="EM_ANALISE">Em análise</option><option value="APROVADA">Aprovada</option><option value="REPROVADA">Reprovada</option></select></div>
-            <div class="campo" id="campoStatusInstalacao" style="display:none"><label for="statusInstalacao">Status da instalação</label><select id="statusInstalacao"><option value="PENDENTE">Pendente</option><option value="INSTALADO">Instalação realizada</option></select><div class="arquivo-ajuda">Este campo é liberado automaticamente após a viabilidade ser aprovada.</div></div>
-            <div class="campo span-3"><label for="observacao">Observação inicial</label><textarea id="observacao" maxlength="2000" placeholder="Detalhes da viabilidade, estrutura disponível, distância, materiais necessários..."></textarea></div>
-            <div class="campo span-3"><label for="observacaoPosAprovacao">Observação do técnico pós-visita</label><textarea id="observacaoPosAprovacao" maxlength="3000" placeholder="Preenchimento após aprovação/visita: resultado da visita, materiais, condições encontradas e orientações."></textarea></div>
-            <div class="campo"><label for="cadastradoPor">Cadastrado por</label><input id="cadastradoPor" readonly placeholder="Usuário logado"></div>
-            <div class="campo"><label for="registradoEm">Registrado em</label><input id="registradoEm" readonly></div>
-            <div class="campo"><label>Localização do técnico</label><input id="localizacaoTecnico" readonly placeholder="Ainda não registrada"></div>
-            <div class="campo span-3">
+            <input type="hidden" id="cadastradoPor">
+            <input type="hidden" id="registradoEm">
+            <input type="hidden" id="localizacaoTecnico">
+
+            <div class="campo linha2"><label for="localidade">Localidade <span class="obrigatorio">*</span></label><select id="localidade" required><option value="">Selecione a localidade</option></select></div>
+            <div class="campo linha2"><label for="tecnicoResponsavel">Técnicos responsáveis <span style="font-weight:400;color:#64748b">(até 4)</span></label><select id="tecnicoResponsavel" multiple size="4" aria-describedby="ajudaTecnicos"></select><div id="ajudaTecnicos" class="arquivo-ajuda">Selecione de 1 a 4 técnicos. Use Ctrl no Windows ou Command no Mac para selecionar mais de um.</div></div>
+            <div class="campo linha2"><label for="status">Status</label><select id="status"><option value="PENDENTE">Pendente</option><option value="EM_ANALISE">Em análise</option><option value="APROVADA">Aprovada</option><option value="REPROVADA">Reprovada</option></select><div id="campoStatusInstalacao" style="display:none"><label for="statusInstalacao">Status da instalação</label><select id="statusInstalacao"><option value="PENDENTE">Pendente</option><option value="INSTALADO">Instalação realizada</option></select><div class="arquivo-ajuda">Liberado automaticamente após aprovação.</div></div></div>
+
+            <div class="campo linha-cheia"><label for="observacao">Observação inicial</label><textarea id="observacao" maxlength="2000" placeholder="Detalhes da viabilidade, estrutura disponível, distância, materiais necessários..."></textarea></div>
+            <div class="campo linha-cheia"><label for="observacaoPosAprovacao">Observação do técnico pós-visita</label><textarea id="observacaoPosAprovacao" maxlength="3000" placeholder="Preenchimento após aprovação/visita: resultado da visita, materiais, condições encontradas e orientações."></textarea></div>
+
+            <div class="campo anexo-metade">
                 <label for="arquivos">Anexos da análise inicial</label>
                 <div class="arquivo-box"><input type="file" id="arquivos" accept="image/*,video/*" multiple><div class="arquivo-ajuda">Fotos e vídeos da análise inicial. Limite de 30 MB por arquivo.</div><div id="anexosExistentes" class="preview-lista"></div><div id="previewArquivos" class="preview-lista"></div></div>
             </div>
-            <div class="campo span-3">
+            <div class="campo anexo-metade">
                 <label for="arquivosVisita">Anexo de comprovação de visita</label>
-                <div class="arquivo-box"><input type="file" id="arquivosVisita" accept="image/*,video/*" multiple><div class="arquivo-ajuda">Preenchido pelo técnico após a visita. Anexe fotos ou vídeos que comprovem o atendimento. Limite de 30 MB por arquivo.</div><div id="anexosVisitaExistentes" class="preview-lista"></div><div id="previewArquivosVisita" class="preview-lista"></div></div>
+                <div class="arquivo-box"><input type="file" id="arquivosVisita" accept="image/*,video/*" multiple><div class="arquivo-ajuda">Fotos ou vídeos de comprovação. Limite de 30 MB por arquivo.</div><div id="anexosVisitaExistentes" class="preview-lista"></div><div id="previewArquivosVisita" class="preview-lista"></div></div>
             </div>
         </div>
         <div class="form-actions"><button class="btn btn-salvar" id="btnSalvar" onclick="salvarViabilidade()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span id="textoBtnSalvar">Salvar Viabilidade</span></button><button class="btn btn-limpar" type="button" onclick="limparFormulario()" id="btnCancelar">Limpar</button></div>
@@ -328,7 +338,7 @@ function classeStatus(status){const s=String(status||"PENDENTE").toUpperCase();r
 function nomeStatus(status){const s=String(status||"PENDENTE").toUpperCase();return s==="EM_ANALISE"?"EM ANÁLISE":s}
 function statusInstalacaoRegistro(o){const viabilidade=String(o?.status||"PENDENTE").toUpperCase();if(viabilidade!=="APROVADA")return "";return String(o?.status_instalacao||o?.instalacao_status||"PENDENTE").toUpperCase()}
 function classeStatusInstalacao(status){return String(status||"PENDENTE").toUpperCase()==="INSTALADO"?"status-instalado":"status-instalacao-pendente"}
-function atualizarCampoInstalacao(){const aprovada=document.getElementById("status").value==="APROVADA";document.getElementById("campoStatusInstalacao").style.display=aprovada?"flex":"none";if(!aprovada)document.getElementById("statusInstalacao").value="PENDENTE"}
+function atualizarCampoInstalacao(){const aprovada=document.getElementById("status").value==="APROVADA";document.getElementById("campoStatusInstalacao").style.display=aprovada?"block":"none";if(!aprovada)document.getElementById("statusInstalacao").value="PENDENTE"}
 function nomeLocalidade(valor){const bruto=String(valor??"").trim();if(!bruto)return "-";const encontrada=localidades.find(x=>String(x.id)===bruto||String(x.nome).trim().toLowerCase()===bruto.toLowerCase());return encontrada?.nome||bruto}
 function localidadeDoRegistro(o){return nomeLocalidade(o?.localidade_nome||o?.localidade)}
 function anexosDoRegistro(o){
