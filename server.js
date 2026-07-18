@@ -12,6 +12,8 @@ const viabilidadeRoutes = require("./routes/viabilidade.routes");
 const svasRoutes = require("./routes/svas.routes");
 const lembretesRoutes = require("./routes/lembretes.routes");
 const estoqueRoutes = require('./routes/estoque.routes');
+const escritoriosRoutesFactory = require('./routes/escritorios.routes');
+const financeiroRoutesFactory = require('./routes/financeiro.routes');
 
 
 const pool = require("./database");
@@ -618,6 +620,15 @@ app.use("/api/tipos-servico", tiposRoutes);
 app.use("/api/usuarios", usuariosRoutes);
 app.use("/api", loginRoutes);
 app.use("/api", relatoriosRoutes);
+
+const escritoriosRoutes =
+    escritoriosRoutesFactory(pool, verificarAutenticacao);
+
+const financeiroRoutes =
+    financeiroRoutesFactory(pool, verificarAutenticacao);
+
+app.use("/api/escritorios", escritoriosRoutes);
+app.use("/api/financeiro", financeiroRoutes);
 
 const logsAcoesRoutes =
     require("./routes/logs_acoes.routes")(pool, verificarAutenticacao);
