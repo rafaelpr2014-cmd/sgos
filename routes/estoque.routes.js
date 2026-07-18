@@ -5,7 +5,7 @@ const router = express.Router();
  * Ajuste somente esta importação caso o pool do SGOS esteja em outro caminho.
  * O módulo espera um pool mysql2/promise com pool.query() e pool.getConnection().
  */
-const pool = require('../config/db');
+const pool = require('../database');
 
 function getEmpresaId(req) {
   return Number(req.user?.empresa_id || req.session?.user?.empresa_id || req.session?.usuario?.empresa_id || 0);
