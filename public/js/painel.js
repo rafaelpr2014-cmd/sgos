@@ -1332,7 +1332,7 @@ function detalheAtualResumo(os){
 
     return {
         titulo: "Descrição",
-        texto: os?.descricao || ""
+        texto: os?.descricao ?? os?.descricao_inicial ?? ""
     };
 }
 
@@ -1653,9 +1653,16 @@ window.abrirResumoOS = async function(id){
     // Busca os dados completos da OS no momento em que o resumo é aberto.
     // Isso evita que a listagem resumida ou um cache antigo esconda `descricao`.
     try {
-        const detalhe = await apiFetch(`/api/ordens_servico/${id}`);
+        let detalhe = await apiFetch(`/api/ordens_servico/${id}`);
+
+        // Compatibilidade com APIs que encapsulam o registro.
+        detalhe = detalhe?.os || detalhe?.ordem || detalhe?.data || detalhe;
+
         if (detalhe && typeof detalhe === "object") {
-            const descricaoCompleta = detalhe.descricao ?? detalhe.descrição ?? os.descricao ?? "";
+            const descricaoCompleta = String(
+                detalhe.descricao ?? detalhe.descricao_inicial ?? detalhe["descrição"] ?? os.descricao ?? ""
+            ).trim();
+
             os = {
                 ...os,
                 ...detalhe,

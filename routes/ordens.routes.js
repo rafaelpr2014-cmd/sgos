@@ -492,6 +492,7 @@ router.get("/", verificarAutenticacao, async (req, res) => {
         let query = `
             SELECT 
                 os.*,
+                os.descricao AS descricao,
                 os.nome AS cliente_nome,
 
                 u.usuario AS criado_por_nome,
@@ -1569,6 +1570,7 @@ router.get("/:id", verificarAutenticacao, async (req, res) => {
 
             SELECT 
                 os.*,
+                os.descricao AS descricao,
                 DATE_FORMAT(os.agendamento, '%Y-%m-%d %H:%i:%s') AS agendamento,
                 DATE_FORMAT(os.agendamento_envio, '%Y-%m-%d %H:%i:%s') AS agendamento_envio,
                 DATE_FORMAT(os.criado_em, '%Y-%m-%d %H:%i:%s') AS criado_em,

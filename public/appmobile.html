@@ -3273,7 +3273,7 @@ function detalheStatusOS(os){
 
     return {
         rotulo:"Descrição",
-        texto: os.descricao || ""
+        texto: os.descricao ?? os.descricao_inicial ?? ""
     };
 }
 function obterCoordenadasOS(os){
@@ -3489,9 +3489,7 @@ function resumoModalHTML(os){
             <b>Criado em:</b> ${valorSeguro(format(os.criado_em))}<br>
             ${(() => {
                 const detalhe = detalheStatusOS(os);
-                return detalhe.texto
-                    ? `<b>${detalhe.rotulo}:</b> ${valorSeguro(detalhe.texto)}<br>`
-                    : "";
+                return `<div class="resumo-descricao-status" style="margin-top:10px;padding:12px;border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc;white-space:pre-wrap;overflow-wrap:anywhere;"><b>${valorSeguro(detalhe.rotulo)}:</b><br>${valorSeguro(detalhe.texto, "-")}</div>`;
             })()}
             ${svaHTML(os)}
         </div>
@@ -3653,8 +3651,11 @@ abrirModal = async function(chave){
             });
 
             if(respostaDetalhe.ok){
-                const detalhe = await respostaDetalhe.json();
-                const descricaoCompleta = detalhe?.descricao ?? detalhe?.descrição ?? os.descricao ?? "";
+                const brutoDetalhe = await respostaDetalhe.json();
+                const detalhe = brutoDetalhe?.os || brutoDetalhe?.ordem || brutoDetalhe?.data || brutoDetalhe;
+                const descricaoCompleta = String(
+                    detalhe?.descricao ?? detalhe?.descricao_inicial ?? detalhe?.["descrição"] ?? os.descricao ?? ""
+                ).trim();
                 os = normalizarOSNormal({
                     ...os,
                     ...detalhe,
