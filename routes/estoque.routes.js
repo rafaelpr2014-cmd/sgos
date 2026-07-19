@@ -44,6 +44,13 @@ function somenteAdmin(req, res, next) {
 }
 router.use(carregarUsuarioEstoque);
 
+async function garantirValorUnitario() {
+  const [cols] = await pool.query(`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='estoque_produtos' AND COLUMN_NAME='valor_unitario'`);
+  if (!cols.length) await pool.query(`ALTER TABLE estoque_produtos ADD COLUMN valor_unitario DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER unidade_medida`);
+}
+router.use(async (req,res,next)=>{ try{ await garantirValorUnitario(); next(); }catch(e){ console.error('Erro estrutura valor unitário:',e); res.status(500).json({erro:'Erro ao preparar valor unitário do estoque.'}); } });
+
+
 async function registrarLog(conn, req, acao, produto, detalhes = {}) {
   await conn.query(
     `INSERT INTO estoque_logs
@@ -109,20 +116,21 @@ router.post('/produtos', somenteAdmin, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const empresaId=getEmpresaId(req), usuarioId=getUsuarioId(req);
-    const { nome,codigo,categoria,unidade_medida='unidade',observacao='' }=req.body||{}; const escritorioId=Number(req.body?.escritorio_id||0);
+    const { nome,codigo,categoria,unidade_medida='unidade',observacao='' }=req.body||{}; const valorUnitario=Number(req.body?.valor_unitario||0); const escritorioId=Number(req.body?.escritorio_id||0);
     if (!String(nome||'').trim()) return res.status(400).json({ erro:'Informe o nome do produto.' });
     if (!escritorioId) return res.status(400).json({ erro:'Informe o escritório.' });
+    if(!Number.isFinite(valorUnitario)||valorUnitario<0) return res.status(400).json({erro:'Informe um valor unitário válido.'});
     const [[escritorio]]=await conn.query('SELECT id,nome FROM escritorios WHERE id=? AND empresa_id=? AND ativo=1',[escritorioId,empresaId]);
     if(!escritorio) return res.status(400).json({erro:'Escritório inválido.'});
     const quantidade=inteiroNaoNegativo(req.body?.quantidade_inicial,0), minimo=inteiroNaoNegativo(req.body?.estoque_minimo,5);
     if (Number(req.body?.quantidade_inicial) !== quantidade || Number(req.body?.estoque_minimo) !== minimo) return res.status(400).json({ erro:'Quantidade e estoque mínimo devem ser números inteiros.' });
     await conn.beginTransaction();
     const [result]=await conn.query(
-      `INSERT INTO estoque_produtos (empresa_id,escritorio_id,nome,codigo,categoria,unidade_medida,localidade,quantidade,estoque_minimo,observacao,cadastrado_por,ativo,criado_em,atualizado_em)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,1,NOW(),NOW())`,
-      [empresaId,escritorioId,String(nome).trim(),String(codigo||'').trim()||null,String(categoria||'').trim()||null,String(unidade_medida).trim(),escritorio.nome,quantidade,minimo,String(observacao||'').trim()||null,usuarioId]);
+      `INSERT INTO estoque_produtos (empresa_id,escritorio_id,nome,codigo,categoria,unidade_medida,valor_unitario,localidade,quantidade,estoque_minimo,observacao,cadastrado_por,ativo,criado_em,atualizado_em)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,NOW(),NOW())`,
+      [empresaId,escritorioId,String(nome).trim(),String(codigo||'').trim()||null,String(categoria||'').trim()||null,String(unidade_medida).trim(),valorUnitario,escritorio.nome,quantidade,minimo,String(observacao||'').trim()||null,usuarioId]);
     const produto={id:result.insertId,nome:String(nome).trim(),quantidade,estoque_minimo:minimo};
-    await registrarLog(conn,req,'produto_adicionado',produto,{depois:{nome,codigo,categoria,unidade_medida,escritorio_id:escritorioId,escritorio_nome:escritorio.nome,quantidade,estoque_minimo:minimo,observacao},descricao:'Produto adicionado ao estoque.'});
+    await registrarLog(conn,req,'produto_adicionado',produto,{depois:{nome,codigo,categoria,unidade_medida,escritorio_id:escritorioId,escritorio_nome:escritorio.nome,quantidade,estoque_minimo:minimo,valor_unitario:valorUnitario,observacao},descricao:'Produto adicionado ao estoque.'});
     if (quantidade>0) await conn.query(
       `INSERT INTO estoque_movimentacoes (empresa_id,escritorio_id,produto_id,tipo,quantidade,quantidade_anterior,quantidade_atual,motivo,usuario_id,usuario_nome,origem,criado_em)
        VALUES (?,?,?,'entrada',?,0,?,'Estoque inicial',?,?,'manual',NOW())`, [empresaId,escritorioId,result.insertId,quantidade,quantidade,usuarioId,getUsuarioNome(req)]);
@@ -134,8 +142,9 @@ router.post('/produtos', somenteAdmin, async (req, res) => {
 router.put('/produtos/:id', somenteAdmin, async (req,res)=>{
   const conn=await pool.getConnection();
   try{
-    const empresaId=getEmpresaId(req), id=Number(req.params.id), {nome,codigo,categoria,unidade_medida,observacao}=req.body||{}, escritorioId=Number(req.body?.escritorio_id||0);
+    const empresaId=getEmpresaId(req), id=Number(req.params.id), {nome,codigo,categoria,unidade_medida,observacao}=req.body||{}, escritorioId=Number(req.body?.escritorio_id||0), valorUnitario=Number(req.body?.valor_unitario||0);
     if(!String(nome||'').trim()||!escritorioId) return res.status(400).json({erro:'Informe nome e escritório.'});
+    if(!Number.isFinite(valorUnitario)||valorUnitario<0) return res.status(400).json({erro:'Informe um valor unitário válido.'});
     const minimo=inteiroNaoNegativo(req.body?.estoque_minimo,0);
     if(Number(req.body?.estoque_minimo)!==minimo) return res.status(400).json({erro:'O estoque mínimo deve ser um número inteiro.'});
     await conn.beginTransaction();
@@ -143,8 +152,8 @@ router.put('/produtos/:id', somenteAdmin, async (req,res)=>{
     if(!rows.length){await conn.rollback();return res.status(404).json({erro:'Produto não encontrado.'});}
     const antes=rows[0];
     const [[escritorio]]=await conn.query('SELECT id,nome FROM escritorios WHERE id=? AND empresa_id=? AND ativo=1',[escritorioId,empresaId]); if(!escritorio){await conn.rollback();return res.status(400).json({erro:'Escritório inválido.'});}
-    const depois={nome:String(nome).trim(),codigo:String(codigo||'').trim()||null,categoria:String(categoria||'').trim()||null,unidade_medida:String(unidade_medida||'unidade').trim(),escritorio_id:escritorioId,escritorio_nome:escritorio.nome,localidade:escritorio.nome,estoque_minimo:minimo,observacao:String(observacao||'').trim()||null};
-    await conn.query(`UPDATE estoque_produtos SET nome=?,codigo=?,categoria=?,unidade_medida=?,escritorio_id=?,localidade=?,estoque_minimo=?,observacao=?,atualizado_em=NOW() WHERE id=? AND empresa_id=?`,[depois.nome,depois.codigo,depois.categoria,depois.unidade_medida,depois.escritorio_id,depois.localidade,depois.estoque_minimo,depois.observacao,id,empresaId]);
+    const depois={nome:String(nome).trim(),codigo:String(codigo||'').trim()||null,categoria:String(categoria||'').trim()||null,unidade_medida:String(unidade_medida||'unidade').trim(),valor_unitario:valorUnitario,escritorio_id:escritorioId,escritorio_nome:escritorio.nome,localidade:escritorio.nome,estoque_minimo:minimo,observacao:String(observacao||'').trim()||null};
+    await conn.query(`UPDATE estoque_produtos SET nome=?,codigo=?,categoria=?,unidade_medida=?,valor_unitario=?,escritorio_id=?,localidade=?,estoque_minimo=?,observacao=?,atualizado_em=NOW() WHERE id=? AND empresa_id=?`,[depois.nome,depois.codigo,depois.categoria,depois.unidade_medida,depois.valor_unitario,depois.escritorio_id,depois.localidade,depois.estoque_minimo,depois.observacao,id,empresaId]);
     await registrarLog(conn,req,'produto_editado',{id,nome:depois.nome},{antes,depois,descricao:'Cadastro do produto alterado.'});
     await conn.commit(); res.json({sucesso:true});
   }catch(error){await conn.rollback();console.error('Erro editar produto:',error);res.status(500).json({erro:'Erro ao editar produto.'});}finally{conn.release();}

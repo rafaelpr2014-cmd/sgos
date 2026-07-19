@@ -114,32 +114,66 @@ module.exports = (db, verificarAutenticacao, io) => {
 // 📦 INTEGRAÇÃO ESTOQUE x OS
 // ===============================
 async function garantirEstruturaMateriaisOS(){
-    await db.query(`CREATE TABLE IF NOT EXISTS os_materiais (id INT NOT NULL AUTO_INCREMENT, empresa_id INT NOT NULL, os_id INT NOT NULL, produto_id INT NOT NULL, quantidade INT NOT NULL DEFAULT 1, criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY(id), UNIQUE KEY uk_os_produto (empresa_id, os_id, produto_id), KEY idx_os_materiais_os (empresa_id, os_id), KEY idx_os_materiais_produto (empresa_id, produto_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-    const [cols] = await db.query(`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='ordens_servico' AND COLUMN_NAME IN ('origem_equipamento','modalidade_equipamento')`);
-    const nomes = new Set(cols.map(c=>c.COLUMN_NAME));
-    if(!nomes.has('origem_equipamento')) await db.query(`ALTER TABLE ordens_servico ADD COLUMN origem_equipamento ENUM('proprio','empresa') NOT NULL DEFAULT 'proprio' AFTER descricao`);
-    if(!nomes.has('modalidade_equipamento')) await db.query(`ALTER TABLE ordens_servico ADD COLUMN modalidade_equipamento ENUM('vendido','comodato') NULL AFTER origem_equipamento`);
+    await db.query(`CREATE TABLE IF NOT EXISTS os_materiais (
+      id INT NOT NULL AUTO_INCREMENT, empresa_id INT NOT NULL, os_id INT NOT NULL, produto_id INT NOT NULL,
+      quantidade INT NOT NULL DEFAULT 1, valor_unitario DECIMAL(12,2) NOT NULL DEFAULT 0,
+      desconto DECIMAL(12,2) NOT NULL DEFAULT 0, valor_total DECIMAL(12,2) NOT NULL DEFAULT 0,
+      criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY(id), UNIQUE KEY uk_os_produto (empresa_id,os_id,produto_id),
+      KEY idx_os_materiais_os (empresa_id,os_id), KEY idx_os_materiais_produto (empresa_id,produto_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+    const alterar=async(tabela,coluna,sql)=>{const [r]=await db.query(`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?`,[tabela,coluna]);if(!r.length)await db.query(sql);};
+    await alterar('estoque_produtos','valor_unitario',`ALTER TABLE estoque_produtos ADD COLUMN valor_unitario DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER unidade_medida`);
+    await alterar('ordens_servico','origem_equipamento',`ALTER TABLE ordens_servico ADD COLUMN origem_equipamento ENUM('proprio','empresa') NOT NULL DEFAULT 'proprio' AFTER descricao`);
+    await alterar('ordens_servico','modalidade_equipamento',`ALTER TABLE ordens_servico ADD COLUMN modalidade_equipamento ENUM('vendido','comodato') NULL AFTER origem_equipamento`);
+    await alterar('ordens_servico','forma_pagamento_equipamento',`ALTER TABLE ordens_servico ADD COLUMN forma_pagamento_equipamento VARCHAR(30) NULL AFTER modalidade_equipamento`);
+    await alterar('ordens_servico','subtotal_equipamentos',`ALTER TABLE ordens_servico ADD COLUMN subtotal_equipamentos DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER forma_pagamento_equipamento`);
+    await alterar('ordens_servico','desconto_equipamentos',`ALTER TABLE ordens_servico ADD COLUMN desconto_equipamentos DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER subtotal_equipamentos`);
+    await alterar('ordens_servico','total_equipamentos',`ALTER TABLE ordens_servico ADD COLUMN total_equipamentos DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER desconto_equipamentos`);
+    await alterar('os_materiais','valor_unitario',`ALTER TABLE os_materiais ADD COLUMN valor_unitario DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER quantidade`);
+    await alterar('os_materiais','desconto',`ALTER TABLE os_materiais ADD COLUMN desconto DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER valor_unitario`);
+    await alterar('os_materiais','valor_total',`ALTER TABLE os_materiais ADD COLUMN valor_total DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER desconto`);
+    await alterar('financeiro_movimentacoes','os_id',`ALTER TABLE financeiro_movimentacoes ADD COLUMN os_id INT NULL AFTER estoque_movimentacao_id`);
+    await alterar('financeiro_movimentacoes','origem',`ALTER TABLE financeiro_movimentacoes ADD COLUMN origem VARCHAR(30) NULL AFTER os_id`);
 }
 function normalizarMateriaisOS(materiais){
-    const lista = Array.isArray(materiais) ? materiais : [];
-    const mapa = new Map();
-    for(const item of lista){ const id=Number(item?.produto_id); const qtd=Math.floor(Number(item?.quantidade)); if(id>0 && qtd>0) mapa.set(id,(mapa.get(id)||0)+qtd); }
-    return [...mapa.entries()].map(([produto_id,quantidade])=>({produto_id,quantidade}));
+    const lista=Array.isArray(materiais)?materiais:[];const mapa=new Map();
+    for(const item of lista){const id=Number(item?.produto_id),qtd=Math.floor(Number(item?.quantidade)),desc=Math.max(0,Number(item?.desconto)||0);if(id>0&&qtd>0)mapa.set(id,{produto_id:id,quantidade:qtd,desconto:desc});}
+    return [...mapa.values()];
 }
-async function salvarMateriaisOS(osId, empresaId, origem, modalidade, materiais){
-    await garantirEstruturaMateriaisOS();
-    const origemFinal = origem === 'empresa' ? 'empresa' : 'proprio';
-    const modalidadeFinal = origemFinal === 'empresa' && ['vendido','comodato'].includes(modalidade) ? modalidade : null;
-    await db.query(`UPDATE ordens_servico SET origem_equipamento=?, modalidade_equipamento=? WHERE id=? AND empresa_id=?`,[origemFinal,modalidadeFinal,osId,empresaId]);
-    await db.query(`DELETE FROM os_materiais WHERE os_id=? AND empresa_id=?`,[osId,empresaId]);
-    if(origemFinal !== 'empresa') return;
-    for(const item of normalizarMateriaisOS(materiais)){
-        const [produto] = await db.query(`SELECT id FROM estoque_produtos WHERE id=? AND empresa_id=? AND LOWER(TRIM(categoria))=LOWER('Material de Instalação') LIMIT 1`,[item.produto_id,empresaId]);
-        if(!produto.length) throw new Error(`Produto ${item.produto_id} não pertence à categoria Material de Instalação.`);
-        await db.query(`INSERT INTO os_materiais (empresa_id,os_id,produto_id,quantidade) VALUES (?,?,?,?)`,[empresaId,osId,item.produto_id,item.quantidade]);
+async function sincronizarFinanceiroVendaOS(osId,empresaId,usuarioId,usuarioNome,forma,totalPorEscritorio){
+    await db.query(`UPDATE financeiro_movimentacoes SET ativo=0,excluido_em=NOW(),motivo_exclusao='Venda da OS atualizada ou removida' WHERE empresa_id=? AND os_id=? AND origem='venda_os' AND ativo=1`,[empresaId,osId]);
+    for(const [escritorioId,valor] of totalPorEscritorio.entries()){
+        if(valor<=0)continue;
+        await db.query(`INSERT INTO financeiro_movimentacoes
+          (empresa_id,escritorio_id,tipo,valor,forma_pagamento,descricao,observacao,criado_por,criado_por_nome,criado_em,ativo,os_id,origem)
+          VALUES (?,?, 'entrada', ?, ?, ?, ?, ?, ?, NOW(),1,?,'venda_os')`,
+          [empresaId,escritorioId,valor,forma,`Venda de equipamentos da OS #${osId}`,`Lançamento automático vinculado à OS #${osId}.`,usuarioId,usuarioNome,osId]);
     }
 }
-
+async function salvarMateriaisOS(osId,empresaId,origem,modalidade,materiais,formaPagamento,usuario){
+    await garantirEstruturaMateriaisOS();
+    const origemFinal=origem==='empresa'?'empresa':'proprio';
+    const modalidadeFinal=origemFinal==='empresa'&&['vendido','comodato'].includes(modalidade)?modalidade:null;
+    const vendido=origemFinal==='empresa'&&modalidadeFinal==='vendido';
+    const formas=['dinheiro','pix','cartao_credito','cartao_debito','cheque'];
+    if(vendido&&!formas.includes(formaPagamento))throw new Error('Selecione um tipo de pagamento válido para a venda.');
+    await db.query(`DELETE FROM os_materiais WHERE os_id=? AND empresa_id=?`,[osId,empresaId]);
+    let subtotal=0,descontoTotal=0,total=0;const porEscritorio=new Map();
+    if(origemFinal==='empresa'){
+      for(const item of normalizarMateriaisOS(materiais)){
+        const [rows]=await db.query(`SELECT id,nome,escritorio_id,valor_unitario FROM estoque_produtos WHERE id=? AND empresa_id=? AND ativo=1 AND LOWER(TRIM(categoria))=LOWER('Material de Instalação') LIMIT 1`,[item.produto_id,empresaId]);
+        if(!rows.length)throw new Error(`Produto ${item.produto_id} não pertence à categoria Material de Instalação.`);
+        const produto=rows[0],unit=vendido?Number(produto.valor_unitario||0):0,bruto=unit*item.quantidade,desc=vendido?Math.min(item.desconto,bruto):0,liquido=Math.max(0,bruto-desc);
+        subtotal+=bruto;descontoTotal+=desc;total+=liquido;
+        await db.query(`INSERT INTO os_materiais (empresa_id,os_id,produto_id,quantidade,valor_unitario,desconto,valor_total) VALUES (?,?,?,?,?,?,?)`,[empresaId,osId,item.produto_id,item.quantidade,unit,desc,liquido]);
+        if(vendido)porEscritorio.set(Number(produto.escritorio_id),(porEscritorio.get(Number(produto.escritorio_id))||0)+liquido);
+      }
+    }
+    await db.query(`UPDATE ordens_servico SET origem_equipamento=?,modalidade_equipamento=?,forma_pagamento_equipamento=?,subtotal_equipamentos=?,desconto_equipamentos=?,total_equipamentos=? WHERE id=? AND empresa_id=?`,
+      [origemFinal,modalidadeFinal,vendido?formaPagamento:null,subtotal,descontoTotal,total,osId,empresaId]);
+    await sincronizarFinanceiroVendaOS(osId,empresaId,Number(usuario?.id||0),String(usuario?.usuario||usuario?.nome||'Sistema'),vendido?formaPagamento:null,vendido?porEscritorio:new Map());
+}
 
 
 function normalizarTecnicosObrigatorio(tecnicoRaw){
@@ -543,7 +577,7 @@ router.get("/", verificarAutenticacao, async (req, res) => {
                     )
                 ) AS tecnicos_nomes,
 
-                (SELECT JSON_ARRAYAGG(JSON_OBJECT('produto_id',om.produto_id,'nome',ep.nome,'quantidade',om.quantidade)) FROM os_materiais om LEFT JOIN estoque_produtos ep ON ep.id=om.produto_id AND ep.empresa_id=om.empresa_id WHERE om.os_id=os.id AND om.empresa_id=os.empresa_id) AS materiais_os
+                (SELECT JSON_ARRAYAGG(JSON_OBJECT('produto_id',om.produto_id,'nome',ep.nome,'quantidade',om.quantidade,'valor_unitario',om.valor_unitario,'desconto',om.desconto,'valor_total',om.valor_total)) FROM os_materiais om LEFT JOIN estoque_produtos ep ON ep.id=om.produto_id AND ep.empresa_id=om.empresa_id WHERE om.os_id=os.id AND om.empresa_id=os.empresa_id) AS materiais_os
 
             FROM ordens_servico os
 
@@ -600,7 +634,7 @@ router.get("/", verificarAutenticacao, async (req, res) => {
     // ===============================
     router.get("/materiais-instalacao", verificarAutenticacao, async (req,res)=>{
         try{
-            const [rows]=await db.query(`SELECT id, nome, categoria, quantidade FROM estoque_produtos WHERE empresa_id=? AND LOWER(TRIM(categoria))=LOWER('Material de Instalação') ORDER BY nome`,[req.usuario.empresa_id]);
+            const [rows]=await db.query(`SELECT id, nome, categoria, quantidade, valor_unitario, escritorio_id FROM estoque_produtos WHERE empresa_id=? AND LOWER(TRIM(categoria))=LOWER('Material de Instalação') ORDER BY nome`,[req.usuario.empresa_id]);
             res.json(rows);
         }catch(err){ console.error('ERRO LISTAR MATERIAIS:',err); res.status(500).json({erro:err.message}); }
     });
@@ -680,7 +714,7 @@ router.post(
                 req.usuario.empresa_id
             ]);
 
-            await salvarMateriaisOS(resultado.id, req.usuario.empresa_id, dados.origem_equipamento, dados.modalidade_equipamento, dados.materiais);
+            await salvarMateriaisOS(resultado.id, req.usuario.empresa_id, dados.origem_equipamento, dados.modalidade_equipamento, dados.materiais, dados.forma_pagamento_equipamento, req.usuario);
 
             // ===============================
             // BUSCAR NOMES
@@ -1662,7 +1696,7 @@ router.get("/:id", verificarAutenticacao, async (req, res) => {
                     )
                 ) AS tecnicos_nomes,
 
-                (SELECT JSON_ARRAYAGG(JSON_OBJECT('produto_id',om.produto_id,'nome',ep.nome,'quantidade',om.quantidade)) FROM os_materiais om LEFT JOIN estoque_produtos ep ON ep.id=om.produto_id AND ep.empresa_id=om.empresa_id WHERE om.os_id=os.id AND om.empresa_id=os.empresa_id) AS materiais_os
+                (SELECT JSON_ARRAYAGG(JSON_OBJECT('produto_id',om.produto_id,'nome',ep.nome,'quantidade',om.quantidade,'valor_unitario',om.valor_unitario,'desconto',om.desconto,'valor_total',om.valor_total)) FROM os_materiais om LEFT JOIN estoque_produtos ep ON ep.id=om.produto_id AND ep.empresa_id=om.empresa_id WHERE om.os_id=os.id AND om.empresa_id=os.empresa_id) AS materiais_os
 
             FROM ordens_servico os
 
@@ -1751,6 +1785,7 @@ router.put(
             observacao,
             origem_equipamento,
             modalidade_equipamento,
+            forma_pagamento_equipamento,
             materiais,
 
             vlan,
@@ -1921,7 +1956,7 @@ router.put(
             req.usuario.empresa_id
         ]);
 
-        await salvarMateriaisOS(req.params.id, req.usuario.empresa_id, origem_equipamento, modalidade_equipamento, materiais);
+        await salvarMateriaisOS(req.params.id, req.usuario.empresa_id, origem_equipamento, modalidade_equipamento, materiais, forma_pagamento_equipamento, req.usuario);
 
         // ===============================
         // 📝 LOG

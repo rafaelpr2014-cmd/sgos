@@ -721,6 +721,7 @@ button:hover{
 ================================ */
 .equipamento-os-box{grid-column:1/-1;border:1px solid #dbeafe;background:#f8fbff;border-radius:14px;padding:16px}.equipamento-tipo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.materiais-os-lista{display:grid;gap:10px;margin-top:14px}.material-os-item{display:grid;grid-template-columns:minmax(0,1fr) 120px 44px;gap:10px;align-items:center;padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}.material-os-item strong{font-size:13px}.material-os-item small{display:block;color:#64748b;margin-top:3px}.material-os-item input{padding:9px}.btn-remover-material{border:none;background:#fee2e2;color:#b91c1c;border-radius:9px;height:38px;cursor:pointer;font-weight:bold}.btn-adicionar-material{margin-top:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:800}.material-vazio{padding:12px;text-align:center;color:#64748b;border:1px dashed #cbd5e1;border-radius:10px;background:#fff}@media(max-width:760px){.equipamento-tipo-grid{grid-template-columns:1fr}.material-os-item{grid-template-columns:1fr 90px 40px}}
 
+.venda-equipamento-box{margin-top:14px;padding:14px;border:1px solid #bbf7d0;background:#f0fdf4;border-radius:12px}.resumo-venda-os{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;padding:12px;background:#fff;border-radius:10px}.material-os-item.vendido{grid-template-columns:minmax(0,1fr) 90px 125px 125px 125px 44px}.material-preco{font-size:12px;color:#475569}.material-total{font-weight:900;color:#15803d}@media(max-width:900px){.material-os-item.vendido{grid-template-columns:1fr 1fr}.material-os-item.vendido .btn-remover-material{grid-column:2}}
 </style>
 </head>
 
@@ -985,6 +986,24 @@ button:hover{
                         </div>
                         <button type="button" class="btn-adicionar-material" onclick="adicionarMaterialOS()">+ Adicionar material</button>
                         <div id="listaMateriaisOS" class="materiais-os-lista"></div>
+
+                        <div id="areaVendaEquipamento" class="hidden venda-equipamento-box">
+                            <div class="campo"><label>Tipo de pagamento *</label>
+                                <select id="forma_pagamento_equipamento">
+                                    <option value="">Selecione...</option>
+                                    <option value="dinheiro">Dinheiro</option>
+                                    <option value="pix">PIX</option>
+                                    <option value="cartao_credito">Cartão de crédito</option>
+                                    <option value="cartao_debito">Cartão de débito</option>
+                                    <option value="cheque">Cheque</option>
+                                </select>
+                            </div>
+                            <div class="resumo-venda-os">
+                                <span>Subtotal: <strong id="subtotalVendaOS">R$ 0,00</strong></span>
+                                <span>Descontos: <strong id="descontoVendaOS">R$ 0,00</strong></span>
+                                <span>Total da venda: <strong id="totalVendaOS">R$ 0,00</strong></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -3001,6 +3020,24 @@ if(document.readyState === "loading"){
 // ===============================
 // EQUIPAMENTOS / MATERIAIS DA OS
 // ===============================
+
+function moedaOS(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
+function modalidadeVendaOS(){return document.getElementById("origem_equipamento")?.value==="empresa" && document.getElementById("modalidade_equipamento")?.value==="vendido";}
+function recalcularVendaOS(){
+    let subtotal=0,descontos=0,total=0;
+    materiaisSelecionadosOS.forEach(m=>{
+        m.valor_unitario=Number(m.valor_unitario||0);
+        m.desconto= Math.max(0,Number(m.desconto||0));
+        const bruto=m.valor_unitario*Number(m.quantidade||0);
+        if(m.desconto>bruto)m.desconto=bruto;
+        m.valor_total=Math.max(0,bruto-m.desconto);
+        subtotal+=bruto; descontos+=m.desconto; total+=m.valor_total;
+    });
+    const a=document.getElementById("subtotalVendaOS"),b=document.getElementById("descontoVendaOS"),c=document.getElementById("totalVendaOS");
+    if(a)a.textContent=moedaOS(subtotal);if(b)b.textContent=moedaOS(descontos);if(c)c.textContent=moedaOS(total);
+}
+function alterarDescontoMaterialOS(id,valor){const m=materiaisSelecionadosOS.find(x=>Number(x.produto_id)===Number(id));if(!m)return;m.desconto=Math.max(0,Number(valor)||0);renderMateriaisOS();}
+
 let produtosMateriaisOS = [];
 let materiaisSelecionadosOS = [];
 
@@ -3010,13 +3047,14 @@ async function carregarProdutosMateriaisOS(){
         produtosMateriaisOS = Array.isArray(lista) ? lista : [];
         const select = document.getElementById("produto_material");
         if(!select) return;
-        select.innerHTML = '<option value="">Selecione um produto</option>' + produtosMateriaisOS.map(p => `<option value="${p.id}">${p.nome}${p.quantidade != null ? ` (Estoque: ${p.quantidade})` : ""}</option>`).join("");
+        select.innerHTML = '<option value="">Selecione um produto</option>' + produtosMateriaisOS.map(p => `<option value="${p.id}">${p.nome} - ${moedaOS(p.valor_unitario)}${p.quantidade != null ? ` (Estoque: ${p.quantidade})` : ""}</option>`).join("");
     }catch(err){ console.error("Erro ao carregar materiais:", err); }
 }
 function atualizarVisibilidadeEquipamento(){
     const empresa = document.getElementById("origem_equipamento")?.value === "empresa";
     document.getElementById("campoModalidadeEquipamento")?.classList.toggle("hidden", !empresa);
     document.getElementById("areaMateriaisOS")?.classList.toggle("hidden", !empresa);
+    document.getElementById("areaVendaEquipamento")?.classList.toggle("hidden", !modalidadeVendaOS());
     if(!empresa){ materiaisSelecionadosOS = []; renderMateriaisOS(); }
 }
 function adicionarMaterialOS(){
@@ -3026,7 +3064,7 @@ function adicionarMaterialOS(){
     if(!produto) return;
     const existente = materiaisSelecionadosOS.find(m => Number(m.produto_id) === id);
     if(existente) existente.quantidade += 1;
-    else materiaisSelecionadosOS.push({produto_id:id, nome:produto.nome, quantidade:1});
+    else materiaisSelecionadosOS.push({produto_id:id, nome:produto.nome, quantidade:1, valor_unitario:Number(produto.valor_unitario||0), desconto:0});
     renderMateriaisOS();
 }
 function alterarQuantidadeMaterialOS(id, valor){
@@ -3037,24 +3075,34 @@ function alterarQuantidadeMaterialOS(id, valor){
 }
 function removerMaterialOS(id){ materiaisSelecionadosOS = materiaisSelecionadosOS.filter(m => Number(m.produto_id) !== Number(id)); renderMateriaisOS(); }
 function renderMateriaisOS(){
-    const box = document.getElementById("listaMateriaisOS"); if(!box) return;
-    if(!materiaisSelecionadosOS.length){ box.innerHTML='<div class="material-vazio">Nenhum material selecionado.</div>'; return; }
-    box.innerHTML = materiaisSelecionadosOS.map(m => `<div class="material-os-item"><div><strong>${m.nome || "Produto"}</strong><small>Material de Instalação</small></div><input type="number" min="1" step="1" value="${m.quantidade}" onchange="alterarQuantidadeMaterialOS(${m.produto_id}, this.value)"><button type="button" class="btn-remover-material" onclick="removerMaterialOS(${m.produto_id})">×</button></div>`).join("");
+    const box=document.getElementById("listaMateriaisOS");if(!box)return;
+    const vendido=modalidadeVendaOS();
+    document.getElementById("areaVendaEquipamento")?.classList.toggle("hidden",!vendido);
+    if(!materiaisSelecionadosOS.length){box.innerHTML='<div class="material-vazio">Nenhum material selecionado.</div>';recalcularVendaOS();return;}
+    box.innerHTML=materiaisSelecionadosOS.map(m=>vendido
+      ? `<div class="material-os-item vendido"><div><strong>${m.nome||"Produto"}</strong><small>Valor unitário: ${moedaOS(m.valor_unitario)}</small></div><input title="Quantidade" type="number" min="1" step="1" value="${m.quantidade}" onchange="alterarQuantidadeMaterialOS(${m.produto_id},this.value)"><input title="Valor unitário" type="text" value="${moedaOS(m.valor_unitario)}" readonly><input title="Desconto" type="number" min="0" step="0.01" value="${Number(m.desconto||0).toFixed(2)}" onchange="alterarDescontoMaterialOS(${m.produto_id},this.value)"><div class="material-total">${moedaOS((Number(m.valor_unitario||0)*Number(m.quantidade||0))-Number(m.desconto||0))}</div><button type="button" class="btn-remover-material" onclick="removerMaterialOS(${m.produto_id})">×</button></div>`
+      : `<div class="material-os-item"><div><strong>${m.nome||"Produto"}</strong><small>Material de Instalação</small></div><input type="number" min="1" step="1" value="${m.quantidade}" onchange="alterarQuantidadeMaterialOS(${m.produto_id},this.value)"><button type="button" class="btn-remover-material" onclick="removerMaterialOS(${m.produto_id})">×</button></div>`).join("");
+    recalcularVendaOS();
 }
 function dadosEquipamentosOS(){
-    const origem = document.getElementById("origem_equipamento")?.value || "proprio";
-    return { origem_equipamento: origem, modalidade_equipamento: origem === "empresa" ? (document.getElementById("modalidade_equipamento")?.value || "comodato") : null, materiais: origem === "empresa" ? materiaisSelecionadosOS.map(m => ({produto_id:Number(m.produto_id), quantidade:Math.max(1, Math.floor(Number(m.quantidade)||1))})) : [] };
+    const origem=document.getElementById("origem_equipamento")?.value||"proprio";
+    const modalidade=origem==="empresa"?(document.getElementById("modalidade_equipamento")?.value||"comodato"):null;
+    const vendido=origem==="empresa"&&modalidade==="vendido";
+    const forma=document.getElementById("forma_pagamento_equipamento")?.value||null;
+    if(vendido&&!forma)throw new Error("Selecione o tipo de pagamento da venda.");
+    recalcularVendaOS();
+    return {origem_equipamento:origem,modalidade_equipamento:modalidade,forma_pagamento_equipamento:vendido?forma:null,materiais:origem==="empresa"?materiaisSelecionadosOS.map(m=>({produto_id:Number(m.produto_id),quantidade:Math.max(1,Math.floor(Number(m.quantidade)||1)),desconto:vendido?Math.max(0,Number(m.desconto)||0):0})):[]};
 }
 function preencherEquipamentosOS(os){
     const origem = os?.origem_equipamento || "proprio";
     const origemEl=document.getElementById("origem_equipamento"); if(origemEl) origemEl.value=origem;
-    const modalidadeEl=document.getElementById("modalidade_equipamento"); if(modalidadeEl) modalidadeEl.value=os?.modalidade_equipamento || "comodato";
+    const modalidadeEl=document.getElementById("modalidade_equipamento"); if(modalidadeEl) modalidadeEl.value=os?.modalidade_equipamento || "comodato"; const formaEl=document.getElementById("forma_pagamento_equipamento");if(formaEl)formaEl.value=os?.forma_pagamento_equipamento||"";
     let mats=os?.materiais_os || os?.materiais || [];
     if(typeof mats === "string"){ try{ mats=JSON.parse(mats); }catch{ mats=[]; } }
-    materiaisSelecionadosOS=(Array.isArray(mats)?mats:[]).map(m=>({produto_id:Number(m.produto_id||m.id),nome:m.nome||m.produto_nome||"Produto",quantidade:Number(m.quantidade)||1}));
+    materiaisSelecionadosOS=(Array.isArray(mats)?mats:[]).map(m=>({produto_id:Number(m.produto_id||m.id),nome:m.nome||m.produto_nome||"Produto",quantidade:Number(m.quantidade)||1,valor_unitario:Number(m.valor_unitario||0),desconto:Number(m.desconto||0),valor_total:Number(m.valor_total||0)}));
     atualizarVisibilidadeEquipamento(); renderMateriaisOS();
 }
-function iniciarEquipamentosOS(){ document.getElementById("origem_equipamento")?.addEventListener("change", atualizarVisibilidadeEquipamento); atualizarVisibilidadeEquipamento(); renderMateriaisOS(); }
+function iniciarEquipamentosOS(){ document.getElementById("origem_equipamento")?.addEventListener("change", atualizarVisibilidadeEquipamento);document.getElementById("modalidade_equipamento")?.addEventListener("change",()=>{atualizarVisibilidadeEquipamento();renderMateriaisOS();}); atualizarVisibilidadeEquipamento(); renderMateriaisOS(); }
 
 </script>
 </body>
