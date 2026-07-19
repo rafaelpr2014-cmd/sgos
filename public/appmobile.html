@@ -1781,8 +1781,8 @@ function normalizarOSNormal(os){
         _key: `normal-${os.id}`,
         telefone: formatarTelefoneApp(os.telefone),
         _telefone_formatado: formatarTelefoneApp(os.telefone),
-        // Mantém a descrição inicial disponível no resumo da OS.
-        descricao: os.descricao || os.observacoes || os.observacao || "",
+        // Preserva explicitamente a descrição inicial retornada pela API.
+        descricao: os.descricao ?? os.descrição ?? os.observacoes ?? os.observacao ?? "",
         status: normalizarStatusApp(os.status)
     };
 }
@@ -3273,9 +3273,7 @@ function detalheStatusOS(os){
 
     return {
         rotulo:"Descrição",
-        // Compatibilidade: prioriza a nova coluna descricao e recupera
-        // registros antigos que ainda estejam em observacoes/observacao.
-        texto: os.descricao || os.observacoes || os.observacao || ""
+        texto: os.descricao || ""
     };
 }
 function obterCoordenadasOS(os){
@@ -3642,9 +3640,34 @@ async function prepararArquivoParaEnvio(){
 }
 
 const abrirModalBase = abrirModal;
-abrirModal = function(chave){
-    const os = encontrarOS(chave);
+abrirModal = async function(chave){
+    let os = encontrarOS(chave);
     if(!os){ alert("OS não encontrada"); return; }
+
+    // Para OS normal, consulta o registro completo antes de montar o resumo.
+    // Assim `descricao` aparece mesmo quando a listagem inicial vier resumida.
+    if(os._tipo !== "avulsa"){
+        try{
+            const respostaDetalhe = await apiFetch(`${API_PATH}/${os.id}`, {
+                headers: { "x-usuario-id": user.id }
+            });
+
+            if(respostaDetalhe.ok){
+                const detalhe = await respostaDetalhe.json();
+                const descricaoCompleta = detalhe?.descricao ?? detalhe?.descrição ?? os.descricao ?? "";
+                os = normalizarOSNormal({
+                    ...os,
+                    ...detalhe,
+                    descricao: descricaoCompleta
+                });
+
+                const indice = OS.findIndex(item => chaveOS(item) === String(chave));
+                if(indice >= 0) OS[indice] = os;
+            }
+        }catch(erro){
+            console.warn("Não foi possível carregar os dados completos da OS:", erro);
+        }
+    }
 
     osSelecionada = chaveOS(os);
     arquivoFotoPreparado = null;

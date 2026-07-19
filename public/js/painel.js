@@ -638,6 +638,8 @@ async function carregarOS() {
 
         ordens = data.map(o => ({
             ...o,
+            // Garante que a descrição inicial permaneça disponível no resumo.
+            descricao: o.descricao ?? o.descrição ?? o.observacoes ?? o.observacao ?? "",
             status: normalizarStatus(o.status),
             tecnicos_nomes: o.tecnicos_nomes || o.tecnico || [],
             localidade_nome: o.localidade_nome ?? "Sem localidade"
@@ -1330,7 +1332,7 @@ function detalheAtualResumo(os){
 
     return {
         titulo: "Descrição",
-        texto: os?.descricao || os?.observacoes || os?.observacao || ""
+        texto: os?.descricao || ""
     };
 }
 
@@ -1638,14 +1640,34 @@ window.fecharResumoOS = function(){
     if(modal) modal.style.display = "none";
 };
 
-window.abrirResumoOS = function(id){
+window.abrirResumoOS = async function(id){
     garantirModalResumoOS();
 
-    const os = (ordens || []).find(o => Number(o.id) === Number(id));
+    let os = (ordens || []).find(o => Number(o.id) === Number(id));
 
     if(!os){
         alert("OS não encontrada no painel.");
         return;
+    }
+
+    // Busca os dados completos da OS no momento em que o resumo é aberto.
+    // Isso evita que a listagem resumida ou um cache antigo esconda `descricao`.
+    try {
+        const detalhe = await apiFetch(`/api/ordens_servico/${id}`);
+        if (detalhe && typeof detalhe === "object") {
+            const descricaoCompleta = detalhe.descricao ?? detalhe.descrição ?? os.descricao ?? "";
+            os = {
+                ...os,
+                ...detalhe,
+                descricao: descricaoCompleta,
+                status: normalizarStatus(detalhe.status ?? os.status)
+            };
+
+            const indice = (ordens || []).findIndex(o => Number(o.id) === Number(id));
+            if (indice >= 0) ordens[indice] = os;
+        }
+    } catch (erro) {
+        console.warn("Não foi possível atualizar os dados completos da OS:", erro);
     }
 
     const [classeStatus, textoStatus] = STATUS_MAP[os.status] || STATUS_MAP["aberto"];
