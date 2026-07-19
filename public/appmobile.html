@@ -1781,6 +1781,8 @@ function normalizarOSNormal(os){
         _key: `normal-${os.id}`,
         telefone: formatarTelefoneApp(os.telefone),
         _telefone_formatado: formatarTelefoneApp(os.telefone),
+        // Mantém a descrição inicial disponível no resumo da OS.
+        descricao: os.descricao || os.observacoes || os.observacao || "",
         status: normalizarStatusApp(os.status)
     };
 }
@@ -3271,7 +3273,9 @@ function detalheStatusOS(os){
 
     return {
         rotulo:"Descrição",
-        texto: os.descricao || ""
+        // Compatibilidade: prioriza a nova coluna descricao e recupera
+        // registros antigos que ainda estejam em observacoes/observacao.
+        texto: os.descricao || os.observacoes || os.observacao || ""
     };
 }
 function obterCoordenadasOS(os){

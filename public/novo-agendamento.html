@@ -840,12 +840,7 @@ button{
                     <label>Descrição da OS</label>
                     <textarea id="descricao" placeholder="Descreva detalhadamente o serviço que deverá ser realizado."></textarea>
                 </div>
-
-                <div class="campo full">
-                    <label>Observações</label>
-                    <textarea id="observacoes"></textarea>
-                </div>
-            </div>
+</div>
 
             <div class="section-title">Anexo</div>
 
@@ -1896,7 +1891,6 @@ async function salvar() {
         latitude: latitude.value,
         longitude: longitude.value,
         descricao: descricao.value.trim(),
-        observacoes: observacoes.value,
         agendamento: agendamentoFinal,
         agendamento_envio: agendamento_envio.value || null,
         status: "agendado"

@@ -1330,7 +1330,7 @@ function detalheAtualResumo(os){
 
     return {
         titulo: "Descrição",
-        texto: os?.descricao || ""
+        texto: os?.descricao || os?.observacoes || os?.observacao || ""
     };
 }
 

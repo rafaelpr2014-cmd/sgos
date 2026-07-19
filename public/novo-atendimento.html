@@ -928,13 +928,7 @@ button:hover{
                     <label>Descrição da OS</label>
                     <textarea id="descricao" placeholder="Descreva detalhadamente o serviço que deverá ser realizado."></textarea>
                 </div>
-
-                <div class="campo full">
-                    <label>Observações</label>
-                    <textarea id="observacoes"></textarea>
-                </div>
-
-                <div class="section-label">Serviço de TV</div>
+<div class="section-label">Serviço de TV</div>
 
                 <div class="campo full">
                     <label>Adicionar Serviço de TV?</label>
@@ -2249,8 +2243,7 @@ async function carregarAtendimento() {
         os.referencia || "";
 
     descricao.value = os.descricao || "";
-    observacoes.value =
-        os.observacoes || "";
+
 
     if (os.aplicativo || os.url || os.usuario || os.senha) {
         adicionar_tv.value = "sim";
@@ -2429,9 +2422,6 @@ async function salvarAtendimento(
 
         descricao:
             descricao.value.trim(),
-
-        observacoes:
-            observacoes.value.trim(),
 
         // Novo Atendimento:
         // - sem data/horário: fica ABERTO

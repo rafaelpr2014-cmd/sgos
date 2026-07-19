@@ -997,20 +997,13 @@ button:hover{
                     <input id="longitude" type="text" placeholder="-38.523456">
                 </div>
 
-                <div class="section-label">Observações</div>
+                <div class="section-label">Descrição da OS</div>
 
                 <div class="campo full">
                     <label>Descrição da OS</label>
                     <textarea id="descricao" placeholder="Descreva detalhadamente o serviço que deverá ser realizado."></textarea>
                 </div>
-
-                <div class="campo full">
-                    <label>Observações</label>
-                    <textarea id="observacoes"></textarea>
-                </div>
-
-
-                <div class="section-label">Serviço de TV</div>
+<div class="section-label">Serviço de TV</div>
 
                 <div class="campo full">
                     <label>Adicionar Serviço de TV?</label>
@@ -2629,7 +2622,7 @@ async function carregarOS(){
     latitude.value = os.latitude || "";
     longitude.value = os.longitude || "";
     descricao.value = os.descricao || "";
-    observacoes.value = os.observacoes || os.observacao || "";
+
     status.value = os.status || "aberto";
 
     localidade.value = os.localidade_id || os.localidade || "";
@@ -2828,12 +2821,6 @@ async function salvarOS(
 
             descricao:
                 descricao.value.trim(),
-
-            observacoes:
-                observacoes.value.trim(),
-
-            observacao:
-                observacoes.value.trim(),
 
             status:
                 statusAtual ||
