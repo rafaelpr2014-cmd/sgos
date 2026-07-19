@@ -680,6 +680,39 @@ tr:hover{ background:#f8fbff; }
     font-size:17px;
 }
 
+
+/* Linhas de OS clicáveis: indica visualmente a abertura do resumo */
+#tabelaAbertas tr[data-id],
+#tabelaAndamento tr[data-id],
+#tabelaConcluidas tr[data-id],
+#tabelaAbertas tr[onclick],
+#tabelaAndamento tr[onclick],
+#tabelaConcluidas tr[onclick]{
+    cursor:pointer;
+}
+
+#tabelaAbertas tr[data-id]:hover,
+#tabelaAndamento tr[data-id]:hover,
+#tabelaConcluidas tr[data-id]:hover,
+#tabelaAbertas tr[onclick]:hover,
+#tabelaAndamento tr[onclick]:hover,
+#tabelaConcluidas tr[onclick]:hover{
+    background:#eff6ff;
+}
+
+.usuario-online-item{
+    display:flex;
+    align-items:center;
+    gap:7px;
+}
+.usuario-online-item svg{
+    width:14px;
+    height:14px;
+    stroke:#16a34a;
+    fill:none;
+    stroke-width:2;
+}
+
 /* ===============================
    RESUMO INFERIOR
 ================================ */
@@ -2288,8 +2321,17 @@ async function carregarUsuariosOnline() {
             container.innerHTML = "Nenhum usuário online";
         } else {
             container.innerHTML = listaUnica
-                .map(u => `🟢 ${u}`)
-                .join("<br>");
+                .map(u => `
+                    <div class="usuario-online-item">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="12" cy="8" r="4"></circle>
+                            <path d="M4 21c1.4-4.5 14.6-4.5 16 0"></path>
+                            <circle cx="19" cy="5" r="2" fill="#16a34a" stroke="none"></circle>
+                        </svg>
+                        <span>${u}</span>
+                    </div>
+                `)
+                .join("");
         }
 
     } catch (err) {

@@ -925,6 +925,11 @@ button:hover{
                 </div>
 
                 <div class="campo full">
+                    <label>Descrição da OS</label>
+                    <textarea id="descricao" placeholder="Descreva detalhadamente o serviço que deverá ser realizado."></textarea>
+                </div>
+
+                <div class="campo full">
                     <label>Observações</label>
                     <textarea id="observacoes"></textarea>
                 </div>
@@ -2243,6 +2248,7 @@ async function carregarAtendimento() {
     referencia.value =
         os.referencia || "";
 
+    descricao.value = os.descricao || "";
     observacoes.value =
         os.observacoes || "";
 
@@ -2420,6 +2426,9 @@ async function salvarAtendimento(
 
         longitude:
             longitude.value.trim(),
+
+        descricao:
+            descricao.value.trim(),
 
         observacoes:
             observacoes.value.trim(),
