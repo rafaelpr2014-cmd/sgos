@@ -1640,6 +1640,15 @@ window.fecharResumoOS = function(){
     if(modal) modal.style.display = "none";
 };
 
+
+function materiaisResumoOS(os){
+    const origem = os?.origem_equipamento === 'empresa' ? 'Equipamento da empresa' : 'Equipamento próprio do cliente';
+    const modalidade = os?.origem_equipamento === 'empresa' ? (os?.modalidade_equipamento === 'vendido' ? 'Vendido' : 'Comodato') : '-';
+    let materiais=os?.materiais_os || []; if(typeof materiais==='string'){try{materiais=JSON.parse(materiais)}catch{materiais=[]}}
+    const lista=Array.isArray(materiais)&&materiais.length ? `<div style="margin-top:10px;display:grid;gap:7px">${materiais.map(m=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 10px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px"><strong>${escapeResumo(m.nome||'Produto')}</strong><span>${Number(m.quantidade)||1} un.</span></div>`).join('')}</div>` : '<div class="resumo-texto">Nenhum material informado.</div>';
+    return `<div class="resumo-card full"><h3>📦 Equipamentos e materiais</h3>${linhaResumo('Origem',origem,'Modalidade',modalidade)}${os?.origem_equipamento==='empresa'?lista:''}</div>`;
+}
+
 window.abrirResumoOS = async function(id){
     garantirModalResumoOS();
 
@@ -1719,6 +1728,8 @@ window.abrirResumoOS = async function(id){
             </div>
 
             ${servicoTVResumo(os)}
+
+            ${materiaisResumoOS(os)}
 
             <div class="resumo-card full">
                 <h3>📝 ${escapeResumo(detalheStatus.titulo)}</h3>

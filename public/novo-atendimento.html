@@ -654,6 +654,12 @@ button:hover{
         justify-content:flex-start;
     }
 }
+
+/* ===============================
+   EQUIPAMENTOS / MATERIAIS DA OS
+================================ */
+.equipamento-os-box{grid-column:1/-1;border:1px solid #dbeafe;background:#f8fbff;border-radius:14px;padding:16px}.equipamento-tipo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.materiais-os-lista{display:grid;gap:10px;margin-top:14px}.material-os-item{display:grid;grid-template-columns:minmax(0,1fr) 120px 44px;gap:10px;align-items:center;padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}.material-os-item strong{font-size:13px}.material-os-item small{display:block;color:#64748b;margin-top:3px}.material-os-item input{padding:9px}.btn-remover-material{border:none;background:#fee2e2;color:#b91c1c;border-radius:9px;height:38px;cursor:pointer;font-weight:bold}.btn-adicionar-material{margin-top:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:800}.material-vazio{padding:12px;text-align:center;color:#64748b;border:1px dashed #cbd5e1;border-radius:10px;background:#fff}@media(max-width:760px){.equipamento-tipo-grid{grid-template-columns:1fr}.material-os-item{grid-template-columns:1fr 90px 40px}}
+
 </style>
 </head>
 
@@ -878,6 +884,35 @@ button:hover{
                 <div class="campo hidden" id="campo_vlan">
                     <label>VLAN</label>
                     <input id="vlan" type="text">
+                </div>
+
+
+                <div class="section-label">Equipamentos e Materiais</div>
+                <div class="equipamento-os-box">
+                    <div class="equipamento-tipo-grid">
+                        <div class="campo">
+                            <label>Origem do equipamento</label>
+                            <select id="origem_equipamento">
+                                <option value="proprio">Equipamento próprio do cliente</option>
+                                <option value="empresa">Equipamento da empresa</option>
+                            </select>
+                        </div>
+                        <div class="campo hidden" id="campoModalidadeEquipamento">
+                            <label>Modalidade</label>
+                            <select id="modalidade_equipamento">
+                                <option value="comodato">Comodato</option>
+                                <option value="vendido">Vendido</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="areaMateriaisOS" class="hidden">
+                        <div class="campo" style="margin-top:14px">
+                            <label>Adicionar material de instalação</label>
+                            <select id="produto_material"><option value="">Selecione um produto</option></select>
+                        </div>
+                        <button type="button" class="btn-adicionar-material" onclick="adicionarMaterialOS()">+ Adicionar material</button>
+                        <div id="listaMateriaisOS" class="materiais-os-lista"></div>
+                    </div>
                 </div>
 
                 <div class="section-label">Agendamento</div>
@@ -2304,6 +2339,8 @@ async function carregarAtendimento() {
 
     },200);
 
+    preencherEquipamentosOS(os);
+
     btnSalvar.innerText =
         "💾 Salvar Alterações";
 }
@@ -2446,7 +2483,9 @@ async function salvarAtendimento(
             adicionar_tv.value === "sim" ? usuario.value.trim() : null,
 
         senha:
-            adicionar_tv.value === "sim" ? senha.value.trim() : null
+            adicionar_tv.value === "sim" ? senha.value.trim() : null,
+
+        ...dadosEquipamentosOS()
     };
 
     console.log(
@@ -2527,6 +2566,9 @@ window.addEventListener(
         await carregarSelects();
 
         await carregarSvaPadraoTV();
+
+        await carregarProdutosMateriaisOS();
+        iniciarEquipamentosOS();
 
         await carregarAtendimento();
 
@@ -2781,6 +2823,65 @@ async function resolverPlanoLocalidadeERP(){
     return { localidade:localidadeId, plano:planoId };
 }
 
+
+
+// ===============================
+// EQUIPAMENTOS / MATERIAIS DA OS
+// ===============================
+let produtosMateriaisOS = [];
+let materiaisSelecionadosOS = [];
+
+async function carregarProdutosMateriaisOS(){
+    try{
+        const lista = await (typeof apiFetch === "function" ? apiFetch("/api/ordens_servico/materiais-instalacao") : api("/api/ordens_servico/materiais-instalacao"));
+        produtosMateriaisOS = Array.isArray(lista) ? lista : [];
+        const select = document.getElementById("produto_material");
+        if(!select) return;
+        select.innerHTML = '<option value="">Selecione um produto</option>' + produtosMateriaisOS.map(p => `<option value="${p.id}">${p.nome}${p.quantidade != null ? ` (Estoque: ${p.quantidade})` : ""}</option>`).join("");
+    }catch(err){ console.error("Erro ao carregar materiais:", err); }
+}
+function atualizarVisibilidadeEquipamento(){
+    const empresa = document.getElementById("origem_equipamento")?.value === "empresa";
+    document.getElementById("campoModalidadeEquipamento")?.classList.toggle("hidden", !empresa);
+    document.getElementById("areaMateriaisOS")?.classList.toggle("hidden", !empresa);
+    if(!empresa){ materiaisSelecionadosOS = []; renderMateriaisOS(); }
+}
+function adicionarMaterialOS(){
+    const id = Number(document.getElementById("produto_material")?.value);
+    if(!id) return alert("Selecione um material.");
+    const produto = produtosMateriaisOS.find(p => Number(p.id) === id);
+    if(!produto) return;
+    const existente = materiaisSelecionadosOS.find(m => Number(m.produto_id) === id);
+    if(existente) existente.quantidade += 1;
+    else materiaisSelecionadosOS.push({produto_id:id, nome:produto.nome, quantidade:1});
+    renderMateriaisOS();
+}
+function alterarQuantidadeMaterialOS(id, valor){
+    const item = materiaisSelecionadosOS.find(m => Number(m.produto_id) === Number(id));
+    if(!item) return;
+    item.quantidade = Math.max(1, Math.floor(Number(valor) || 1));
+    renderMateriaisOS();
+}
+function removerMaterialOS(id){ materiaisSelecionadosOS = materiaisSelecionadosOS.filter(m => Number(m.produto_id) !== Number(id)); renderMateriaisOS(); }
+function renderMateriaisOS(){
+    const box = document.getElementById("listaMateriaisOS"); if(!box) return;
+    if(!materiaisSelecionadosOS.length){ box.innerHTML='<div class="material-vazio">Nenhum material selecionado.</div>'; return; }
+    box.innerHTML = materiaisSelecionadosOS.map(m => `<div class="material-os-item"><div><strong>${m.nome || "Produto"}</strong><small>Material de Instalação</small></div><input type="number" min="1" step="1" value="${m.quantidade}" onchange="alterarQuantidadeMaterialOS(${m.produto_id}, this.value)"><button type="button" class="btn-remover-material" onclick="removerMaterialOS(${m.produto_id})">×</button></div>`).join("");
+}
+function dadosEquipamentosOS(){
+    const origem = document.getElementById("origem_equipamento")?.value || "proprio";
+    return { origem_equipamento: origem, modalidade_equipamento: origem === "empresa" ? (document.getElementById("modalidade_equipamento")?.value || "comodato") : null, materiais: origem === "empresa" ? materiaisSelecionadosOS.map(m => ({produto_id:Number(m.produto_id), quantidade:Math.max(1, Math.floor(Number(m.quantidade)||1))})) : [] };
+}
+function preencherEquipamentosOS(os){
+    const origem = os?.origem_equipamento || "proprio";
+    const origemEl=document.getElementById("origem_equipamento"); if(origemEl) origemEl.value=origem;
+    const modalidadeEl=document.getElementById("modalidade_equipamento"); if(modalidadeEl) modalidadeEl.value=os?.modalidade_equipamento || "comodato";
+    let mats=os?.materiais_os || os?.materiais || [];
+    if(typeof mats === "string"){ try{ mats=JSON.parse(mats); }catch{ mats=[]; } }
+    materiaisSelecionadosOS=(Array.isArray(mats)?mats:[]).map(m=>({produto_id:Number(m.produto_id||m.id),nome:m.nome||m.produto_nome||"Produto",quantidade:Number(m.quantidade)||1}));
+    atualizarVisibilidadeEquipamento(); renderMateriaisOS();
+}
+function iniciarEquipamentosOS(){ document.getElementById("origem_equipamento")?.addEventListener("change", atualizarVisibilidadeEquipamento); atualizarVisibilidadeEquipamento(); renderMateriaisOS(); }
 
 </script>
 </body>

@@ -568,6 +568,12 @@ button{
     .grid{ grid-template-columns:1fr; }
     .content{ padding:20px; }
 }
+
+/* ===============================
+   EQUIPAMENTOS / MATERIAIS DA OS
+================================ */
+.equipamento-os-box{grid-column:1/-1;border:1px solid #dbeafe;background:#f8fbff;border-radius:14px;padding:16px}.equipamento-tipo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.materiais-os-lista{display:grid;gap:10px;margin-top:14px}.material-os-item{display:grid;grid-template-columns:minmax(0,1fr) 120px 44px;gap:10px;align-items:center;padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}.material-os-item strong{font-size:13px}.material-os-item small{display:block;color:#64748b;margin-top:3px}.material-os-item input{padding:9px}.btn-remover-material{border:none;background:#fee2e2;color:#b91c1c;border-radius:9px;height:38px;cursor:pointer;font-weight:bold}.btn-adicionar-material{margin-top:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:800}.material-vazio{padding:12px;text-align:center;color:#64748b;border:1px dashed #cbd5e1;border-radius:10px;background:#fff}@media(max-width:760px){.equipamento-tipo-grid{grid-template-columns:1fr}.material-os-item{grid-template-columns:1fr 90px 40px}}
+
 </style>
 </head>
 
@@ -800,6 +806,22 @@ button{
                 <div class="campo">
                     <label>Agendamento de Envio</label>
                     <input id="agendamento_envio" type="datetime-local">
+                </div>
+            </div>
+
+
+            <div class="section-title">Equipamentos e materiais</div>
+            <div class="grid">
+                <div class="equipamento-os-box">
+                    <div class="equipamento-tipo-grid">
+                        <div class="campo"><label>Origem do equipamento</label><select id="origem_equipamento"><option value="proprio">Equipamento próprio do cliente</option><option value="empresa">Equipamento da empresa</option></select></div>
+                        <div class="campo hidden" id="campoModalidadeEquipamento"><label>Modalidade</label><select id="modalidade_equipamento"><option value="comodato">Comodato</option><option value="vendido">Vendido</option></select></div>
+                    </div>
+                    <div id="areaMateriaisOS" class="hidden">
+                        <div class="campo" style="margin-top:14px"><label>Adicionar material de instalação</label><select id="produto_material"><option value="">Selecione um produto</option></select></div>
+                        <button type="button" class="btn-adicionar-material" onclick="adicionarMaterialOS()">+ Adicionar material</button>
+                        <div id="listaMateriaisOS" class="materiais-os-lista"></div>
+                    </div>
                 </div>
             </div>
 
@@ -1893,7 +1915,8 @@ async function salvar() {
         descricao: (document.getElementById("descricao")?.value || "").trim(),
         agendamento: agendamentoFinal,
         agendamento_envio: agendamento_envio.value || null,
-        status: "agendado"
+        status: "agendado",
+        ...dadosEquipamentosOS()
     };
 
     let resultado;
@@ -1961,6 +1984,8 @@ window.onload = async () => {
     await carregarUsuariosOnline();
     prepararCamposDataHoraFutura();
     await carregar();
+    await carregarProdutosMateriaisOS();
+    iniciarEquipamentosOS();
     toggleVlan();
 };
 
