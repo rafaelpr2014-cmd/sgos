@@ -1297,8 +1297,45 @@ function textoResumo(valor){
     return String(valor ?? "").trim() || "-";
 }
 
+function anexoAtualResumo(os){
+    const status = normalizarStatus(os?.status);
+
+    if(status === "cliente_ausente"){
+        return os?.anexo_ausente || os?.anexo_ausente_path || "";
+    }
+
+    if(status === "concluido"){
+        return os?.anexo_finalizado || os?.anexo_finalizado_path || "";
+    }
+
+    return os?.anexo_path || os?.anexo || "";
+}
+
+function detalheAtualResumo(os){
+    const status = normalizarStatus(os?.status);
+
+    if(status === "cliente_ausente"){
+        return {
+            titulo: "Observação de ausência",
+            texto: os?.observacao_ausente || ""
+        };
+    }
+
+    if(status === "concluido"){
+        return {
+            titulo: "Observação de conclusão",
+            texto: os?.observacao_finalizado || ""
+        };
+    }
+
+    return {
+        titulo: "Descrição",
+        texto: os?.descricao || ""
+    };
+}
+
 function anexosResumo(os){
-    const anexo = os.anexo_path || os.anexo || "";
+    const anexo = anexoAtualResumo(os);
     if(!anexo) return `<div class="resumo-vazio">Nenhum anexo cadastrado.</div>`;
 
     const arquivo = String(anexo);
@@ -1620,6 +1657,7 @@ window.abrirResumoOS = function(id){
         `${os.nome || "Cliente não informado"} • ${textoStatus}`;
 
     const conteudo = document.getElementById("resumoOSConteudo");
+    const detalheStatus = detalheAtualResumo(os);
 
     conteudo.innerHTML = `
         <div class="resumo-grid-cards">
@@ -1654,8 +1692,8 @@ window.abrirResumoOS = function(id){
             ${servicoTVResumo(os)}
 
             <div class="resumo-card full">
-                <h3>📝 Observações</h3>
-                <div class="resumo-texto">${escapeResumo(textoResumo(os.observacoes || os.observacao))}</div>
+                <h3>📝 ${escapeResumo(detalheStatus.titulo)}</h3>
+                <div class="resumo-texto">${escapeResumo(textoResumo(detalheStatus.texto))}</div>
             </div>
 
             <div class="resumo-card">

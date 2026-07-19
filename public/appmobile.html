@@ -1467,7 +1467,7 @@ button{touch-action:manipulation}
 
         <div id="resumoModalOS" class="resumo-modal-os"></div>
 
-        <textarea id="obs" placeholder="Observação..."></textarea>
+        <textarea id="obs" placeholder="Digite a observação correspondente ao status..."></textarea>
         <input type="file" id="foto" accept="image/*,video/*,.pdf,application/pdf" hidden onchange="arquivoSelecionado(this)">
         <div class="anexo-acoes">
             <button type="button" class="btn-anexo-escolher" onclick="escolherAnexo()">📎 Anexar foto, vídeo ou PDF</button>
@@ -2480,7 +2480,10 @@ function abrirModal(chave){
     }
 
     const obs = document.getElementById("obs");
-    if(obs) obs.value = "";
+    if(obs){
+        obs.value = "";
+        obs.placeholder = "Digite a observação do técnico...";
+    }
 
     const foto = document.getElementById("foto");
     if(foto) foto.value = "";
@@ -3230,8 +3233,46 @@ function statusRotulo(status){
 }
 function obterAnexoOS(os){
     if(!os) return "";
+
+    const status = normalizarStatusApp(os.status);
+
+    // Cada status exibe exclusivamente o anexo correspondente.
+    if(status === "cliente_ausente"){
+        return os.anexo_ausente || os.anexo_ausente_path || "";
+    }
+
+    if(status === "concluido"){
+        return os.anexo_finalizado || os.anexo_finalizado_path || "";
+    }
+
+    // OS aberta/em andamento: anexo inicial do cadastro.
     return os.anexo_path || os.anexo || os.foto || os.foto_path ||
            os.comprovante || os.comprovante_path || os.arquivo || "";
+}
+
+function detalheStatusOS(os){
+    if(!os) return {rotulo:"Descrição", texto:""};
+
+    const status = normalizarStatusApp(os.status);
+
+    if(status === "cliente_ausente"){
+        return {
+            rotulo:"Observação de ausência",
+            texto: os.observacao_ausente || ""
+        };
+    }
+
+    if(status === "concluido"){
+        return {
+            rotulo:"Observação de conclusão",
+            texto: os.observacao_finalizado || ""
+        };
+    }
+
+    return {
+        rotulo:"Descrição",
+        texto: os.descricao || ""
+    };
 }
 function obterCoordenadasOS(os){
     if(!os) return null;
@@ -3444,7 +3485,12 @@ function resumoModalHTML(os){
             <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
             <b>Agendado para:</b> ${valorSeguro(format(os.agendamento))}<br>
             <b>Criado em:</b> ${valorSeguro(format(os.criado_em))}<br>
-            ${(os.observacao || os.observacoes || os.descricao) ? `<b>Observações:</b> ${valorSeguro(os.observacao || os.observacoes || os.descricao)}<br>` : ""}
+            ${(() => {
+                const detalhe = detalheStatusOS(os);
+                return detalhe.texto
+                    ? `<b>${detalhe.rotulo}:</b> ${valorSeguro(detalhe.texto)}<br>`
+                    : "";
+            })()}
             ${svaHTML(os)}
         </div>
     `;
@@ -3603,7 +3649,10 @@ abrirModal = function(chave){
     if(resumo) resumo.innerHTML = resumoModalHTML(os);
 
     const obs = document.getElementById("obs");
-    if(obs) obs.value = "";
+    if(obs){
+        obs.value = "";
+        obs.placeholder = "Digite a observação do técnico...";
+    }
 
     const foto = document.getElementById("foto");
     if(foto) foto.value = "";
@@ -3688,10 +3737,28 @@ async function enviarAcao(tipo, botao){
     bloquearBotao(botao,true);
     try{
         const formData = new FormData();
-        formData.append("observacao", document.getElementById("obs").value || "");
+        const observacaoDigitada = document.getElementById("obs").value || "";
+
+        // Mantém compatibilidade com a rota antiga e envia também o campo
+        // específico da coluna correta conforme a ação executada.
+        formData.append("observacao", observacaoDigitada);
+        if(tipo === "ausente"){
+            formData.append("observacao_ausente", observacaoDigitada);
+        }
+        if(tipo === "concluir"){
+            formData.append("observacao_finalizado", observacaoDigitada);
+        }
+
         const arquivo = await prepararArquivoParaEnvio();
         if(arquivo){
-            formData.append("foto", arquivo, arquivo.name || `anexo-${Date.now()}`);
+            const nomeArquivo = arquivo.name || `anexo-${Date.now()}`;
+            formData.append("foto", arquivo, nomeArquivo);
+            if(tipo === "ausente"){
+                formData.append("anexo_ausente", arquivo, nomeArquivo);
+            }
+            if(tipo === "concluir"){
+                formData.append("anexo_finalizado", arquivo, nomeArquivo);
+            }
         }
         const controller = new AbortController();
         const timer = setTimeout(()=>controller.abort(), 60000);

@@ -84,7 +84,7 @@ module.exports = (db, verificarAutenticacao, io) => {
         storage: storageAnexos,
 
         limits: {
-            fileSize: 5 * 1024 * 1024 // 5MB
+            fileSize: 30 * 1024 * 1024 // 30MB
         },
 
         fileFilter: (req, file, cb) => {
@@ -95,7 +95,8 @@ module.exports = (db, verificarAutenticacao, io) => {
                 "image/webp",
                 "video/mp4",
                 "video/webm",
-                "video/quicktime"
+                "video/quicktime",
+                "application/pdf"
             ];
 
             if (permitidos.includes(file.mimetype)) {
@@ -1023,7 +1024,7 @@ router.post(
 router.post(
     "/ausente/:id",
     verificarAutenticacao,
-    upload.single("foto"),
+    uploadAnexo.single("foto"),
     async (req, res) => {
 
         try {
@@ -1051,24 +1052,29 @@ router.post(
                 rows[0] || {};
 
             // ===============================
-            // AUSENTE
+            // AUSENTE — grava somente os campos próprios deste status
             // ===============================
-            await osService.clienteAusente(
+            const observacaoAusente =
+                req.body.observacao_ausente ?? req.body.observacao ?? null;
 
+            const anexoAusente = req.file
+                ? "/uploads/ordens_servico/" + req.file.filename
+                : null;
+
+            await db.query(`
+                UPDATE ordens_servico
+                SET
+                    status = 'cliente_ausente',
+                    observacao_ausente = ?,
+                    anexo_ausente = ?
+                WHERE id = ?
+                AND empresa_id = ?
+            `, [
+                observacaoAusente || null,
+                anexoAusente,
                 req.params.id,
-
-                req.usuario,
-
-                {
-                    observacao:
-                        req.body.observacao,
-
-                    evidencia:
-                        req.file
-                        ? req.file.path
-                        : null
-                }
-            );
+                req.usuario.empresa_id
+            ]);
 
             // ===============================
             // LOG
@@ -1094,7 +1100,7 @@ router.post(
                         os.login,
 
                     Observação:
-                        req.body.observacao,
+                        observacaoAusente,
 
                     Evidência:
                         req.file
@@ -1235,6 +1241,7 @@ router.post(
 router.post(
     "/concluir/:id",
     verificarAutenticacao,
+    uploadAnexo.single("foto"),
     async (req, res) => {
 
         try {
@@ -1262,13 +1269,32 @@ router.post(
                 rows[0] || {};
 
             // ===============================
-            // CONCLUIR
+            // CONCLUIR — grava somente os campos próprios deste status
             // ===============================
-            await osService.concluirOS(
+            const observacaoFinalizado =
+                req.body.observacao_finalizado ?? req.body.observacao ?? null;
 
+            const anexoFinalizado = req.file
+                ? "/uploads/ordens_servico/" + req.file.filename
+                : null;
+
+            await db.query(`
+                UPDATE ordens_servico
+                SET
+                    status = 'concluido',
+                    finalizado_em = NOW(),
+                    finalizado_por = ?,
+                    observacao_finalizado = ?,
+                    anexo_finalizado = ?
+                WHERE id = ?
+                AND empresa_id = ?
+            `, [
+                req.usuario.id,
+                observacaoFinalizado || null,
+                anexoFinalizado,
                 req.params.id,
-                req.usuario
-            );
+                req.usuario.empresa_id
+            ]);
 
             // ===============================
             // LOG
@@ -1294,7 +1320,13 @@ router.post(
                         os.login,
 
                     Status:
-                        "CONCLUÍDO"
+                        "CONCLUÍDO",
+
+                    "Observação de conclusão":
+                        observacaoFinalizado,
+
+                    Anexo:
+                        req.file ? "SIM" : "NÃO"
                 }
             );
 
@@ -1649,6 +1681,7 @@ router.put(
             bairro,
             referencia,
 
+            descricao,
             observacao,
 
             vlan,
@@ -1758,6 +1791,7 @@ router.put(
                 bairro = ?,
                 referencia = ?,
 
+                descricao = ?,
                 observacao = ?,
 
                 vlan = ?,
@@ -1797,6 +1831,7 @@ router.put(
             bairro || null,
             referencia || null,
 
+            descricao || null,
             observacao || null,
 
             vlan || null,
@@ -2356,7 +2391,7 @@ try {
                     </div>
 
                     <div class="linha">
-                        <span class="label">OBSERVAÇÕES:</span>
+                        <span class="label">DESCRIÇÃO:</span>
 
                         <div style="
                             margin-top:10px;
@@ -2365,7 +2400,7 @@ try {
                             border-radius:6px;
                             padding:10px;
                         ">
-                            ${os.observacoes || ""}
+                            ${os.descricao || ""}
                         </div>
                     </div>
 
@@ -2824,7 +2859,7 @@ AND os.empresa_id = ?
     </div>
 
     <div class="linha">
-        <span class="label">OBSERVAÇÕES:</span>
+        <span class="label">OBSERVAÇÃO DE CONCLUSÃO:</span>
 
         <div style="
             margin-top:10px;
@@ -2833,7 +2868,7 @@ AND os.empresa_id = ?
             border-radius:6px;
             padding:10px;
         ">
-            ${os.observacoes || ""}
+            ${os.observacao_finalizado || ""}
         </div>
     </div>
 
