@@ -658,6 +658,19 @@ tr:hover{ background:#f8fbff; }
 .status-agendado{ background:#ede9fe; color:#7c3aed; }
 .status-ausente{ background:#fee2e2; color:#dc2626; }
 
+.prioridade-box{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    font-weight:800;
+    font-size:12px;
+    white-space:nowrap;
+}
+.prioridade-alta{ background:#fee2e2; color:#b91c1c; }
+.prioridade-media{ background:#fef3c7; color:#b45309; }
+.prioridade-baixa{ background:#dcfce7; color:#15803d; }
+.prioridade-nao-informada{ background:#e2e8f0; color:#475569; }
+
 .badge-tecnico{
     display:inline-block;
     background:#eef2ff;
@@ -1771,6 +1784,7 @@ let periodoAtual = "hoje";
                             <th>Criada em</th>
                             <th>Criada por</th>
                             <th>Agendamento</th>
+                            <th>Prioridade</th>
                             <th>Status</th>
                             <th>Ações</th>
                         </tr>
@@ -1778,7 +1792,7 @@ let periodoAtual = "hoje";
 
                     <tbody id="tabelaAbertas">
                         <tr>
-                            <td colspan="15">Carregando...</td>
+                            <td colspan="16">Carregando...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1804,6 +1818,7 @@ let periodoAtual = "hoje";
                             <th>Telefone</th>
                             <th>Iniciada em</th>
                             <th>Enviada Por</th>
+                            <th>Prioridade</th>
                             <th>Status</th>
                             <th>Ações</th>
                         </tr>
@@ -1811,7 +1826,7 @@ let periodoAtual = "hoje";
 
                     <tbody id="tabelaAndamento">
                         <tr>
-                            <td colspan="14">Carregando...</td>
+                            <td colspan="15">Carregando...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1838,6 +1853,7 @@ let periodoAtual = "hoje";
                             <th>Iniciada em</th>
                             <th>Finalizada em</th>
                             <th>Finalizada por</th>
+                            <th>Prioridade</th>
                             <th>Status</th>
                             <th>Ações</th>
                         </tr>
@@ -1845,7 +1861,7 @@ let periodoAtual = "hoje";
 
                     <tbody id="tabelaConcluidas">
                         <tr>
-                            <td colspan="15">Carregando...</td>
+                            <td colspan="16">Carregando...</td>
                         </tr>
                     </tbody>
                 </table>

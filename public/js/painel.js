@@ -191,6 +191,27 @@ function renderResumoTopo(tecnicos, localidades, tipos){
 // ===============================
 // STATUS
 // ===============================
+function normalizarPrioridade(valor) {
+    const p = String(valor || "").trim().toLowerCase();
+    if (p === "alta") return "Alta";
+    if (p === "baixa") return "Baixa";
+    if (p === "media" || p === "média") return "Média";
+    return "Não informada";
+}
+
+function prioridadeHTML(valor) {
+    const prioridade = normalizarPrioridade(valor);
+    const classe = prioridade === "Alta"
+        ? "prioridade-alta"
+        : prioridade === "Baixa"
+            ? "prioridade-baixa"
+            : prioridade === "Média"
+                ? "prioridade-media"
+                : "prioridade-nao-informada";
+
+    return `<span class="prioridade-box ${classe}">${prioridade}</span>`;
+}
+
 const STATUS_MAP = {
     "aberto": ["status-aberto","Aberto"],
     "em_andamento": ["status-andamento","Em execução"],
@@ -961,6 +982,10 @@ function popularTabelaCompleta(id, dados) {
             </td>
 
             <td>
+                ${prioridadeHTML(os.prioridade)}
+            </td>
+
+            <td>
                 <span class="status-box ${classe}">
                     ${texto}
                 </span>
@@ -1092,6 +1117,10 @@ function popularTabelaAndamento(id, dados) {
 
             <td>
                 ${os.enviado_por_nome || "-"}
+            </td>
+
+            <td>
+                ${prioridadeHTML(os.prioridade)}
             </td>
 
             <td>
@@ -1243,6 +1272,10 @@ function popularTabela(id, dados) {
 
             <td>
                 ${formatarData(os.agendamento)}
+            </td>
+
+            <td>
+                ${prioridadeHTML(os.prioridade)}
             </td>
 
             <td>
@@ -1598,6 +1631,19 @@ function garantirModalResumoOS(){
         .btn-resumo.vermelho{ background:#ef4444; }
         .btn-resumo.cinza{ background:#64748b; }
 
+        .prioridade-box{
+            display:inline-block;
+            padding:6px 10px;
+            border-radius:999px;
+            font-size:12px;
+            font-weight:800;
+            white-space:nowrap;
+        }
+        .prioridade-alta{ background:#fee2e2; color:#b91c1c; }
+        .prioridade-media{ background:#fef3c7; color:#b45309; }
+        .prioridade-baixa{ background:#dcfce7; color:#15803d; }
+        .prioridade-nao-informada{ background:#e2e8f0; color:#475569; }
+
         @media(max-width:800px){
             .resumo-grid-cards,
             .resumo-linha{
@@ -1709,9 +1755,10 @@ window.abrirResumoOS = async function(id){
 
             <div class="resumo-card">
                 <h3>🛠️ Atendimento</h3>
-                ${linhaResumo("Tipo de Serviço", os.tipo_servico_nome, "Status", textoStatus)}
-                ${linhaResumo("Técnicos", (os.tecnicos_nomes || "").replace(/,/g, ", "), "Criado por", os.criado_por_nome)}
-                ${linhaResumo("Criado em", formatarData(os.criado_em || os.data_abertura), "Agendamento", formatarData(os.agendamento))}
+                ${linhaResumo("Tipo de Serviço", os.tipo_servico_nome, "Prioridade", normalizarPrioridade(os.prioridade))}
+                ${linhaResumo("Status", textoStatus, "Técnicos", (os.tecnicos_nomes || "").replace(/,/g, ", "))}
+                ${linhaResumo("Criado por", os.criado_por_nome, "Criado em", formatarData(os.criado_em || os.data_abertura))}
+                ${linhaResumo("Agendamento", formatarData(os.agendamento), "Envio agendado", formatarData(os.agendamento_envio))}
             </div>
 
             <div class="resumo-card">

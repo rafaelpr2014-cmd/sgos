@@ -932,6 +932,15 @@ button:hover{
                 </div>
 
                 <div class="campo">
+                    <label>Prioridade</label>
+                    <select id="prioridade">
+                        <option value="Baixa">Baixa</option>
+                        <option value="Média" selected>Média</option>
+                        <option value="Alta">Alta</option>
+                    </select>
+                </div>
+
+                <div class="campo">
                     <label>Técnicos</label>
                     <select id="tecnicos" multiple></select>
                 </div>
@@ -2644,6 +2653,7 @@ async function carregarOS(){
     latitude.value = os.latitude || "";
     longitude.value = os.longitude || "";
     descricao.value = os.descricao || "";
+    document.getElementById("prioridade").value = os.prioridade || "Média";
     status.value = os.status || "aberto";
 
     localidade.value = os.localidade_id || os.localidade || "";
@@ -2863,6 +2873,9 @@ async function salvarOS(
 
             tipo_servico:
                 Number(tipo_servico.value),
+
+            prioridade:
+                document.getElementById("prioridade")?.value || "Média",
 
             tecnico:
                 tecnicosSelecionados,

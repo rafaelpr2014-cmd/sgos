@@ -870,6 +870,15 @@ button:hover{
                 </div>
 
                 <div class="campo">
+                    <label>Prioridade</label>
+                    <select id="prioridade">
+                        <option value="Baixa">Baixa</option>
+                        <option value="Média" selected>Média</option>
+                        <option value="Alta">Alta</option>
+                    </select>
+                </div>
+
+                <div class="campo">
                     <label>Técnicos</label>
                     <select id="tecnico" multiple></select>
                 </div>
@@ -2348,6 +2357,8 @@ async function carregarAtendimento() {
     tipo_servico.value =
         os.tipo_servico || "";
 
+    document.getElementById("prioridade").value = os.prioridade || "Média";
+
     vlan.value =
         os.vlan || "";
 
@@ -2466,6 +2477,9 @@ async function salvarAtendimento(
 
         tipo_servico:
             Number(tipo_servico.value),
+
+        prioridade:
+            document.getElementById("prioridade")?.value || "Média",
 
         tecnico:
             tecnicosSelecionados,
