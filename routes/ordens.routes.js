@@ -492,7 +492,6 @@ router.get("/", verificarAutenticacao, async (req, res) => {
         let query = `
             SELECT 
                 os.*,
-                os.descricao AS descricao,
                 os.nome AS cliente_nome,
 
                 u.usuario AS criado_por_nome,
@@ -618,6 +617,24 @@ router.post(
                     dados,
                     req.usuario
                 );
+
+            // Garante a persistência da descrição inicial mesmo que
+            // a versão atual do osService.criar ainda não inclua a coluna.
+            const descricaoInicial =
+                typeof dados.descricao === "string"
+                    ? dados.descricao.trim()
+                    : "";
+
+            await db.query(`
+                UPDATE ordens_servico
+                SET descricao = ?
+                WHERE id = ?
+                  AND empresa_id = ?
+            `, [
+                descricaoInicial || null,
+                resultado.id,
+                req.usuario.empresa_id
+            ]);
 
             // ===============================
             // BUSCAR NOMES
@@ -1570,7 +1587,6 @@ router.get("/:id", verificarAutenticacao, async (req, res) => {
 
             SELECT 
                 os.*,
-                os.descricao AS descricao,
                 DATE_FORMAT(os.agendamento, '%Y-%m-%d %H:%i:%s') AS agendamento,
                 DATE_FORMAT(os.agendamento_envio, '%Y-%m-%d %H:%i:%s') AS agendamento_envio,
                 DATE_FORMAT(os.criado_em, '%Y-%m-%d %H:%i:%s') AS criado_em,
@@ -1833,7 +1849,7 @@ router.put(
             bairro || null,
             referencia || null,
 
-            descricao || null,
+            (typeof descricao === "string" ? descricao.trim() : null),
             observacao || null,
 
             vlan || null,

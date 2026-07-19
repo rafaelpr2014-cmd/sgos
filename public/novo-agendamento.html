@@ -840,7 +840,7 @@ button{
                     <label>Descrição da OS</label>
                     <textarea id="descricao" placeholder="Descreva detalhadamente o serviço que deverá ser realizado."></textarea>
                 </div>
-</div>
+            </div>
 
             <div class="section-title">Anexo</div>
 
@@ -1890,7 +1890,7 @@ async function salvar() {
         referencia: referencia.value,
         latitude: latitude.value,
         longitude: longitude.value,
-        descricao: descricao.value.trim(),
+        descricao: (document.getElementById("descricao")?.value || "").trim(),
         agendamento: agendamentoFinal,
         agendamento_envio: agendamento_envio.value || null,
         status: "agendado"
