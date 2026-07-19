@@ -79,8 +79,11 @@ button,input,textarea,select{font:inherit}
 .arquivo-box{border:1px dashed #93c5fd;background:#eff6ff;border-radius:12px;padding:14px}.arquivo-ajuda{font-size:12px;color:#64748b;margin-top:7px}.preview-lista{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.preview-item{position:relative;width:104px;height:82px;border:1px solid var(--borda);border-radius:10px;overflow:hidden;background:#f8fafc}.preview-item img,.preview-item video{width:100%;height:100%;object-fit:cover}.preview-item button{position:absolute;right:4px;top:4px;width:24px;height:24px;border:0;border-radius:50%;background:rgba(239,68,68,.92);color:#fff;cursor:pointer;font-weight:800}
 .form-actions{display:flex;gap:10px;margin-top:18px}.btn{border:0;padding:11px 16px;border-radius:10px;cursor:pointer;font-weight:800;color:#fff;display:inline-flex;align-items:center;gap:8px}.btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}.btn-salvar{background:var(--verde)}.btn-salvar:hover{background:#15803d}.btn-limpar{background:#64748b}.btn:disabled{opacity:.65;cursor:not-allowed}
 
-.filtros{display:grid;grid-template-columns:2fr 2fr 1fr 1fr;gap:12px}
-.filtro-periodo{grid-column:span 2;border:1px solid var(--borda);border-radius:12px;padding:11px 12px;background:#f8fafc}
+.filtros{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px}
+.filtros>input:nth-child(1),.filtros>input:nth-child(2){grid-column:span 4}
+#filtroLocalidade,#filtroStatusViabilidade{grid-column:span 2}
+.filtro-instalacao,.filtro-periodo{grid-column:span 4}
+.filtro-periodo{border:1px solid var(--borda);border-radius:12px;padding:11px 12px;background:#f8fafc}
 .filtro-periodo>label{display:block;font-size:12px;font-weight:800;color:#334155;margin-bottom:8px;text-transform:uppercase;letter-spacing:.2px}
 .periodo-duplo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .periodo-campo{display:flex;flex-direction:column;gap:5px}.periodo-campo span{font-size:11px;font-weight:700;color:#64748b}
@@ -98,8 +101,8 @@ button,input,textarea,select{font:inherit}
 .popup{position:fixed;inset:0;background:rgba(0,0,0,.84);display:none;justify-content:center;align-items:center;z-index:99999;padding:24px}.popup.ativo{display:flex}.popup img,.popup video{max-width:92vw;max-height:88vh;border-radius:14px;background:#000}.popup-fechar{position:absolute;top:18px;right:18px;background:#ef4444;color:#fff;border:0;width:40px;height:40px;border-radius:50%;cursor:pointer;font-weight:800;font-size:18px}
 .footer{display:flex;justify-content:space-between;padding:20px 34px;color:#475569;font-size:12px;border-top:1px solid var(--borda)}
 
-@media(max-width:1300px){.top-actions{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr 1fr}.campo.span-3{grid-column:span 2}.filtros{grid-template-columns:1fr 1fr}}
-@media(max-width:900px){.filtro-periodo{grid-column:span 1}.periodo-duplo{grid-template-columns:1fr}.sidebar{display:none}.main{margin-left:0}.header{height:auto;flex-direction:column;align-items:flex-start;gap:15px;padding:20px}.header-actions{width:100%;justify-content:space-between;flex-wrap:wrap}.busca-wrap,.input-busca-menu{width:100%}.content{padding:20px}.top-actions,.form-grid,.filtros{grid-template-columns:1fr}.campo.span-2,.campo.span-3{grid-column:span 1}.footer{flex-direction:column;gap:8px}}
+@media(max-width:1300px){.top-actions{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr 1fr}.campo.span-3{grid-column:span 2}.filtros{grid-template-columns:repeat(2,minmax(0,1fr))}.filtros>input:nth-child(1),.filtros>input:nth-child(2),#filtroLocalidade,#filtroStatusViabilidade,.filtro-instalacao,.filtro-periodo{grid-column:span 1}}
+@media(max-width:900px){.periodo-duplo{grid-template-columns:1fr}.sidebar{display:none}.main{margin-left:0}.header{height:auto;flex-direction:column;align-items:flex-start;gap:15px;padding:20px}.header-actions{width:100%;justify-content:space-between;flex-wrap:wrap}.busca-wrap,.input-busca-menu{width:100%}.content{padding:20px}.top-actions,.form-grid,.filtros{grid-template-columns:1fr}.campo.span-2,.campo.span-3{grid-column:span 1}.footer{flex-direction:column;gap:8px}}
 
 /* AJUSTES VIABILIDADE */
 .lista-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
@@ -276,8 +279,7 @@ th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
             <input type="text" id="filtroEndereco" placeholder="Filtrar por endereço">
             <select id="filtroLocalidade"><option value="">Todas as localidades</option></select>
             <select id="filtroStatusViabilidade"><option value="">Todos os status da viabilidade</option><option value="PENDENTE">Pendente</option><option value="EM_ANALISE">Em análise</option><option value="APROVADA">Aprovada</option><option value="REPROVADA">Reprovada</option></select>
-            <select id="filtroStatusInstalacao"><option value="">Todas as instalações</option><option value="PENDENTE">Instalação pendente</option><option value="INSTALADO">Instalação realizada</option></select>
-            <div></div>
+            <select id="filtroStatusInstalacao" class="filtro-instalacao"><option value="">Todas as instalações</option><option value="PENDENTE">Instalação pendente</option><option value="INSTALADO">Instalação realizada</option></select>
             <div class="filtro-periodo">
                 <label>Filtro pela data de registro</label>
                 <div class="periodo-duplo">
