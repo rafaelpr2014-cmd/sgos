@@ -375,6 +375,17 @@ function possuiTecnicoObrigatorio(tecnicoRaw){
         }
     }
 
+
+function normalizarPrioridadeOS(valor){
+    const texto = String(valor || "").trim().toLowerCase();
+
+    if(texto === "alta") return "Alta";
+    if(texto === "baixa") return "Baixa";
+    if(texto === "media" || texto === "média") return "Média";
+
+    return "Média";
+}
+
   // ===============================
 // 📋 LISTAR ORDENS
 // ===============================
@@ -715,20 +726,26 @@ router.post(
                     req.usuario
                 );
 
-            // Garante a persistência da descrição inicial mesmo que
-            // a versão atual do osService.criar ainda não inclua a coluna.
+            // Garante a persistência da descrição inicial e da prioridade
+            // mesmo que a versão atual do osService.criar ainda não inclua essas colunas.
             const descricaoInicial =
                 typeof dados.descricao === "string"
                     ? dados.descricao.trim()
                     : "";
 
+            const prioridadeFinal =
+                normalizarPrioridadeOS(dados.prioridade);
+
             await db.query(`
                 UPDATE ordens_servico
-                SET descricao = ?
+                SET
+                    descricao = ?,
+                    prioridade = ?
                 WHERE id = ?
                   AND empresa_id = ?
             `, [
                 descricaoInicial || null,
+                prioridadeFinal,
                 resultado.id,
                 req.usuario.empresa_id
             ]);
@@ -867,6 +884,9 @@ router.post(
 
                     "Tipo Serviço":
                         nomeServico,
+
+                    Prioridade:
+                        prioridadeFinal,
 
                     Técnicos:
                         nomesTecnicos,
@@ -1792,6 +1812,7 @@ router.put(
             localidade,
             plano,
             tipo_servico,
+            prioridade,
 
             tecnico,
 
@@ -1906,6 +1927,7 @@ router.put(
                 localidade = ?,
                 plano = ?,
                 tipo_servico = ?,
+                prioridade = ?,
 
                 tecnico = ?,
 
@@ -1944,6 +1966,7 @@ router.put(
             localidade || null,
             plano || null,
             tipo_servico || null,
+            normalizarPrioridadeOS(prioridade),
 
             JSON.stringify(
                 tecnico || []
