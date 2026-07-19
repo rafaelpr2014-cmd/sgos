@@ -658,7 +658,7 @@ button:hover{
 /* ===============================
    EQUIPAMENTOS / MATERIAIS DA OS
 ================================ */
-.equipamento-os-box{grid-column:1/-1;border:1px solid #dbeafe;background:#f8fbff;border-radius:14px;padding:16px}.equipamento-tipo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.materiais-os-lista{display:grid;gap:10px;margin-top:14px}.material-os-item{display:grid;grid-template-columns:minmax(0,1fr) 120px 44px;gap:10px;align-items:center;padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}.material-os-item strong{font-size:13px}.material-os-item small{display:block;color:#64748b;margin-top:3px}.material-os-item input{padding:9px}.btn-remover-material{border:none;background:#fee2e2;color:#b91c1c;border-radius:9px;height:38px;cursor:pointer;font-weight:bold}.btn-adicionar-material{margin-top:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:800}.material-vazio{padding:12px;text-align:center;color:#64748b;border:1px dashed #cbd5e1;border-radius:10px;background:#fff}@media(max-width:760px){.equipamento-tipo-grid{grid-template-columns:1fr}.material-os-item{grid-template-columns:1fr 90px 40px}}
+.equipamento-os-box{grid-column:1/-1;border:1px solid #dbeafe;background:#f8fbff;border-radius:12px;padding:12px}.equipamento-tipo-grid{display:grid;grid-template-columns:1.05fr .75fr 1.55fr .95fr;gap:10px;align-items:end}.equipamento-tipo-grid .campo label{font-size:12px;margin-bottom:5px}.equipamento-tipo-grid select{padding:9px 10px;min-height:38px}.material-seletor-linha{display:grid;grid-template-columns:minmax(0,1fr) 42px;gap:7px}.material-seletor-linha .btn-adicionar-material{margin:0;padding:0;width:42px;height:38px;display:flex;align-items:center;justify-content:center;font-size:20px}.materiais-os-lista{display:grid;gap:7px;margin-top:9px}.material-os-item{display:grid;grid-template-columns:minmax(180px,1fr) 72px 104px 104px 112px 38px;gap:8px;align-items:center;padding:8px 9px;border:1px solid #e5e7eb;border-radius:9px;background:#fff}.material-os-item:not(.vendido){grid-template-columns:minmax(180px,1fr) 80px 38px}.material-os-item strong{font-size:12px}.material-os-item small{display:block;color:#64748b;margin-top:2px;font-size:11px}.material-os-item input{padding:7px 8px;min-height:34px}.material-total{font-size:13px;font-weight:900;color:#15803d;white-space:nowrap}.btn-remover-material{border:none;background:#fee2e2;color:#b91c1c;border-radius:8px;height:34px;cursor:pointer;font-weight:bold;padding:0}.btn-adicionar-material{background:#2563eb;color:#fff;border:none;border-radius:9px;cursor:pointer;font-weight:800}.material-vazio{padding:9px;text-align:center;color:#64748b;border:1px dashed #cbd5e1;border-radius:9px;background:#fff;font-size:12px}.venda-equipamento-box{margin-top:8px;padding:8px 10px;border:1px solid #bbf7d0;background:#f0fdf4;border-radius:9px}.resumo-venda-os{display:flex;gap:18px;flex-wrap:wrap;font-size:12px}.resumo-venda-os strong{font-size:13px}@media(max-width:1100px){.equipamento-tipo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.material-os-item{grid-template-columns:minmax(160px,1fr) 65px 95px 95px 105px 36px}}@media(max-width:760px){.equipamento-tipo-grid{grid-template-columns:1fr}.material-os-item,.material-os-item.vendido,.material-os-item:not(.vendido){grid-template-columns:1fr 80px 38px}.material-os-item.vendido input[readonly],.material-os-item.vendido input[title="Desconto"],.material-os-item.vendido .material-total{grid-column:1/-1}.resumo-venda-os{gap:8px;flex-direction:column}}
 
 .venda-equipamento-box{margin-top:14px;padding:14px;border:1px solid #bbf7d0;background:#f0fdf4;border-radius:12px}.resumo-venda-os{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;padding:12px;background:#fff;border-radius:10px}.material-os-item.vendido{grid-template-columns:minmax(0,1fr) 90px 125px 125px 125px 44px}.material-preco{font-size:12px;color:#475569}.material-total{font-weight:900;color:#15803d}@media(max-width:900px){.material-os-item.vendido{grid-template-columns:1fr 1fr}.material-os-item.vendido .btn-remover-material{grid-column:2}}
 </style>
@@ -894,7 +894,7 @@ button:hover{
                         <div class="campo">
                             <label>Origem do equipamento</label>
                             <select id="origem_equipamento">
-                                <option value="proprio">Equipamento próprio do cliente</option>
+                                <option value="proprio">Equipamento próprio</option>
                                 <option value="empresa">Equipamento da empresa</option>
                             </select>
                         </div>
@@ -905,31 +905,31 @@ button:hover{
                                 <option value="vendido">Vendido</option>
                             </select>
                         </div>
-                    </div>
-                    <div id="areaMateriaisOS" class="hidden">
-                        <div class="campo" style="margin-top:14px">
-                            <label>Adicionar material de instalação</label>
-                            <select id="produto_material"><option value="">Selecione um produto</option></select>
+                        <div id="areaMateriaisOS" class="campo hidden">
+                            <label>Material de instalação</label>
+                            <div class="material-seletor-linha">
+                                <select id="produto_material"><option value="">Selecione um produto</option></select>
+                                <button type="button" class="btn-adicionar-material" title="Adicionar material" onclick="adicionarMaterialOS()">+</button>
+                            </div>
                         </div>
-                        <button type="button" class="btn-adicionar-material" onclick="adicionarMaterialOS()">+ Adicionar material</button>
-                        <div id="listaMateriaisOS" class="materiais-os-lista"></div>
-
-                        <div id="areaVendaEquipamento" class="hidden venda-equipamento-box">
-                            <div class="campo"><label>Tipo de pagamento *</label>
-                                <select id="forma_pagamento_equipamento">
-                                    <option value="">Selecione...</option>
-                                    <option value="dinheiro">Dinheiro</option>
-                                    <option value="pix">PIX</option>
-                                    <option value="cartao_credito">Cartão de crédito</option>
-                                    <option value="cartao_debito">Cartão de débito</option>
-                                    <option value="cheque">Cheque</option>
-                                </select>
-                            </div>
-                            <div class="resumo-venda-os">
-                                <span>Subtotal: <strong id="subtotalVendaOS">R$ 0,00</strong></span>
-                                <span>Descontos: <strong id="descontoVendaOS">R$ 0,00</strong></span>
-                                <span>Total da venda: <strong id="totalVendaOS">R$ 0,00</strong></span>
-                            </div>
+                        <div id="campoPagamentoEquipamento" class="campo hidden">
+                            <label>Tipo de pagamento *</label>
+                            <select id="forma_pagamento_equipamento">
+                                <option value="">Selecione...</option>
+                                <option value="dinheiro">Dinheiro</option>
+                                <option value="pix">PIX</option>
+                                <option value="cartao_credito">Cartão de crédito</option>
+                                <option value="cartao_debito">Cartão de débito</option>
+                                <option value="cheque">Cheque</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="listaMateriaisOS" class="materiais-os-lista hidden"></div>
+                    <div id="areaVendaEquipamento" class="hidden venda-equipamento-box">
+                        <div class="resumo-venda-os">
+                            <span>Subtotal: <strong id="subtotalVendaOS">R$ 0,00</strong></span>
+                            <span>Descontos: <strong id="descontoVendaOS">R$ 0,00</strong></span>
+                            <span>Total da venda: <strong id="totalVendaOS">R$ 0,00</strong></span>
                         </div>
                     </div>
                 </div>
@@ -2881,6 +2881,8 @@ function atualizarVisibilidadeEquipamento(){
     const empresa = document.getElementById("origem_equipamento")?.value === "empresa";
     document.getElementById("campoModalidadeEquipamento")?.classList.toggle("hidden", !empresa);
     document.getElementById("areaMateriaisOS")?.classList.toggle("hidden", !empresa);
+    document.getElementById("listaMateriaisOS")?.classList.toggle("hidden", !empresa);
+    document.getElementById("campoPagamentoEquipamento")?.classList.toggle("hidden", !modalidadeVendaOS());
     document.getElementById("areaVendaEquipamento")?.classList.toggle("hidden", !modalidadeVendaOS());
     if(!empresa){ materiaisSelecionadosOS = []; renderMateriaisOS(); }
 }
@@ -2904,6 +2906,7 @@ function removerMaterialOS(id){ materiaisSelecionadosOS = materiaisSelecionadosO
 function renderMateriaisOS(){
     const box=document.getElementById("listaMateriaisOS");if(!box)return;
     const vendido=modalidadeVendaOS();
+    document.getElementById("campoPagamentoEquipamento")?.classList.toggle("hidden",!vendido);
     document.getElementById("areaVendaEquipamento")?.classList.toggle("hidden",!vendido);
     if(!materiaisSelecionadosOS.length){box.innerHTML='<div class="material-vazio">Nenhum material selecionado.</div>';recalcularVendaOS();return;}
     box.innerHTML=materiaisSelecionadosOS.map(m=>vendido

@@ -158,20 +158,67 @@ async function salvarMateriaisOS(osId,empresaId,origem,modalidade,materiais,form
     const vendido=origemFinal==='empresa'&&modalidadeFinal==='vendido';
     const formas=['dinheiro','pix','cartao_credito','cartao_debito','cheque'];
     if(vendido&&!formas.includes(formaPagamento))throw new Error('Selecione um tipo de pagamento válido para a venda.');
-    await db.query(`DELETE FROM os_materiais WHERE os_id=? AND empresa_id=?`,[osId,empresaId]);
-    let subtotal=0,descontoTotal=0,total=0;const porEscritorio=new Map();
-    if(origemFinal==='empresa'){
-      for(const item of normalizarMateriaisOS(materiais)){
-        const [rows]=await db.query(`SELECT id,nome,escritorio_id,valor_unitario FROM estoque_produtos WHERE id=? AND empresa_id=? AND ativo=1 AND LOWER(TRIM(categoria))=LOWER('Material de Instalação') LIMIT 1`,[item.produto_id,empresaId]);
-        if(!rows.length)throw new Error(`Produto ${item.produto_id} não pertence à categoria Material de Instalação.`);
-        const produto=rows[0],unit=vendido?Number(produto.valor_unitario||0):0,bruto=unit*item.quantidade,desc=vendido?Math.min(item.desconto,bruto):0,liquido=Math.max(0,bruto-desc);
-        subtotal+=bruto;descontoTotal+=desc;total+=liquido;
-        await db.query(`INSERT INTO os_materiais (empresa_id,os_id,produto_id,quantidade,valor_unitario,desconto,valor_total) VALUES (?,?,?,?,?,?,?)`,[empresaId,osId,item.produto_id,item.quantidade,unit,desc,liquido]);
-        if(vendido)porEscritorio.set(Number(produto.escritorio_id),(porEscritorio.get(Number(produto.escritorio_id))||0)+liquido);
+
+    const conn=await db.getConnection();
+    let subtotal=0,descontoTotal=0,total=0;
+    const porEscritorio=new Map();
+    try{
+      await conn.beginTransaction();
+
+      // Materiais já vinculados à OS: são devolvidos antes de aplicar a nova configuração.
+      const [anteriores]=await conn.query(`SELECT om.produto_id,om.quantidade,p.nome,p.escritorio_id
+        FROM os_materiais om JOIN estoque_produtos p ON p.id=om.produto_id AND p.empresa_id=om.empresa_id
+        WHERE om.os_id=? AND om.empresa_id=? FOR UPDATE`,[osId,empresaId]);
+      for(const antigo of anteriores){
+        const [[produtoAtual]]=await conn.query(`SELECT quantidade FROM estoque_produtos WHERE id=? AND empresa_id=? FOR UPDATE`,[antigo.produto_id,empresaId]);
+        if(!produtoAtual)continue;
+        const antes=Number(produtoAtual.quantidade||0),qtd=Number(antigo.quantidade||0),depois=antes+qtd;
+        await conn.query(`UPDATE estoque_produtos SET quantidade=?,atualizado_em=NOW() WHERE id=? AND empresa_id=?`,[depois,antigo.produto_id,empresaId]);
+        await conn.query(`INSERT INTO estoque_movimentacoes
+          (empresa_id,escritorio_id,produto_id,tipo,quantidade,quantidade_anterior,quantidade_atual,motivo,observacao,usuario_id,usuario_nome,origem,criado_em)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,'os',NOW())`,
+          [empresaId,antigo.escritorio_id,antigo.produto_id,'entrada',qtd,antes,depois,`Devolução automática ao atualizar OS #${osId}`,`Material anteriormente vinculado à OS #${osId}.`,Number(usuario?.id||0),String(usuario?.usuario||usuario?.nome||'Sistema')]);
       }
+
+      await conn.query(`DELETE FROM os_materiais WHERE os_id=? AND empresa_id=?`,[osId,empresaId]);
+
+      if(origemFinal==='empresa'){
+        for(const item of normalizarMateriaisOS(materiais)){
+          const [rows]=await conn.query(`SELECT id,nome,escritorio_id,quantidade,valor_unitario FROM estoque_produtos
+            WHERE id=? AND empresa_id=? AND ativo=1 AND LOWER(TRIM(categoria))=LOWER('Material de Instalação') LIMIT 1 FOR UPDATE`,[item.produto_id,empresaId]);
+          if(!rows.length)throw new Error(`Produto ${item.produto_id} não pertence à categoria Material de Instalação.`);
+          const produto=rows[0];
+          const estoqueAntes=Number(produto.quantidade||0);
+          if(estoqueAntes<item.quantidade)throw new Error(`Estoque insuficiente para ${produto.nome}. Disponível: ${estoqueAntes}; solicitado: ${item.quantidade}.`);
+
+          const unit=vendido?Number(produto.valor_unitario||0):0;
+          const bruto=unit*item.quantidade;
+          const desc=vendido?Math.min(item.desconto,bruto):0;
+          const liquido=Math.max(0,bruto-desc);
+          subtotal+=bruto;descontoTotal+=desc;total+=liquido;
+
+          const estoqueDepois=estoqueAntes-item.quantidade;
+          await conn.query(`UPDATE estoque_produtos SET quantidade=?,atualizado_em=NOW() WHERE id=? AND empresa_id=?`,[estoqueDepois,item.produto_id,empresaId]);
+          await conn.query(`INSERT INTO estoque_movimentacoes
+            (empresa_id,escritorio_id,produto_id,tipo,quantidade,quantidade_anterior,quantidade_atual,motivo,observacao,usuario_id,usuario_nome,origem,criado_em)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,'os',NOW())`,
+            [empresaId,produto.escritorio_id,item.produto_id,'saida',item.quantidade,estoqueAntes,estoqueDepois,`Material utilizado na OS #${osId}`,`${vendido?'Produto vendido':'Produto em comodato'} vinculado à OS #${osId}.`,Number(usuario?.id||0),String(usuario?.usuario||usuario?.nome||'Sistema')]);
+
+          await conn.query(`INSERT INTO os_materiais (empresa_id,os_id,produto_id,quantidade,valor_unitario,desconto,valor_total) VALUES (?,?,?,?,?,?,?)`,[empresaId,osId,item.produto_id,item.quantidade,unit,desc,liquido]);
+          if(vendido)porEscritorio.set(Number(produto.escritorio_id),(porEscritorio.get(Number(produto.escritorio_id))||0)+liquido);
+        }
+      }
+
+      await conn.query(`UPDATE ordens_servico SET origem_equipamento=?,modalidade_equipamento=?,forma_pagamento_equipamento=?,subtotal_equipamentos=?,desconto_equipamentos=?,total_equipamentos=? WHERE id=? AND empresa_id=?`,
+        [origemFinal,modalidadeFinal,vendido?formaPagamento:null,subtotal,descontoTotal,total,osId,empresaId]);
+      await conn.commit();
+    }catch(error){
+      await conn.rollback();
+      throw error;
+    }finally{
+      conn.release();
     }
-    await db.query(`UPDATE ordens_servico SET origem_equipamento=?,modalidade_equipamento=?,forma_pagamento_equipamento=?,subtotal_equipamentos=?,desconto_equipamentos=?,total_equipamentos=? WHERE id=? AND empresa_id=?`,
-      [origemFinal,modalidadeFinal,vendido?formaPagamento:null,subtotal,descontoTotal,total,osId,empresaId]);
+
     await sincronizarFinanceiroVendaOS(osId,empresaId,Number(usuario?.id||0),String(usuario?.usuario||usuario?.nome||'Sistema'),vendido?formaPagamento:null,vendido?porEscritorio:new Map());
 }
 
