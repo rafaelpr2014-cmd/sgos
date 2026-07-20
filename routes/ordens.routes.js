@@ -124,7 +124,8 @@ async function garantirEstruturaMateriaisOS(){
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
     const alterar=async(tabela,coluna,sql)=>{const [r]=await db.query(`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?`,[tabela,coluna]);if(!r.length)await db.query(sql);};
     await alterar('estoque_produtos','valor_unitario',`ALTER TABLE estoque_produtos ADD COLUMN valor_unitario DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER unidade_medida`);
-    await alterar('ordens_servico','origem_equipamento',`ALTER TABLE ordens_servico ADD COLUMN origem_equipamento ENUM('proprio','empresa') NOT NULL DEFAULT 'proprio' AFTER descricao`);
+    await alterar('ordens_servico','origem_equipamento',`ALTER TABLE ordens_servico ADD COLUMN origem_equipamento ENUM('proprio','empresa') NULL DEFAULT NULL AFTER descricao`);
+    await db.query(`ALTER TABLE ordens_servico MODIFY COLUMN origem_equipamento ENUM('proprio','empresa') NULL DEFAULT NULL`).catch(()=>null);
     await alterar('ordens_servico','modalidade_equipamento',`ALTER TABLE ordens_servico ADD COLUMN modalidade_equipamento ENUM('vendido','comodato') NULL AFTER origem_equipamento`);
     await alterar('ordens_servico','forma_pagamento_equipamento',`ALTER TABLE ordens_servico ADD COLUMN forma_pagamento_equipamento VARCHAR(30) NULL AFTER modalidade_equipamento`);
     await alterar('ordens_servico','status_pagamento_equipamento',`ALTER TABLE ordens_servico ADD COLUMN status_pagamento_equipamento ENUM('pendente','pago') NULL AFTER forma_pagamento_equipamento`);
@@ -139,6 +140,7 @@ async function garantirEstruturaMateriaisOS(){
     await alterar('financeiro_movimentacoes','os_id',`ALTER TABLE financeiro_movimentacoes ADD COLUMN os_id INT NULL AFTER estoque_movimentacao_id`);
     await alterar('financeiro_movimentacoes','origem',`ALTER TABLE financeiro_movimentacoes ADD COLUMN origem VARCHAR(30) NULL AFTER os_id`);
     await alterar('estoque_movimentacoes','os_id',`ALTER TABLE estoque_movimentacoes ADD COLUMN os_id INT NULL AFTER produto_id`);
+    await db.query(`ALTER TABLE estoque_movimentacoes MODIFY COLUMN origem VARCHAR(40) NULL`).catch(()=>null);
     await alterar('ordens_servico','equipamentos_utilizados',`ALTER TABLE ordens_servico ADD COLUMN equipamentos_utilizados ENUM('pendente','sim','nao') NOT NULL DEFAULT 'pendente' AFTER total_equipamentos`);
     await alterar('ordens_servico','equipamentos_confirmado_em',`ALTER TABLE ordens_servico ADD COLUMN equipamentos_confirmado_em DATETIME NULL AFTER equipamentos_utilizados`);
     await alterar('ordens_servico','equipamentos_confirmado_por',`ALTER TABLE ordens_servico ADD COLUMN equipamentos_confirmado_por INT NULL AFTER equipamentos_confirmado_em`);
@@ -149,6 +151,23 @@ function normalizarMateriaisOS(materiais){
     for(const item of lista){const id=Number(item?.produto_id),qtd=Math.floor(Number(item?.quantidade)),desc=Math.max(0,Number(item?.desconto)||0);if(id>0&&qtd>0)mapa.set(id,{produto_id:id,quantidade:qtd,desconto:desc});}
     return [...mapa.values()];
 }
+
+function validarSelecaoEquipamentosOS(dados){
+    const origem=String(dados?.origem_equipamento||'').trim().toLowerCase();
+    if(!['proprio','empresa'].includes(origem)){
+        const erro=new Error('Selecione a origem dos equipamentos e materiais.');erro.statusCode=400;throw erro;
+    }
+    if(origem==='empresa'){
+        const modalidade=String(dados?.modalidade_equipamento||'').trim().toLowerCase();
+        if(!['comodato','vendido'].includes(modalidade)){
+            const erro=new Error('Selecione a modalidade dos equipamentos e materiais.');erro.statusCode=400;throw erro;
+        }
+        if(!normalizarMateriaisOS(dados?.materiais).length){
+            const erro=new Error('Adicione pelo menos um equipamento ou material da empresa.');erro.statusCode=400;throw erro;
+        }
+    }
+}
+
 function salvarComprovantePagamentoOS(osId,empresaId,dataUrl,nomeArquivo,mimeAtual,caminhoAtual){
     if(!dataUrl)return caminhoAtual||null;
     const m=String(dataUrl).match(/^data:([^;]+);base64,(.+)$/);
@@ -173,8 +192,12 @@ async function sincronizarFinanceiroVendaOS(osId,empresaId,usuarioId,usuarioNome
 }
 async function salvarMateriaisOS(osId,empresaId,origem,modalidade,materiais,formaPagamento,usuario,statusPagamento="pendente",anexoBase64=null,anexoNome=null,anexoMime=null){
     await garantirEstruturaMateriaisOS();
-    const origemFinal=origem==='empresa'?'empresa':'proprio';
-    const modalidadeFinal=origemFinal==='empresa'&&['vendido','comodato'].includes(modalidade)?modalidade:null;
+    const origemFinal=String(origem||'').trim().toLowerCase();
+    if(!['proprio','empresa'].includes(origemFinal)){const erro=new Error('Selecione a origem dos equipamentos e materiais.');erro.statusCode=400;throw erro;}
+    const modalidadeFinal=origemFinal==='empresa'&&['vendido','comodato'].includes(String(modalidade||'').trim().toLowerCase())?String(modalidade).trim().toLowerCase():null;
+    if(origemFinal==='empresa'&&!modalidadeFinal){const erro=new Error('Selecione a modalidade dos equipamentos e materiais.');erro.statusCode=400;throw erro;}
+    const materiaisNormalizados=normalizarMateriaisOS(materiais);
+    if(origemFinal==='empresa'&&!materiaisNormalizados.length){const erro=new Error('Adicione pelo menos um equipamento ou material da empresa.');erro.statusCode=400;throw erro;}
     const vendido=origemFinal==='empresa'&&modalidadeFinal==='vendido';
     const formas=['dinheiro','pix','cartao_credito','cartao_debito','cheque'];
     if(vendido&&!formas.includes(formaPagamento))throw new Error('Selecione um tipo de pagamento válido para a venda.');
@@ -185,9 +208,9 @@ async function salvarMateriaisOS(osId,empresaId,origem,modalidade,materiais,form
     await db.query(`DELETE FROM os_materiais WHERE os_id=? AND empresa_id=?`,[osId,empresaId]);
     let subtotal=0,descontoTotal=0,total=0;const porEscritorio=new Map();
     if(origemFinal==='empresa'){
-      for(const item of normalizarMateriaisOS(materiais)){
-        const [rows]=await db.query(`SELECT id,nome,escritorio_id,valor_unitario FROM estoque_produtos WHERE id=? AND empresa_id=? AND ativo=1 AND LOWER(TRIM(categoria))=LOWER('Material de Instalação') LIMIT 1`,[item.produto_id,empresaId]);
-        if(!rows.length)throw new Error(`Produto ${item.produto_id} não pertence à categoria Material de Instalação.`);
+      for(const item of materiaisNormalizados){
+        const [rows]=await db.query(`SELECT id,nome,escritorio_id,valor_unitario FROM estoque_produtos WHERE id=? AND empresa_id=? AND ativo=1 LIMIT 1`,[item.produto_id,empresaId]);
+        if(!rows.length)throw new Error(`Produto ${item.produto_id} não foi encontrado no estoque ativo da empresa.`);
         const produto=rows[0],unit=vendido?Number(produto.valor_unitario||0):0,bruto=unit*item.quantidade,desc=vendido?Math.min(item.desconto,bruto):0,liquido=Math.max(0,bruto-desc);
         subtotal+=bruto;descontoTotal+=desc;total+=liquido;
         await db.query(`INSERT INTO os_materiais (empresa_id,os_id,produto_id,quantidade,valor_unitario,desconto,valor_total) VALUES (?,?,?,?,?,?,?)`,[empresaId,osId,item.produto_id,item.quantidade,unit,desc,liquido]);
@@ -263,7 +286,7 @@ async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, 
                     SELECT COALESCE(SUM(quantidade),0) quantidade
                       FROM estoque_movimentacoes
                      WHERE empresa_id=? AND produto_id=? AND os_id=?
-                       AND tipo='saida' AND origem='os_utilizado'`,
+                       AND tipo='saida' AND origem='ordem_servico'`,
                     [empresaId,item.produto_id,osId]);
                 const jaBaixado=Math.max(0,Number(jaBaixadoRow?.quantidade||0));
                 const qtdBaixar=Math.max(0,qtdNecessaria-jaBaixado);
@@ -292,7 +315,7 @@ async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, 
                 await conn.query(`
                     INSERT INTO estoque_movimentacoes
                     (empresa_id,escritorio_id,produto_id,os_id,tipo,quantidade,quantidade_anterior,quantidade_atual,motivo,observacao,usuario_id,usuario_nome,origem,criado_em)
-                    VALUES (?,?,?,?, 'saida',?,?,?,?,?,?,?,'os_utilizado',NOW())`,
+                    VALUES (?,?,?,?, 'saida',?,?,?,?,?,?,?,'ordem_servico',NOW())`,
                     [empresaId,produto.escritorio_id,item.produto_id,osId,qtdBaixar,anterior,atual,
                      `Equipamento utilizado na OS #${osId}`,
                      `Baixa automática confirmada na conclusão da OS #${osId}.`,
@@ -319,6 +342,11 @@ async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, 
                 porEscritorio.set(escritorioId,(porEscritorio.get(escritorioId)||0)+valor);
             }
 
+            if(!porEscritorio.size && Number(dadosOS?.total_equipamentos||0)>0){
+                const escritorioFallback=Number(materiais.find(x=>Number(x.escritorio_id||0)>0)?.escritorio_id||0);
+                if(escritorioFallback) porEscritorio.set(escritorioFallback,Number(dadosOS.total_equipamentos));
+            }
+
             for(const [escritorioId,valor] of porEscritorio.entries()){
                 await conn.query(`
                     INSERT INTO financeiro_movimentacoes
@@ -333,6 +361,7 @@ async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, 
             }
         }
 
+        if(vendido && financeiroLancado===0 && Number(dadosOS?.total_equipamentos||0)>0){const erro=new Error('Não foi possível identificar o escritório do produto para lançar o valor no financeiro.');erro.statusCode=400;throw erro;}
         return {possuiEquipamentos:true,utilizado:'sim',estoqueBaixado,estoqueDevolvido:0,valorFinanceiro,financeiroLancado,financeiroEstornado:0};
     }
 
@@ -348,12 +377,12 @@ async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, 
             SELECT COALESCE(SUM(quantidade),0) quantidade
               FROM estoque_movimentacoes
              WHERE empresa_id=? AND produto_id=? AND os_id=?
-               AND tipo='saida' AND origem='os_utilizado'`, [empresaId,item.produto_id,osId]);
+               AND tipo='saida' AND origem='ordem_servico'`, [empresaId,item.produto_id,osId]);
         const [[estornoRow]]=await conn.query(`
             SELECT COALESCE(SUM(quantidade),0) quantidade
               FROM estoque_movimentacoes
              WHERE empresa_id=? AND produto_id=? AND os_id=?
-               AND tipo='entrada' AND origem='estorno_os'`, [empresaId,item.produto_id,osId]);
+               AND tipo='entrada' AND origem='estorno_ordem_servico'`, [empresaId,item.produto_id,osId]);
         const qtd=Math.max(0,Number(saidaRow?.quantidade||0)-Number(estornoRow?.quantidade||0));
         if(qtd<=0) continue;
 
@@ -364,7 +393,7 @@ async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, 
         await conn.query(`
             INSERT INTO estoque_movimentacoes
             (empresa_id,escritorio_id,produto_id,os_id,tipo,quantidade,quantidade_anterior,quantidade_atual,motivo,observacao,usuario_id,usuario_nome,origem,criado_em)
-            VALUES (?,?,?,?, 'entrada',?,?,?,?,?,?,?,'estorno_os',NOW())`,
+            VALUES (?,?,?,?, 'entrada',?,?,?,?,?,?,?,'estorno_ordem_servico',NOW())`,
             [empresaId,produto.escritorio_id,item.produto_id,osId,qtd,anterior,atual,
              `Devolução de equipamento não utilizado na OS #${osId}`,
              `Estorno automático realizado na conclusão da OS #${osId}.`,
@@ -844,7 +873,7 @@ router.get("/", verificarAutenticacao, async (req, res) => {
     // ===============================
     router.get("/materiais-instalacao", verificarAutenticacao, async (req,res)=>{
         try{
-            const [rows]=await db.query(`SELECT id, nome, categoria, quantidade, valor_unitario, escritorio_id FROM estoque_produtos WHERE empresa_id=? AND LOWER(TRIM(categoria))=LOWER('Material de Instalação') ORDER BY nome`,[req.usuario.empresa_id]);
+            const [rows]=await db.query(`SELECT id, nome, categoria, quantidade, valor_unitario, escritorio_id FROM estoque_produtos WHERE empresa_id=? ORDER BY nome`,[req.usuario.empresa_id]);
             res.json(rows);
         }catch(err){ console.error('ERRO LISTAR MATERIAIS:',err); res.status(500).json({erro:err.message}); }
     });
@@ -900,6 +929,8 @@ router.post(
             // ===============================
             // CRIA OS
             // ===============================
+            validarSelecaoEquipamentosOS(dados);
+
             const resultado =
                 await osService.criar(
                     dados,
@@ -2007,6 +2038,8 @@ router.put(
                 erro: "Selecione pelo menos um técnico para criar OS com agendamento de envio."
             });
         }
+
+        validarSelecaoEquipamentosOS(req.body);
 
         // ===============================
         // ✏️ UPDATE

@@ -824,7 +824,11 @@ button{
             <div class="grid">
                 <div class="equipamento-os-box">
                     <div class="equipamento-tipo-grid">
-                        <div class="campo"><label>Origem do equipamento</label><select id="origem_equipamento"><option value="proprio">Equipamento próprio</option><option value="empresa">Equipamento da empresa</option></select></div>
+                        <div class="campo"><label>Origem do equipamento</label><select id="origem_equipamento" required>
+                                <option value="">Selecione...</option>
+                                <option value="proprio">Equipamento próprio</option>
+                                <option value="empresa">Equipamentos e materiais da empresa</option>
+                            </select></div>
                         <div class="campo hidden" id="campoModalidadeEquipamento"><label>Modalidade</label><select id="modalidade_equipamento"><option value="comodato">Comodato</option><option value="vendido">Vendido</option></select></div>
                         <div id="areaMateriaisOS" class="campo hidden"><label>Material de instalação</label><div class="material-seletor-linha"><select id="produto_material"><option value="">Selecione um produto</option></select><button type="button" class="btn-adicionar-material" title="Adicionar material" onclick="adicionarMaterialOS()">+</button></div></div>
                         <div id="campoPagamentoEquipamento" class="campo hidden"><label>Tipo de pagamento *</label><select id="forma_pagamento_equipamento"><option value="">Selecione...</option><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao_credito">Cartão de crédito</option><option value="cartao_debito">Cartão de débito</option><option value="cheque">Cheque</option></select></div>

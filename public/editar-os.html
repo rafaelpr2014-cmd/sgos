@@ -973,7 +973,11 @@ button:hover{
                 <div class="section-label">Equipamentos e Materiais</div>
                 <div class="equipamento-os-box">
                     <div class="equipamento-tipo-grid">
-                        <div class="campo"><label>Origem do equipamento</label><select id="origem_equipamento"><option value="proprio">Equipamento próprio</option><option value="empresa">Equipamento da empresa</option></select></div>
+                        <div class="campo"><label>Origem do equipamento</label><select id="origem_equipamento" required>
+                                <option value="">Selecione...</option>
+                                <option value="proprio">Equipamento próprio</option>
+                                <option value="empresa">Equipamentos e materiais da empresa</option>
+                            </select></div>
                         <div class="campo hidden" id="campoModalidadeEquipamento"><label>Modalidade</label><select id="modalidade_equipamento"><option value="comodato">Comodato</option><option value="vendido">Vendido</option></select></div>
                         <div id="areaMateriaisOS" class="campo hidden"><label>Material de instalação</label><div class="material-seletor-linha"><select id="produto_material"><option value="">Selecione um produto</option></select><button type="button" class="btn-adicionar-material" title="Adicionar material" onclick="adicionarMaterialOS()">+</button></div></div>
                         <div id="campoPagamentoEquipamento" class="campo hidden"><label>Tipo de pagamento *</label><select id="forma_pagamento_equipamento"><option value="">Selecione...</option><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao_credito">Cartão de crédito</option><option value="cartao_debito">Cartão de débito</option><option value="cheque">Cheque</option></select></div>
@@ -3071,8 +3075,11 @@ function renderMateriaisOS(){
     recalcularVendaOS();
 }
 async function dadosEquipamentosOS(){
-    const origem=document.getElementById("origem_equipamento")?.value||"proprio";
-    const modalidade=origem==="empresa"?(document.getElementById("modalidade_equipamento")?.value||"comodato"):null;
+    const origem=String(document.getElementById("origem_equipamento")?.value||"").trim();
+    if(!["proprio","empresa"].includes(origem)) throw new Error("Selecione a origem dos equipamentos e materiais.");
+    const modalidade=origem==="empresa"?String(document.getElementById("modalidade_equipamento")?.value||"").trim():null;
+    if(origem==="empresa" && !["comodato","vendido"].includes(modalidade)) throw new Error("Selecione a modalidade dos equipamentos e materiais.");
+    if(origem==="empresa" && !materiaisSelecionadosOS.length) throw new Error("Adicione pelo menos um equipamento ou material da empresa.");
     const vendido=origem==="empresa"&&modalidade==="vendido";
     const forma=document.getElementById("forma_pagamento_equipamento")?.value||null;
     const statusPagamento=document.getElementById("status_pagamento_equipamento")?.value||"pendente";
@@ -3089,7 +3096,7 @@ async function dadosEquipamentosOS(){
     return {origem_equipamento:origem,modalidade_equipamento:modalidade,forma_pagamento_equipamento:vendido?forma:null,status_pagamento_equipamento:vendido?statusPagamento:null,anexo_pagamento_base64:vendido?anexoPagamentoBase64:null,anexo_pagamento_nome:vendido?anexoPagamentoNome:null,anexo_pagamento_mime:vendido?anexoPagamentoMime:null,materiais:origem==="empresa"?materiaisSelecionadosOS.map(m=>({produto_id:Number(m.produto_id),quantidade:Math.max(1,Math.floor(Number(m.quantidade)||1)),desconto:vendido?Math.max(0,Number(m.desconto)||0):0})):[]};
 }
 function preencherEquipamentosOS(os){
-    const origem = os?.origem_equipamento || "proprio";
+    const origem = os?.origem_equipamento || "";
     const origemEl=document.getElementById("origem_equipamento"); if(origemEl) origemEl.value=origem;
     const modalidadeEl=document.getElementById("modalidade_equipamento"); if(modalidadeEl) modalidadeEl.value=os?.modalidade_equipamento || "comodato"; const formaEl=document.getElementById("forma_pagamento_equipamento");if(formaEl)formaEl.value=os?.forma_pagamento_equipamento||""; const statusPagEl=document.getElementById("status_pagamento_equipamento");if(statusPagEl)statusPagEl.value=os?.status_pagamento_equipamento||"pendente"; const anexoAtual=document.getElementById("anexoPagamentoAtual");if(anexoAtual)anexoAtual.innerHTML=os?.anexo_pagamento_equipamento?`Comprovante atual: <a href="${os.anexo_pagamento_equipamento}" target="_blank">visualizar</a>`:"";
     let mats=os?.materiais_os || os?.materiais || [];
