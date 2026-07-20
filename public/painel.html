@@ -1804,7 +1804,7 @@ let periodoAtual = "hoje";
 
                     <tbody id="tabelaAbertas">
                         <tr>
-                            <td colspan="16">Carregando...</td>
+                            <td colspan="15">Carregando...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1865,7 +1865,6 @@ let periodoAtual = "hoje";
                             <th>Iniciada em</th>
                             <th>Finalizada em</th>
                             <th>Finalizada por</th>
-                            <th>Prioridade</th>
                             <th>Status</th>
                             <th>Ações</th>
                         </tr>
@@ -2768,8 +2767,12 @@ function modoTV() {
     }
 
     function obterAcoes(td){
-        let candidatos=[...td.querySelectorAll('button,a,.icone-acao,[onclick]')]
-            .filter(el=>el.closest('td')===td && !el.matches('tr'));
+        const container = td.querySelector(':scope > .acoes, :scope > .acoes-linha') || td;
+        const candidatos = [...container.children].filter(el =>
+            el.matches('button, a, .icone-acao, [onclick]') &&
+            !el.classList.contains('acoes') &&
+            !el.classList.contains('acoes-linha')
+        );
         return [...new Set(candidatos)];
     }
 
@@ -2813,6 +2816,40 @@ function modoTV() {
     document.addEventListener('DOMContentLoaded',solicitar);
     window.addEventListener('load',()=>{solicitar();setTimeout(solicitar,300);setTimeout(solicitar,1000)});
     new MutationObserver(solicitar).observe(document.documentElement,{childList:true,subtree:true});
+})();
+</script>
+
+<script id="sgos-remover-prioridade-finalizadas">
+(function(){
+    function ajustarFinalizadas(){
+        const tabela = document.getElementById('tabelaConcluidas');
+        if(!tabela) return;
+
+        tabela.querySelectorAll('tr').forEach(tr => {
+            const celulas = tr.children;
+            // Estrutura original: prioridade é a 14ª coluna (índice 13).
+            if(celulas.length >= 16){
+                celulas[13].remove();
+            }
+            const unica = tr.querySelector('td[colspan]');
+            if(unica) unica.colSpan = 15;
+        });
+    }
+
+    let pendente = false;
+    function solicitar(){
+        if(pendente) return;
+        pendente = true;
+        requestAnimationFrame(() => {
+            pendente = false;
+            ajustarFinalizadas();
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', solicitar);
+    window.addEventListener('load', solicitar);
+    const alvo = document.getElementById('tabelaConcluidas') || document.documentElement;
+    new MutationObserver(solicitar).observe(alvo, {childList:true, subtree:true});
 })();
 </script>
 
