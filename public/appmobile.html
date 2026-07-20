@@ -1335,6 +1335,17 @@ button{touch-action:manipulation}
     }
 }
 
+
+.prioridade-app{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.25px;margin-left:7px;vertical-align:middle}
+.prioridade-app.alta{background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}
+.prioridade-app.media{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+.prioridade-app.baixa{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}
+.equipamentos-os-app{margin-top:12px;padding:13px;border:1px solid #bfdbfe;border-radius:14px;background:#eff6ff;color:#1e3a8a}
+.equipamentos-os-app-title{font-weight:900;margin-bottom:8px}
+.equipamento-os-app-item{padding:8px 0;border-top:1px solid rgba(30,64,175,.12);line-height:1.5}
+.equipamento-os-app-item:first-of-type{border-top:0;padding-top:0}
+.resumo-finalizado-app{margin-top:12px;padding:13px;border:1px solid #bbf7d0;border-radius:14px;background:#f0fdf4;color:#166534;line-height:1.55}
+
 </style>
 
 
@@ -3416,7 +3427,7 @@ function render(){
         <article class="os" role="button" tabindex="0"
             onclick="abrirModal('${chave}')"
             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirModal('${chave}')}">
-            <span class="os-status">${escapeHTML(statusRotulo(o.status))}</span>
+            <span class="os-status">${escapeHTML(statusRotulo(o.status))}</span>${o._tipo === "avulsa" ? "" : badgePrioridadeApp(o.prioridade)}
 
             ${o._tipo === "avulsa" ? `
                 <div class="os-cliente-linha">
@@ -3448,52 +3459,91 @@ function render(){
         </article>`;
     }).join("");
 }
+function normalizarPrioridadeApp(valor){
+    const p = String(valor || "media").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if(p === "alta") return {classe:"alta", rotulo:"Alta"};
+    if(p === "baixa") return {classe:"baixa", rotulo:"Baixa"};
+    return {classe:"media", rotulo:"Média"};
+}
+function badgePrioridadeApp(valor){
+    const p = normalizarPrioridadeApp(valor);
+    return `<span class="prioridade-app ${p.classe}">Prioridade ${p.rotulo}</span>`;
+}
+function materiaisOSApp(os){
+    let lista = os?.materiais_os ?? os?.materiais ?? [];
+    if(typeof lista === "string"){
+        try{ lista = JSON.parse(lista); }catch(_){ lista = []; }
+    }
+    return Array.isArray(lista) ? lista.filter(Boolean) : [];
+}
+function moedaApp(valor){
+    return Number(valor || 0).toLocaleString("pt-BR", {style:"currency", currency:"BRL"});
+}
+function formaPagamentoApp(valor){
+    const mapa={dinheiro:"Dinheiro",pix:"PIX",cartao_credito:"Cartão de crédito",cartao_debito:"Cartão de débito",cheque:"Cheque"};
+    return mapa[String(valor||"")] || valor || "-";
+}
+function equipamentosHTMLApp(os){
+    const materiais = materiaisOSApp(os);
+    if(!materiais.length) return "";
+    const itens = materiais.map(item => `
+        <div class="equipamento-os-app-item">
+            <b>${valorSeguro(item.nome || `Equipamento #${item.produto_id}`)}</b><br>
+            Quantidade: ${valorSeguro(item.quantidade || 1)}<br>
+            Valor unitário: ${moedaApp(item.valor_unitario)}<br>
+            Valor total: ${moedaApp(item.valor_total ?? (Number(item.valor_unitario||0)*Number(item.quantidade||1)))}
+        </div>`).join("");
+    return `<div class="equipamentos-os-app"><div class="equipamentos-os-app-title">Equipamentos vinculados</div>${itens}<div class="equipamento-os-app-item"><b>Tipo de pagamento:</b> ${valorSeguro(formaPagamentoApp(os.forma_pagamento_equipamento))}<br><b>Total:</b> ${moedaApp(os.total_equipamentos)}</div></div>`;
+}
 function resumoModalHTML(os){
     const tipo = os._tipo === "avulsa" ? "OS Avulsa" : "OS";
 
     if(os._tipo === "avulsa"){
         return `
             <div class="detalhes-info">
-                <h4>${tipo}</h4>
+                <h4>${normalizarStatusApp(os.status)==="concluido" ? "OS avulsa finalizada" : tipo}</h4>
                 <b>Tipo de serviço:</b> ${valorSeguro(os.tipo_servico_nome)}<br>
                 <b>Endereço:</b> ${valorSeguro(enderecoAvulsaLimpo(os))}<br>
                 <b>Localidade:</b> ${valorSeguro(os.localidade_nome)}<br>
                 <b>Descrição:</b> ${valorSeguro(descricaoAvulsaLimpa(os))}<br>
                 <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
-            </div>
-        `;
+                ${normalizarStatusApp(os.status)==="concluido" ? `<div class="resumo-finalizado-app"><b>Finalizada em:</b> ${valorSeguro(format(os.finalizado_em))}</div>` : ""}
+            </div>`;
     }
 
     const telefone = formatarTelefoneApp(os.telefone);
     const hrefTelefone = telefoneHref(os.telefone);
+    const finalizada = normalizarStatusApp(os.status) === "concluido";
+    const blocoFinalizacao = finalizada ? `
+        <div class="resumo-finalizado-app">
+            <b>Resumo da conclusão</b><br>
+            <b>Iniciada em:</b> ${valorSeguro(format(os.iniciado_em))}<br>
+            <b>Finalizada em:</b> ${valorSeguro(format(os.finalizado_em))}<br>
+            <b>Finalizada por:</b> ${valorSeguro(os.finalizado_por_nome || os.finalizado_por)}<br>
+            <b>Equipamento utilizado:</b> ${valorSeguro(os.equipamentos_utilizados === "nao" ? "Não" : os.equipamentos_utilizados === "sim" ? "Sim" : "Não informado")}<br>
+            <b>Observação da conclusão:</b><br>${valorSeguro(os.observacao_finalizado, "-")}
+        </div>` : "";
 
     return `
         <div class="detalhes-info">
-            <h4>Detalhes do atendimento</h4>
+            <h4>${finalizada ? "Resumo da OS finalizada" : "Detalhes do atendimento"}</h4>
+            <b>OS:</b> #${valorSeguro(os.id)} ${badgePrioridadeApp(os.prioridade)}<br>
             <b>Cliente:</b> ${valorSeguro(nomeClienteOS(os))}<br>
             <b>Tipo de serviço:</b> ${valorSeguro(os.tipo_servico_nome || os.tipo_servico)}<br>
             <b>Endereço:</b> ${valorSeguro(enderecoNormal(os))}<br>
             <b>Login:</b> ${valorSeguro(os.login)}<br>
             <b>ID Cliente:</b> ${valorSeguro(os.id_cliente || os.cliente_id)}<br>
-            <b>Telefone:</b> ${
-                hrefTelefone
-                    ? `<a class="resumo-telefone" href="${hrefTelefone}" onclick="event.stopPropagation()">${valorSeguro(telefone)}</a>`
-                    : valorSeguro(telefone)
-            }<br>
+            <b>Telefone:</b> ${hrefTelefone ? `<a class="resumo-telefone" href="${hrefTelefone}" onclick="event.stopPropagation()">${valorSeguro(telefone)}</a>` : valorSeguro(telefone)}<br>
             <b>Localidade:</b> ${valorSeguro(os.localidade_nome || os.localidade)}<br>
             <b>Plano:</b> ${valorSeguro(os.plano_nome || os.plano)}<br>
             <b>VLAN:</b> ${valorSeguro(os.vlan)}<br>
             <b>Referência:</b> ${valorSeguro(os.referencia)}<br>
             <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
-            <b>Agendado para:</b> ${valorSeguro(format(os.agendamento))}<br>
-            <b>Criado em:</b> ${valorSeguro(format(os.criado_em))}<br>
-            ${(() => {
-                const detalhe = detalheStatusOS(os);
-                return `<div class="resumo-descricao-status" style="margin-top:10px;padding:12px;border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc;white-space:pre-wrap;overflow-wrap:anywhere;"><b>${valorSeguro(detalhe.rotulo)}:</b><br>${valorSeguro(detalhe.texto, "-")}</div>`;
-            })()}
+            <b>Criada em:</b> ${valorSeguro(format(os.criado_em))}<br>
+            ${finalizada ? blocoFinalizacao : `<div class="resumo-descricao-status" style="margin-top:10px;padding:12px;border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc;white-space:pre-wrap;overflow-wrap:anywhere;"><b>Descrição inicial:</b><br>${valorSeguro(os.descricao ?? os.descricao_inicial, "-")}</div>`}
+            ${equipamentosHTMLApp(os)}
             ${svaHTML(os)}
-        </div>
-    `;
+        </div>`;
 }
 
 let arquivoFotoPreparado = null;
@@ -3762,6 +3812,16 @@ async function enviarAcao(tipo, botao){
     };
     if(!rotas[tipo]) return;
 
+    let equipamentoUtilizado = "";
+    if(tipo === "concluir" && materiaisOSApp(osAtual).length){
+        const utilizado = window.confirm("Os equipamentos vinculados a esta OS foram utilizados?\n\nOK = Sim, foram utilizados.\nCancelar = Não, devolver ao estoque e estornar o financeiro.");
+        equipamentoUtilizado = utilizado ? "sim" : "nao";
+        if(!utilizado){
+            const confirmarEstorno = window.confirm("Confirma que os equipamentos NÃO foram utilizados? O sistema devolverá ao estoque as saídas vinculadas e estornará o lançamento financeiro da OS.");
+            if(!confirmarEstorno) return;
+        }
+    }
+
     bloquearBotao(botao,true);
     try{
         const formData = new FormData();
@@ -3775,6 +3835,7 @@ async function enviarAcao(tipo, botao){
         }
         if(tipo === "concluir"){
             formData.append("observacao_finalizado", observacaoDigitada);
+            if(equipamentoUtilizado) formData.append("equipamento_utilizado", equipamentoUtilizado);
         }
 
         const arquivo = await prepararArquivoParaEnvio();

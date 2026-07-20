@@ -138,6 +138,10 @@ async function garantirEstruturaMateriaisOS(){
     await alterar('os_materiais','valor_total',`ALTER TABLE os_materiais ADD COLUMN valor_total DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER desconto`);
     await alterar('financeiro_movimentacoes','os_id',`ALTER TABLE financeiro_movimentacoes ADD COLUMN os_id INT NULL AFTER estoque_movimentacao_id`);
     await alterar('financeiro_movimentacoes','origem',`ALTER TABLE financeiro_movimentacoes ADD COLUMN origem VARCHAR(30) NULL AFTER os_id`);
+    await alterar('estoque_movimentacoes','os_id',`ALTER TABLE estoque_movimentacoes ADD COLUMN os_id INT NULL AFTER produto_id`);
+    await alterar('ordens_servico','equipamentos_utilizados',`ALTER TABLE ordens_servico ADD COLUMN equipamentos_utilizados ENUM('pendente','sim','nao') NOT NULL DEFAULT 'pendente' AFTER total_equipamentos`);
+    await alterar('ordens_servico','equipamentos_confirmado_em',`ALTER TABLE ordens_servico ADD COLUMN equipamentos_confirmado_em DATETIME NULL AFTER equipamentos_utilizados`);
+    await alterar('ordens_servico','equipamentos_confirmado_por',`ALTER TABLE ordens_servico ADD COLUMN equipamentos_confirmado_por INT NULL AFTER equipamentos_confirmado_em`);
 }
 function normalizarMateriaisOS(materiais){
     const lista=Array.isArray(materiais)?materiais:[];const mapa=new Map();
@@ -194,6 +198,33 @@ async function salvarMateriaisOS(osId,empresaId,origem,modalidade,materiais,form
     await sincronizarFinanceiroVendaOS(osId,empresaId,Number(usuario?.id||0),String(usuario?.usuario||usuario?.nome||'Sistema'),vendido?formaPagamento:null,vendido&&statusPagamentoFinal==='pago'?porEscritorio:new Map());
 }
 
+
+async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, utilizado, usuario){
+    await garantirEstruturaMateriaisOS();
+    const resposta = String(utilizado || '').trim().toLowerCase();
+    const [materiais] = await conn.query(`SELECT om.produto_id,om.quantidade,ep.nome,ep.escritorio_id FROM os_materiais om LEFT JOIN estoque_produtos ep ON ep.id=om.produto_id AND ep.empresa_id=om.empresa_id WHERE om.os_id=? AND om.empresa_id=?`,[osId,empresaId]);
+    if(!materiais.length) return {possuiEquipamentos:false,utilizado:null,estoqueDevolvido:0,financeiroEstornado:0};
+    if(!['sim','nao'].includes(resposta)){
+        const erro=new Error('Confirme se os equipamentos vinculados foram utilizados.');erro.statusCode=400;throw erro;
+    }
+    await conn.query(`UPDATE ordens_servico SET equipamentos_utilizados=?,equipamentos_confirmado_em=NOW(),equipamentos_confirmado_por=? WHERE id=? AND empresa_id=?`,[resposta,Number(usuario?.id||0)||null,osId,empresaId]);
+    if(resposta==='sim') return {possuiEquipamentos:true,utilizado:'sim',estoqueDevolvido:0,financeiroEstornado:0};
+
+    const [financeiro]=await conn.query(`UPDATE financeiro_movimentacoes SET ativo=0,excluido_em=NOW(),motivo_exclusao='Equipamento não utilizado na conclusão da OS' WHERE empresa_id=? AND os_id=? AND origem='venda_os' AND ativo=1`,[empresaId,osId]);
+    let devolvido=0;
+    for(const item of materiais){
+        const [saidas]=await conn.query(`SELECT id,quantidade FROM estoque_movimentacoes WHERE empresa_id=? AND produto_id=? AND tipo='saida' AND (os_id=? OR motivo LIKE ? OR observacao LIKE ?) AND NOT EXISTS (SELECT 1 FROM estoque_movimentacoes est WHERE est.empresa_id=estoque_movimentacoes.empresa_id AND est.produto_id=estoque_movimentacoes.produto_id AND est.tipo='entrada' AND est.os_id=? AND est.origem='estorno_os')`,[empresaId,item.produto_id,osId,`%OS #${osId}%`,`%OS #${osId}%`,osId]);
+        const qtd=Math.min(Number(item.quantidade||0),saidas.reduce((a,m)=>a+Number(m.quantidade||0),0));
+        if(qtd<=0) continue;
+        const [[produto]]=await conn.query(`SELECT quantidade,escritorio_id,nome FROM estoque_produtos WHERE id=? AND empresa_id=? FOR UPDATE`,[item.produto_id,empresaId]);
+        if(!produto) continue;
+        const anterior=Number(produto.quantidade||0),atual=anterior+qtd;
+        await conn.query(`UPDATE estoque_produtos SET quantidade=?,atualizado_em=NOW() WHERE id=? AND empresa_id=?`,[atual,item.produto_id,empresaId]);
+        await conn.query(`INSERT INTO estoque_movimentacoes (empresa_id,escritorio_id,produto_id,os_id,tipo,quantidade,quantidade_anterior,quantidade_atual,motivo,observacao,usuario_id,usuario_nome,origem,criado_em) VALUES (?,?,?,?, 'entrada',?,?,?,?,?,?,?,'estorno_os',NOW())`,[empresaId,produto.escritorio_id,item.produto_id,osId,qtd,anterior,atual,`Devolução de equipamento não utilizado na OS #${osId}`,`Estorno automático realizado na conclusão da OS #${osId}.`,Number(usuario?.id||0),String(usuario?.usuario||usuario?.nome||'Sistema')]);
+        devolvido+=qtd;
+    }
+    return {possuiEquipamentos:true,utilizado:'nao',estoqueDevolvido:devolvido,financeiroEstornado:Number(financeiro?.affectedRows||0)};
+}
 
 function normalizarTecnicosObrigatorio(tecnicoRaw){
     try {
@@ -1380,109 +1411,27 @@ router.post(
     verificarAutenticacao,
     uploadAnexo.single("foto"),
     async (req, res) => {
-
+        const conn = await db.getConnection();
         try {
-
-            // ===============================
-            // BUSCA OS
-            // ===============================
-            const [rows] = await db.query(`
-
-                SELECT
-                    nome,
-                    telefone,
-                    login
-                FROM ordens_servico
-                WHERE id = ?
-                AND empresa_id = ?
-
-            `, [
-
-                req.params.id,
-                req.usuario.empresa_id
-            ]);
-
-            const os =
-                rows[0] || {};
-
-            // ===============================
-            // CONCLUIR — grava somente os campos próprios deste status
-            // ===============================
-            const observacaoFinalizado =
-                req.body.observacao_finalizado ?? req.body.observacao ?? null;
-
-            const anexoFinalizado = req.file
-                ? "/uploads/ordens_servico/" + req.file.filename
-                : null;
-
-            await db.query(`
-                UPDATE ordens_servico
-                SET
-                    status = 'concluido',
-                    finalizado_em = NOW(),
-                    finalizado_por = ?,
-                    observacao_finalizado = ?,
-                    anexo_finalizado = ?
-                WHERE id = ?
-                AND empresa_id = ?
-            `, [
-                req.usuario.id,
-                observacaoFinalizado || null,
-                anexoFinalizado,
-                req.params.id,
-                req.usuario.empresa_id
-            ]);
-
-            // ===============================
-            // LOG
-            // ===============================
-            await registrarLog(
-
-                req,
-
-                "CONCLUIU OS",
-
-                "OS",
-
-                req.params.id,
-
-                {
-                    Cliente:
-                        os.nome,
-
-                    Telefone:
-                        os.telefone,
-
-                    Login:
-                        os.login,
-
-                    Status:
-                        "CONCLUÍDO",
-
-                    "Observação de conclusão":
-                        observacaoFinalizado,
-
-                    Anexo:
-                        req.file ? "SIM" : "NÃO"
-                }
-            );
-
+            await conn.beginTransaction();
+            await garantirEstruturaMateriaisOS();
+            const [rows] = await conn.query(`SELECT nome,telefone,login,origem_equipamento FROM ordens_servico WHERE id=? AND empresa_id=? FOR UPDATE`,[req.params.id,req.usuario.empresa_id]);
+            if(!rows.length){ const erro=new Error('OS não encontrada.');erro.statusCode=404;throw erro; }
+            const os=rows[0];
+            const observacaoFinalizado=req.body.observacao_finalizado ?? req.body.observacao ?? null;
+            const anexoFinalizado=req.file ? "/uploads/ordens_servico/"+req.file.filename : null;
+            const resultadoEquipamentos=await processarConfirmacaoEquipamentosConclusao(conn,Number(req.params.id),Number(req.usuario.empresa_id),req.body.equipamento_utilizado,req.usuario);
+            await conn.query(`UPDATE ordens_servico SET status='concluido',finalizado_em=NOW(),finalizado_por=?,observacao_finalizado=?,anexo_finalizado=? WHERE id=? AND empresa_id=?`,[req.usuario.id,observacaoFinalizado||null,anexoFinalizado,req.params.id,req.usuario.empresa_id]);
+            await conn.commit();
+            await registrarLog(req,"CONCLUIU OS","OS",req.params.id,{Cliente:os.nome,Telefone:os.telefone,Login:os.login,Status:"CONCLUÍDO","Observação de conclusão":observacaoFinalizado,Anexo:req.file?"SIM":"NÃO","Equipamentos utilizados":resultadoEquipamentos.utilizado==='sim'?"SIM":resultadoEquipamentos.utilizado==='nao'?"NÃO":"SEM EQUIPAMENTO","Itens devolvidos ao estoque":resultadoEquipamentos.estoqueDevolvido,"Lançamentos financeiros estornados":resultadoEquipamentos.financeiroEstornado});
             io.emit("os_update");
-
-            res.json({
-                ok: true
-            });
-
+            res.json({ok:true,equipamentos:resultadoEquipamentos});
         } catch (err) {
-
-            console.error(
-                "ERRO CONCLUIR:",
-                err
-            );
-
-            res.status(500).json({
-                erro: err.message
-            });
+            try{ await conn.rollback(); }catch(_){ }
+            console.error("ERRO CONCLUIR:",err);
+            res.status(err.statusCode||500).json({erro:err.message});
+        } finally {
+            conn.release();
         }
     }
 );
