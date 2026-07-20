@@ -1368,6 +1368,18 @@ button{touch-action:manipulation}
 .btn-cancelar-equipamento{background:#e2e8f0 !important;color:#334155 !important}
 .btn-confirmar-equipamento{background:#1769ff !important;color:#fff !important}
 .btn-confirmar-equipamento:disabled{opacity:.45;cursor:not-allowed}
+
+.modal-confirmacao-pagamento{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;padding:16px;background:rgba(6,20,38,.72);z-index:12010}
+.modal-confirmacao-pagamento.ativo{display:flex}
+.confirmacao-pagamento-card{width:100%;max-width:460px;background:#fff;border-radius:26px 26px 20px 20px;padding:22px;box-shadow:0 28px 70px rgba(0,0,0,.32)}
+.confirmacao-pagamento-card h3{margin:0 0 8px;text-align:center;color:#0f172a;font-size:20px}
+.confirmacao-pagamento-card p{margin:0 0 16px;text-align:center;color:#64748b;line-height:1.5}
+.confirmacao-pagamento-opcoes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.confirmacao-pagamento-opcoes button{border:1px solid #dbe3ef;background:#fff;color:#0f172a;padding:15px 10px;border-radius:15px;font-weight:900;cursor:pointer}
+.confirmacao-pagamento-opcoes button.pago{border-color:#86efac;background:#f0fdf4;color:#166534}
+.confirmacao-pagamento-opcoes button.pendente{border-color:#fdba74;background:#fff7ed;color:#9a3412}
+.confirmacao-pagamento-cancelar{width:100%;margin-top:10px;border:0;background:#64748b;color:#fff;padding:13px;border-radius:14px;font-weight:900}
+@media(min-width:760px){.modal-confirmacao-pagamento{align-items:center}.confirmacao-pagamento-card{border-radius:28px}}
 @media(min-width:760px){.modal-confirmacao-equipamento{align-items:center}.confirmacao-equipamento-card{border-radius:28px}}
 
 </style>
@@ -1525,7 +1537,7 @@ button{touch-action:manipulation}
 
 
 
-<div class="modal-confirmacao-equipamento" id="modalConfirmacaoEquipamento" aria-hidden="true">
+<div class="modal-confirmacao-equipamento" id="modalConfirmacaoEquipamento" aria-hidden="true" inert>
   <div class="confirmacao-equipamento-card" role="dialog" aria-modal="true" aria-labelledby="tituloConfirmacaoEquipamento">
     <div class="confirmacao-equipamento-icone">📦</div>
     <h3 id="tituloConfirmacaoEquipamento">Equipamento vinculado foi utilizado?</h3>
@@ -1543,6 +1555,19 @@ button{touch-action:manipulation}
       <button type="button" class="btn-cancelar-equipamento" onclick="cancelarConfirmacaoEquipamento()">Cancelar</button>
       <button type="button" id="btnConfirmarUsoEquipamento" class="btn-confirmar-equipamento" onclick="confirmarUsoEquipamento()" disabled>Confirmar</button>
     </div>
+  </div>
+</div>
+
+
+<div class="modal-confirmacao-pagamento" id="modalConfirmacaoPagamento" aria-hidden="true" inert>
+  <div class="confirmacao-pagamento-card" role="dialog" aria-modal="true" aria-labelledby="tituloConfirmacaoPagamento">
+    <h3 id="tituloConfirmacaoPagamento">O pagamento foi realizado?</h3>
+    <p>Somente valores confirmados como pagos serão contabilizados no financeiro.</p>
+    <div class="confirmacao-pagamento-opcoes">
+      <button type="button" class="pago" onclick="resolverConfirmacaoPagamento('pago')">✓ Sim, foi pago</button>
+      <button type="button" class="pendente" onclick="resolverConfirmacaoPagamento('pendente')">⌛ Não, manter pendente</button>
+    </div>
+    <button type="button" class="confirmacao-pagamento-cancelar" onclick="cancelarConfirmacaoPagamento()">Cancelar</button>
   </div>
 </div>
 
@@ -3849,19 +3874,46 @@ function abrirConfirmacaoEquipamento(){
   document.getElementById("blocoObservacaoEquipamento")?.classList.remove("ativo");
   const campo=document.getElementById("observacaoEquipamento");if(campo)campo.value="";
   const confirmar=document.getElementById("btnConfirmarUsoEquipamento");if(confirmar)confirmar.disabled=true;
-  const modal=document.getElementById("modalConfirmacaoEquipamento");modal?.classList.add("ativo");modal?.setAttribute("aria-hidden","false");
+  const modal=document.getElementById("modalConfirmacaoEquipamento");
+  if(modal){modal.removeAttribute("inert");modal.classList.add("ativo");modal.setAttribute("aria-hidden","false");}
+  setTimeout(()=>document.getElementById("opcaoEquipamentoSim")?.focus(),80);
   return new Promise(resolve=>{resolucaoConfirmacaoEquipamento=resolve;});
 }
 function cancelarConfirmacaoEquipamento(){
-  const modal=document.getElementById("modalConfirmacaoEquipamento");modal?.classList.remove("ativo");modal?.setAttribute("aria-hidden","true");
+  if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
+  const modal=document.getElementById("modalConfirmacaoEquipamento");
+  if(modal){modal.classList.remove("ativo");modal.setAttribute("aria-hidden","true");modal.setAttribute("inert","");}
   const resolver=resolucaoConfirmacaoEquipamento;resolucaoConfirmacaoEquipamento=null;if(resolver)resolver(null);
+  setTimeout(()=>document.getElementById("btnConcluir")?.focus(),0);
 }
 function confirmarUsoEquipamento(){
   if(!["sim","nao"].includes(escolhaUsoEquipamento))return;
   const observacao=String(document.getElementById("observacaoEquipamento")?.value||"").trim();
   if(escolhaUsoEquipamento==="nao"&&!observacao){alert("Informe o motivo pelo qual o equipamento não foi utilizado.");document.getElementById("observacaoEquipamento")?.focus();return;}
-  const modal=document.getElementById("modalConfirmacaoEquipamento");modal?.classList.remove("ativo");modal?.setAttribute("aria-hidden","true");
+  if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
+  const modal=document.getElementById("modalConfirmacaoEquipamento");
+  if(modal){modal.classList.remove("ativo");modal.setAttribute("aria-hidden","true");modal.setAttribute("inert","");}
   const resolver=resolucaoConfirmacaoEquipamento;resolucaoConfirmacaoEquipamento=null;if(resolver)resolver({utilizado:escolhaUsoEquipamento,observacao});
+}
+
+let resolucaoConfirmacaoPagamento=null;
+function abrirConfirmacaoPagamento(){
+  const modal=document.getElementById("modalConfirmacaoPagamento");
+  if(modal){modal.removeAttribute("inert");modal.classList.add("ativo");modal.setAttribute("aria-hidden","false");}
+  return new Promise(resolve=>{resolucaoConfirmacaoPagamento=resolve;});
+}
+function fecharModalPagamento(valor){
+  if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
+  const modal=document.getElementById("modalConfirmacaoPagamento");
+  if(modal){modal.classList.remove("ativo");modal.setAttribute("aria-hidden","true");modal.setAttribute("inert","");}
+  const resolver=resolucaoConfirmacaoPagamento;resolucaoConfirmacaoPagamento=null;if(resolver)resolver(valor);
+}
+function resolverConfirmacaoPagamento(valor){fecharModalPagamento(valor);}
+function cancelarConfirmacaoPagamento(){fecharModalPagamento(null);}
+function osExigeConfirmacaoPagamento(os){
+  return String(os?.origem_equipamento||'').toLowerCase()==='empresa'
+    && String(os?.modalidade_equipamento||'').toLowerCase()==='vendido'
+    && String(os?.status_pagamento_equipamento||'pendente').toLowerCase()==='pendente';
 }
 
 async function enviarAcao(tipo, botao){
@@ -3895,11 +3947,17 @@ async function enviarAcao(tipo, botao){
 
     let equipamentoUtilizado = "";
     let observacaoEquipamento = "";
+    let statusPagamentoConfirmado = "";
     if(tipo === "concluir" && materiaisOSApp(osAtual).length){
         const confirmacaoEquipamento = await abrirConfirmacaoEquipamento();
         if(!confirmacaoEquipamento) return;
         equipamentoUtilizado = confirmacaoEquipamento.utilizado;
         observacaoEquipamento = confirmacaoEquipamento.observacao || "";
+        if(equipamentoUtilizado === "sim" && osExigeConfirmacaoPagamento(osAtual)){
+            const pagamento = await abrirConfirmacaoPagamento();
+            if(!pagamento) return;
+            statusPagamentoConfirmado = pagamento;
+        }
     }
 
     bloquearBotao(botao,true);
@@ -3917,6 +3975,7 @@ async function enviarAcao(tipo, botao){
             formData.append("observacao_finalizado", observacaoDigitada);
             if(equipamentoUtilizado) formData.append("equipamento_utilizado", equipamentoUtilizado);
             if(observacaoEquipamento) formData.append("observacao_equipamento", observacaoEquipamento);
+            if(statusPagamentoConfirmado) formData.append("status_pagamento_confirmado", statusPagamentoConfirmado);
         }
 
         const arquivo = await prepararArquivoParaEnvio();

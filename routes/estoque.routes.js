@@ -81,6 +81,29 @@ async function criarLembretesEstoqueBaixo(conn, empresaId, produto) {
   }
 }
 
+
+router.get('/equipamentos-pendentes', somenteAdmin, async (req,res)=>{
+  try{
+    const empresaId=getEmpresaId(req);
+    const [rows]=await pool.query(`
+      SELECT os.id os_id,os.nome cliente,os.telefone,os.id_cliente,os.forma_pagamento_equipamento,
+             os.total_equipamentos,os.finalizado_em,ep.id produto_id,ep.nome produto_nome,
+             om.quantidade,om.valor_unitario,om.desconto,om.valor_total,e.nome escritorio_nome
+        FROM ordens_servico os
+        JOIN os_materiais om ON om.os_id=os.id AND om.empresa_id=os.empresa_id
+        JOIN estoque_produtos ep ON ep.id=om.produto_id AND ep.empresa_id=om.empresa_id
+        LEFT JOIN escritorios e ON e.id=ep.escritorio_id AND e.empresa_id=ep.empresa_id
+       WHERE os.empresa_id=? AND os.origem_equipamento='empresa'
+         AND os.modalidade_equipamento='vendido'
+         AND os.status_pagamento_equipamento='pendente'
+         AND os.equipamentos_utilizados=1
+       ORDER BY COALESCE(os.finalizado_em,os.criado_em) DESC,os.id DESC,ep.nome`,[empresaId]);
+    const mapa=new Map();
+    for(const r of rows){if(!mapa.has(r.os_id))mapa.set(r.os_id,{os_id:r.os_id,cliente:r.cliente,telefone:r.telefone,id_cliente:r.id_cliente,forma_pagamento:r.forma_pagamento_equipamento,total:Number(r.total_equipamentos||0),finalizado_em:r.finalizado_em,produtos:[]});mapa.get(r.os_id).produtos.push({produto_id:r.produto_id,nome:r.produto_nome,quantidade:Number(r.quantidade||0),valor_unitario:Number(r.valor_unitario||0),desconto:Number(r.desconto||0),valor_total:Number(r.valor_total||0),escritorio_nome:r.escritorio_nome});}
+    res.json({total:mapa.size,itens:[...mapa.values()]});
+  }catch(error){console.error('Erro equipamentos pendentes:',error);res.status(500).json({erro:'Erro ao listar equipamentos com pagamento pendente.'});}
+});
+
 router.get('/resumo', somenteAdmin, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);

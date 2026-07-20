@@ -219,12 +219,14 @@ async function salvarMateriaisOS(osId,empresaId,origem,modalidade,materiais,form
     }
     await db.query(`UPDATE ordens_servico SET origem_equipamento=?,modalidade_equipamento=?,forma_pagamento_equipamento=?,status_pagamento_equipamento=?,anexo_pagamento_equipamento=?,anexo_pagamento_nome=?,subtotal_equipamentos=?,desconto_equipamentos=?,total_equipamentos=? WHERE id=? AND empresa_id=?`,
       [origemFinal,modalidadeFinal,vendido?formaPagamento:null,statusPagamentoFinal,caminhoComprovante,vendido?(anexoNome||null):null,subtotal,descontoTotal,total,osId,empresaId]);
-    await sincronizarFinanceiroVendaOS(osId,empresaId,Number(usuario?.id||0),String(usuario?.usuario||usuario?.nome||'Sistema'),vendido?formaPagamento:null,vendido&&statusPagamentoFinal==='pago'?porEscritorio:new Map());
+    // O financeiro é contabilizado somente após o técnico confirmar uso e pagamento na conclusão.
+    await db.query(`UPDATE financeiro_movimentacoes
+        SET ativo=0,excluido_em=NOW(),motivo_exclusao='Aguardando conclusão e confirmação de pagamento da OS'
+        WHERE empresa_id=? AND os_id=? AND origem='venda_os' AND ativo=1`,[empresaId,osId]);
 }
 
 
-async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, utilizado, observacaoEquipamento, usuario){
-    await garantirEstruturaMateriaisOS();
+async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, utilizado, observacaoEquipamento, statusPagamentoConfirmado, usuario){
     const resposta = String(utilizado ?? '').trim().toLowerCase();
     const respostaNormalizada = ['sim','1','true'].includes(resposta) ? 'sim' : ['nao','não','0','false'].includes(resposta) ? 'nao' : '';
 
@@ -272,6 +274,20 @@ async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, 
 
     const origemEmpresa = String(dadosOS?.origem_equipamento||'').toLowerCase()==='empresa';
     const vendido = origemEmpresa && String(dadosOS?.modalidade_equipamento||'').toLowerCase()==='vendido';
+    let statusPagamentoFinal = vendido ? String(dadosOS?.status_pagamento_equipamento||'pendente').toLowerCase() : null;
+
+    // Quando a venda ainda está pendente, o técnico confirma no momento da conclusão.
+    if(respostaNormalizada==='sim' && vendido && statusPagamentoFinal==='pendente'){
+        const confirmacaoPagamento=String(statusPagamentoConfirmado||'').trim().toLowerCase();
+        if(!['pago','pendente'].includes(confirmacaoPagamento)){
+            const erro=new Error('Confirme se o pagamento do equipamento foi realizado.');
+            erro.statusCode=400;
+            throw erro;
+        }
+        statusPagamentoFinal=confirmacaoPagamento;
+        await conn.query(`UPDATE ordens_servico SET status_pagamento_equipamento=? WHERE id=? AND empresa_id=?`,
+            [statusPagamentoFinal,osId,empresaId]);
+    }
 
     if(respostaNormalizada==='sim'){
         let estoqueBaixado=0;
@@ -327,8 +343,8 @@ async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, 
         let financeiroLancado=0;
         let valorFinanceiro=0;
 
-        // Venda confirmada como utilizada: recria o lançamento financeiro ativo da OS.
-        if(vendido){
+        // Somente pagamento confirmado como PAGO entra no fluxo financeiro.
+        if(vendido && statusPagamentoFinal==='pago'){
             await conn.query(`
                 UPDATE financeiro_movimentacoes
                    SET ativo=0,excluido_em=NOW(),motivo_exclusao='Lançamento da venda recalculado na conclusão da OS'
@@ -361,8 +377,17 @@ async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, 
             }
         }
 
-        if(vendido && financeiroLancado===0 && Number(dadosOS?.total_equipamentos||0)>0){const erro=new Error('Não foi possível identificar o escritório do produto para lançar o valor no financeiro.');erro.statusCode=400;throw erro;}
-        return {possuiEquipamentos:true,utilizado:'sim',estoqueBaixado,estoqueDevolvido:0,valorFinanceiro,financeiroLancado,financeiroEstornado:0};
+        if(vendido && statusPagamentoFinal==='pendente'){
+            await conn.query(`UPDATE financeiro_movimentacoes
+                 SET ativo=0,excluido_em=NOW(),motivo_exclusao='Pagamento pendente da venda na OS'
+               WHERE empresa_id=? AND os_id=? AND origem='venda_os' AND ativo=1`,[empresaId,osId]);
+        }
+        if(vendido && statusPagamentoFinal==='pago' && financeiroLancado===0 && Number(dadosOS?.total_equipamentos||0)>0){
+            const erro=new Error('Não foi possível identificar o escritório do produto para lançar o valor no financeiro.');
+            erro.statusCode=400;
+            throw erro;
+        }
+        return {possuiEquipamentos:true,utilizado:'sim',estoqueBaixado,estoqueDevolvido:0,valorFinanceiro,financeiroLancado,financeiroEstornado:0,statusPagamento:statusPagamentoFinal,pagamentoPendente:vendido&&statusPagamentoFinal==='pendente'};
     }
 
     // Resposta NÃO: estorna eventual venda e devolve apenas o que já tiver sido baixado para esta OS.
@@ -1591,27 +1616,37 @@ router.post(
     verificarAutenticacao,
     uploadAnexo.single("foto"),
     async (req, res) => {
-        const conn = await db.getConnection();
+        let conn;
         try {
-            await conn.beginTransaction();
+            // DDL e verificação estrutural nunca devem ocorrer dentro da transação da conclusão.
             await garantirEstruturaMateriaisOS();
+            conn = await db.getConnection();
+            await conn.beginTransaction();
             const [rows] = await conn.query(`SELECT nome,telefone,login,origem_equipamento FROM ordens_servico WHERE id=? AND empresa_id=? FOR UPDATE`,[req.params.id,req.usuario.empresa_id]);
             if(!rows.length){ const erro=new Error('OS não encontrada.');erro.statusCode=404;throw erro; }
             const os=rows[0];
             const observacaoFinalizado=req.body.observacao_finalizado ?? req.body.observacao ?? null;
             const anexoFinalizado=req.file ? "/uploads/ordens_servico/"+req.file.filename : null;
-            const resultadoEquipamentos=await processarConfirmacaoEquipamentosConclusao(conn,Number(req.params.id),Number(req.usuario.empresa_id),req.body.equipamento_utilizado,req.body.observacao_equipamento,req.usuario);
+            const resultadoEquipamentos=await processarConfirmacaoEquipamentosConclusao(
+                conn,
+                Number(req.params.id),
+                Number(req.usuario.empresa_id),
+                req.body.equipamento_utilizado,
+                req.body.observacao_equipamento,
+                req.body.status_pagamento_confirmado,
+                req.usuario
+            );
             await conn.query(`UPDATE ordens_servico SET status='concluido',finalizado_em=NOW(),finalizado_por=?,observacao_finalizado=?,anexo_finalizado=? WHERE id=? AND empresa_id=?`,[req.usuario.id,observacaoFinalizado||null,anexoFinalizado,req.params.id,req.usuario.empresa_id]);
             await conn.commit();
             await registrarLog(req,"CONCLUIU OS","OS",req.params.id,{Cliente:os.nome,Telefone:os.telefone,Login:os.login,Status:"CONCLUÍDO","Observação de conclusão":observacaoFinalizado,Anexo:req.file?"SIM":"NÃO","Equipamentos utilizados":resultadoEquipamentos.utilizado==='sim'?"SIM":resultadoEquipamentos.utilizado==='nao'?"NÃO":"SEM EQUIPAMENTO","Itens devolvidos ao estoque":resultadoEquipamentos.estoqueDevolvido,"Lançamentos financeiros estornados":resultadoEquipamentos.financeiroEstornado});
             io.emit("os_update");
             res.json({ok:true,equipamentos:resultadoEquipamentos});
         } catch (err) {
-            try{ await conn.rollback(); }catch(_){ }
+            if(conn){ try{ await conn.rollback(); }catch(_){ } }
             console.error("ERRO CONCLUIR:",err);
             res.status(err.statusCode||500).json({erro:err.message});
         } finally {
-            conn.release();
+            if(conn) conn.release();
         }
     }
 );
