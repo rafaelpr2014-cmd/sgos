@@ -40,6 +40,23 @@ module.exports = function financeiroRoutes(pool, verificarAutenticacao) {
 
   router.use(verificarAutenticacao);
 
+  async function anexarProdutosDasOS(registros){
+    const lista=Array.isArray(registros)?registros:(registros?[registros]:[]);
+    const ids=[...new Set(lista.map(x=>Number(x.os_id||0)).filter(Boolean))];
+    if(!ids.length) return registros;
+    const [produtos]=await pool.query(`SELECT om.os_id,ep.nome produto_nome,om.quantidade,om.valor_unitario,om.valor_total FROM os_materiais om JOIN estoque_produtos ep ON ep.id=om.produto_id AND ep.empresa_id=om.empresa_id WHERE om.os_id IN (?) ORDER BY ep.nome`,[ids]);
+    const mapa=new Map();
+    for(const item of produtos){if(!mapa.has(Number(item.os_id)))mapa.set(Number(item.os_id),[]);mapa.get(Number(item.os_id)).push(item);}
+    for(const x of lista){const itens=mapa.get(Number(x.os_id))||[];if(!itens.length)continue;x.produtos_os=itens;x.estoque_produto_nome=itens.map(i=>i.produto_nome).join(', ');x.estoque_quantidade=itens.map(i=>`${i.produto_nome}: ${Number(i.quantidade||0)}`).join(' | ');x.produto_vinculado_nome=x.estoque_produto_nome;}
+    return registros;
+  }
+  async function anexarProdutosAosLogs(logs){
+    const lista=Array.isArray(logs)?logs:[];
+    for(const l of lista){if(!l.os_id){const m=String(l.descricao||'').match(/OS\s*#?(\d+)/i);if(m)l.os_id=Number(m[1]);}}
+    await anexarProdutosDasOS(lista);
+    return lista;
+  }
+
   async function listarEquipamentosPendentes(ctxAtual) {
     const [rows] = await pool.query(`
       SELECT os.id os_id,os.nome cliente,os.telefone,os.id_cliente,os.status os_status,
@@ -88,11 +105,11 @@ module.exports = function financeiroRoutes(pool, verificarAutenticacao) {
     finally{conn.release();}
   });
   router.get('/resumo', async (req, res) => { try { res.json(await service.resumo(ctx(req), req.query)); } catch (e) { fail(res, e, 'Erro ao carregar resumo.'); } });
-  router.get('/movimentacoes', async (req, res) => { try { res.json(await service.listar(ctx(req), req.query)); } catch (e) { fail(res, e, 'Erro ao listar movimentações.'); } });
-  router.get('/movimentacoes/:id', async (req, res) => { try { res.json(await service.obter(ctx(req), Number(req.params.id))); } catch (e) { fail(res, e, 'Erro ao carregar lançamento.'); } });
+  router.get('/movimentacoes', async (req, res) => { try { res.json(await anexarProdutosDasOS(await service.listar(ctx(req), req.query))); } catch (e) { fail(res, e, 'Erro ao listar movimentações.'); } });
+  router.get('/movimentacoes/:id', async (req, res) => { try { res.json(await anexarProdutosDasOS(await service.obter(ctx(req), Number(req.params.id)))); } catch (e) { fail(res, e, 'Erro ao carregar lançamento.'); } });
   router.get('/fluxo', async (req, res) => { try { res.json(await service.fluxo(ctx(req), req.query)); } catch (e) { fail(res, e, 'Erro ao carregar fluxo.'); } });
   router.get('/auxiliares', async (req, res) => { try { res.json(await service.auxiliares(ctx(req), req.query)); } catch (e) { fail(res, e, 'Erro ao carregar auxiliares.'); } });
-  router.get('/logs', async (req, res) => { try { res.json(await service.logs(ctx(req), req.query)); } catch (e) { fail(res, e, 'Erro ao carregar auditoria.'); } });
+  router.get('/logs', async (req, res) => { try { res.json(await anexarProdutosAosLogs(await service.logs(ctx(req), req.query))); } catch (e) { fail(res, e, 'Erro ao carregar auditoria.'); } });
   router.post('/movimentacoes', upload.single('anexo'), async (req, res) => { try { res.status(201).json(await service.salvar(ctx(req), req, null)); } catch (e) { fail(res, e, 'Erro ao salvar.'); } });
   router.put('/movimentacoes/:id', upload.single('anexo'), async (req, res) => { try { res.json(await service.salvar(ctx(req), req, Number(req.params.id))); } catch (e) { fail(res, e, 'Erro ao atualizar.'); } });
   router.delete('/movimentacoes/:id', async (req, res) => { try { res.json(await service.excluir(ctx(req), req, Number(req.params.id))); } catch (e) { fail(res, e, 'Erro ao excluir.'); } });

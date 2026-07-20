@@ -2588,8 +2588,8 @@ function modoTV() {
     if(!lista.length)return "";
     const itens=lista.map(i=>`<div class="sgos-equip-item-web"><strong>${esc(i.nome||("Produto #"+i.produto_id))}</strong><span>Qtd.: ${esc(i.quantidade||1)}</span><span>Unit.: ${moeda(i.valor_unitario)}</span><span>Total: ${moeda(i.valor_total??Number(i.valor_unitario||0)*Number(i.quantidade||1))}</span></div>`).join("");
     const concluida=String(os.status||"").toLowerCase()==="concluido";
-    const uso=os.equipamentos_utilizados==="sim"?"Sim":os.equipamentos_utilizados==="nao"?"Não":"Não informado";
-    const confirmacao=concluida?`<div class="sgos-confirmacao-web ${os.equipamentos_utilizados==="nao"?"nao":""}"><strong>Equipamento vinculado foi utilizado?</strong> ${uso}${os.observacao_equipamento?`<br><strong>Observação:</strong> ${esc(os.observacao_equipamento)}`:""}${os.equipamentos_confirmado_em?`<br><strong>Confirmado em:</strong> ${esc(new Date(os.equipamentos_confirmado_em).toLocaleString("pt-BR"))}`:""}</div>`:"";
+    const valorUso=String(os.equipamentos_utilizados??"").trim().toLowerCase(); const uso=["sim","1","true"].includes(valorUso)?"Sim":["nao","não","0","false"].includes(valorUso)?"Não":"Não informado";
+    const confirmacao=concluida?`<div class="sgos-confirmacao-web ${["nao","não","0","false"].includes(valorUso)?"nao":""}"><strong>Equipamento vinculado foi utilizado?</strong> ${uso}${os.observacao_equipamento?`<br><strong>Observação:</strong> ${esc(os.observacao_equipamento)}`:""}${os.equipamentos_confirmado_por_nome?`<br><strong>Confirmado por:</strong> ${esc(os.equipamentos_confirmado_por_nome)}`:""}${os.equipamentos_confirmado_em?`<br><strong>Confirmado em:</strong> ${esc(new Date(os.equipamentos_confirmado_em).toLocaleString("pt-BR"))}`:""}</div>`:"";
     return `<section class="sgos-equip-resumo-web"><h4>Equipamentos vinculados</h4>${itens}<div class="sgos-equip-total-web"><span><strong>Pagamento:</strong> ${esc(forma(os.forma_pagamento_equipamento))}</span><span><strong>Total:</strong> ${moeda(os.total_equipamentos)}</span></div>${confirmacao}</section>`;
   }
   async function enriquecer(id){

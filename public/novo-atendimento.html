@@ -661,6 +661,9 @@ button:hover{
 .equipamento-os-box{grid-column:1/-1;border:1px solid #dbeafe;background:#f8fbff;border-radius:12px;padding:12px}.equipamento-tipo-grid{display:grid;grid-template-columns:.85fr .7fr 1.35fr .85fr .72fr 1.05fr;gap:10px;align-items:end}.equipamento-tipo-grid .campo label{font-size:12px;margin-bottom:5px}.equipamento-tipo-grid select{padding:9px 10px;min-height:38px}.material-seletor-linha{display:grid;grid-template-columns:minmax(0,1fr) 42px;gap:7px}.material-seletor-linha .btn-adicionar-material{margin:0;padding:0;width:42px;height:38px;display:flex;align-items:center;justify-content:center;font-size:20px}.materiais-os-lista{display:grid;gap:7px;margin-top:9px}.material-os-item{display:grid;grid-template-columns:minmax(180px,1fr) 72px 104px 104px 112px 38px;gap:8px;align-items:center;padding:8px 9px;border:1px solid #e5e7eb;border-radius:9px;background:#fff}.material-os-item:not(.vendido){grid-template-columns:minmax(180px,1fr) 80px 38px}.material-os-item strong{font-size:12px}.material-os-item small{display:block;color:#64748b;margin-top:2px;font-size:11px}.material-os-item input{padding:7px 8px;min-height:34px}.material-total{font-size:13px;font-weight:900;color:#15803d;white-space:nowrap}.btn-remover-material{border:none;background:#fee2e2;color:#b91c1c;border-radius:8px;height:34px;cursor:pointer;font-weight:bold;padding:0}.btn-adicionar-material{background:#2563eb;color:#fff;border:none;border-radius:9px;cursor:pointer;font-weight:800}.material-vazio{padding:9px;text-align:center;color:#64748b;border:1px dashed #cbd5e1;border-radius:9px;background:#fff;font-size:12px}.venda-equipamento-box{margin-top:8px;padding:8px 10px;border:1px solid #bbf7d0;background:#f0fdf4;border-radius:9px}.resumo-venda-os{display:flex;gap:18px;flex-wrap:wrap;font-size:12px}.resumo-venda-os strong{font-size:13px}@media(max-width:1100px){.equipamento-tipo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.material-os-item{grid-template-columns:minmax(160px,1fr) 65px 95px 95px 105px 36px}}@media(max-width:760px){.equipamento-tipo-grid{grid-template-columns:1fr}.material-os-item,.material-os-item.vendido,.material-os-item:not(.vendido){grid-template-columns:1fr 80px 38px}.material-os-item.vendido input[readonly],.material-os-item.vendido input[title="Desconto"],.material-os-item.vendido .material-total{grid-column:1/-1}.resumo-venda-os{gap:8px;flex-direction:column}}
 
 .venda-equipamento-box{margin-top:14px;padding:14px;border:1px solid #bbf7d0;background:#f0fdf4;border-radius:12px}.resumo-venda-os{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;padding:12px;background:#fff;border-radius:10px}.material-os-item.vendido{grid-template-columns:minmax(0,1fr) 90px 125px 125px 125px 44px}.material-preco{font-size:12px;color:#475569}.material-total{font-weight:900;color:#15803d}@media(max-width:900px){.material-os-item.vendido{grid-template-columns:1fr 1fr}.material-os-item.vendido .btn-remover-material{grid-column:2}}
+
+/* AVISO OBRIGATÓRIO - EQUIPAMENTOS E MATERIAIS */
+.sgos-aviso-equip-overlay{position:fixed;inset:0;background:rgba(15,23,42,.68);display:none;align-items:center;justify-content:center;padding:18px;z-index:999999}.sgos-aviso-equip-overlay.ativo{display:flex}.sgos-aviso-equip-card{width:min(440px,100%);background:#fff;border-radius:20px;padding:24px;box-shadow:0 28px 80px rgba(0,0,0,.3);text-align:center}.sgos-aviso-equip-icon{width:58px;height:58px;border-radius:18px;background:#fff7ed;color:#ea580c;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 13px}.sgos-aviso-equip-card h3{margin:0 0 8px;font-size:20px;color:#0f172a}.sgos-aviso-equip-card p{margin:0 0 18px;color:#475569;line-height:1.5}.sgos-aviso-equip-card button{border:0;border-radius:11px;background:#2563eb;color:#fff;font-weight:800;padding:12px 24px;cursor:pointer}
 </style>
 </head>
 
@@ -2947,10 +2950,10 @@ function renderMateriaisOS(){
 }
 async function dadosEquipamentosOS(){
     const origem=String(document.getElementById("origem_equipamento")?.value||"").trim();
-    if(!["proprio","empresa"].includes(origem)) throw new Error("Selecione a origem dos equipamentos e materiais.");
+    if(!["proprio","empresa"].includes(origem)){ mostrarAvisoEquipamentosOS("É obrigatório selecionar se a OS utilizará equipamento próprio ou equipamentos e materiais da empresa."); throw new Error("Selecione a origem dos equipamentos e materiais."); }
     const modalidade=origem==="empresa"?String(document.getElementById("modalidade_equipamento")?.value||"").trim():null;
-    if(origem==="empresa" && !["comodato","vendido"].includes(modalidade)) throw new Error("Selecione a modalidade dos equipamentos e materiais.");
-    if(origem==="empresa" && !materiaisSelecionadosOS.length) throw new Error("Adicione pelo menos um equipamento ou material da empresa.");
+    if(origem==="empresa" && !["comodato","vendido"].includes(modalidade)){ mostrarAvisoEquipamentosOS("Selecione se os equipamentos e materiais da empresa serão em comodato ou vendidos."); throw new Error("Selecione a modalidade dos equipamentos e materiais."); }
+    if(origem==="empresa" && !materiaisSelecionadosOS.length){ mostrarAvisoEquipamentosOS("Adicione pelo menos um equipamento ou material da empresa antes de salvar a OS."); throw new Error("Adicione pelo menos um equipamento ou material da empresa."); }
     const vendido=origem==="empresa"&&modalidade==="vendido";
     const forma=document.getElementById("forma_pagamento_equipamento")?.value||null;
     const statusPagamento=document.getElementById("status_pagamento_equipamento")?.value||"pendente";
@@ -2977,6 +2980,23 @@ function preencherEquipamentosOS(os){
 }
 function iniciarEquipamentosOS(){ document.getElementById("origem_equipamento")?.addEventListener("change", atualizarVisibilidadeEquipamento);document.getElementById("modalidade_equipamento")?.addEventListener("change",()=>{atualizarVisibilidadeEquipamento();renderMateriaisOS();}); atualizarVisibilidadeEquipamento(); renderMateriaisOS(); }
 
+
+function mostrarAvisoEquipamentosOS(mensagem){
+ const modal=document.getElementById('sgosAvisoEquipamentos');
+ const texto=document.getElementById('sgosAvisoEquipMensagem');
+ if(texto) texto.textContent=mensagem||'É obrigatório informar o uso de equipamentos e materiais antes de salvar a OS.';
+ if(modal){modal.classList.add('ativo');document.body.style.overflow='hidden';}
+}
+function fecharAvisoEquipamentosOS(){const modal=document.getElementById('sgosAvisoEquipamentos');if(modal)modal.classList.remove('ativo');document.body.style.overflow='';document.getElementById('origem_equipamento')?.focus();}
 </script>
+
+<div id="sgosAvisoEquipamentos" class="sgos-aviso-equip-overlay" role="dialog" aria-modal="true" aria-labelledby="sgosAvisoEquipTitulo">
+  <div class="sgos-aviso-equip-card">
+    <div class="sgos-aviso-equip-icon">!</div>
+    <h3 id="sgosAvisoEquipTitulo">Seleção obrigatória</h3>
+    <p id="sgosAvisoEquipMensagem">É obrigatório informar o uso de equipamentos e materiais antes de salvar a OS.</p>
+    <button type="button" onclick="fecharAvisoEquipamentosOS()">Entendi</button>
+  </div>
+</div>
 </body>
 </html>
