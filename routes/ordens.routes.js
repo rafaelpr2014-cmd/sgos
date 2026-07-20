@@ -142,6 +142,7 @@ async function garantirEstruturaMateriaisOS(){
     await alterar('ordens_servico','equipamentos_utilizados',`ALTER TABLE ordens_servico ADD COLUMN equipamentos_utilizados ENUM('pendente','sim','nao') NOT NULL DEFAULT 'pendente' AFTER total_equipamentos`);
     await alterar('ordens_servico','equipamentos_confirmado_em',`ALTER TABLE ordens_servico ADD COLUMN equipamentos_confirmado_em DATETIME NULL AFTER equipamentos_utilizados`);
     await alterar('ordens_servico','equipamentos_confirmado_por',`ALTER TABLE ordens_servico ADD COLUMN equipamentos_confirmado_por INT NULL AFTER equipamentos_confirmado_em`);
+    await alterar('ordens_servico','observacao_equipamento',`ALTER TABLE ordens_servico ADD COLUMN observacao_equipamento TEXT NULL AFTER equipamentos_confirmado_por`);
 }
 function normalizarMateriaisOS(materiais){
     const lista=Array.isArray(materiais)?materiais:[];const mapa=new Map();
@@ -199,7 +200,7 @@ async function salvarMateriaisOS(osId,empresaId,origem,modalidade,materiais,form
 }
 
 
-async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, utilizado, usuario){
+async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, utilizado, observacaoEquipamento, usuario){
     await garantirEstruturaMateriaisOS();
     const resposta = String(utilizado || '').trim().toLowerCase();
     const [materiais] = await conn.query(`SELECT om.produto_id,om.quantidade,ep.nome,ep.escritorio_id FROM os_materiais om LEFT JOIN estoque_produtos ep ON ep.id=om.produto_id AND ep.empresa_id=om.empresa_id WHERE om.os_id=? AND om.empresa_id=?`,[osId,empresaId]);
@@ -207,7 +208,9 @@ async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, 
     if(!['sim','nao'].includes(resposta)){
         const erro=new Error('Confirme se os equipamentos vinculados foram utilizados.');erro.statusCode=400;throw erro;
     }
-    await conn.query(`UPDATE ordens_servico SET equipamentos_utilizados=?,equipamentos_confirmado_em=NOW(),equipamentos_confirmado_por=? WHERE id=? AND empresa_id=?`,[resposta,Number(usuario?.id||0)||null,osId,empresaId]);
+    const observacaoFinal=resposta==='nao'?String(observacaoEquipamento||'').trim():null;
+    if(resposta==='nao'&&!observacaoFinal){const erro=new Error('Informe o motivo pelo qual o equipamento não foi utilizado.');erro.statusCode=400;throw erro;}
+    await conn.query(`UPDATE ordens_servico SET equipamentos_utilizados=?,equipamentos_confirmado_em=NOW(),equipamentos_confirmado_por=?,observacao_equipamento=? WHERE id=? AND empresa_id=?`,[resposta,Number(usuario?.id||0)||null,observacaoFinal,osId,empresaId]);
     if(resposta==='sim') return {possuiEquipamentos:true,utilizado:'sim',estoqueDevolvido:0,financeiroEstornado:0};
 
     const [financeiro]=await conn.query(`UPDATE financeiro_movimentacoes SET ativo=0,excluido_em=NOW(),motivo_exclusao='Equipamento não utilizado na conclusão da OS' WHERE empresa_id=? AND os_id=? AND origem='venda_os' AND ativo=1`,[empresaId,osId]);
@@ -1420,7 +1423,7 @@ router.post(
             const os=rows[0];
             const observacaoFinalizado=req.body.observacao_finalizado ?? req.body.observacao ?? null;
             const anexoFinalizado=req.file ? "/uploads/ordens_servico/"+req.file.filename : null;
-            const resultadoEquipamentos=await processarConfirmacaoEquipamentosConclusao(conn,Number(req.params.id),Number(req.usuario.empresa_id),req.body.equipamento_utilizado,req.usuario);
+            const resultadoEquipamentos=await processarConfirmacaoEquipamentosConclusao(conn,Number(req.params.id),Number(req.usuario.empresa_id),req.body.equipamento_utilizado,req.body.observacao_equipamento,req.usuario);
             await conn.query(`UPDATE ordens_servico SET status='concluido',finalizado_em=NOW(),finalizado_por=?,observacao_finalizado=?,anexo_finalizado=? WHERE id=? AND empresa_id=?`,[req.usuario.id,observacaoFinalizado||null,anexoFinalizado,req.params.id,req.usuario.empresa_id]);
             await conn.commit();
             await registrarLog(req,"CONCLUIU OS","OS",req.params.id,{Cliente:os.nome,Telefone:os.telefone,Login:os.login,Status:"CONCLUÍDO","Observação de conclusão":observacaoFinalizado,Anexo:req.file?"SIM":"NÃO","Equipamentos utilizados":resultadoEquipamentos.utilizado==='sim'?"SIM":resultadoEquipamentos.utilizado==='nao'?"NÃO":"SEM EQUIPAMENTO","Itens devolvidos ao estoque":resultadoEquipamentos.estoqueDevolvido,"Lançamentos financeiros estornados":resultadoEquipamentos.financeiroEstornado});

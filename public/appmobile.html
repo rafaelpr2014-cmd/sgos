@@ -1346,6 +1346,30 @@ button{touch-action:manipulation}
 .equipamento-os-app-item:first-of-type{border-top:0;padding-top:0}
 .resumo-finalizado-app{margin-top:12px;padding:13px;border:1px solid #bbf7d0;border-radius:14px;background:#f0fdf4;color:#166534;line-height:1.55}
 
+
+/* ===== CONFIRMAÇÃO DE USO DE EQUIPAMENTO ===== */
+.modal-confirmacao-equipamento{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;padding:16px;background:rgba(6,20,38,.68);z-index:12000}
+.modal-confirmacao-equipamento.ativo{display:flex}
+.confirmacao-equipamento-card{width:min(520px,100%);background:#fff;border-radius:28px 28px 20px 20px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.34);animation:modalUp .2s ease-out}
+.confirmacao-equipamento-icone{width:54px;height:54px;border-radius:18px;display:grid;place-items:center;margin:0 auto 14px;background:#eaf2ff;color:#1769ff;font-size:28px}
+.confirmacao-equipamento-card h3{margin:0;text-align:center;font-size:21px;color:#0f172a}
+.confirmacao-equipamento-card p{margin:8px 0 18px;text-align:center;color:#64748b;font-size:13px;line-height:1.5}
+.confirmacao-equipamento-opcoes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.confirmacao-equipamento-opcao{min-height:62px;border:2px solid #e2e8f0;border-radius:17px;background:#fff;color:#334155;font-size:15px;font-weight:900;cursor:pointer}
+.confirmacao-equipamento-opcao.sim.selecionado{border-color:#16a34a;background:#f0fdf4;color:#15803d}
+.confirmacao-equipamento-opcao.nao.selecionado{border-color:#ef4444;background:#fff1f2;color:#b91c1c}
+.confirmacao-equipamento-observacao{display:none;margin-top:14px}
+.confirmacao-equipamento-observacao.ativo{display:block}
+.confirmacao-equipamento-observacao label{display:block;margin-bottom:7px;color:#334155;font-size:13px;font-weight:900}
+.confirmacao-equipamento-observacao textarea{min-height:98px;margin:0;resize:vertical;background:#f8fafc}
+.confirmacao-equipamento-alerta{margin-top:10px;padding:10px 12px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:12px;line-height:1.45}
+.confirmacao-equipamento-acoes{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:16px}
+.confirmacao-equipamento-acoes button{width:100%;margin:0;min-height:50px}
+.btn-cancelar-equipamento{background:#e2e8f0 !important;color:#334155 !important}
+.btn-confirmar-equipamento{background:#1769ff !important;color:#fff !important}
+.btn-confirmar-equipamento:disabled{opacity:.45;cursor:not-allowed}
+@media(min-width:760px){.modal-confirmacao-equipamento{align-items:center}.confirmacao-equipamento-card{border-radius:28px}}
+
 </style>
 
 
@@ -1499,6 +1523,28 @@ button{touch-action:manipulation}
 </div>
 
 
+
+
+<div class="modal-confirmacao-equipamento" id="modalConfirmacaoEquipamento" aria-hidden="true">
+  <div class="confirmacao-equipamento-card" role="dialog" aria-modal="true" aria-labelledby="tituloConfirmacaoEquipamento">
+    <div class="confirmacao-equipamento-icone">📦</div>
+    <h3 id="tituloConfirmacaoEquipamento">Equipamento vinculado foi utilizado?</h3>
+    <p>Selecione uma opção para concluir esta ordem de serviço.</p>
+    <div class="confirmacao-equipamento-opcoes">
+      <button type="button" id="opcaoEquipamentoSim" class="confirmacao-equipamento-opcao sim" onclick="selecionarUsoEquipamento('sim')">✓ Sim</button>
+      <button type="button" id="opcaoEquipamentoNao" class="confirmacao-equipamento-opcao nao" onclick="selecionarUsoEquipamento('nao')">✕ Não</button>
+    </div>
+    <div class="confirmacao-equipamento-observacao" id="blocoObservacaoEquipamento">
+      <label for="observacaoEquipamento">Informe por que o equipamento não foi utilizado</label>
+      <textarea id="observacaoEquipamento" maxlength="1000" placeholder="Ex.: cliente já possuía equipamento, instalação cancelada, equipamento incompatível..."></textarea>
+      <div class="confirmacao-equipamento-alerta">Ao confirmar “Não”, o sistema devolverá ao estoque as saídas vinculadas e estornará o lançamento financeiro da OS.</div>
+    </div>
+    <div class="confirmacao-equipamento-acoes">
+      <button type="button" class="btn-cancelar-equipamento" onclick="cancelarConfirmacaoEquipamento()">Cancelar</button>
+      <button type="button" id="btnConfirmarUsoEquipamento" class="btn-confirmar-equipamento" onclick="confirmarUsoEquipamento()" disabled>Confirmar</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-anexo" id="modalAnexo" onclick="fecharModalAnexo()">
     <div class="modal-anexo-content" onclick="event.stopPropagation()">
@@ -3521,6 +3567,7 @@ function resumoModalHTML(os){
             <b>Finalizada em:</b> ${valorSeguro(format(os.finalizado_em))}<br>
             <b>Finalizada por:</b> ${valorSeguro(os.finalizado_por_nome || os.finalizado_por)}<br>
             <b>Equipamento utilizado:</b> ${valorSeguro(os.equipamentos_utilizados === "nao" ? "Não" : os.equipamentos_utilizados === "sim" ? "Sim" : "Não informado")}<br>
+            ${os.observacao_equipamento ? `<b>Observação do equipamento:</b> ${valorSeguro(os.observacao_equipamento)}<br>` : ""}
             <b>Observação da conclusão:</b><br>${valorSeguro(os.observacao_finalizado, "-")}
         </div>` : "";
 
@@ -3783,6 +3830,40 @@ async function lerRespostaSegura(res){
     if(!texto) return {};
     try{return JSON.parse(texto)}catch(e){return {mensagem:texto}}
 }
+
+let resolucaoConfirmacaoEquipamento=null;
+let escolhaUsoEquipamento="";
+function selecionarUsoEquipamento(valor){
+  escolhaUsoEquipamento=valor;
+  document.getElementById("opcaoEquipamentoSim")?.classList.toggle("selecionado",valor==="sim");
+  document.getElementById("opcaoEquipamentoNao")?.classList.toggle("selecionado",valor==="nao");
+  document.getElementById("blocoObservacaoEquipamento")?.classList.toggle("ativo",valor==="nao");
+  const confirmar=document.getElementById("btnConfirmarUsoEquipamento");if(confirmar)confirmar.disabled=false;
+  if(valor==="sim"){const campo=document.getElementById("observacaoEquipamento");if(campo)campo.value="";}
+  else setTimeout(()=>document.getElementById("observacaoEquipamento")?.focus(),80);
+}
+function abrirConfirmacaoEquipamento(){
+  escolhaUsoEquipamento="";
+  document.getElementById("opcaoEquipamentoSim")?.classList.remove("selecionado");
+  document.getElementById("opcaoEquipamentoNao")?.classList.remove("selecionado");
+  document.getElementById("blocoObservacaoEquipamento")?.classList.remove("ativo");
+  const campo=document.getElementById("observacaoEquipamento");if(campo)campo.value="";
+  const confirmar=document.getElementById("btnConfirmarUsoEquipamento");if(confirmar)confirmar.disabled=true;
+  const modal=document.getElementById("modalConfirmacaoEquipamento");modal?.classList.add("ativo");modal?.setAttribute("aria-hidden","false");
+  return new Promise(resolve=>{resolucaoConfirmacaoEquipamento=resolve;});
+}
+function cancelarConfirmacaoEquipamento(){
+  const modal=document.getElementById("modalConfirmacaoEquipamento");modal?.classList.remove("ativo");modal?.setAttribute("aria-hidden","true");
+  const resolver=resolucaoConfirmacaoEquipamento;resolucaoConfirmacaoEquipamento=null;if(resolver)resolver(null);
+}
+function confirmarUsoEquipamento(){
+  if(!["sim","nao"].includes(escolhaUsoEquipamento))return;
+  const observacao=String(document.getElementById("observacaoEquipamento")?.value||"").trim();
+  if(escolhaUsoEquipamento==="nao"&&!observacao){alert("Informe o motivo pelo qual o equipamento não foi utilizado.");document.getElementById("observacaoEquipamento")?.focus();return;}
+  const modal=document.getElementById("modalConfirmacaoEquipamento");modal?.classList.remove("ativo");modal?.setAttribute("aria-hidden","true");
+  const resolver=resolucaoConfirmacaoEquipamento;resolucaoConfirmacaoEquipamento=null;if(resolver)resolver({utilizado:escolhaUsoEquipamento,observacao});
+}
+
 async function enviarAcao(tipo, botao){
     if(!osSelecionada){ alert("Nenhuma OS selecionada"); return; }
     const osAtual = encontrarOS(osSelecionada);
@@ -3813,13 +3894,12 @@ async function enviarAcao(tipo, botao){
     if(!rotas[tipo]) return;
 
     let equipamentoUtilizado = "";
+    let observacaoEquipamento = "";
     if(tipo === "concluir" && materiaisOSApp(osAtual).length){
-        const utilizado = window.confirm("Os equipamentos vinculados a esta OS foram utilizados?\n\nOK = Sim, foram utilizados.\nCancelar = Não, devolver ao estoque e estornar o financeiro.");
-        equipamentoUtilizado = utilizado ? "sim" : "nao";
-        if(!utilizado){
-            const confirmarEstorno = window.confirm("Confirma que os equipamentos NÃO foram utilizados? O sistema devolverá ao estoque as saídas vinculadas e estornará o lançamento financeiro da OS.");
-            if(!confirmarEstorno) return;
-        }
+        const confirmacaoEquipamento = await abrirConfirmacaoEquipamento();
+        if(!confirmacaoEquipamento) return;
+        equipamentoUtilizado = confirmacaoEquipamento.utilizado;
+        observacaoEquipamento = confirmacaoEquipamento.observacao || "";
     }
 
     bloquearBotao(botao,true);
@@ -3836,6 +3916,7 @@ async function enviarAcao(tipo, botao){
         if(tipo === "concluir"){
             formData.append("observacao_finalizado", observacaoDigitada);
             if(equipamentoUtilizado) formData.append("equipamento_utilizado", equipamentoUtilizado);
+            if(observacaoEquipamento) formData.append("observacao_equipamento", observacaoEquipamento);
         }
 
         const arquivo = await prepararArquivoParaEnvio();

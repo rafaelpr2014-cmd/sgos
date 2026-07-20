@@ -1444,6 +1444,18 @@ tr:hover{ background:#f8fbff; }
 #lembreteDestinatario{width:100%;padding:11px 12px;border:1px solid #dbe3ee;border-radius:10px;background:#fff;color:#0f172a;font-size:14px;outline:none;}
 #lembreteDestinatario:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.10);}
 
+
+/* ===== RESUMO DE EQUIPAMENTOS / CONCLUSÃO ===== */
+.sgos-equip-resumo-web{margin-top:16px;border:1px solid #bfdbfe;border-radius:14px;background:#f8fbff;padding:15px;color:#1e3a8a}
+.sgos-equip-resumo-web h4{margin:0 0 11px;font-size:15px;color:#0f172a}
+.sgos-equip-item-web{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:10px;padding:9px 0;border-top:1px solid #dbeafe;align-items:center;font-size:12px}
+.sgos-equip-item-web:first-of-type{border-top:0}
+.sgos-equip-item-web strong{color:#0f172a}
+.sgos-equip-total-web{margin-top:10px;padding-top:10px;border-top:2px solid #bfdbfe;display:flex;justify-content:space-between;gap:14px;font-size:13px}
+.sgos-confirmacao-web{margin-top:12px;padding:12px;border-radius:12px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:13px;line-height:1.55}
+.sgos-confirmacao-web.nao{border-color:#fecaca;background:#fff1f2;color:#991b1b}
+@media(max-width:700px){.sgos-equip-item-web{grid-template-columns:1fr 1fr}.sgos-equip-item-web strong{grid-column:1/-1}}
+
 </style>
 </head>
 
@@ -2562,6 +2574,52 @@ function modoTV() {
     document.body.style.background = "#0f172a";
     document.documentElement.requestFullscreen();
 }
+</script>
+
+
+<script>
+(function(){
+  const moeda=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  const esc=v=>String(v??"-").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+  const forma=v=>({dinheiro:"Dinheiro",pix:"PIX",cartao_credito:"Cartão de crédito",cartao_debito:"Cartão de débito",cheque:"Cheque"}[String(v||"")]||v||"-");
+  function materiais(os){let l=os?.materiais_os||[];if(typeof l==="string"){try{l=JSON.parse(l)}catch(_){l=[]}}return Array.isArray(l)?l:[]}
+  function bloco(os){
+    const lista=materiais(os);
+    if(!lista.length)return "";
+    const itens=lista.map(i=>`<div class="sgos-equip-item-web"><strong>${esc(i.nome||("Produto #"+i.produto_id))}</strong><span>Qtd.: ${esc(i.quantidade||1)}</span><span>Unit.: ${moeda(i.valor_unitario)}</span><span>Total: ${moeda(i.valor_total??Number(i.valor_unitario||0)*Number(i.quantidade||1))}</span></div>`).join("");
+    const concluida=String(os.status||"").toLowerCase()==="concluido";
+    const uso=os.equipamentos_utilizados==="sim"?"Sim":os.equipamentos_utilizados==="nao"?"Não":"Não informado";
+    const confirmacao=concluida?`<div class="sgos-confirmacao-web ${os.equipamentos_utilizados==="nao"?"nao":""}"><strong>Equipamento vinculado foi utilizado?</strong> ${uso}${os.observacao_equipamento?`<br><strong>Observação:</strong> ${esc(os.observacao_equipamento)}`:""}${os.equipamentos_confirmado_em?`<br><strong>Confirmado em:</strong> ${esc(new Date(os.equipamentos_confirmado_em).toLocaleString("pt-BR"))}`:""}</div>`:"";
+    return `<section class="sgos-equip-resumo-web"><h4>Equipamentos vinculados</h4>${itens}<div class="sgos-equip-total-web"><span><strong>Pagamento:</strong> ${esc(forma(os.forma_pagamento_equipamento))}</span><span><strong>Total:</strong> ${moeda(os.total_equipamentos)}</span></div>${confirmacao}</section>`;
+  }
+  async function enriquecer(id){
+    try{
+      const r=await fetch(`/api/ordens_servico/${id}`,{credentials:"include",cache:"no-store"});
+      if(!r.ok)return;
+      const os=await r.json();
+      const html=bloco(os);if(!html)return;
+      setTimeout(()=>{
+        const visiveis=[...document.querySelectorAll("body *")].filter(el=>{
+          const s=getComputedStyle(el),rc=el.getBoundingClientRect();
+          return s.position==="fixed"&&s.display!=="none"&&s.visibility!=="hidden"&&rc.width>320&&rc.height>180&&!el.closest(".modal-lembrete-overlay");
+        }).sort((a,b)=>b.getBoundingClientRect().width*a.getBoundingClientRect().height-a.getBoundingClientRect().width*b.getBoundingClientRect().height);
+        const overlay=visiveis[0];
+        const destino=overlay?.querySelector(".modal-content,.modal-box,[class*='modal'] > div")||overlay;
+        if(destino){
+          destino.querySelector(".sgos-equip-resumo-web")?.remove();
+          destino.insertAdjacentHTML("beforeend",html);
+        }
+      },250);
+    }catch(e){console.error("Erro ao enriquecer resumo da OS:",e)}
+  }
+  document.addEventListener("click",e=>{
+    const tr=e.target.closest("#tabelaAbertas tr[data-id],#tabelaAndamento tr[data-id],#tabelaConcluidas tr[data-id],#tabelaAbertas tr[onclick],#tabelaAndamento tr[onclick],#tabelaConcluidas tr[onclick]");
+    if(!tr)return;
+    let id=tr.dataset.id;
+    if(!id){const m=String(tr.getAttribute("onclick")||"").match(/\b(\d+)\b/);id=m?.[1]}
+    if(id)enriquecer(id);
+  },true);
+})();
 </script>
 
 </body>
