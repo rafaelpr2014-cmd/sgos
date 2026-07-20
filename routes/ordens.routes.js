@@ -202,31 +202,177 @@ async function salvarMateriaisOS(osId,empresaId,origem,modalidade,materiais,form
 
 async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, utilizado, observacaoEquipamento, usuario){
     await garantirEstruturaMateriaisOS();
-    const resposta = String(utilizado || '').trim().toLowerCase();
-    const [materiais] = await conn.query(`SELECT om.produto_id,om.quantidade,ep.nome,ep.escritorio_id FROM os_materiais om LEFT JOIN estoque_produtos ep ON ep.id=om.produto_id AND ep.empresa_id=om.empresa_id WHERE om.os_id=? AND om.empresa_id=?`,[osId,empresaId]);
-    if(!materiais.length) return {possuiEquipamentos:false,utilizado:null,estoqueDevolvido:0,financeiroEstornado:0};
-    if(!['sim','nao'].includes(resposta)){
-        const erro=new Error('Confirme se os equipamentos vinculados foram utilizados.');erro.statusCode=400;throw erro;
-    }
-    const observacaoFinal=resposta==='nao'?String(observacaoEquipamento||'').trim():null;
-    if(resposta==='nao'&&!observacaoFinal){const erro=new Error('Informe o motivo pelo qual o equipamento não foi utilizado.');erro.statusCode=400;throw erro;}
-    await conn.query(`UPDATE ordens_servico SET equipamentos_utilizados=?,equipamentos_confirmado_em=NOW(),equipamentos_confirmado_por=?,observacao_equipamento=? WHERE id=? AND empresa_id=?`,[resposta,Number(usuario?.id||0)||null,observacaoFinal,osId,empresaId]);
-    if(resposta==='sim') return {possuiEquipamentos:true,utilizado:'sim',estoqueDevolvido:0,financeiroEstornado:0};
+    const resposta = String(utilizado ?? '').trim().toLowerCase();
+    const respostaNormalizada = ['sim','1','true'].includes(resposta) ? 'sim' : ['nao','não','0','false'].includes(resposta) ? 'nao' : '';
 
-    const [financeiro]=await conn.query(`UPDATE financeiro_movimentacoes SET ativo=0,excluido_em=NOW(),motivo_exclusao='Equipamento não utilizado na conclusão da OS' WHERE empresa_id=? AND os_id=? AND origem='venda_os' AND ativo=1`,[empresaId,osId]);
+    const [materiais] = await conn.query(`
+        SELECT om.produto_id,om.quantidade,om.valor_unitario,om.desconto,om.valor_total,
+               ep.nome,ep.escritorio_id
+          FROM os_materiais om
+          LEFT JOIN estoque_produtos ep
+            ON ep.id=om.produto_id AND ep.empresa_id=om.empresa_id
+         WHERE om.os_id=? AND om.empresa_id=?`, [osId,empresaId]);
+
+    if(!materiais.length){
+        return {possuiEquipamentos:false,utilizado:null,estoqueBaixado:0,estoqueDevolvido:0,valorFinanceiro:0,financeiroLancado:0,financeiroEstornado:0};
+    }
+
+    if(!respostaNormalizada){
+        const erro=new Error('Confirme se o equipamento vinculado foi utilizado.');
+        erro.statusCode=400;
+        throw erro;
+    }
+
+    const observacaoFinal=respostaNormalizada==='nao' ? String(observacaoEquipamento||'').trim() : null;
+    if(respostaNormalizada==='nao' && !observacaoFinal){
+        const erro=new Error('Informe o motivo pelo qual o equipamento não foi utilizado.');
+        erro.statusCode=400;
+        throw erro;
+    }
+
+    // Compatível com coluna TINYINT(1): 1 = sim, 0 = não.
+    await conn.query(`
+        UPDATE ordens_servico
+           SET equipamentos_utilizados=?,
+               equipamentos_confirmado_em=NOW(),
+               equipamentos_confirmado_por=?,
+               observacao_equipamento=?
+         WHERE id=? AND empresa_id=?`,
+        [respostaNormalizada==='sim'?1:0,Number(usuario?.id||0)||null,observacaoFinal,osId,empresaId]);
+
+    const [[dadosOS]] = await conn.query(`
+        SELECT origem_equipamento,modalidade_equipamento,forma_pagamento_equipamento,
+               status_pagamento_equipamento,total_equipamentos
+          FROM ordens_servico
+         WHERE id=? AND empresa_id=?
+         LIMIT 1`, [osId,empresaId]);
+
+    const origemEmpresa = String(dadosOS?.origem_equipamento||'').toLowerCase()==='empresa';
+    const vendido = origemEmpresa && String(dadosOS?.modalidade_equipamento||'').toLowerCase()==='vendido';
+
+    if(respostaNormalizada==='sim'){
+        let estoqueBaixado=0;
+
+        // Faz a baixa somente uma vez e somente para equipamentos da empresa.
+        if(origemEmpresa){
+            for(const item of materiais){
+                const qtdNecessaria=Math.max(0,Math.floor(Number(item.quantidade||0)));
+                if(qtdNecessaria<=0) continue;
+
+                const [[jaBaixadoRow]] = await conn.query(`
+                    SELECT COALESCE(SUM(quantidade),0) quantidade
+                      FROM estoque_movimentacoes
+                     WHERE empresa_id=? AND produto_id=? AND os_id=?
+                       AND tipo='saida' AND origem='os_utilizado'`,
+                    [empresaId,item.produto_id,osId]);
+                const jaBaixado=Math.max(0,Number(jaBaixadoRow?.quantidade||0));
+                const qtdBaixar=Math.max(0,qtdNecessaria-jaBaixado);
+                if(qtdBaixar<=0) continue;
+
+                const [[produto]]=await conn.query(`
+                    SELECT quantidade,escritorio_id,nome
+                      FROM estoque_produtos
+                     WHERE id=? AND empresa_id=? AND ativo=1
+                     FOR UPDATE`, [item.produto_id,empresaId]);
+                if(!produto){
+                    const erro=new Error(`Produto ${item.nome||item.produto_id} não foi encontrado no estoque.`);
+                    erro.statusCode=400;
+                    throw erro;
+                }
+
+                const anterior=Math.max(0,Number(produto.quantidade||0));
+                if(anterior<qtdBaixar){
+                    const erro=new Error(`Estoque insuficiente para ${produto.nome}. Disponível: ${anterior}; necessário: ${qtdBaixar}.`);
+                    erro.statusCode=400;
+                    throw erro;
+                }
+
+                const atual=anterior-qtdBaixar;
+                await conn.query(`UPDATE estoque_produtos SET quantidade=?,atualizado_em=NOW() WHERE id=? AND empresa_id=?`,[atual,item.produto_id,empresaId]);
+                await conn.query(`
+                    INSERT INTO estoque_movimentacoes
+                    (empresa_id,escritorio_id,produto_id,os_id,tipo,quantidade,quantidade_anterior,quantidade_atual,motivo,observacao,usuario_id,usuario_nome,origem,criado_em)
+                    VALUES (?,?,?,?, 'saida',?,?,?,?,?,?,?,'os_utilizado',NOW())`,
+                    [empresaId,produto.escritorio_id,item.produto_id,osId,qtdBaixar,anterior,atual,
+                     `Equipamento utilizado na OS #${osId}`,
+                     `Baixa automática confirmada na conclusão da OS #${osId}.`,
+                     Number(usuario?.id||0),String(usuario?.usuario||usuario?.nome||'Sistema')]);
+                estoqueBaixado+=qtdBaixar;
+            }
+        }
+
+        let financeiroLancado=0;
+        let valorFinanceiro=0;
+
+        // Venda confirmada como utilizada: recria o lançamento financeiro ativo da OS.
+        if(vendido){
+            await conn.query(`
+                UPDATE financeiro_movimentacoes
+                   SET ativo=0,excluido_em=NOW(),motivo_exclusao='Lançamento da venda recalculado na conclusão da OS'
+                 WHERE empresa_id=? AND os_id=? AND origem='venda_os' AND ativo=1`, [empresaId,osId]);
+
+            const porEscritorio=new Map();
+            for(const item of materiais){
+                const escritorioId=Number(item.escritorio_id||0);
+                const valor=Math.max(0,Number(item.valor_total||0));
+                if(!escritorioId || valor<=0) continue;
+                porEscritorio.set(escritorioId,(porEscritorio.get(escritorioId)||0)+valor);
+            }
+
+            for(const [escritorioId,valor] of porEscritorio.entries()){
+                await conn.query(`
+                    INSERT INTO financeiro_movimentacoes
+                    (empresa_id,escritorio_id,tipo,valor,forma_pagamento,descricao,observacao,criado_por,criado_por_nome,criado_em,ativo,os_id,origem)
+                    VALUES (?,?, 'entrada', ?, ?, ?, ?, ?, ?, NOW(),1,?,'venda_os')`,
+                    [empresaId,escritorioId,valor,dadosOS?.forma_pagamento_equipamento||null,
+                     `Venda de equipamentos utilizados na OS #${osId}`,
+                     `Lançamento automático confirmado na conclusão da OS #${osId}.`,
+                     Number(usuario?.id||0),String(usuario?.usuario||usuario?.nome||'Sistema'),osId]);
+                financeiroLancado++;
+                valorFinanceiro+=valor;
+            }
+        }
+
+        return {possuiEquipamentos:true,utilizado:'sim',estoqueBaixado,estoqueDevolvido:0,valorFinanceiro,financeiroLancado,financeiroEstornado:0};
+    }
+
+    // Resposta NÃO: estorna eventual venda e devolve apenas o que já tiver sido baixado para esta OS.
+    const [financeiro]=await conn.query(`
+        UPDATE financeiro_movimentacoes
+           SET ativo=0,excluido_em=NOW(),motivo_exclusao='Equipamento não utilizado na conclusão da OS'
+         WHERE empresa_id=? AND os_id=? AND origem='venda_os' AND ativo=1`,[empresaId,osId]);
+
     let devolvido=0;
     for(const item of materiais){
-        const [saidas]=await conn.query(`SELECT id,quantidade FROM estoque_movimentacoes WHERE empresa_id=? AND produto_id=? AND tipo='saida' AND (os_id=? OR motivo LIKE ? OR observacao LIKE ?) AND NOT EXISTS (SELECT 1 FROM estoque_movimentacoes est WHERE est.empresa_id=estoque_movimentacoes.empresa_id AND est.produto_id=estoque_movimentacoes.produto_id AND est.tipo='entrada' AND est.os_id=? AND est.origem='estorno_os')`,[empresaId,item.produto_id,osId,`%OS #${osId}%`,`%OS #${osId}%`,osId]);
-        const qtd=Math.min(Number(item.quantidade||0),saidas.reduce((a,m)=>a+Number(m.quantidade||0),0));
+        const [[saidaRow]]=await conn.query(`
+            SELECT COALESCE(SUM(quantidade),0) quantidade
+              FROM estoque_movimentacoes
+             WHERE empresa_id=? AND produto_id=? AND os_id=?
+               AND tipo='saida' AND origem='os_utilizado'`, [empresaId,item.produto_id,osId]);
+        const [[estornoRow]]=await conn.query(`
+            SELECT COALESCE(SUM(quantidade),0) quantidade
+              FROM estoque_movimentacoes
+             WHERE empresa_id=? AND produto_id=? AND os_id=?
+               AND tipo='entrada' AND origem='estorno_os'`, [empresaId,item.produto_id,osId]);
+        const qtd=Math.max(0,Number(saidaRow?.quantidade||0)-Number(estornoRow?.quantidade||0));
         if(qtd<=0) continue;
+
         const [[produto]]=await conn.query(`SELECT quantidade,escritorio_id,nome FROM estoque_produtos WHERE id=? AND empresa_id=? FOR UPDATE`,[item.produto_id,empresaId]);
         if(!produto) continue;
         const anterior=Number(produto.quantidade||0),atual=anterior+qtd;
         await conn.query(`UPDATE estoque_produtos SET quantidade=?,atualizado_em=NOW() WHERE id=? AND empresa_id=?`,[atual,item.produto_id,empresaId]);
-        await conn.query(`INSERT INTO estoque_movimentacoes (empresa_id,escritorio_id,produto_id,os_id,tipo,quantidade,quantidade_anterior,quantidade_atual,motivo,observacao,usuario_id,usuario_nome,origem,criado_em) VALUES (?,?,?,?, 'entrada',?,?,?,?,?,?,?,'estorno_os',NOW())`,[empresaId,produto.escritorio_id,item.produto_id,osId,qtd,anterior,atual,`Devolução de equipamento não utilizado na OS #${osId}`,`Estorno automático realizado na conclusão da OS #${osId}.`,Number(usuario?.id||0),String(usuario?.usuario||usuario?.nome||'Sistema')]);
+        await conn.query(`
+            INSERT INTO estoque_movimentacoes
+            (empresa_id,escritorio_id,produto_id,os_id,tipo,quantidade,quantidade_anterior,quantidade_atual,motivo,observacao,usuario_id,usuario_nome,origem,criado_em)
+            VALUES (?,?,?,?, 'entrada',?,?,?,?,?,?,?,'estorno_os',NOW())`,
+            [empresaId,produto.escritorio_id,item.produto_id,osId,qtd,anterior,atual,
+             `Devolução de equipamento não utilizado na OS #${osId}`,
+             `Estorno automático realizado na conclusão da OS #${osId}.`,
+             Number(usuario?.id||0),String(usuario?.usuario||usuario?.nome||'Sistema')]);
         devolvido+=qtd;
     }
-    return {possuiEquipamentos:true,utilizado:'nao',estoqueDevolvido:devolvido,financeiroEstornado:Number(financeiro?.affectedRows||0)};
+
+    return {possuiEquipamentos:true,utilizado:'nao',estoqueBaixado:0,estoqueDevolvido:devolvido,valorFinanceiro:0,financeiroLancado:0,financeiroEstornado:Number(financeiro?.affectedRows||0)};
 }
 
 function normalizarTecnicosObrigatorio(tecnicoRaw){
