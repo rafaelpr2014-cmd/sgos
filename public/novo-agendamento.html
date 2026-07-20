@@ -1870,8 +1870,7 @@ function validarCamposObrigatoriosAgendamento(){
 
 async function salvar() {
     if (!agendamento_data.value) {
-        alert("Você precisa informar a data de agendamento!");
-        agendamento_data.focus();
+        avisarCampoObrigatorio("Você precisa informar a data de agendamento!", agendamento_data);
         return;
     }
 
@@ -1880,8 +1879,7 @@ async function salvar() {
     const tecnicosSelecionados = Array.from(tecnico.selectedOptions).map(o => Number(o.value));
 
     if(agendamento_envio.value && tecnicosSelecionados.length === 0){
-        alert("Selecione pelo menos um técnico para criar OS com agendamento de envio.");
-        tecnico.focus();
+        avisarCampoObrigatorio("Selecione pelo menos um técnico para criar OS com agendamento de envio.", tecnico);
         return;
     }
 
@@ -2013,23 +2011,38 @@ if(document.readyState === "loading"){
     iniciarBuscaMikWeb();
 }
 
-function mostrarAvisoEquipamentosOS(mensagem){
- const modal=document.getElementById('sgosAvisoEquipamentos');
- const texto=document.getElementById('sgosAvisoEquipMensagem');
- if(texto) texto.textContent=mensagem||'É obrigatório informar o uso de equipamentos e materiais antes de salvar a OS.';
- if(modal){modal.classList.add('ativo');document.body.style.overflow='hidden';}
+
+function avisarCampoObrigatorio(mensagem, campo){
+    const elemento = typeof campo === "string" ? document.getElementById(campo) : campo;
+    alert(mensagem);
+    if(elemento){
+        setTimeout(()=>{
+            elemento.scrollIntoView({behavior:"smooth", block:"center", inline:"nearest"});
+            try{ elemento.focus({preventScroll:true}); }catch(_){ elemento.focus(); }
+            elemento.style.outline="3px solid #ef4444";
+            elemento.style.outlineOffset="2px";
+            const limpar=()=>{elemento.style.outline="";elemento.style.outlineOffset="";};
+            elemento.addEventListener("input",limpar,{once:true});
+            elemento.addEventListener("change",limpar,{once:true});
+            setTimeout(limpar,5000);
+        },60);
+    }
+    return false;
+}
+
+document.addEventListener("invalid",function(evento){
+    evento.preventDefault();
+    const campo=evento.target;
+    const rotulo=campo?.closest?.(".campo")?.querySelector?.("label")?.textContent?.trim() || campo?.getAttribute?.("aria-label") || "este campo";
+    avisarCampoObrigatorio(`Preencha ou selecione o campo obrigatório: ${rotulo}.`,campo);
+},{capture:true});
+
+function mostrarAvisoEquipamentosOS(mensagem, campoId="origem_equipamento"){
+ return avisarCampoObrigatorio(mensagem || "É obrigatório informar o uso de equipamentos e materiais antes de salvar a OS.", campoId);
 }
 function fecharAvisoEquipamentosOS(){const modal=document.getElementById('sgosAvisoEquipamentos');if(modal)modal.classList.remove('ativo');document.body.style.overflow='';document.getElementById('origem_equipamento')?.focus();}
 </script>
 
 
-<div id="sgosAvisoEquipamentos" class="sgos-aviso-equip-overlay" role="dialog" aria-modal="true" aria-labelledby="sgosAvisoEquipTitulo">
-  <div class="sgos-aviso-equip-card">
-    <div class="sgos-aviso-equip-icon">!</div>
-    <h3 id="sgosAvisoEquipTitulo">Seleção obrigatória</h3>
-    <p id="sgosAvisoEquipMensagem">É obrigatório informar o uso de equipamentos e materiais antes de salvar a OS.</p>
-    <button type="button" onclick="fecharAvisoEquipamentosOS()">Entendi</button>
-  </div>
-</div>
 </body>
 </html>

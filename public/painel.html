@@ -2588,8 +2588,11 @@ function modoTV() {
     if(!lista.length)return "";
     const itens=lista.map(i=>`<div class="sgos-equip-item-web"><strong>${esc(i.nome||("Produto #"+i.produto_id))}</strong><span>Qtd.: ${esc(i.quantidade||1)}</span><span>Unit.: ${moeda(i.valor_unitario)}</span><span>Total: ${moeda(i.valor_total??Number(i.valor_unitario||0)*Number(i.quantidade||1))}</span></div>`).join("");
     const concluida=String(os.status||"").toLowerCase()==="concluido";
-    const valorUso=String(os.equipamentos_utilizados??"").trim().toLowerCase(); const uso=["sim","1","true"].includes(valorUso)?"Sim":["nao","não","0","false"].includes(valorUso)?"Não":"Não informado";
-    const confirmacao=concluida?`<div class="sgos-confirmacao-web ${["nao","não","0","false"].includes(valorUso)?"nao":""}"><strong>Equipamento vinculado foi utilizado?</strong> ${uso}${os.observacao_equipamento?`<br><strong>Observação:</strong> ${esc(os.observacao_equipamento)}`:""}${os.equipamentos_confirmado_por_nome?`<br><strong>Confirmado por:</strong> ${esc(os.equipamentos_confirmado_por_nome)}`:""}${os.equipamentos_confirmado_em?`<br><strong>Confirmado em:</strong> ${esc(new Date(os.equipamentos_confirmado_em).toLocaleString("pt-BR"))}`:""}</div>`:"";
+    const brutoUso=os.equipamentos_utilizados ?? os.equipamento_utilizado ?? os.equipamento_usado ?? os.material_utilizado;
+    const valorUso=String(brutoUso??"").trim().toLowerCase();
+    let uso=(brutoUso===true||brutoUso===1||["sim","1","true","yes","utilizado"].includes(valorUso))?"Sim":(brutoUso===false||brutoUso===0||["nao","não","0","false","no","nao_utilizado","não utilizado"].includes(valorUso))?"Não":"Não informado";
+    if(uso==="Não informado" && os.equipamentos_confirmado_em) uso=String(os.observacao_equipamento||"").trim()?"Não":"Sim";
+    const confirmacao=concluida?`<div class="sgos-confirmacao-web ${uso==="Não"?"nao":""}"><strong>Equipamento vinculado foi utilizado?</strong> ${uso}${os.observacao_equipamento?`<br><strong>Observação:</strong> ${esc(os.observacao_equipamento)}`:""}${os.equipamentos_confirmado_por_nome?`<br><strong>Confirmado por:</strong> ${esc(os.equipamentos_confirmado_por_nome)}`:""}${os.equipamentos_confirmado_em?`<br><strong>Confirmado em:</strong> ${esc(new Date(os.equipamentos_confirmado_em).toLocaleString("pt-BR"))}`:""}</div>`:"";
     return `<section class="sgos-equip-resumo-web"><h4>Equipamentos vinculados</h4>${itens}<div class="sgos-equip-total-web"><span><strong>Pagamento:</strong> ${esc(forma(os.forma_pagamento_equipamento))}</span><span><strong>Total:</strong> ${moeda(os.total_equipamentos)}</span></div>${confirmacao}</section>`;
   }
   async function enriquecer(id){

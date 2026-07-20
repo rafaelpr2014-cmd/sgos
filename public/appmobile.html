@@ -3591,7 +3591,7 @@ function resumoModalHTML(os){
             <b>Iniciada em:</b> ${valorSeguro(format(os.iniciado_em))}<br>
             <b>Finalizada em:</b> ${valorSeguro(format(os.finalizado_em))}<br>
             <b>Finalizada por:</b> ${valorSeguro(os.finalizado_por_nome || os.finalizado_por)}<br>
-            <b>Equipamento utilizado:</b> ${valorSeguro(os.equipamentos_utilizados === "nao" ? "Não" : os.equipamentos_utilizados === "sim" ? "Sim" : "Não informado")}<br>
+            <b>Equipamento utilizado:</b> ${valorSeguro(normalizarUsoEquipamentoApp(os))}<br>
             ${os.observacao_equipamento ? `<b>Observação do equipamento:</b> ${valorSeguro(os.observacao_equipamento)}<br>` : ""}
             <b>Observação da conclusão:</b><br>${valorSeguro(os.observacao_finalizado, "-")}
         </div>` : "";
@@ -3973,7 +3973,10 @@ async function enviarAcao(tipo, botao){
         }
         if(tipo === "concluir"){
             formData.append("observacao_finalizado", observacaoDigitada);
-            if(equipamentoUtilizado) formData.append("equipamento_utilizado", equipamentoUtilizado);
+            if(equipamentoUtilizado){
+                formData.append("equipamento_utilizado", equipamentoUtilizado);
+                formData.append("equipamentos_utilizados", equipamentoUtilizado);
+            }
             if(observacaoEquipamento) formData.append("observacao_equipamento", observacaoEquipamento);
             if(statusPagamentoConfirmado) formData.append("status_pagamento_confirmado", statusPagamentoConfirmado);
         }
