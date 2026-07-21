@@ -63,6 +63,81 @@ app.set("pushService", pushService(pool));
 
 const onlineUsers = new Map();
 
+const OFFLINE_MINUTOS = 5;
+const LOGOUT_AUTOMATICO_HORAS = 8;
+
+async function registrarEventoAcesso({ usuario = "desconhecido", acao, detalhes = "-" }) {
+    try {
+        await pool.query(
+            `INSERT INTO logs_acoes (usuario, acao, modulo, referencia_id, detalhes)
+             VALUES (?, ?, 'SESSAO', NULL, ?)`,
+            [usuario, acao, detalhes]
+        );
+    } catch (err) {
+        console.error("ERRO AO REGISTRAR EVENTO DE SESSÃO:", err.message);
+    }
+}
+
+async function atualizarStatusPresenca(logId, novoStatus, motivo = null) {
+    const [rows] = await pool.query(
+        `SELECT id, usuario, status, logout FROM log_acessos WHERE id = ? LIMIT 1`,
+        [logId]
+    );
+
+    if (!rows.length || rows[0].logout) return null;
+    const atual = rows[0];
+
+    if (atual.status !== novoStatus) {
+        await pool.query(
+            `UPDATE log_acessos SET status = ? WHERE id = ? AND logout IS NULL`,
+            [novoStatus, logId]
+        );
+
+        await registrarEventoAcesso({
+            usuario: atual.usuario,
+            acao: novoStatus === "ativo" ? "USUARIO_ONLINE" : "USUARIO_OFFLINE",
+            detalhes: motivo || (novoStatus === "ativo"
+                ? "Usuário voltou a interagir com o sistema"
+                : "Usuário sem atividade por 5 minutos")
+        });
+    }
+
+    return atual;
+}
+
+async function expirarSessoesInativas() {
+    try {
+        const [sessoes] = await pool.query(
+            `SELECT id, usuario
+             FROM log_acessos
+             WHERE logout IS NULL
+               AND ultimo_ping IS NOT NULL
+               AND ultimo_ping <= DATE_SUB(NOW(), INTERVAL ? HOUR)`,
+            [LOGOUT_AUTOMATICO_HORAS]
+        );
+
+        for (const sessao of sessoes) {
+            await pool.query(
+                `UPDATE log_acessos
+                 SET logout = NOW(), status = 'logout', motivo_logout = 'inatividade_8h'
+                 WHERE id = ? AND logout IS NULL`,
+                [sessao.id]
+            );
+
+            await registrarEventoAcesso({
+                usuario: sessao.usuario,
+                acao: "LOGOUT_AUTOMATICO",
+                detalhes: "Sessão encerrada após 8 horas sem atividade"
+            });
+        }
+    } catch (err) {
+        console.error("ERRO AO EXPIRAR SESSÕES:", err.message);
+    }
+}
+
+setInterval(expirarSessoesInativas, 60 * 1000);
+setTimeout(expirarSessoesInativas, 5000);
+
 // ===============================
 // SOCKET.IO REALTIME PRESENCE
 // ===============================
@@ -184,37 +259,76 @@ app.get("/appmobile.html", (req, res) => {
 // AUTENTICAÇÃO
 // ===============================
 async function verificarAutenticacao(req, res, next) {
-
     const usuarioId = req.headers["x-usuario-id"];
+    const logId = req.headers["x-log-id"];
+    const usuarioAtivo = req.headers["x-sgos-active"] === "1";
 
-    if (!usuarioId) {
-        return res.status(401).json({ erro: "Não autenticado" });
+    if (!usuarioId || !logId) {
+        return res.status(401).json({ erro: "Não autenticado", motivo: "sessao_invalida" });
     }
 
     try {
-
         const [rows] = await pool.query(
-            `
-            SELECT id, usuario, cargo, empresa_id
-            FROM usuarios
-            WHERE id = ?
-            LIMIT 1
-            `,
-            [usuarioId]
+            `SELECT u.id, u.usuario, u.cargo, u.empresa_id,
+                    l.id AS log_id, l.ultimo_ping, l.logout, l.status
+             FROM usuarios u
+             INNER JOIN log_acessos l
+                ON l.usuario_id = u.id
+               AND l.id = ?
+             WHERE u.id = ?
+               AND l.logout IS NULL
+             LIMIT 1`,
+            [logId, usuarioId]
         );
 
         if (!rows.length) {
-            return res.status(401).json({ erro: "Usuário não encontrado" });
+            return res.status(401).json({ erro: "Sessão inválida ou encerrada", motivo: "sessao_encerrada" });
         }
 
-        req.usuario = rows[0];
+        const sessao = rows[0];
+        const ultimaAtividade = new Date(sessao.ultimo_ping).getTime();
+        const expirou = !Number.isFinite(ultimaAtividade) ||
+            (Date.now() - ultimaAtividade >= LOGOUT_AUTOMATICO_HORAS * 60 * 60 * 1000);
 
+        if (expirou) {
+            await pool.query(
+                `UPDATE log_acessos
+                 SET logout = NOW(), status = 'logout', motivo_logout = 'inatividade_8h'
+                 WHERE id = ? AND logout IS NULL`,
+                [logId]
+            );
+            await registrarEventoAcesso({
+                usuario: sessao.usuario,
+                acao: "LOGOUT_AUTOMATICO",
+                detalhes: "Sessão encerrada após 8 horas sem atividade"
+            });
+            return res.status(401).json({ erro: "Sessão expirada por inatividade", motivo: "inatividade_8h" });
+        }
+
+        if (usuarioAtivo) {
+            await pool.query(
+                `UPDATE log_acessos SET ultimo_ping = NOW(), status = 'ativo' WHERE id = ? AND logout IS NULL`,
+                [logId]
+            );
+            if (sessao.status !== "ativo") {
+                await registrarEventoAcesso({
+                    usuario: sessao.usuario,
+                    acao: "USUARIO_ONLINE",
+                    detalhes: "Usuário voltou a interagir com o sistema"
+                });
+            }
+        }
+
+        req.usuario = {
+            id: sessao.id,
+            usuario: sessao.usuario,
+            cargo: sessao.cargo,
+            empresa_id: sessao.empresa_id
+        };
+        req.log_id = Number(logId);
         next();
-
     } catch (err) {
-
         console.error("ERRO AUTH:", err);
-
         res.status(500).json({ erro: err.message });
     }
 }
@@ -405,6 +519,12 @@ app.post("/api/login", async (req, res) => {
     ]
 );
 
+        await registrarEventoAcesso({
+            usuario: user.usuario,
+            acao: "LOGIN",
+            detalhes: `Login realizado | IP: ${ip || "-"} | Porta: ${porta || "-"}`
+        });
+
         return res.json({
             ok: true,
             usuario: {
@@ -427,136 +547,150 @@ app.post("/api/login", async (req, res) => {
 });
 
 // ===============================
-// PING ONLINE
+// PING / PRESENÇA
 // ===============================
 app.post("/api/ping", async (req, res) => {
-
-    const { log_id } = req.body;
+    const { log_id, ativo } = req.body || {};
 
     if (!log_id) {
         return res.status(400).json({ erro: "log_id não informado" });
     }
 
     try {
-
-        await pool.query(
-            `UPDATE log_acessos
-             SET ultimo_ping = NOW()
-             WHERE id = ?
-             AND status != 'logout'`,
+        const [rows] = await pool.query(
+            `SELECT id, usuario, status, ultimo_ping, logout
+             FROM log_acessos WHERE id = ? LIMIT 1`,
             [log_id]
         );
 
-        return res.json({ ok: true });
+        if (!rows.length || rows[0].logout) {
+            return res.status(401).json({ erro: "Sessão encerrada", motivo: "sessao_encerrada" });
+        }
 
+        const sessao = rows[0];
+        const ultimaAtividade = new Date(sessao.ultimo_ping).getTime();
+        const expirou = !Number.isFinite(ultimaAtividade) ||
+            Date.now() - ultimaAtividade >= LOGOUT_AUTOMATICO_HORAS * 60 * 60 * 1000;
+
+        if (expirou) {
+            await pool.query(
+                `UPDATE log_acessos
+                 SET logout = NOW(), status = 'logout', motivo_logout = 'inatividade_8h'
+                 WHERE id = ? AND logout IS NULL`,
+                [log_id]
+            );
+            await registrarEventoAcesso({
+                usuario: sessao.usuario,
+                acao: "LOGOUT_AUTOMATICO",
+                detalhes: "Sessão encerrada após 8 horas sem atividade"
+            });
+            return res.status(401).json({ erro: "Sessão expirada", motivo: "inatividade_8h" });
+        }
+
+        if (ativo === true) {
+            await pool.query(
+                `UPDATE log_acessos SET ultimo_ping = NOW(), status = 'ativo' WHERE id = ? AND logout IS NULL`,
+                [log_id]
+            );
+            if (sessao.status !== "ativo") {
+                await registrarEventoAcesso({
+                    usuario: sessao.usuario,
+                    acao: "USUARIO_ONLINE",
+                    detalhes: "Usuário voltou a interagir com o sistema"
+                });
+            }
+        } else {
+            const cincoMinutosSemAtividade = Date.now() - ultimaAtividade >= OFFLINE_MINUTOS * 60 * 1000;
+            if (cincoMinutosSemAtividade && sessao.status !== "offline") {
+                await pool.query(
+                    `UPDATE log_acessos SET status = 'offline' WHERE id = ? AND logout IS NULL`,
+                    [log_id]
+                );
+                await registrarEventoAcesso({
+                    usuario: sessao.usuario,
+                    acao: "USUARIO_OFFLINE",
+                    detalhes: "Usuário sem atividade por 5 minutos; sessão permanece ativa"
+                });
+            }
+        }
+
+        return res.json({ ok: true, status: ativo === true ? "ativo" : "offline" });
     } catch (err) {
-
         console.error("ERRO PING:", err);
-
         return res.status(500).json({ erro: err.message });
     }
 });
 
 // ===============================
-// LOGOUT
+// LOGOUT MANUAL / AUTOMÁTICO
 // ===============================
 app.post("/api/logout", async (req, res) => {
-
-    let log_id =
-        req.body?.log_id ||
-        req.query?.log_id;
+    const log_id = req.body?.log_id || req.query?.log_id;
+    const motivo = req.body?.motivo === "inatividade_8h" ? "inatividade_8h" : "manual";
 
     if (!log_id) {
         return res.status(400).json({ erro: "log_id não informado" });
     }
 
     try {
-
-        await pool.query(
-            "UPDATE log_acessos SET logout = NOW(), status = 'logout' WHERE id = ?",
+        const [rows] = await pool.query(
+            `SELECT usuario, logout FROM log_acessos WHERE id = ? LIMIT 1`,
             [log_id]
         );
 
-        res.json({ ok: true });
+        if (rows.length && !rows[0].logout) {
+            await pool.query(
+                `UPDATE log_acessos
+                 SET logout = NOW(), status = 'logout', motivo_logout = ?
+                 WHERE id = ? AND logout IS NULL`,
+                [motivo, log_id]
+            );
 
+            await registrarEventoAcesso({
+                usuario: rows[0].usuario,
+                acao: motivo === "manual" ? "LOGOUT_MANUAL" : "LOGOUT_AUTOMATICO",
+                detalhes: motivo === "manual"
+                    ? "Logout solicitado pelo usuário"
+                    : "Sessão encerrada após 8 horas sem atividade"
+            });
+        }
+
+        return res.json({ ok: true });
     } catch (err) {
-
         console.error("ERRO LOGOUT:", err);
-
-        res.status(500).json({ erro: err.message });
+        return res.status(500).json({ erro: err.message });
     }
 });
 
 // ===============================
-// LOGS ONLINE
+// LOGS DE ACESSO
 // ===============================
-app.get("/api/logs", async (req, res) => {
-
+app.get("/api/logs", verificarAutenticacao, async (req, res) => {
     try {
+        const empresa_id = req.usuario.empresa_id;
 
-        const empresa_id = req.headers["x-empresa-id"];
-
-        if (!empresa_id) {
-            return res.status(400).json({ erro: "empresa_id não informado" });
-        }
+        await pool.query(
+            `UPDATE log_acessos
+             SET status = 'offline'
+             WHERE empresa_id = ?
+               AND logout IS NULL
+               AND status = 'ativo'
+               AND ultimo_ping <= DATE_SUB(NOW(), INTERVAL ? MINUTE)`,
+            [empresa_id, OFFLINE_MINUTOS]
+        );
 
         const [logs] = await pool.query(
-            `
-            SELECT
-                l.id,
-                l.usuario_id,
-                l.usuario,
-                l.empresa_id,
-                l.ip_origem,
-                l.login,
-                l.logout,
-                l.ultimo_ping
-            FROM log_acessos l
-            WHERE l.empresa_id = ?
-            ORDER BY l.id DESC
-            `,
+            `SELECT id, usuario_id, usuario, empresa_id, ip_origem, porta_origem,
+                    login, logout, ultimo_ping, status, motivo_logout
+             FROM log_acessos
+             WHERE empresa_id = ?
+             ORDER BY id DESC
+             LIMIT 500`,
             [empresa_id]
         );
 
-        const agora = Date.now();
-        const ONLINE_TIMEOUT = 90 * 1000;
-
-        const mapa = new Map();
-
-        for (const l of logs) {
-
-    const ultimo = new Date(l.ultimo_ping || l.login).getTime();
-
-    const online =
-        !l.logout &&
-        (Date.now() - ultimo < ONLINE_TIMEOUT);
-
-    const existente = mapa.get(l.usuario_id);
-
-    if (!existente || new Date(l.login) > new Date(existente.login)) {
-
-        mapa.set(l.usuario_id, {
-            usuario_id: l.usuario_id,
-            usuario: l.usuario,
-            empresa_id: l.empresa_id,
-
-            ip_origem: l.ip_origem,
-            porta_origem: l.porta_origem,
-
-            login: l.login,
-            logout: l.logout,
-
-            ultimo_ping: l.ultimo_ping,
-
-            status: online ? "ativo" : "offline"
-        });
-    }
-}
-
-        return res.json(Array.from(mapa.values()));
-
+        return res.json(logs);
     } catch (err) {
-
         console.error("ERRO LOGS:", err);
         return res.status(500).json({ erro: err.message });
     }
@@ -603,9 +737,6 @@ const usuariosRoutes =
         verificarAutenticacao
     );
 
-const loginRoutes =
-    require("./routes/login.routes")(pool);
-
 const relatoriosRoutes =
     require("./routes/relatorios.routes")(
         pool,
@@ -618,7 +749,6 @@ app.use("/api/localidades", localidadesRoutes);
 app.use("/api/planos", planosRoutes);
 app.use("/api/tipos-servico", tiposRoutes);
 app.use("/api/usuarios", usuariosRoutes);
-app.use("/api", loginRoutes);
 app.use("/api", relatoriosRoutes);
 
 const escritoriosRoutes =

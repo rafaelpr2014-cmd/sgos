@@ -712,7 +712,7 @@ tr:hover{ background:#f8fbff; }
             <div class="card-info">
                 <small>Offline</small>
                 <strong id="cardOffline">0</strong>
-                <span>Sessões encerradas</span>
+                <span>Usuários inativos, sessão mantida</span>
             </div>
         </div>
 
@@ -851,7 +851,7 @@ async function carregarUsuariosOnline(){
         const logs = await res.json();
 
         const online = logs
-            .filter(l => !l.logout)
+            .filter(l => l.status === "ativo" && !l.logout)
             .map(l => l.usuario);
 
         const listaUnica = [...new Set(online)];
@@ -907,8 +907,8 @@ function formatarData(data){
 
 function atualizarCardsLogs(lista){
     const total = lista.length || 0;
-    const online = lista.filter(l => !l.logout).length;
-    const offline = lista.filter(l => l.logout).length;
+    const online = lista.filter(l => l.status === "ativo" && !l.logout).length;
+    const offline = lista.filter(l => l.status === "offline" && !l.logout).length;
 
     document.getElementById("cardTotal").innerText = total;
     document.getElementById("cardOnline").innerText = online;
@@ -937,22 +937,22 @@ function renderizarLogs(logs){
         const ip = formatarIP(log.ip_origem);
         const porta = log.porta_origem || "-";
 
-        let statusHTML = `
-            <span class="badge-online">ATIVO</span>
-        `;
+        let statusHTML = `<span class="badge-online">ONLINE</span>`;
+
+        if(log.status === "offline" && !log.logout){
+            statusHTML = `
+                <span class="status-offline">OFFLINE</span>
+                <span style="display:block;color:#64748b;font-size:11px;margin-top:4px">
+                    Sessão ativa · última atividade ${formatarData(log.ultimo_ping)}
+                </span>
+            `;
+        }
 
         if(log.logout){
-            const diffSegundos =
-                (new Date(log.logout) - new Date(log.login)) / 1000;
-
-            const isAuto = diffSegundos > 1200;
-
+            const automatico = log.motivo_logout === "inatividade_8h";
             statusHTML = `
-                <span class="status-offline">
-                    ${formatarData(log.logout)}
-                </span>
-
-                ${isAuto ? '<span class="badge-auto">AUTO</span>' : ''}
+                <span class="status-offline">LOGOUT ${formatarData(log.logout)}</span>
+                <span class="badge-auto">${automatico ? "AUTOMÁTICO 8H" : "MANUAL"}</span>
             `;
         }
 

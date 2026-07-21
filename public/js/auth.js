@@ -1,345 +1,264 @@
 // ===============================
 // AUTENTICAÇÃO GLOBAL SGOS
+// Presença: offline após 5 min sem atividade.
+// Sessão: logout automático após 8 h sem atividade.
 // ===============================
 
-// ===============================
-// OBTER USUÁRIO
-// ===============================
+const SGOS_OFFLINE_MS = 5 * 60 * 1000;
+const SGOS_LOGOUT_MS = 8 * 60 * 60 * 1000;
+const SGOS_PING_MS = 60 * 1000;
+const SGOS_ACTIVITY_KEY = "sgos_ultima_atividade";
+
 function obterUsuario() {
     try {
-        const usuario = localStorage.getItem("usuario");
-
-        return usuario
-            ? JSON.parse(usuario)
-            : null;
+        const valor = localStorage.getItem("usuario");
+        return valor ? JSON.parse(valor) : null;
     } catch {
         return null;
     }
 }
 
-// ===============================
-// OBTER LOG_ID
-// ===============================
 function obterLogId() {
     return localStorage.getItem("log_id");
 }
 
-// ===============================
-// REMOVER SESSÃO
-// ===============================
+function obterUltimaAtividade() {
+    const valor = Number(localStorage.getItem(SGOS_ACTIVITY_KEY));
+    return Number.isFinite(valor) && valor > 0 ? valor : Date.now();
+}
+
+function salvarUltimaAtividade(timestamp = Date.now()) {
+    localStorage.setItem(SGOS_ACTIVITY_KEY, String(timestamp));
+}
+
 function limparSessao() {
     localStorage.removeItem("usuario");
     localStorage.removeItem("log_id");
+    localStorage.removeItem(SGOS_ACTIVITY_KEY);
 }
 
-// ===============================
-// REDIRECIONAR LOGIN
-// ===============================
-function irLogin() {
-    if (!window.location.pathname.includes("login")) {
-        window.location.href = "/login.html";
-    }
+function irLogin(motivo = "") {
+    if (window.location.pathname.includes("login")) return;
+    const destino = motivo ? `/login.html?motivo=${encodeURIComponent(motivo)}` : "/login.html";
+    window.location.replace(destino);
 }
 
-// ===============================
-// VERIFICA LOGIN
-// ===============================
 (function verificarLoginAutomatico() {
     const usuario = obterUsuario();
-    const paginaLogin =
-        window.location.pathname.includes("login");
-
-    if (!usuario && !paginaLogin) {
-        irLogin();
-    }
+    const paginaLogin = window.location.pathname.includes("login");
+    if (!usuario && !paginaLogin) irLogin();
 })();
 
-// ===============================
-// FETCH ORIGINAL
-// ===============================
 const fetchOriginal = window.fetch.bind(window);
+let ultimoPingEnviado = 0;
+let pingEmAndamento = false;
+let ultimoEstadoAtivo = null;
+let timerAtividade = null;
 
-// ===============================
-// IDENTIFICA ROTA OPCIONAL WHATSAPP
-// ===============================
+function tempoInativo() {
+    return Math.max(0, Date.now() - obterUltimaAtividade());
+}
+
+function usuarioEstaAtivo() {
+    return tempoInativo() < SGOS_OFFLINE_MS;
+}
+
+function sessaoExpiradaLocalmente() {
+    return tempoInativo() >= SGOS_LOGOUT_MS;
+}
+
 function ehRotaWhatsapp(url) {
     try {
-        const caminho =
-            new URL(url, window.location.origin).pathname;
-
-        return caminho.startsWith("/api/whatsapp/");
+        return new URL(url, window.location.origin).pathname.startsWith("/api/whatsapp/");
     } catch {
-        return String(url || "")
-            .startsWith("/api/whatsapp/");
+        return String(url || "").startsWith("/api/whatsapp/");
     }
 }
 
-// ===============================
-// PATCH GLOBAL FETCH
-// ===============================
+function ehRotaPublica(url) {
+    try {
+        const caminho = new URL(url, window.location.origin).pathname;
+        return caminho === "/api/login" || caminho === "/api/health";
+    } catch {
+        return false;
+    }
+}
+
+async function finalizarSessaoAutomaticaLocal() {
+    const log_id = obterLogId();
+    try {
+        if (log_id) {
+            await fetchOriginal("/api/logout", {
+                method: "POST",
+                keepalive: true,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ log_id, motivo: "inatividade_8h" })
+            });
+        }
+    } catch (err) {
+        console.warn("Não foi possível registrar o logout automático local:", err);
+    } finally {
+        limparSessao();
+        irLogin("sessao_expirada");
+    }
+}
+
 window.fetch = async function(url, opcoes = {}) {
     const usuario = obterUsuario();
 
-    // Clona os headers para não alterar o objeto original.
-    const headers =
-        new Headers(opcoes.headers || {});
-
-    const isFormData =
-        opcoes.body instanceof FormData;
-
-    // Só define Content-Type quando existe corpo JSON.
-    // Evita Content-Type desnecessário em GET.
-    if (
-        !isFormData &&
-        opcoes.body !== undefined &&
-        opcoes.body !== null &&
-        !headers.has("Content-Type")
-    ) {
-        headers.set(
-            "Content-Type",
-            "application/json"
-        );
+    if (usuario && !ehRotaPublica(url) && sessaoExpiradaLocalmente()) {
+        await finalizarSessaoAutomaticaLocal();
+        const erro = new Error("Sessão expirada por inatividade");
+        erro.status = 401;
+        throw erro;
     }
 
-    if (!headers.has("Accept")) {
-        headers.set(
-            "Accept",
-            "application/json"
-        );
+    const headers = new Headers(opcoes.headers || {});
+    const isFormData = opcoes.body instanceof FormData;
+
+    if (!isFormData && opcoes.body != null && !headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/json");
     }
+    if (!headers.has("Accept")) headers.set("Accept", "application/json");
 
     if (usuario) {
-        if (usuario.id !== undefined && usuario.id !== null) {
-            headers.set(
-                "x-usuario-id",
-                String(usuario.id)
-            );
-        }
+        if (usuario.id != null) headers.set("x-usuario-id", String(usuario.id));
+        const logId = obterLogId();
+        if (logId) headers.set("x-log-id", String(logId));
+        headers.set("x-usuario-nome", String(usuario.usuario || usuario.nome || ""));
+        headers.set("x-usuario-cargo", String(usuario.cargo || ""));
+        headers.set("x-sgos-active", usuarioEstaAtivo() ? "1" : "0");
 
-        headers.set(
-            "x-usuario-nome",
-            String(
-                usuario.usuario ||
-                usuario.nome ||
-                ""
-            )
-        );
-
-        headers.set(
-            "x-usuario-cargo",
-            String(usuario.cargo || "")
-        );
-
-        const empresaId =
-            usuario.empresa_id ??
-            usuario.empresaId ??
-            usuario.id_empresa ??
-            usuario.empresa?.id;
-
-        if (
-            empresaId !== undefined &&
-            empresaId !== null &&
-            empresaId !== ""
-        ) {
-            headers.set(
-                "x-empresa-id",
-                String(empresaId)
-            );
-        }
+        const empresaId = usuario.empresa_id ?? usuario.empresaId ?? usuario.id_empresa ?? usuario.empresa?.id;
+        if (empresaId != null && empresaId !== "") headers.set("x-empresa-id", String(empresaId));
     }
 
-    try {
-        const response =
-            await fetchOriginal(url, {
-                ...opcoes,
-                credentials:
-                    opcoes.credentials ||
-                    "same-origin",
-                headers
-            });
+    const response = await fetchOriginal(url, {
+        ...opcoes,
+        credentials: opcoes.credentials || "same-origin",
+        headers
+    });
 
-        // =================================================
-        // WHATSAPP É MÓDULO OPCIONAL
-        // Um 401/403 do WhatsApp não significa que o login
-        // inteiro do SGOS expirou.
-        // =================================================
-        if (
-            ehRotaWhatsapp(url) &&
-            (
-                response.status === 401 ||
-                response.status === 403
-            )
-        ) {
-            console.warn(
-                "⚠️ WhatsApp não autorizado ou indisponível:",
-                response.status
-            );
-
-            // Retorna a Response normalmente.
-            // A própria página exibirá "desconectado".
-            return response;
-        }
-
-        // =================================================
-        // DEMAIS ROTAS: mantém o comportamento anterior
-        // =================================================
-        if (response.status === 401) {
-            console.warn("⚠️ Sessão expirada");
-
-            limparSessao();
-            irLogin();
-
-            // Não devolve undefined silenciosamente.
-            const erro =
-                new Error("Sessão expirada");
-
-            erro.status = 401;
-            throw erro;
-        }
-
-        if (!response.ok) {
-            // Usa clone para não consumir o body da resposta
-            // que pode ser tratado por quem chamou fetch().
-            let text = "";
-
-            try {
-                text =
-                    await response
-                        .clone()
-                        .text();
-            } catch {}
-
-            console.error(
-                "Erro API:",
-                text || response.status
-            );
-
-            const erro =
-                new Error(
-                    `Erro ${response.status}`
-                );
-
-            erro.status =
-                response.status;
-
-            erro.response =
-                response;
-
-            throw erro;
-        }
-
+    if (ehRotaWhatsapp(url) && (response.status === 401 || response.status === 403)) {
         return response;
-
-    } catch (err) {
-        console.error(
-            "Erro fetch:",
-            err
-        );
-
-        throw err;
     }
+
+    if (response.status === 401) {
+        let motivo = "sessao_expirada";
+        try {
+            const body = await response.clone().json();
+            motivo = body?.motivo || motivo;
+        } catch {}
+        limparSessao();
+        irLogin(motivo);
+        const erro = new Error("Sessão expirada");
+        erro.status = 401;
+        throw erro;
+    }
+
+    if (!response.ok) {
+        let text = "";
+        try { text = await response.clone().text(); } catch {}
+        const erro = new Error(text || `Erro ${response.status}`);
+        erro.status = response.status;
+        erro.response = response;
+        throw erro;
+    }
+
+    return response;
 };
 
-// ===============================
-// PING AUTOMÁTICO
-// ===============================
-async function enviarPing() {
+async function enviarPing(forcar = false) {
     const log_id = obterLogId();
+    const usuario = obterUsuario();
+    if (!log_id || !usuario || pingEmAndamento) return;
 
-    if (!log_id) return;
+    const ativo = usuarioEstaAtivo();
+    const agora = Date.now();
+    if (!forcar && ultimoEstadoAtivo === ativo && agora - ultimoPingEnviado < SGOS_PING_MS) return;
 
+    pingEmAndamento = true;
     try {
-        await fetch("/api/ping", {
+        const response = await fetchOriginal("/api/ping", {
             method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json",
+                "x-usuario-id": String(usuario.id),
+                "x-log-id": String(log_id),
+                "x-empresa-id": String(usuario.empresa_id || "")
+            },
             body: JSON.stringify({
-                log_id
+                log_id,
+                ativo,
+                ultima_atividade: new Date(obterUltimaAtividade()).toISOString()
             })
         });
 
-        console.log("💓 Ping enviado");
-
-    } catch (err) {
-        console.error(
-            "Erro ping:",
-            err
-        );
-    }
-}
-
-// ===============================
-// INICIA PING
-// ===============================
-function iniciarPingAutomatico() {
-    const usuario = obterUsuario();
-
-    const paginaLogin =
-        window.location.pathname.includes("login");
-
-    if (!usuario || paginaLogin) {
-        return;
-    }
-
-    enviarPing();
-
-    setInterval(() => {
-        enviarPing();
-    }, 60000);
-}
-
-// ===============================
-// INICIA SISTEMA
-// ===============================
-iniciarPingAutomatico();
-
-// ===============================
-// LOGOUT
-// ===============================
-async function logout() {
-    const log_id = obterLogId();
-
-    try {
-        if (log_id) {
-            await fetchOriginal(
-                "/api/logout",
-                {
-                    method: "POST",
-                    keepalive: true,
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    body: JSON.stringify({
-                        log_id
-                    })
-                }
-            );
-
-            console.log(
-                "🚪 Logout registrado"
-            );
+        if (response.status === 401) {
+            limparSessao();
+            irLogin("sessao_expirada");
+            return;
         }
 
+        ultimoPingEnviado = agora;
+        ultimoEstadoAtivo = ativo;
     } catch (err) {
-        console.error(
-            "Erro logout:",
-            err
-        );
+        console.warn("Erro ao atualizar presença:", err);
+    } finally {
+        pingEmAndamento = false;
     }
-
-    limparSessao();
-
-    window.location.href =
-        "/login.html";
 }
 
-// ===============================
-// FECHOU ABA/NAVEGADOR
-// ===============================
-window.addEventListener(
-    "beforeunload",
-    () => {
-        console.log(
-            "📴 Página encerrada"
-        );
+function registrarAtividadeReal() {
+    const estavaOffline = !usuarioEstaAtivo();
+    salvarUltimaAtividade();
+    clearTimeout(timerAtividade);
+    timerAtividade = setTimeout(() => enviarPing(estavaOffline), 350);
+}
+
+function iniciarControleDeAtividade() {
+    const usuario = obterUsuario();
+    if (!usuario || window.location.pathname.includes("login")) return;
+
+    if (!localStorage.getItem(SGOS_ACTIVITY_KEY)) salvarUltimaAtividade();
+
+    ["mousedown", "keydown", "touchstart", "scroll"].forEach(evento => {
+        window.addEventListener(evento, registrarAtividadeReal, { passive: true });
+    });
+
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) registrarAtividadeReal();
+    });
+
+    enviarPing(true);
+
+    setInterval(() => {
+        if (sessaoExpiradaLocalmente()) {
+            finalizarSessaoAutomaticaLocal();
+            return;
+        }
+        enviarPing(false);
+    }, SGOS_PING_MS);
+}
+
+iniciarControleDeAtividade();
+
+async function logout() {
+    const log_id = obterLogId();
+    try {
+        if (log_id) {
+            await fetchOriginal("/api/logout", {
+                method: "POST",
+                keepalive: true,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ log_id, motivo: "manual" })
+            });
+        }
+    } catch (err) {
+        console.error("Erro ao registrar logout:", err);
+    } finally {
+        limparSessao();
+        window.location.replace("/login.html");
     }
-);
+}
