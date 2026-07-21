@@ -16,6 +16,7 @@ const escritoriosRoutesFactory = require('./routes/escritorios.routes');
 const financeiroRoutesFactory = require('./routes/financeiro.routes');
 
 
+
 const pool = require("./database");
 const bcrypt = require("bcryptjs");
 const cors = require("cors");
@@ -241,6 +242,13 @@ app.use('/api/relatorios-automaticos', relatoriosAutomaticosRoutes(pool, verific
 app.use("/api/svas", svasRoutes);
 app.use("/api/lembretes", lembretesRoutes);
 app.use('/api/estoque', estoqueRoutes);
+const usuariosOnlineRoutes =
+    require('./routes/usuarios-online.routes')(
+        pool,
+        verificarAutenticacao
+    );
+
+app.use('/api/admin/usuarios-online', usuariosOnlineRoutes);
 
 
 
