@@ -3,12 +3,11 @@ const express = require("express");
 module.exports = (pool, verificarAutenticacao) => {
     const router = express.Router();
     const OFFLINE_MINUTOS = 5;
+    const LIMITE_EVENTOS = 300;
 
     function somenteEmpresa1(req, res, next) {
         if (Number(req.usuario?.empresa_id) !== 1) {
-            return res.status(403).json({
-                erro: "Página disponível somente para usuários da empresa 1."
-            });
+            return res.status(403).json({ erro: "Página disponível somente para usuários da empresa 1." });
         }
         next();
     }
@@ -31,6 +30,27 @@ module.exports = (pool, verificarAutenticacao) => {
         );
     }
 
+    // Mantém sessões ativas e somente os 300 registros encerrados mais recentes.
+    async function limparLogsAntigos() {
+        try {
+            await pool.query(`
+                DELETE FROM log_acessos
+                WHERE logout IS NOT NULL
+                  AND id NOT IN (
+                      SELECT id FROM (
+                          SELECT id
+                          FROM log_acessos
+                          WHERE logout IS NOT NULL
+                          ORDER BY id DESC
+                          LIMIT ${LIMITE_EVENTOS}
+                      ) AS ultimos
+                  )
+            `);
+        } catch (err) {
+            console.warn("Não foi possível limpar logs antigos de acesso:", err.message);
+        }
+    }
+
     router.get("/usuarios", async (req, res) => {
         try {
             await atualizarInativos();
@@ -43,14 +63,8 @@ module.exports = (pool, verificarAutenticacao) => {
                     u.cargo AS tipo,
                     u.empresa_id,
                     COALESCE(e.nome_provedor, CONCAT('Empresa ', u.empresa_id)) AS empresa_nome,
-                    CASE
-                        WHEN la.id IS NOT NULL
-                         AND la.logout IS NULL
-                         AND la.status = 'ativo'
-                         AND la.ultimo_ping > DATE_SUB(NOW(), INTERVAL ${OFFLINE_MINUTOS} MINUTE)
-                        THEN 'online'
-                        ELSE 'offline'
-                    END AS status,
+                    CASE WHEN COALESCE(sa.sessoes_online, 0) > 0 THEN 'online' ELSE 'offline' END AS status,
+                    COALESCE(sa.sessoes_online, 0) AS sessoes_online,
                     la.id AS log_id,
                     la.login AS conectado_em,
                     la.ultimo_ping AS ultima_atividade,
@@ -59,22 +73,21 @@ module.exports = (pool, verificarAutenticacao) => {
                     la.porta_origem
                 FROM usuarios u
                 LEFT JOIN empresa e ON e.id = u.empresa_id
-                LEFT JOIN log_acessos la ON la.id = (
-                    SELECT MAX(l2.id)
-                    FROM log_acessos l2
-                    WHERE l2.usuario_id = u.id
+                LEFT JOIN (
+                    SELECT usuario_id, COUNT(*) AS sessoes_online, MAX(id) AS ultimo_log_id
+                    FROM log_acessos
+                    WHERE logout IS NULL
+                      AND status = 'ativo'
+                      AND ultimo_ping > DATE_SUB(NOW(), INTERVAL ${OFFLINE_MINUTOS} MINUTE)
+                    GROUP BY usuario_id
+                ) sa ON sa.usuario_id = u.id
+                LEFT JOIN log_acessos la ON la.id = COALESCE(
+                    sa.ultimo_log_id,
+                    (SELECT MAX(l2.id) FROM log_acessos l2 WHERE l2.usuario_id = u.id)
                 )
                 WHERE COALESCE(u.ativo, 1) = 1
-                ORDER BY
-                    CASE
-                        WHEN la.id IS NOT NULL
-                         AND la.logout IS NULL
-                         AND la.status = 'ativo'
-                         AND la.ultimo_ping > DATE_SUB(NOW(), INTERVAL ${OFFLINE_MINUTOS} MINUTE)
-                        THEN 0 ELSE 1
-                    END,
-                    empresa_nome,
-                    u.usuario
+                ORDER BY CASE WHEN COALESCE(sa.sessoes_online, 0) > 0 THEN 0 ELSE 1 END,
+                         empresa_nome, u.usuario
             `);
 
             const online = usuarios.filter(u => u.status === "online").length;
@@ -96,14 +109,14 @@ module.exports = (pool, verificarAutenticacao) => {
     });
 
     router.get("/eventos", async (req, res) => {
-        const limite = Math.min(Math.max(Number(req.query.limite) || 100, 1), 200);
+        const limite = Math.min(Math.max(Number(req.query.limite) || LIMITE_EVENTOS, 1), LIMITE_EVENTOS);
         try {
+            await limparLogsAntigos();
             const [sessoes] = await pool.query(`
-                SELECT
-                    l.id, l.usuario_id, l.usuario, l.empresa_id,
-                    COALESCE(e.nome_provedor, CONCAT('Empresa ', l.empresa_id)) AS empresa_nome,
-                    l.ip_origem AS ip, l.porta_origem, l.login, l.logout,
-                    l.status, l.motivo_logout
+                SELECT l.id, l.usuario_id, l.usuario, l.empresa_id,
+                       COALESCE(e.nome_provedor, CONCAT('Empresa ', l.empresa_id)) AS empresa_nome,
+                       l.ip_origem AS ip, l.porta_origem, l.login, l.logout,
+                       l.status, l.motivo_logout
                 FROM log_acessos l
                 LEFT JOIN empresa e ON e.id = l.empresa_id
                 ORDER BY l.id DESC
@@ -125,7 +138,7 @@ module.exports = (pool, verificarAutenticacao) => {
                     porta_origem: s.porta_origem, motivo: s.motivo_logout || 'Sessão encerrada'
                 });
             }
-            eventos.sort((a,b) => new Date(b.ocorrido_em) - new Date(a.ocorrido_em));
+            eventos.sort((a, b) => new Date(b.ocorrido_em) - new Date(a.ocorrido_em));
             res.json({ eventos: eventos.slice(0, limite) });
         } catch (err) {
             console.error("ERRO AO LISTAR EVENTOS DE ACESSO:", err);
@@ -152,17 +165,15 @@ module.exports = (pool, verificarAutenticacao) => {
             for (const item of sessoes) {
                 if (item.login) logs.push({
                     id: `${item.id}-login`, tipo: 'conexao', ip: item.ip,
-                    porta_origem: item.porta_origem, motivo: 'Login realizado',
-                    ocorrido_em: item.login
+                    porta_origem: item.porta_origem, motivo: 'Login realizado', ocorrido_em: item.login
                 });
                 if (item.logout) logs.push({
                     id: `${item.id}-logout`, tipo: 'desconexao', ip: item.ip,
                     porta_origem: item.porta_origem,
-                    motivo: item.motivo_logout || 'Sessão encerrada',
-                    ocorrido_em: item.logout
+                    motivo: item.motivo_logout || 'Sessão encerrada', ocorrido_em: item.logout
                 });
             }
-            logs.sort((a,b) => new Date(b.ocorrido_em) - new Date(a.ocorrido_em));
+            logs.sort((a, b) => new Date(b.ocorrido_em) - new Date(a.ocorrido_em));
             res.json({ logs: logs.slice(0, limite), limite });
         } catch (err) {
             console.error("ERRO AO CARREGAR HISTÓRICO:", err);
@@ -182,18 +193,39 @@ module.exports = (pool, verificarAutenticacao) => {
             if (!usuarios.length) return res.status(404).json({ erro: "Usuário não encontrado." });
 
             const alvo = usuarios[0];
-            const [resultado] = await pool.query(`
-                UPDATE log_acessos
-                SET logout = NOW(), status = 'logout', motivo_logout = 'deslogado_administrador_empresa_1'
-                WHERE usuario_id = ? AND logout IS NULL
-            `, [usuarioId]);
+            let resultado;
+
+            // logout é o campo que efetivamente invalida a sessão no verificarAutenticacao.
+            // Usa offline para não depender de ENUM que talvez não aceite o valor "logout".
+            try {
+                [resultado] = await pool.query(`
+                    UPDATE log_acessos
+                    SET logout = NOW(), status = 'offline', motivo_logout = 'deslogado_administrador_empresa_1'
+                    WHERE usuario_id = ? AND logout IS NULL
+                `, [usuarioId]);
+            } catch (erroComMotivo) {
+                console.warn("Tentativa sem motivo_logout:", erroComMotivo.message);
+                [resultado] = await pool.query(`
+                    UPDATE log_acessos
+                    SET logout = NOW(), status = 'offline'
+                    WHERE usuario_id = ? AND logout IS NULL
+                `, [usuarioId]);
+            }
+
+            const io = req.app.get("io");
+            if (io) {
+                io.emit("sgos:forcar-logout", {
+                    usuario_id: usuarioId,
+                    motivo: "Sessão encerrada pela administração SGOS"
+                });
+            }
 
             try {
                 await pool.query(`
                     INSERT INTO logs_acoes (usuario, acao, modulo, referencia_id, detalhes)
                     VALUES (?, 'DESLOGAR_USUARIO', 'SESSAO', ?, ?)
                 `, [req.usuario.usuario, usuarioId,
-                    `Usuário ${alvo.usuario} da empresa ${alvo.empresa_id} foi deslogado pela administração da empresa 1`]);
+                    `Usuário ${alvo.usuario} da empresa ${alvo.empresa_id} teve ${resultado.affectedRows} sessão(ões) encerrada(s)`]);
             } catch (logErr) {
                 console.warn("Não foi possível registrar a ação administrativa:", logErr.message);
             }
@@ -202,7 +234,7 @@ module.exports = (pool, verificarAutenticacao) => {
                 ok: true,
                 sessoes_encerradas: resultado.affectedRows,
                 mensagem: resultado.affectedRows
-                    ? `Sessão de ${alvo.usuario} encerrada com sucesso.`
+                    ? `${resultado.affectedRows} sessão(ões) de ${alvo.usuario} encerrada(s) com sucesso.`
                     : `${alvo.usuario} não possui sessão ativa.`
             });
         } catch (err) {
