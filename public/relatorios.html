@@ -1055,10 +1055,10 @@ td:last-child{
             <div class="filtros">
 
                 <div class="periodo-botoes">
-                    <button class="btn btn-primary" onclick="setPeriodo('hoje')">Hoje</button>
-                    <button class="btn" onclick="setPeriodo('ontem')">Ontem</button>
-                    <button class="btn" onclick="setPeriodo('7')">7 dias</button>
-                    <button class="btn" onclick="setPeriodo('30')">30 dias</button>
+                    <button class="btn btn-primary" data-periodo="hoje" onclick="setPeriodo('hoje')">Hoje</button>
+                    <button class="btn" data-periodo="ontem" onclick="setPeriodo('ontem')">Ontem</button>
+                    <button class="btn" data-periodo="7" onclick="setPeriodo('7')">7 dias</button>
+                    <button class="btn" data-periodo="30" onclick="setPeriodo('30')">30 dias</button>
                 </div>
 
                 <div class="filtro-item">
@@ -1283,20 +1283,52 @@ let filtros = {
 // ===============================
 // 🔥 SET PERÍODO
 // ===============================
+function atualizarSelecaoPeriodo(){
+    document.querySelectorAll(".periodo-botoes [data-periodo]").forEach(botao => {
+        botao.classList.toggle("btn-primary", botao.dataset.periodo === periodo);
+    });
+
+    const tipoEnvio = document.getElementById("tipoEnvioManual");
+    if(tipoEnvio){
+        const mapaEnvio = {
+            hoje: "hoje",
+            ontem: "ontem",
+            "7": "semanal",
+            "30": "mensal",
+            personalizado: "personalizado"
+        };
+        tipoEnvio.value = mapaEnvio[periodo] || "hoje";
+    }
+
+    const boxDatas = document.getElementById("datasEnvio");
+    if(boxDatas){
+        boxDatas.style.display = periodo === "personalizado" ? "grid" : "none";
+    }
+}
+
 function setPeriodo(tipo){
-
-    periodo = tipo;
-
+    periodo = String(tipo || "hoje");
     filtros.data = null;
 
-    if(tipo === "personalizado"){
-        dataInicio = document.getElementById("dataInicio").value;
-        dataFim = document.getElementById("dataFim").value;
-    } else {
+    if(periodo === "personalizado"){
+        dataInicio = document.getElementById("dataInicio")?.value || "";
+        dataFim = document.getElementById("dataFim")?.value || "";
+
+        if(!dataInicio || !dataFim){
+            alert("Informe a data inicial e a data final.");
+            return;
+        }
+
+        const envioInicio = document.getElementById("envioDataInicio");
+        const envioFim = document.getElementById("envioDataFim");
+        if(envioInicio) envioInicio.value = dataInicio;
+        if(envioFim) envioFim.value = dataFim;
+    }else{
         dataInicio = null;
         dataFim = null;
     }
 
+    atualizarSelecaoPeriodo();
     aplicarFiltros();
 }
 
@@ -1942,9 +1974,8 @@ function gerarResumoPeriodo(lista){
 async function gerarPDFRelatorio(){
 
     // 🔥 GARANTE QUE NÃO ESTÁ VAZIO
-    if(!dadosFiltrados || dadosFiltrados.length === 0){
-        console.warn("dadosFiltrados vazio, usando cache como fallback");
-        dadosFiltrados = cache || [];
+    if(!Array.isArray(dadosFiltrados)){
+        dadosFiltrados = [];
     }
 
     const { jsPDF } = window.jspdf;
@@ -2824,6 +2855,39 @@ async function verificarStatusWhatsappRelatorio(){
     }
 }
 
+async function sincronizarPeriodoEnvioManual(){
+    const tipoManual = document.getElementById("tipoEnvioManual")?.value || "hoje";
+    const mapaPeriodo = {
+        hoje: "hoje",
+        ontem: "ontem",
+        semanal: "7",
+        mensal: "30",
+        personalizado: "personalizado"
+    };
+
+    periodo = mapaPeriodo[tipoManual] || "hoje";
+
+    if(periodo === "personalizado"){
+        dataInicio = document.getElementById("envioDataInicio")?.value || "";
+        dataFim = document.getElementById("envioDataFim")?.value || "";
+
+        if(!dataInicio || !dataFim){
+            throw new Error("Informe a data inicial e a data final do relatório.");
+        }
+
+        const filtroInicio = document.getElementById("dataInicio");
+        const filtroFim = document.getElementById("dataFim");
+        if(filtroInicio) filtroInicio.value = dataInicio;
+        if(filtroFim) filtroFim.value = dataFim;
+    }else{
+        dataInicio = null;
+        dataFim = null;
+    }
+
+    atualizarSelecaoPeriodo();
+    await carregar();
+}
+
 async function enviarRelatorioManual(canal = "email"){
     const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
     const tipo = document.getElementById("tipoEnvioManual")?.value || "hoje";
@@ -2863,12 +2927,15 @@ async function enviarRelatorioManual(canal = "email"){
             botao.textContent = "Gerando PDF...";
         }
 
+        await sincronizarPeriodoEnvioManual();
+
+        const tipoAtual = document.getElementById("tipoEnvioManual")?.value || "hoje";
         const pdfDataUri = await gerarPDFRelatorio();
         const pdfBlob = dataUriParaBlob(pdfDataUri);
         const formData = new FormData();
 
         formData.append("pdf", pdfBlob, obterNomeRelatorioManual());
-        formData.append("periodo", tipo);
+        formData.append("periodo", tipoAtual);
         formData.append("dataInicio", dataInicioManual);
         formData.append("dataFim", dataFimManual);
 
@@ -2969,6 +3036,8 @@ window.limparFiltros = limparFiltros; // 🔥 importante
 // ===============================
 document.addEventListener("DOMContentLoaded", () => {
 
+    atualizarSelecaoPeriodo();
+
     try{
         carregar();
     }catch(e){
@@ -2989,11 +3058,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const box = document.getElementById("datasEnvio");
 
     if(tipoEnvio && box){
-        tipoEnvio.addEventListener("change", (e)=>{
+        tipoEnvio.addEventListener("change", async (e)=>{
             box.style.display =
                 e.target.value === "personalizado"
                 ? "grid"
                 : "none";
+
+            if(e.target.value !== "personalizado"){
+                try{
+                    await sincronizarPeriodoEnvioManual();
+                }catch(erro){
+                    console.error("Erro ao alterar período manual:", erro);
+                }
+            }
         });
     }
 
