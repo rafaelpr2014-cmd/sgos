@@ -1170,8 +1170,8 @@ td:last-child{
                             <svg viewBox="0 0 24 24"><path d="M20 11.5a8.5 8.5 0 0 1-12.5 7.5L3 20l1.1-4A8.5 8.5 0 1 1 20 11.5z"/><path d="M8.5 8.5c.5 2.8 2.2 4.5 5 5"/></svg>
                         </div>
                         <div>
-                            <strong>Enviar por WhatsApp</strong>
-                            <small>Disponível quando o WhatsApp da empresa estiver conectado.</small>
+                            <strong>Enviar pelo WhatsApp principal do SGOS</strong>
+                            <small>Disponível quando o WhatsApp principal do SGOS estiver conectado.</small>
                         </div>
                     </div>
                     <div class="envio-campos">
@@ -2772,7 +2772,7 @@ async function verificarStatusWhatsappRelatorio(){
     })();
 
     try{
-        const resposta = await fetch("/api/whatsapp/cliente/status", {
+        const resposta = await fetch("/api/whatsapp/central/status", {
             credentials: "include",
             headers: {
                 ...(usuario?.id
@@ -2800,7 +2800,7 @@ async function verificarStatusWhatsappRelatorio(){
 
         statusEl.textContent = conectado
             ? "WhatsApp conectado e pronto para envio"
-            : "WhatsApp da empresa desconectado";
+            : "WhatsApp central do SGOS desconectado";
 
         statusEl.className = conectado
             ? "status-whatsapp conectado"
@@ -2879,6 +2879,8 @@ async function enviarRelatorioManual(canal = "email"){
         }else{
             endpoint = "/api/relatorios/enviar-whatsapp-manual";
             formData.append("telefone", destino);
+            formData.append("origem_whatsapp", "central");
+            formData.append("empresa_whatsapp_id", "1");
         }
 
         if(botao) botao.textContent = "Enviando...";

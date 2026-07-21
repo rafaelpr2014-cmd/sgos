@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <style>
 :root{--azul:#2563eb;--azul2:#1d4ed8;--navy:#061426;--texto:#0f172a;--muted:#64748b;--borda:#e2e8f0;--fundo:#f5f7fb;--verde:#16a34a;--vermelho:#dc2626;--laranja:#d97706}
-*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);color:var(--texto)}
+*{box-sizing:border-box}body{margin:0;visibility:hidden;}body.acesso-validado{visibility:visible;}font-family:Arial,Helvetica,sans-serif;background:var(--fundo);color:var(--texto)}
 .sidebar{position:fixed;inset:0 auto 0 0;width:230px;background:linear-gradient(180deg,#081a31,var(--navy));padding:12px 18px;display:flex;flex-direction:column;z-index:20}.sidebar-logo img{width:190px}.menu-titulo{margin:14px 10px 6px;font-size:12px;color:#94a3b8;text-transform:uppercase}.sidebar a{color:#dbeafe;text-decoration:none;padding:11px 13px;border-radius:9px;display:flex;gap:11px;align-items:center;font-size:14px;margin-bottom:2px}.sidebar a:hover,.sidebar a.ativo{background:var(--azul);color:#fff}.menu-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.sidebar-footer{margin-top:auto}.main{margin-left:230px;min-height:100vh}.header{height:92px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;justify-content:space-between;padding:0 34px;position:sticky;top:0;z-index:10}.header-left{display:flex;align-items:center;gap:22px}.header-logo img{height:60px;max-width:190px;object-fit:contain}.divisor{height:34px;width:1px;background:var(--borda)}.header-title strong{display:block;font-size:18px}.header-title span{font-size:12px;color:var(--muted)}.user-box{text-align:right}.user-box strong{display:block;font-size:13px}.user-box small{color:var(--muted)}
 .content{padding:28px}.hero{background:linear-gradient(135deg,#0b2850,#2563eb);color:#fff;padding:25px;border-radius:18px;display:flex;align-items:center;justify-content:space-between;gap:25px;box-shadow:0 14px 32px rgba(37,99,235,.22);margin-bottom:20px}.hero h1{font-size:24px;margin:0 0 8px}.hero p{margin:0;color:#dbeafe;max-width:700px;line-height:1.55}.badge-restrito{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);padding:10px 14px;border-radius:999px;font-weight:800;font-size:12px;white-space:nowrap}
 .cards{display:grid;grid-template-columns:1.05fr .95fr;gap:20px}.card{background:#fff;border:1px solid var(--borda);border-radius:16px;padding:22px;box-shadow:0 8px 22px rgba(15,23,42,.05)}.card-header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}.card-title{font-size:17px;font-weight:800}.card-sub{font-size:13px;color:var(--muted);margin-top:5px}.status-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;font-weight:800;font-size:12px}.status-pill:before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}.desconectado{background:#fee2e2;color:var(--vermelho)}.conectado{background:#dcfce7;color:var(--verde)}.iniciando,.aguardando_qr{background:#fef3c7;color:var(--laranja)}
@@ -26,135 +26,300 @@
 <main class="main"><header class="header"><div class="header-left"><div class="header-logo"><img id="logoEmpresa" src="/img/logo-default.png" alt="Logo"></div><div class="divisor"></div><div class="header-title"><strong>WhatsApp Central SGOS</strong><span>Relatórios automáticos e comunicação institucional</span></div></div><div class="user-box"><strong id="usuarioNome">Carregando...</strong><small id="empresaNome">Empresa</small></div></header>
 <section class="content"><div class="hero"><div><h1>Central de conexão exclusiva do SGOS</h1><p>Este número é separado dos WhatsApps dos clientes e será usado exclusivamente para os relatórios automáticos enviados pela plataforma.</p></div><div class="badge-restrito">🔐 SOMENTE EMPRESA 1</div></div>
 <div class="cards"><div class="card"><div class="card-header"><div><div class="card-title">Conexão do WhatsApp central</div><div class="card-sub">Leia o QR Code com o aparelho oficial do SGOS.</div></div><span id="statusPill" class="status-pill desconectado">Desconectado</span></div><div class="qr-area" id="qrArea"><div class="qr-placeholder">📲</div><strong>Nenhum QR Code ativo</strong><p>Clique em “Gerar QR Code” para iniciar ou recuperar a sessão central.</p></div><div class="actions"><button class="btn-primary" id="btnConectar" onclick="conectar()">Gerar QR Code</button><button class="btn-light" onclick="verificarStatus(true)">Atualizar status</button><button class="btn-danger" id="btnDesconectar" onclick="desconectar()">Desconectar</button></div></div>
-<div class="card"><div class="card-header"><div><div class="card-title">Informações da sessão</div><div class="card-sub">Dados atuais da conexão exclusiva.</div></div></div><div class="info-grid"><div class="info"><small>Finalidade</small><strong>Relatórios automáticos</strong></div><div class="info"><small>Empresa autorizada</small><strong>Empresa 1</strong></div><div class="info"><small>Número conectado</small><strong id="numeroConectado">Não identificado</strong></div><div class="info"><small>Nome do perfil</small><strong id="nomeConectado">Não identificado</strong></div></div><div class="test-box"><div class="field"><label>Enviar mensagem de teste</label><input id="telefoneTeste" placeholder="Ex.: (73) 99999-9999"></div><div class="actions"><button class="btn-success" onclick="enviarTeste()">Enviar teste</button></div></div><div class="notice"><strong>Atenção:</strong> este WhatsApp não deve ser usado para informativos ou disparos manuais das empresas clientes. Cada empresa terá sua própria conexão na página “WhatsApp da Empresa”.</div></div>
+<div class="card"><div class="card-header"><div><div class="card-title">Informações da sessão</div><div class="card-sub">Dados atuais da conexão exclusiva.</div></div></div><div class="info-grid"><div class="info"><small>Finalidade</small><strong>Relatórios automáticos</strong></div><div class="info"><small>Empresa autorizada</small><strong>Empresa 1</strong></div><div class="info"><small>Número conectado</small><strong id="numeroConectado">Não identificado</strong></div><div class="info"><small>Nome do perfil</small><strong id="nomeConectado">Não identificado</strong></div></div><div class="test-box"><div class="field"><label>Enviar mensagem de teste</label><input id="telefoneTeste" placeholder="Ex.: (73) 99999-9999"></div><div class="actions"><button class="btn-success" id="btnEnviarTeste" onclick="enviarTeste()" disabled>Enviar teste</button></div></div><div class="notice"><strong>Atenção:</strong> este WhatsApp não deve ser usado para informativos ou disparos manuais das empresas clientes. Cada empresa terá sua própria conexão na página “WhatsApp da Empresa”.</div></div>
 <div class="card logs-card"><div class="logs-head"><div><div class="card-title">Logs da conexão e dos envios</div><div class="card-sub">Eventos recentes do WhatsApp central.</div></div><button class="btn-light" onclick="carregarLogs()">Atualizar logs</button></div><div class="logs" id="logs"><div class="empty">Nenhum log carregado.</div></div></div></div></section></main>
 <script>
-let autorizado=false;
-async function api(url, options = {}) {
-    const usuarioLocal = (() => {
-        try {
-            return JSON.parse(localStorage.getItem("usuario") || "{}");
-        } catch {
-            return {};
-        }
-    })();
+let autorizado = false;
+let statusEmAndamento = false;
+let logsEmAndamento = false;
+let statusConsecutivosFalhos = 0;
+let timerStatus = null;
+let timerLogs = null;
+let estadoAtual = { conectado: false, status: "desconectado" };
 
-    const headers = {
-        "Content-Type": "application/json",
-        ...(usuarioLocal?.id ? { "x-usuario-id": String(usuarioLocal.id) } : {}),
-        ...(options.headers || {})
-    };
+const DOMINIOS_AUTORIZADOS = new Set([
+    "suporte.sgos.net.br",
+    "localhost",
+    "127.0.0.1"
+]);
 
-    const resposta = await fetch(url, {
-        ...options,
-        credentials: "include",
-        headers
-    });
-
-    let data = {};
+function usuarioLocal() {
     try {
-        data = await resposta.json();
+        return JSON.parse(localStorage.getItem("usuario") || "{}");
     } catch {
-        data = {};
+        return {};
     }
+}
 
-    if (!resposta.ok) {
-        const erro = new Error(
-            data.erro ||
-            data.mensagem ||
-            `Erro HTTP ${resposta.status}`
-        );
-        erro.status = resposta.status;
-        erro.data = data;
+function normalizarEmpresa(user) {
+    return String(user?.empresa_id ?? user?.empresaId ?? user?.id_empresa ?? "");
+}
+
+function dominioAutorizado() {
+    return DOMINIOS_AUTORIZADOS.has(String(location.hostname || "").toLowerCase());
+}
+
+function mostrarBloqueio(mensagem) {
+    const bloqueio = document.getElementById("bloqueio");
+    const texto = bloqueio?.querySelector("p");
+    if (texto && mensagem) texto.textContent = mensagem;
+    if (bloqueio) bloqueio.style.display = "flex";
+    document.body.classList.add("acesso-validado");
+}
+
+async function api(url, options = {}, timeoutMs = 15000) {
+    const local = usuarioLocal();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const headers = {
+            ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+            ...(local?.id ? { "x-usuario-id": String(local.id) } : {}),
+            ...(options.headers || {})
+        };
+
+        const resposta = await fetch(url, {
+            ...options,
+            credentials: "include",
+            cache: "no-store",
+            headers,
+            signal: controller.signal
+        });
+
+        let data = {};
+        const texto = await resposta.text();
+        if (texto) {
+            try { data = JSON.parse(texto); }
+            catch { data = { mensagem: texto }; }
+        }
+
+        if (!resposta.ok) {
+            const erro = new Error(data.erro || data.mensagem || `Erro HTTP ${resposta.status}`);
+            erro.status = resposta.status;
+            erro.data = data;
+            throw erro;
+        }
+
+        return data;
+    } catch (erro) {
+        if (erro.name === "AbortError") throw new Error("Tempo limite excedido ao consultar o WhatsApp central.");
         throw erro;
+    } finally {
+        clearTimeout(timeout);
     }
-
-    return data;
 }
 
 async function obterUsuarioLogado() {
-    if (typeof fetchAuth === "function") {
-        return fetchAuth("/api/me");
-    }
-
-    const usuarioLocal = (() => {
-        try {
-            return JSON.parse(localStorage.getItem("usuario") || "{}");
-        } catch {
-            return {};
-        }
-    })();
-
-    const resposta = await fetch("/api/me", {
-        credentials: "include",
-        headers: {
-            ...(usuarioLocal?.id
-                ? { "x-usuario-id": String(usuarioLocal.id) }
-                : {})
-        }
-    });
-
-    if (!resposta.ok) {
-        throw new Error("Não foi possível validar a sessão.");
-    }
-
-    return resposta.json();
+    if (typeof fetchAuth === "function") return fetchAuth("/api/me");
+    return api("/api/me", {}, 12000);
 }
-function normalizarEmpresa(user){return String(user.empresa_id??user.empresaId??user.id_empresa??'')}
-function renderStatus(data={}){const status=data.status||'desconectado';const pill=document.getElementById('statusPill');const nomes={conectado:'Conectado',desconectado:'Desconectado',aguardando_qr:'Aguardando QR Code',iniciando:'Iniciando'};pill.textContent=nomes[status]||status;pill.className='status-pill '+status;document.getElementById('numeroConectado').textContent=data.numero?('+'+data.numero):'Não identificado';document.getElementById('nomeConectado').textContent=data.nome||'Não identificado';document.getElementById('btnDesconectar').disabled=!data.conectado;if(data.conectado){document.getElementById('qrArea').innerHTML='<div class="qr-placeholder">✅</div><strong>WhatsApp conectado</strong><p>A sessão central está pronta para enviar relatórios automáticos.</p>'}}
-async function conectar(){if(!autorizado)return;const btn=document.getElementById('btnConectar');btn.disabled=true;btn.textContent='Gerando...';try{const data=await api('/api/whatsapp/central/qr');renderStatus(data);if(data.qr){const area=document.getElementById('qrArea');area.innerHTML='';QRCode.toCanvas(data.qr,{width:280,margin:1},(erro,canvas)=>{if(erro)return;area.appendChild(canvas);const p=document.createElement('p');p.textContent='Abra o WhatsApp no celular, acesse Aparelhos conectados e leia este código.';area.appendChild(p)})}else if(data.erro){alert(data.erro)}}catch(err){alert(err.message)}finally{btn.disabled=false;btn.textContent='Gerar QR Code'}}
-async function verificarStatus(silencioso=false){if(!autorizado)return;try{const data=await api('/api/whatsapp/central/status');renderStatus(data);if(!silencioso&&data.conectado)carregarLogs()}catch(err){if(!silencioso)alert(err.message)}}
-async function desconectar(){if(!confirm('Deseja desconectar e remover a autenticação do WhatsApp central?'))return;try{await api('/api/whatsapp/central/desconectar',{method:'POST',body:JSON.stringify({})});document.getElementById('qrArea').innerHTML='<div class="qr-placeholder">📲</div><strong>Sessão desconectada</strong><p>Gere um novo QR Code para autenticar novamente.</p>';renderStatus({status:'desconectado'});carregarLogs()}catch(err){alert(err.message)}}
-async function enviarTeste(){const telefone=document.getElementById('telefoneTeste').value.trim();if(!telefone)return alert('Informe o telefone.');try{await api('/api/whatsapp/central/teste',{method:'POST',body:JSON.stringify({telefone})});alert('Mensagem de teste enviada com sucesso.');carregarLogs()}catch(err){alert(err.message)}}
-async function carregarLogs(){if(!autorizado)return;try{const lista=await api('/api/whatsapp/central/logs?limite=100');const box=document.getElementById('logs');if(!lista.length){box.innerHTML='<div class="empty">Nenhum evento registrado nesta execução.</div>';return}box.innerHTML=lista.map(item=>{const data=new Date(item.criadoEm).toLocaleString('pt-BR');const tipo=item.tipo||'info';return `<div class="log-item"><span>${data}</span><span class="log-tipo log-${tipo}">${tipo}</span><span>${item.mensagem}</span></div>`}).join('')}catch(err){document.getElementById('logs').innerHTML='<div class="empty">Não foi possível carregar os logs.</div>'}}
-function logout(){sessionStorage.clear();localStorage.clear();location.href='login.html'}
-document.addEventListener("DOMContentLoaded", async () => {
-    let user;
 
+function normalizarTelefone(valor) {
+    let numero = String(valor || "").replace(/\D/g, "");
+    if (numero.startsWith("0")) numero = numero.slice(1);
+    if (numero && !numero.startsWith("55")) numero = "55" + numero;
+    return numero;
+}
+
+function renderStatus(data = {}) {
+    const status = data.status || (data.conectado ? "conectado" : "desconectado");
+    const conectado = data.conectado === true || status === "conectado";
+    estadoAtual = { ...data, status, conectado };
+
+    const pill = document.getElementById("statusPill");
+    const nomes = {
+        conectado: "Conectado",
+        desconectado: "Desconectado",
+        aguardando_qr: "Aguardando QR Code",
+        iniciando: "Iniciando",
+        reconectando: "Reconectando"
+    };
+
+    pill.textContent = nomes[status] || status;
+    pill.className = "status-pill " + (conectado ? "conectado" : (status === "desconectado" ? "desconectado" : "iniciando"));
+    document.getElementById("numeroConectado").textContent = data.numero ? ("+" + data.numero) : "Não identificado";
+    document.getElementById("nomeConectado").textContent = data.nome || "Não identificado";
+    document.getElementById("btnDesconectar").disabled = !conectado;
+    document.getElementById("btnEnviarTeste").disabled = !conectado;
+
+    if (conectado) {
+        document.getElementById("qrArea").innerHTML = '<div class="qr-placeholder">✅</div><strong>WhatsApp conectado</strong><p>A sessão central está pronta para enviar relatórios e mensagens de teste.</p>';
+    }
+}
+
+async function conectar() {
+    if (!autorizado) return;
+    const btn = document.getElementById("btnConectar");
+    btn.disabled = true;
+    btn.textContent = "Gerando...";
+    try {
+        const data = await api("/api/whatsapp/central/qr", {}, 30000);
+        renderStatus(data);
+        if (data.qr) {
+            const area = document.getElementById("qrArea");
+            area.innerHTML = "";
+            QRCode.toCanvas(data.qr, { width: 280, margin: 1 }, (erro, canvas) => {
+                if (erro) {
+                    area.innerHTML = '<div class="qr-placeholder">⚠️</div><strong>Não foi possível renderizar o QR Code</strong>';
+                    return;
+                }
+                area.appendChild(canvas);
+                const p = document.createElement("p");
+                p.textContent = "Abra o WhatsApp no celular, acesse Aparelhos conectados e leia este código.";
+                area.appendChild(p);
+            });
+        }
+    } catch (err) {
+        alert(err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Gerar QR Code";
+    }
+}
+
+async function verificarStatus(silencioso = false) {
+    if (!autorizado || statusEmAndamento || document.hidden) return estadoAtual;
+    statusEmAndamento = true;
+    try {
+        const data = await api("/api/whatsapp/central/status", {}, 10000);
+        statusConsecutivosFalhos = 0;
+        renderStatus(data);
+        if (!silencioso && data.conectado) carregarLogs();
+        return data;
+    } catch (err) {
+        statusConsecutivosFalhos++;
+        console.error("Status WhatsApp central:", err);
+        // Uma falha isolada de rede não deve transformar uma sessão conectada em desconectada.
+        if (statusConsecutivosFalhos >= 3 && !estadoAtual.conectado) {
+            renderStatus({ status: "desconectado", conectado: false });
+        }
+        if (!silencioso) alert(err.message);
+        return estadoAtual;
+    } finally {
+        statusEmAndamento = false;
+    }
+}
+
+async function desconectar() {
+    if (!autorizado || !confirm("Deseja desconectar e remover a autenticação do WhatsApp central?")) return;
+    try {
+        await api("/api/whatsapp/central/desconectar", { method: "POST", body: JSON.stringify({}) }, 30000);
+        document.getElementById("qrArea").innerHTML = '<div class="qr-placeholder">📲</div><strong>Sessão desconectada</strong><p>Gere um novo QR Code para autenticar novamente.</p>';
+        renderStatus({ status: "desconectado", conectado: false });
+        carregarLogs();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+async function enviarTeste() {
+    if (!autorizado) return;
+    const telefone = normalizarTelefone(document.getElementById("telefoneTeste").value);
+    if (telefone.length < 12 || telefone.length > 13) {
+        alert("Informe um telefone válido com DDD. Exemplo: 5573999999999");
+        return;
+    }
+
+    const btn = document.getElementById("btnEnviarTeste");
+    btn.disabled = true;
+    const textoOriginal = btn.textContent;
+    btn.textContent = "Enviando...";
+
+    try {
+        const status = await verificarStatus(true);
+        if (!(status?.conectado === true || status?.status === "conectado")) {
+            throw new Error("O WhatsApp central não está pronto para envio.");
+        }
+        const resposta = await api("/api/whatsapp/central/teste", {
+            method: "POST",
+            body: JSON.stringify({ telefone, empresa_id: 1, origem: "whatsapp_central" })
+        }, 45000);
+        alert(resposta.mensagem || "Mensagem de teste enviada com sucesso.");
+        carregarLogs();
+    } catch (err) {
+        alert(err.message);
+    } finally {
+        btn.textContent = textoOriginal;
+        btn.disabled = !estadoAtual.conectado;
+    }
+}
+
+async function carregarLogs() {
+    if (!autorizado || logsEmAndamento || document.hidden) return;
+    logsEmAndamento = true;
+    try {
+        const lista = await api("/api/whatsapp/central/logs?limite=100", {}, 12000);
+        const box = document.getElementById("logs");
+        if (!Array.isArray(lista) || !lista.length) {
+            box.innerHTML = '<div class="empty">Nenhum evento registrado nesta execução.</div>';
+            return;
+        }
+        box.innerHTML = lista.map(item => {
+            const data = new Date(item.criadoEm || item.criado_em || Date.now()).toLocaleString("pt-BR");
+            const tipo = item.tipo || "info";
+            const mensagem = String(item.mensagem || "").replace(/[<>&"]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
+            return `<div class="log-item"><span>${data}</span><span class="log-tipo log-${tipo}">${tipo}</span><span>${mensagem}</span></div>`;
+        }).join("");
+    } catch (err) {
+        console.error("Logs WhatsApp central:", err);
+        document.getElementById("logs").innerHTML = '<div class="empty">Não foi possível carregar os logs.</div>';
+    } finally {
+        logsEmAndamento = false;
+    }
+}
+
+function iniciarAtualizacoes() {
+    clearInterval(timerStatus);
+    clearInterval(timerLogs);
+    timerStatus = setInterval(() => verificarStatus(true), 10000);
+    timerLogs = setInterval(carregarLogs, 30000);
+}
+
+function logout() {
+    sessionStorage.clear();
+    localStorage.clear();
+    location.href = "login.html";
+}
+
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && autorizado) {
+        verificarStatus(true);
+        carregarLogs();
+    }
+});
+
+document.addEventListener("DOMContentLoaded", async () => {
+    if (!dominioAutorizado()) {
+        mostrarBloqueio("Esta página só pode ser acessada pelo domínio oficial suporte.sgos.net.br.");
+        return;
+    }
+
+    let user;
     try {
         user = await obterUsuarioLogado();
     } catch (err) {
         console.error("Falha ao validar sessão:", err);
+        location.href = "login.html";
         return;
     }
 
-    document.getElementById("usuarioNome").textContent =
-        user?.usuario || "Administrador";
-
-    document.getElementById("empresaNome").textContent =
-        user?.empresa_nome || "Empresa";
-
-    const logo = user?.empresa_logo;
-    document.getElementById("logoEmpresa").src = logo
-        ? (logo.startsWith("/") ? logo : "/" + logo)
-        : "/img/logo-default.png";
-
     if (normalizarEmpresa(user) !== "1") {
-        document.getElementById("bloqueio").style.display = "flex";
+        mostrarBloqueio("Esta página administra o WhatsApp principal do SGOS e está disponível exclusivamente para usuários da empresa 1.");
         return;
     }
 
     autorizado = true;
+    document.body.classList.add("acesso-validado");
+    document.getElementById("usuarioNome").textContent = user?.usuario || user?.nome || "Administrador";
+    document.getElementById("empresaNome").textContent = user?.empresa_nome || "Empresa 1";
 
-    verificarStatus(true).catch(err =>
-        console.error("Status WhatsApp central:", err)
-    );
+    const logo = user?.empresa_logo;
+    document.getElementById("logoEmpresa").src = logo ? (logo.startsWith("/") ? logo : "/" + logo) : "/img/logo-default.png";
 
-    carregarLogs().catch(err =>
-        console.error("Logs WhatsApp central:", err)
-    );
-
-    setInterval(() => {
-        verificarStatus(true).catch(err =>
-            console.error("Atualização WhatsApp central:", err)
-        );
-    }, 4000);
-
-    setInterval(() => {
-        carregarLogs().catch(err =>
-            console.error("Atualização dos logs centrais:", err)
-        );
-    }, 15000);
+    await verificarStatus(true);
+    carregarLogs();
+    iniciarAtualizacoes();
 });
 </script>
 </body></html>
