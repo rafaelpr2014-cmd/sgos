@@ -1,4 +1,7 @@
-<!DOCTYPE html>
+<!DOC
+
+    <div class="sidebar-menu-scroll">
+TYPE html>
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
@@ -43,17 +46,50 @@ body{
     height:100vh;
     background:linear-gradient(180deg,#081a31,#061426);
     color:white;
-    padding:12px 18px 18px;
+    padding:12px 0 14px;
     display:flex;
     flex-direction:column;
+    overflow:hidden;
     z-index:20;
+}
+
+.sidebar-menu-scroll{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding:0 18px 10px;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(148,163,184,.65) transparent;
+    overscroll-behavior:contain;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar{
+    width:7px;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar-track{
+    background:transparent;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar-thumb{
+    background:rgba(148,163,184,.58);
+    border-radius:999px;
+    border:2px solid transparent;
+    background-clip:padding-box;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar-thumb:hover{
+    background:rgba(203,213,225,.8);
+    background-clip:padding-box;
 }
 
 .sidebar-logo{
     display:flex;
     justify-content:flex-start;
     align-items:center;
-    padding-left:0px;
+    flex:0 0 auto;
+    padding:0 18px;
     margin-top:0;
     margin-bottom:14px;
 }
@@ -103,7 +139,12 @@ body{
 }
 
 .sidebar-footer{
-    margin-top:auto;
+    flex:0 0 auto;
+    margin-top:0;
+    padding:12px 18px 0;
+    border-top:1px solid rgba(255,255,255,.10);
+    background:linear-gradient(180deg,rgba(6,20,38,.72),#061426 35%);
+    box-shadow:0 -10px 22px rgba(0,0,0,.12);
 }
 
 .btn-recolher{
@@ -928,13 +969,15 @@ tr:hover{ background:#f8fbff; }
 
 .sidebar.recolhida{
     width:82px;
-    padding:24px 12px;
+    padding:24px 0 14px;
     align-items:center;
 }
 
 .sidebar.recolhida .sidebar-logo{
     width:100%;
     margin-bottom:28px;
+    padding:0 12px;
+    justify-content:center;
 }
 
 .sidebar.recolhida .sidebar-logo img{
@@ -966,8 +1009,17 @@ tr:hover{ background:#f8fbff; }
     min-width:20px;
 }
 
+.sidebar.recolhida .sidebar-menu-scroll{
+    width:100%;
+    padding:0 15px 10px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+
 .sidebar.recolhida .sidebar-footer{
     width:100%;
+    padding:12px 15px 0;
     display:flex;
     justify-content:center;
 }
@@ -1477,6 +1529,7 @@ let periodoAtual = "hoje";
         >
     </div>
 
+    <div class="sidebar-menu-scroll">
     <a href="painel.html">
         <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg>
         <span>Painel Inicial</span>
@@ -1534,6 +1587,15 @@ let periodoAtual = "hoje";
         <span>Planos</span>
     </a>
 
+<a href="escritorios.html" class="ativo">
+    <svg class="menu-icon" viewBox="0 0 24 24">
+        <path d="M4 21V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v16"/>
+        <path d="M16 21v-9a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v9"/>
+        <path d="M8 8h2M12 8h1M8 12h2M12 12h1M8 16h2M12 16h1"/>
+    </svg>
+    <span>Escritórios</span>
+</a>
+
     <a href="localidades.html">
         <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
         <span>Localidades</span>
@@ -1566,7 +1628,9 @@ let periodoAtual = "hoje";
         <span>Integrações ERP</span>
     </a>
 
-<a href="whatsapp-cliente.html" class="ativo"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg><span>WhatsApp da Empresa</span></a><div class="menu-titulo">Operação</div><a 
+<a href="whatsapp-cliente.html" class="ativo"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg><span>WhatsApp da Empresa</span></a>
+
+    <div class="menu-titulo">Auditoria</div>
 
     <a href="logs_acesso.html">
         <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
@@ -1583,7 +1647,9 @@ let periodoAtual = "hoje";
         <span>Histórico de OS</span>
     </a>
 
-    <div class="sidebar-footer">
+        </div>
+
+<div class="sidebar-footer">
         <button class="btn-recolher" onclick="toggleSidebar()" type="button">
             <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M2 12h20"/></svg>
             <span>Recolher menu</span>
