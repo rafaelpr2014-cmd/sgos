@@ -797,7 +797,7 @@ app.get("/api/me", verificarAutenticacao, async (req, res) => {
             empresa_id: user.empresa_id,
             empresa_nome: empresaNome,
             empresa_logo: empresaLogo
-    ? `/uploads/${empresaLogo}`
+    ? `/uploads/logos/${encodeURIComponent(empresaLogo)}`
     : ""
         });
 
