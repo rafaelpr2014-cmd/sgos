@@ -326,7 +326,7 @@ th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
         </div>
     </div>
 </section>
-<footer class="footer"><span>SGOS - Sistema de Gestão de Ordens de Serviço</span><span>Versão 1.0.0</span></footer>
+<footer class="footer"><span>SGOS - Sistema de Gestão Operacinal e Sistemas</span><span>Versão 1.0.0</span></footer>
 </main>
 
 <div class="popup-resumo" id="popupResumo" onclick="fecharResumoAoFundo(event)">
@@ -712,7 +712,7 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
         .rodape{height:9mm;margin-top:3mm;border-top:1px solid #cbd5e1;display:flex;align-items:flex-end;justify-content:center;font-size:7.5pt;color:#475569;text-align:center}
         @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
     </style></head><body>${paginas.map((pagina,indice)=>`<section class="pagina">
-        <header class="cabecalho"><div class="marca"><img src="${escapar(logo)}" alt="Logo"><div><h1>Relatório de Viabilidades</h1><p>SGOS - Sistema de Gestão de Ordens de Serviço</p></div></div><div class="contador">Página ${indice+1} de ${paginas.length}</div></header>
+        <header class="cabecalho"><div class="marca"><img src="${escapar(logo)}" alt="Logo"><div><h1>Relatório de Viabilidades</h1><p>SGOS - Sistema de Gestão Operacinal e Sistemas</p></div></div><div class="contador">Página ${indice+1} de ${paginas.length}</div></header>
         ${indice===0?resumoHtml:""}
         <main class="grade">${pagina.map(renderItem).join("")}</main>
         <footer class="rodape">Emitido por SGOS - Sistemas de Ordens de Serviço - ${escapar(emitidoEm)}</footer>
