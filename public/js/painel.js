@@ -1901,12 +1901,12 @@ window.excluirOS = async (id) => {
 };
 
 // ===============================
-// 🔁 RECLICAR ATENDIMENTO
+// 🔁 RECICLAR ATENDIMENTO
+// Abre um NOVO cadastro preenchido com os dados da OS antiga.
+// A nova OS somente será criada quando o usuário clicar em salvar.
 // ===============================
 window.reclicarAtendimento = (id) => {
-
-    window.location.href =
-        `editar-os.html?id=${id}&reclicar=1`;
+    window.location.href = `editar-os.html?id=${id}&reciclar=1`;
 };
 
 // ===============================

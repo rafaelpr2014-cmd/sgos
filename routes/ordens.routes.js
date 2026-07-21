@@ -987,6 +987,64 @@ router.post(
                 req.usuario.empresa_id
             ]);
 
+            // ===============================
+            // 🔁 VÍNCULO DA OS RECICLADA
+            // A OS antiga é apenas a origem dos dados e permanece intacta.
+            // ===============================
+            if(dados.reciclar_de_id){
+                const origemId = Number(dados.reciclar_de_id);
+
+                const [origens] = await db.query(`
+                    SELECT id, os_raiz_id, numero_reciclagem
+                    FROM ordens_servico
+                    WHERE id = ? AND empresa_id = ?
+                    LIMIT 1
+                `, [origemId, req.usuario.empresa_id]);
+
+                if(!origens.length){
+                    await db.query(`DELETE FROM ordens_servico WHERE id=? AND empresa_id=?`, [resultado.id, req.usuario.empresa_id]);
+                    return res.status(404).json({ erro: "OS de origem não encontrada para reciclagem." });
+                }
+
+                const origem = origens[0];
+                const raizId = Number(origem.os_raiz_id || origem.id);
+
+                const [[contador]] = await db.query(`
+                    SELECT COALESCE(MAX(numero_reciclagem),0) AS maior
+                    FROM ordens_servico
+                    WHERE empresa_id = ?
+                      AND (id = ? OR os_raiz_id = ?)
+                `, [req.usuario.empresa_id, raizId, raizId]);
+
+                const numeroReciclagem = Number(contador?.maior || 0) + 1;
+
+                await db.query(`
+                    UPDATE ordens_servico
+                    SET os_raiz_id = ?,
+                        reciclada_de_id = ?,
+                        numero_reciclagem = ?,
+                        reciclada_em = NOW(),
+                        reciclada_por = ?,
+                        status = CASE WHEN status='em_andamento' THEN 'em_andamento' ELSE 'aberto' END,
+                        iniciado_em = CASE WHEN status='em_andamento' THEN NOW() ELSE NULL END,
+                        finalizado_em = NULL,
+                        finalizado_por = NULL,
+                        enviado_por = NULL,
+                        observacao_finalizado = NULL,
+                        anexo_finalizado = NULL,
+                        observacao_ausente = NULL,
+                        anexo_ausente = NULL,
+                        equipamentos_utilizados = 'pendente',
+                        equipamentos_confirmado_em = NULL,
+                        equipamentos_confirmado_por = NULL,
+                        observacao_equipamento = NULL
+                    WHERE id = ? AND empresa_id = ?
+                `, [
+                    raizId, origemId, numeroReciclagem, req.usuario.id,
+                    resultado.id, req.usuario.empresa_id
+                ]);
+            }
+
             await salvarMateriaisOS(resultado.id, req.usuario.empresa_id, dados.origem_equipamento, dados.modalidade_equipamento, dados.materiais, dados.forma_pagamento_equipamento, req.usuario, dados.status_pagamento_equipamento, dados.anexo_pagamento_base64, dados.anexo_pagamento_nome, dados.anexo_pagamento_mime);
 
             // ===============================

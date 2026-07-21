@@ -759,6 +759,12 @@ button:hover{
         <span>Relatórios</span>
     </a>
 
+
+    <a href="os-clientes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>OS Clientes</span>
+    </a>
+
 <a href="escala.html" class=>
         <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 14h6"/></svg>
         <span>Escala</span>
@@ -1916,6 +1922,36 @@ const urlParams =
 const id =
     urlParams.get("id");
 
+const modoReciclagem = urlParams.get("reciclar") === "1";
+const origemReciclagem = modoReciclagem ? id : urlParams.get("origem_reciclagem");
+
+function exibirAvisoReciclagem(){
+    if(!modoReciclagem || !origemReciclagem) return;
+
+    document.title = "SGOS - Nova OS Reciclada";
+    const tituloHeader = document.querySelector(".header-title");
+    const subtituloHeader = document.querySelector(".header-subtitle");
+    const tituloPagina = document.querySelector(".page-title h2");
+    const textoPagina = document.querySelector(".page-title p");
+
+    if(tituloHeader) tituloHeader.textContent = "Nova OS Reciclada";
+    if(subtituloHeader) subtituloHeader.textContent = "Revise os dados herdados da OS anterior e salve uma nova ordem de serviço";
+    if(tituloPagina) tituloPagina.textContent = "Cadastrar Nova OS Reciclada";
+    if(textoPagina) textoPagina.textContent = "Os dados abaixo foram copiados da OS anterior. Faça os ajustes necessários antes de salvar.";
+
+    const pageTitle = document.querySelector(".page-title");
+    if(!pageTitle || document.getElementById("avisoReciclagemOS")) return;
+    const aviso = document.createElement("div");
+    aviso.id = "avisoReciclagemOS";
+    aviso.style.cssText = "margin:0 0 18px;padding:13px 15px;border:1px solid #bfdbfe;background:#eff6ff;color:#1e40af;border-radius:11px;font-size:13px;font-weight:700;";
+    aviso.innerHTML = `Nova OS baseada na OS #${origemReciclagem}. A OS anterior continuará concluída e não será alterada.`;
+    pageTitle.insertAdjacentElement("afterend", aviso);
+
+    const btnSalvar = document.getElementById("btnSalvar");
+    if(btnSalvar) btnSalvar.textContent = "Salvar nova OS";
+}
+
+
 let anexoArquivo = null;
 
 let anexoExistente = null;
@@ -2661,15 +2697,17 @@ async function carregarOS(){
     longitude.value = os.longitude || "";
     descricao.value = os.descricao || "";
     document.getElementById("prioridade").value = os.prioridade || "Média";
-    status.value = os.status || "aberto";
+    status.value = modoReciclagem ? "aberto" : (os.status || "aberto");
 
     localidade.value = os.localidade_id || os.localidade || "";
     plano.value = os.plano_id || os.plano || "";
     tipo_servico.value = os.tipo_servico_id || os.tipo_servico || "";
     vlan.value = os.vlan || "";
 
-    agendamento.value = os.agendamento ? toLocalInput(os.agendamento) : "";
-    agendamento_envio.value = os.agendamento_envio ? toLocalInput(os.agendamento_envio) : "";
+    // Reciclagem abre como um cadastro novo: preserva os dados operacionais,
+    // mas não reutiliza datas antigas de execução ou envio.
+    agendamento.value = modoReciclagem ? "" : (os.agendamento ? toLocalInput(os.agendamento) : "");
+    agendamento_envio.value = modoReciclagem ? "" : (os.agendamento_envio ? toLocalInput(os.agendamento_envio) : "");
 
     let listaTec = [];
 
@@ -2695,7 +2733,9 @@ async function carregarOS(){
 
     preencherEquipamentosOS(os);
 
-    if(os.anexo_path){
+    // O anexo de execução da OS anterior permanece somente no histórico antigo.
+    // Na nova OS reciclada o usuário pode anexar um novo arquivo.
+    if(!modoReciclagem && os.anexo_path){
         anexoExistente = os.anexo_path;
         renderPreview(null, os.anexo_path);
     }
@@ -2892,35 +2932,38 @@ async function salvarOS(
         // ===========================
         // SALVAR
         // ===========================
-        await apiFetch(
+        if(modoReciclagem){
+            dados.status = statusAtual === "em_andamento" ? "em_andamento" : "aberto";
+            dados.agendamento = null;
+            dados.agendamento_envio = null;
+            dados.reciclar_de_id = Number(origemReciclagem);
+        }
 
-            `/api/ordens_servico/${id}`,
-
+        const resultadoSalvar = await apiFetch(
+            modoReciclagem ? `/api/ordens_servico` : `/api/ordens_servico/${id}`,
             {
-
-                method:"PUT",
-
-                body:JSON.stringify(
-                    dados
-                )
+                method: modoReciclagem ? "POST" : "PUT",
+                body: JSON.stringify(dados)
             }
         );
+
+        const osSalvaId = modoReciclagem
+            ? Number(resultadoSalvar?.id)
+            : Number(id);
+
+        if(!osSalvaId){
+            throw new Error("O servidor não retornou o ID da nova OS.");
+        }
 
         // ===========================
         // UPLOAD
         // ===========================
         if(anexoArquivo){
-
-            const formData =
-                new FormData();
-
-            formData.append(
-                "anexo",
-                anexoArquivo
-            );
+            const formData = new FormData();
+            formData.append("anexo", anexoArquivo);
 
             await apiFetch(
-                `/api/ordens_servico/anexo/${id}`,
+                `/api/ordens_servico/anexo/${osSalvaId}`,
                 {
                     method:"POST",
                     body:formData
@@ -2928,9 +2971,9 @@ async function salvarOS(
             );
         }
 
-        alert(
-            "OS atualizada!"
-        );
+        alert(modoReciclagem
+            ? `Nova OS #${osSalvaId} criada com sucesso!`
+            : "OS atualizada!");
 
         window.location.href =
             "painel.html";
@@ -2962,6 +3005,7 @@ window.addEventListener(
         iniciarEquipamentosOS();
 
         await carregarOS();
+        exibirAvisoReciclagem();
 
         document
         .getElementById(
