@@ -9,7 +9,7 @@ module.exports = (pool, verificarAutenticacao) => {
     });
 
     const { enviarRelatorio } = require("../services/relatorios.service");
-    const { enviarDocumento } = require("../services/whatsappService");
+    const { enviarMidiaCentral } = require("../services/whatsappService");
 
     router.get("/relatorios", verificarAutenticacao, async (req, res) => {
         try {
@@ -104,7 +104,6 @@ module.exports = (pool, verificarAutenticacao) => {
         upload.single("pdf"),
         async (req, res) => {
             try {
-                const empresaId = req.usuario.empresa_id;
                 const { telefone, periodo, dataInicio, dataFim } = req.body || {};
 
                 if (!telefone) {
@@ -121,8 +120,8 @@ module.exports = (pool, verificarAutenticacao) => {
                     dataFim
                 );
 
-                const resultado = await enviarDocumento(
-                    empresaId,
+                const resultado = await enviarMidiaCentral(
+                    1,
                     telefone,
                     req.file.buffer,
                     req.file.originalname || "relatorio.pdf",
@@ -131,12 +130,12 @@ module.exports = (pool, verificarAutenticacao) => {
 
                 if (!resultado.ok) {
                     const mensagens = {
-                        offline: "WhatsApp da empresa está desconectado",
+                        offline: "WhatsApp central do SGOS está desconectado",
                         no_phone: "Telefone não informado",
                         not_exists: "Número não encontrado no WhatsApp",
                         number_error: "Não foi possível validar o número",
                         invalid_file: "PDF inválido",
-                        send_failed: "Falha ao enviar o PDF pelo WhatsApp"
+                        send_failed: "Falha ao enviar o PDF pelo WhatsApp central do SGOS"
                     };
 
                     return res.status(resultado.error === "offline" ? 409 : 400).json({
@@ -146,12 +145,12 @@ module.exports = (pool, verificarAutenticacao) => {
 
                 return res.json({
                     ok: true,
-                    mensagem: "Relatório enviado pelo WhatsApp com sucesso"
+                    mensagem: "Relatório enviado pelo WhatsApp central do SGOS com sucesso"
                 });
             } catch (err) {
                 console.error("Erro envio manual por WhatsApp:", err);
                 return res.status(500).json({
-                    erro: err.message || "Erro ao enviar relatório pelo WhatsApp"
+                    erro: err.message || "Erro ao enviar relatório pelo WhatsApp central do SGOS"
                 });
             }
         }
