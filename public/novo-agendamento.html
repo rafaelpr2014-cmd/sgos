@@ -1860,6 +1860,341 @@ function validarCampoFuturoValor(valor, nome){
 }
 
 
+
+// ============================================================
+// EQUIPAMENTOS E MATERIAIS DA OS
+// ============================================================
+let produtosMateriaisOS = [];
+let materiaisSelecionadosOS = [];
+
+function numeroSeguroOS(valor){
+    const numero = Number(String(valor ?? "").replace(",", "."));
+    return Number.isFinite(numero) ? numero : 0;
+}
+
+function moedaOS(valor){
+    return numeroSeguroOS(valor).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+    });
+}
+
+function normalizarListaProdutosOS(resposta){
+    if(Array.isArray(resposta)) return resposta;
+    if(Array.isArray(resposta?.produtos)) return resposta.produtos;
+    if(Array.isArray(resposta?.dados)) return resposta.dados;
+    if(Array.isArray(resposta?.data)) return resposta.data;
+    return [];
+}
+
+async function carregarProdutosMateriaisOS(){
+    const select = document.getElementById("produto_material");
+    if(!select) return;
+
+    select.innerHTML = '<option value="">Carregando produtos...</option>';
+
+    try{
+        let resposta;
+
+        if(typeof api === "function"){
+            resposta = await api("/api/estoque/produtos?", { method:"GET" });
+        }else{
+            const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+            const res = await fetch("/api/estoque/produtos?", {
+                headers:{ "x-usuario-id": usuario.id || "" }
+            });
+
+            if(!res.ok) throw new Error(`HTTP ${res.status}`);
+            resposta = await res.json();
+        }
+
+        produtosMateriaisOS = normalizarListaProdutosOS(resposta)
+            .filter(produto => produto && produto.id != null);
+
+        select.innerHTML =
+            '<option value="">Selecione um produto</option>' +
+            produtosMateriaisOS.map(produto => {
+                const nome = produto.nome || produto.descricao || produto.produto || `Produto #${produto.id}`;
+                const estoque = numeroSeguroOS(
+                    produto.quantidade_atual ??
+                    produto.quantidade ??
+                    produto.estoque ??
+                    produto.saldo
+                );
+                const preco = numeroSeguroOS(
+                    produto.valor_venda ??
+                    produto.preco_venda ??
+                    produto.valor ??
+                    produto.preco
+                );
+
+                return `<option value="${produto.id}">
+                    ${escaparHtmlEquipOS(nome)} — Estoque: ${estoque}${preco ? ` — ${moedaOS(preco)}` : ""}
+                </option>`;
+            }).join("");
+
+    }catch(err){
+        console.warn("Produtos do estoque indisponíveis para o agendamento:", err);
+        produtosMateriaisOS = [];
+        select.innerHTML = '<option value="">Nenhum produto disponível</option>';
+    }
+}
+
+function escaparHtmlEquipOS(valor){
+    return String(valor ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function produtoMaterialPorIdOS(id){
+    return produtosMateriaisOS.find(produto => String(produto.id) === String(id));
+}
+
+function adicionarMaterialOS(){
+    const select = document.getElementById("produto_material");
+    const produto = produtoMaterialPorIdOS(select?.value);
+
+    if(!produto){
+        alert("Selecione um produto para adicionar.");
+        select?.focus();
+        return;
+    }
+
+    const existente = materiaisSelecionadosOS.find(item => String(item.produto_id) === String(produto.id));
+    if(existente){
+        existente.quantidade += 1;
+    }else{
+        materiaisSelecionadosOS.push({
+            produto_id: Number(produto.id),
+            nome: produto.nome || produto.descricao || produto.produto || `Produto #${produto.id}`,
+            quantidade: 1,
+            valor_unitario: numeroSeguroOS(
+                produto.valor_venda ??
+                produto.preco_venda ??
+                produto.valor ??
+                produto.preco
+            ),
+            desconto: 0
+        });
+    }
+
+    if(select) select.value = "";
+    renderizarMateriaisOS();
+}
+
+function removerMaterialOS(indice){
+    materiaisSelecionadosOS.splice(Number(indice), 1);
+    renderizarMateriaisOS();
+}
+
+function atualizarMaterialOS(indice, campo, valor){
+    const item = materiaisSelecionadosOS[Number(indice)];
+    if(!item) return;
+
+    if(campo === "quantidade"){
+        item.quantidade = Math.max(1, Math.trunc(numeroSeguroOS(valor) || 1));
+    }
+
+    if(campo === "desconto"){
+        item.desconto = Math.max(0, numeroSeguroOS(valor));
+    }
+
+    renderizarMateriaisOS();
+}
+
+function materialVendidoOS(){
+    return document.getElementById("modalidade_equipamento")?.value === "vendido";
+}
+
+function totaisMateriaisOS(){
+    let subtotal = 0;
+    let desconto = 0;
+
+    materiaisSelecionadosOS.forEach(item => {
+        subtotal += numeroSeguroOS(item.valor_unitario) * numeroSeguroOS(item.quantidade);
+        desconto += numeroSeguroOS(item.desconto);
+    });
+
+    desconto = Math.min(desconto, subtotal);
+
+    return {
+        subtotal,
+        desconto,
+        total: Math.max(0, subtotal - desconto)
+    };
+}
+
+function renderizarMateriaisOS(){
+    const lista = document.getElementById("listaMateriaisOS");
+    const areaVenda = document.getElementById("areaVendaEquipamento");
+    if(!lista) return;
+
+    const vendido = materialVendidoOS();
+
+    lista.classList.toggle("hidden", materiaisSelecionadosOS.length === 0);
+
+    if(!materiaisSelecionadosOS.length){
+        lista.innerHTML = "";
+    }else{
+        lista.innerHTML = materiaisSelecionadosOS.map((item, indice) => {
+            const totalItem = Math.max(
+                0,
+                numeroSeguroOS(item.valor_unitario) * numeroSeguroOS(item.quantidade) -
+                numeroSeguroOS(item.desconto)
+            );
+
+            return `
+                <div class="material-os-item ${vendido ? "vendido" : ""}">
+                    <div>
+                        <strong>${escaparHtmlEquipOS(item.nome)}</strong>
+                        ${vendido ? `<small>${moedaOS(item.valor_unitario)} por unidade</small>` : ""}
+                    </div>
+
+                    <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value="${Math.max(1, Math.trunc(numeroSeguroOS(item.quantidade) || 1))}"
+                        title="Quantidade"
+                        onchange="atualizarMaterialOS(${indice}, 'quantidade', this.value)"
+                    >
+
+                    ${vendido ? `
+                        <input
+                            type="text"
+                            value="${moedaOS(item.valor_unitario)}"
+                            readonly
+                            title="Valor unitário"
+                        >
+                        <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value="${numeroSeguroOS(item.desconto).toFixed(2)}"
+                            title="Desconto"
+                            onchange="atualizarMaterialOS(${indice}, 'desconto', this.value)"
+                        >
+                        <span class="material-total">${moedaOS(totalItem)}</span>
+                    ` : ""}
+
+                    <button
+                        type="button"
+                        class="btn-remover-material"
+                        title="Remover material"
+                        onclick="removerMaterialOS(${indice})"
+                    >×</button>
+                </div>
+            `;
+        }).join("");
+    }
+
+    const totais = totaisMateriaisOS();
+
+    if(areaVenda){
+        areaVenda.classList.toggle("hidden", !vendido || materiaisSelecionadosOS.length === 0);
+    }
+
+    const subtotal = document.getElementById("subtotalVendaOS");
+    const desconto = document.getElementById("descontoVendaOS");
+    const total = document.getElementById("totalVendaOS");
+
+    if(subtotal) subtotal.textContent = moedaOS(totais.subtotal);
+    if(desconto) desconto.textContent = moedaOS(totais.desconto);
+    if(total) total.textContent = moedaOS(totais.total);
+}
+
+function atualizarCamposEquipamentosOS(){
+    const origem = document.getElementById("origem_equipamento")?.value || "";
+    const empresa = origem === "empresa";
+    const modalidade = document.getElementById("modalidade_equipamento")?.value || "comodato";
+    const vendido = empresa && modalidade === "vendido";
+
+    document.getElementById("campoModalidadeEquipamento")?.classList.toggle("hidden", !empresa);
+    document.getElementById("areaMateriaisOS")?.classList.toggle("hidden", !empresa);
+    document.getElementById("campoPagamentoEquipamento")?.classList.toggle("hidden", !vendido);
+
+    if(!empresa){
+        materiaisSelecionadosOS = [];
+        const forma = document.getElementById("forma_pagamento_equipamento");
+        if(forma) forma.value = "";
+    }
+
+    renderizarMateriaisOS();
+}
+
+function iniciarEquipamentosOS(){
+    const origem = document.getElementById("origem_equipamento");
+    const modalidade = document.getElementById("modalidade_equipamento");
+
+    origem?.addEventListener("change", atualizarCamposEquipamentosOS);
+    modalidade?.addEventListener("change", atualizarCamposEquipamentosOS);
+
+    atualizarCamposEquipamentosOS();
+}
+
+async function dadosEquipamentosOS(){
+    const origem = document.getElementById("origem_equipamento")?.value || "";
+    const modalidade = document.getElementById("modalidade_equipamento")?.value || null;
+    const formaPagamento = document.getElementById("forma_pagamento_equipamento")?.value || null;
+
+    if(!origem){
+        mostrarAvisoEquipamentosOS(
+            "Informe se o atendimento utilizará equipamento próprio ou materiais da empresa.",
+            "origem_equipamento"
+        );
+        throw new Error("Origem do equipamento não informada.");
+    }
+
+    if(origem === "empresa" && materiaisSelecionadosOS.length === 0){
+        mostrarAvisoEquipamentosOS(
+            "Adicione pelo menos um equipamento ou material da empresa.",
+            "produto_material"
+        );
+        throw new Error("Nenhum material da empresa foi selecionado.");
+    }
+
+    if(origem === "empresa" && modalidade === "vendido" && !formaPagamento){
+        avisarCampoObrigatorio(
+            "Selecione a forma de pagamento dos equipamentos vendidos.",
+            "forma_pagamento_equipamento"
+        );
+        throw new Error("Forma de pagamento não informada.");
+    }
+
+    const totais = totaisMateriaisOS();
+
+    const materiais = materiaisSelecionadosOS.map(item => ({
+        produto_id: Number(item.produto_id),
+        nome: item.nome,
+        quantidade: Math.max(1, Math.trunc(numeroSeguroOS(item.quantidade) || 1)),
+        valor_unitario: numeroSeguroOS(item.valor_unitario),
+        desconto: numeroSeguroOS(item.desconto),
+        total: Math.max(
+            0,
+            numeroSeguroOS(item.valor_unitario) * numeroSeguroOS(item.quantidade) -
+            numeroSeguroOS(item.desconto)
+        )
+    }));
+
+    return {
+        origem_equipamento: origem,
+        modalidade_equipamento: origem === "empresa" ? modalidade : null,
+        forma_pagamento_equipamento:
+            origem === "empresa" && modalidade === "vendido"
+                ? formaPagamento
+                : null,
+        equipamentos_materiais: materiais,
+        materiais_os: materiais,
+        valor_equipamentos_subtotal: totais.subtotal,
+        valor_equipamentos_desconto: totais.desconto,
+        valor_equipamentos_total: totais.total
+    };
+}
+
+
 // ===============================
 // CAMPOS OBRIGATÓRIOS
 // ===============================
@@ -1930,9 +2265,15 @@ async function salvar() {
         descricao: (document.getElementById("descricao")?.value || "").trim(),
         agendamento: agendamentoFinal,
         agendamento_envio: agendamento_envio.value || null,
-        status: "agendado",
-        ...await dadosEquipamentosOS()
+        status: "agendado"
     };
+
+    try{
+        Object.assign(dados, await dadosEquipamentosOS());
+    }catch(err){
+        console.warn("Salvamento interrompido pela validação de equipamentos:", err?.message || err);
+        return;
+    }
 
     let resultado;
 
