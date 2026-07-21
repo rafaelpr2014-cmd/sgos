@@ -1815,6 +1815,96 @@ router.post(
 );
 
 // ===============================
+// ♻️ HISTÓRICO DE RECORRÊNCIAS POR CLIENTE
+// Retorna todos os status, inclusive OS já finalizadas.
+// Esta rota deve permanecer antes de router.get("/:id").
+// ===============================
+router.get(
+    "/recorrencias",
+    verificarAutenticacao,
+    async (req, res) => {
+        try {
+            const empresaId = req.usuario.empresa_id;
+            const periodo = String(req.query.periodo || "todos").trim().toLowerCase();
+
+            let filtroPeriodo = "";
+            const params = [empresaId];
+
+            // A data de atividade considera a finalização quando existir.
+            // Assim, uma OS concluída continua aparecendo no período em que foi finalizada.
+            if(periodo === "mes_atual"){
+                filtroPeriodo = `
+                    AND COALESCE(os.finalizado_em, os.iniciado_em, os.criado_em, os.data_abertura)
+                        >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+                    AND COALESCE(os.finalizado_em, os.iniciado_em, os.criado_em, os.data_abertura)
+                        < DATE_FORMAT(CURDATE() + INTERVAL 1 MONTH, '%Y-%m-01')
+                `;
+            } else if(periodo === "30_dias"){
+                filtroPeriodo = `
+                    AND COALESCE(os.finalizado_em, os.iniciado_em, os.criado_em, os.data_abertura)
+                        >= NOW() - INTERVAL 30 DAY
+                `;
+            } else if(periodo === "90_dias"){
+                filtroPeriodo = `
+                    AND COALESCE(os.finalizado_em, os.iniciado_em, os.criado_em, os.data_abertura)
+                        >= NOW() - INTERVAL 90 DAY
+                `;
+            }
+
+            const [rows] = await db.query(`
+                SELECT
+                    os.*,
+                    l.nome AS localidade_nome,
+                    p.nome AS plano_nome,
+                    ts.nome AS tipo_servico_nome,
+                    u.usuario AS criado_por_nome,
+                    uf.usuario AS finalizado_por_nome,
+                    ur.usuario AS reciclada_por_nome,
+                    COALESCE(os.os_raiz_id, os.id) AS cadeia_os_id,
+                    COALESCE(os.finalizado_em, os.iniciado_em, os.criado_em, os.data_abertura) AS ultima_atividade_em,
+                    (
+                        SELECT GROUP_CONCAT(t.nome SEPARATOR ', ')
+                        FROM tecnicos t
+                        WHERE FIND_IN_SET(
+                            t.id,
+                            REPLACE(REPLACE(os.tecnico, '[', ''), ']', '')
+                        )
+                    ) AS tecnicos_nomes
+                FROM ordens_servico os
+                LEFT JOIN localidades l
+                    ON l.id = os.localidade
+                   AND l.empresa_id = os.empresa_id
+                LEFT JOIN planos p
+                    ON p.id = os.plano
+                LEFT JOIN tipos_servico ts
+                    ON ts.id = os.tipo_servico
+                LEFT JOIN usuarios u
+                    ON u.id = os.criado_por
+                LEFT JOIN usuarios uf
+                    ON uf.id = os.finalizado_por
+                LEFT JOIN usuarios ur
+                    ON ur.id = os.reciclada_por
+                WHERE os.empresa_id = ?
+                ${filtroPeriodo}
+                ORDER BY
+                    COALESCE(os.os_raiz_id, os.id) ASC,
+                    COALESCE(os.numero_reciclagem, 0) ASC,
+                    os.id ASC
+            `, params);
+
+            res.json({
+                ok: true,
+                total: rows.length,
+                ordens: rows
+            });
+        } catch (err) {
+            console.error("ERRO HISTÓRICO DE RECORRÊNCIAS:", err);
+            res.status(500).json({ erro: err.message });
+        }
+    }
+);
+
+// ===============================
 // 📚 HISTÓRICO DE OS
 // ===============================
 router.get(
