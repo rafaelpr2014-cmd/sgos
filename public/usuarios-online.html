@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usuários Online | SGOS</title>
+  <style>
+    :root{
+      --azul:#1557c0;
+      --azul-escuro:#0c347d;
+      --azul-claro:#eaf2ff;
+      --verde:#17a673;
+      --vermelho:#dc3545;
+      --amarelo:#f4b400;
+      --cinza-bg:#f4f7fb;
+      --cinza-borda:#dce4ef;
+      --texto:#1f2937;
+      --texto-suave:#64748b;
+      --branco:#fff;
+      --sombra:0 10px 30px rgba(17,54,112,.09);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,Segoe UI,Arial,sans-serif;
+      background:var(--cinza-bg);
+      color:var(--texto);
+    }
+
+    .topo{
+      height:72px;
+      background:linear-gradient(135deg,var(--azul-escuro),var(--azul));
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0 28px;
+      box-shadow:0 4px 16px rgba(10,44,105,.22);
+      position:sticky;
+      top:0;
+      z-index:20;
+    }
+
+    .marca{display:flex;align-items:center;gap:14px}
+    .marca-logo{
+      width:43px;height:43px;border-radius:12px;background:#fff;
+      display:grid;place-items:center;color:var(--azul);font-weight:900;font-size:18px;
+    }
+    .marca h1{font-size:18px;margin:0;font-weight:800}
+    .marca small{display:block;opacity:.82;margin-top:3px}
+    .topo-direita{display:flex;align-items:center;gap:16px;font-size:13px}
+    .atualizacao{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.13);padding:9px 12px;border-radius:10px}
+    .pulso{width:9px;height:9px;border-radius:50%;background:#44e29f;box-shadow:0 0 0 0 rgba(68,226,159,.6);animation:pulse 1.8s infinite}
+    @keyframes pulse{70%{box-shadow:0 0 0 8px rgba(68,226,159,0)}100%{box-shadow:0 0 0 0 rgba(68,226,159,0)}}
+
+    .conteudo{max-width:1500px;margin:0 auto;padding:26px}
+    .titulo-linha{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:22px}
+    .titulo-linha h2{margin:0;font-size:26px;color:#12335f}
+    .titulo-linha p{margin:7px 0 0;color:var(--texto-suave)}
+
+    .cards{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:16px;margin-bottom:20px}
+    .card{background:#fff;border:1px solid var(--cinza-borda);border-radius:16px;padding:18px;box-shadow:var(--sombra);display:flex;justify-content:space-between;align-items:center}
+    .card-label{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--texto-suave);font-weight:700}
+    .card-numero{font-size:30px;font-weight:900;margin-top:5px;color:#15345d}
+    .card-icone{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:var(--azul-claro);color:var(--azul)}
+    .card-icone svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2}
+    .card.online .card-icone{background:#e7f8f0;color:var(--verde)}
+    .card.offline .card-icone{background:#fff0f1;color:var(--vermelho)}
+    .card.empresas .card-icone{background:#fff8e3;color:#c48700}
+
+    .painel{background:#fff;border:1px solid var(--cinza-borda);border-radius:17px;box-shadow:var(--sombra);overflow:hidden}
+    .abas{display:flex;border-bottom:1px solid var(--cinza-borda);padding:0 20px;background:#fbfdff}
+    .aba{border:0;background:transparent;padding:17px 18px;font-weight:800;color:var(--texto-suave);cursor:pointer;border-bottom:3px solid transparent}
+    .aba.ativa{color:var(--azul);border-bottom-color:var(--azul)}
+
+    .area-aba{display:none;padding:20px}
+    .area-aba.ativa{display:block}
+
+    .filtros{display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:12px;align-items:end;margin-bottom:18px}
+    .campo label{display:block;font-size:12px;color:var(--texto-suave);font-weight:800;margin:0 0 7px}
+    .campo input,.campo select{
+      width:100%;height:43px;border:1px solid var(--cinza-borda);border-radius:10px;padding:0 12px;
+      background:#fff;color:var(--texto);outline:none;font-size:14px;
+    }
+    .campo input:focus,.campo select:focus{border-color:#6d9fea;box-shadow:0 0 0 3px rgba(21,87,192,.10)}
+    .btn{height:43px;border:0;border-radius:10px;padding:0 16px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+    .btn-primario{background:var(--azul);color:#fff}
+    .btn-secundario{background:#eef3fa;color:#25446c}
+
+    .tabela-wrap{overflow:auto;border:1px solid var(--cinza-borda);border-radius:13px}
+    table{width:100%;border-collapse:collapse;min-width:1030px}
+    thead th{background:#f1f5fb;color:#40546f;text-align:left;padding:13px 14px;font-size:12px;text-transform:uppercase;letter-spacing:.35px;white-space:nowrap}
+    tbody td{padding:13px 14px;border-top:1px solid #edf1f6;font-size:13px;vertical-align:middle}
+    tbody tr:hover{background:#f8fbff}
+    .usuario{display:flex;align-items:center;gap:11px}
+    .avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#dce9ff,#b9d0f7);display:grid;place-items:center;font-weight:900;color:#15448b;flex:0 0 auto}
+    .usuario-nome{font-weight:800;color:#203752}
+    .usuario-login{font-size:12px;color:var(--texto-suave);margin-top:2px}
+    .status{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:800}
+    .status::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+    .status-online{background:#e7f8f0;color:#087a51}
+    .status-offline{background:#fff0f1;color:#b42335}
+    .tag{display:inline-block;background:#eef3fa;color:#385374;padding:6px 9px;border-radius:8px;font-weight:700;font-size:12px}
+    .acoes{display:flex;gap:7px}
+    .btn-icone{width:36px;height:36px;border:0;border-radius:9px;cursor:pointer;display:grid;place-items:center;background:#eaf2ff;color:var(--azul)}
+    .btn-icone svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}
+
+    .vazio,.carregando{text-align:center;padding:45px 20px;color:var(--texto-suave)}
+    .erro{background:#fff0f1;border:1px solid #ffc9cf;color:#a51d2d;padding:12px 14px;border-radius:10px;margin-bottom:15px;display:none}
+
+    .historico-topo{display:grid;grid-template-columns:1.4fr 1fr auto;gap:12px;align-items:end;margin-bottom:18px}
+    .linha-tempo{display:flex;flex-direction:column;gap:10px}
+    .evento{display:grid;grid-template-columns:52px 1fr auto;gap:13px;align-items:center;padding:14px;border:1px solid var(--cinza-borda);border-radius:12px;background:#fff}
+    .evento-icone{width:42px;height:42px;border-radius:12px;display:grid;place-items:center}
+    .evento-icone.conexao{background:#e7f8f0;color:var(--verde)}
+    .evento-icone.desconexao{background:#fff0f1;color:var(--vermelho)}
+    .evento-icone svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2}
+    .evento-titulo{font-weight:900;color:#28405f}
+    .evento-detalhe{font-size:12px;color:var(--texto-suave);margin-top:5px}
+    .evento-data{text-align:right;font-size:12px;color:#52657e;white-space:nowrap}
+
+    .modal-fundo{position:fixed;inset:0;background:rgba(15,29,51,.56);display:none;align-items:center;justify-content:center;padding:22px;z-index:100}
+    .modal-fundo.aberto{display:flex}
+    .modal{width:min(900px,100%);max-height:88vh;background:#fff;border-radius:17px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.3)}
+    .modal-topo{display:flex;justify-content:space-between;align-items:center;padding:18px 21px;background:linear-gradient(135deg,var(--azul-escuro),var(--azul));color:#fff}
+    .modal-topo h3{margin:0;font-size:18px}
+    .modal-fechar{border:0;background:rgba(255,255,255,.16);color:#fff;width:35px;height:35px;border-radius:9px;cursor:pointer;font-size:20px}
+    .modal-corpo{padding:20px;overflow:auto;max-height:calc(88vh - 72px)}
+
+    @media(max-width:900px){
+      .cards{grid-template-columns:repeat(2,1fr)}
+      .filtros,.historico-topo{grid-template-columns:1fr 1fr}
+    }
+    @media(max-width:600px){
+      .topo{padding:0 15px}.topo-direita .usuario-topo{display:none}
+      .conteudo{padding:16px}.titulo-linha{display:block}
+      .cards{grid-template-columns:1fr 1fr;gap:10px}.card{padding:14px}.card-numero{font-size:24px}
+      .filtros,.historico-topo{grid-template-columns:1fr}.abas{overflow:auto;padding:0 8px}.aba{white-space:nowrap}
+    }
+  </style>
+</head>
+<body>
+<header class="topo">
+  <div class="marca">
+    <div class="marca-logo">SG</div>
+    <div>
+      <h1>SGOS — Usuários Online</h1>
+      <small>Administração global de acessos</small>
+    </div>
+  </div>
+  <div class="topo-direita">
+    <div class="atualizacao"><span class="pulso"></span><span id="textoAtualizacao">Atualização em tempo real</span></div>
+    <span class="usuario-topo" id="usuarioTopo">Administrador</span>
+  </div>
+</header>
+
+<main class="conteudo">
+  <div class="titulo-linha">
+    <div>
+      <h2>Monitoramento de usuários</h2>
+      <p>Visualize usuários de todas as empresas e acompanhe conexões e desconexões.</p>
+    </div>
+    <button class="btn btn-primario" onclick="carregarTudo(true)">Atualizar agora</button>
+  </div>
+
+  <section class="cards">
+    <div class="card"><div><div class="card-label">Todos os usuários</div><div class="card-numero" id="totalUsuarios">0</div></div><div class="card-icone"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div></div>
+    <div class="card online"><div><div class="card-label">Online agora</div><div class="card-numero" id="totalOnline">0</div></div><div class="card-icone"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div></div>
+    <div class="card offline"><div><div class="card-label">Offline</div><div class="card-numero" id="totalOffline">0</div></div><div class="card-icone"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></div></div>
+    <div class="card empresas"><div><div class="card-label">Empresas</div><div class="card-numero" id="totalEmpresas">0</div></div><div class="card-icone"><svg viewBox="0 0 24 24"><path d="M3 21h18M6 21V7l6-4 6 4v14M9 10h1M14 10h1M9 14h1M14 14h1M9 18h1M14 18h1"/></svg></div></div>
+  </section>
+
+  <section class="painel">
+    <div class="abas">
+      <button class="aba ativa" data-aba="usuarios" onclick="abrirAba('usuarios')">Usuários</button>
+      <button class="aba" data-aba="historico" onclick="abrirAba('historico')">Histórico por usuário</button>
+    </div>
+
+    <div id="erro" class="erro"></div>
+
+    <div class="area-aba ativa" id="aba-usuarios">
+      <div class="filtros">
+        <div class="campo"><label>Pesquisar usuário</label><input id="filtroBusca" placeholder="Nome, login ou e-mail" oninput="aplicarFiltros()"></div>
+        <div class="campo"><label>Empresa</label><select id="filtroEmpresa" onchange="aplicarFiltros()"><option value="">Todas as empresas</option></select></div>
+        <div class="campo"><label>Status</label><select id="filtroStatus" onchange="aplicarFiltros()"><option value="">Online e offline</option><option value="online">Online</option><option value="offline">Offline</option></select></div>
+        <button class="btn btn-secundario" onclick="limparFiltros()">Limpar filtros</button>
+      </div>
+
+      <div class="tabela-wrap">
+        <table>
+          <thead><tr><th>Usuário</th><th>Empresa</th><th>Perfil</th><th>Status</th><th>Última atividade</th><th>IP atual/último</th><th>Conectado desde</th><th>Ações</th></tr></thead>
+          <tbody id="corpoUsuarios"><tr><td colspan="8" class="carregando">Carregando usuários...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="area-aba" id="aba-historico">
+      <div class="historico-topo">
+        <div class="campo"><label>Usuário</label><select id="historicoUsuario" onchange="carregarHistoricoSelecionado()"><option value="">Selecione um usuário</option></select></div>
+        <div class="campo"><label>Tipo de evento</label><select id="historicoTipo" onchange="renderizarHistorico()"><option value="">Conexões e desconexões</option><option value="conexao">Somente conexões</option><option value="desconexao">Somente desconexões</option></select></div>
+        <button class="btn btn-primario" onclick="carregarHistoricoSelecionado()">Atualizar histórico</button>
+      </div>
+      <div id="linhaTempo" class="linha-tempo"><div class="vazio">Selecione um usuário para visualizar até 100 registros.</div></div>
+    </div>
+  </section>
+</main>
+
+<div class="modal-fundo" id="modalHistorico" onclick="fecharModalFora(event)">
+  <div class="modal">
+    <div class="modal-topo"><h3 id="modalTitulo">Histórico do usuário</h3><button class="modal-fechar" onclick="fecharModal()">×</button></div>
+    <div class="modal-corpo"><div id="modalLinhaTempo" class="linha-tempo"></div></div>
+  </div>
+</div>
+
+<script>
+  const API = '/api/admin/usuarios-online';
+  const INTERVALO = 10000;
+  let usuarios = [];
+  let usuariosFiltrados = [];
+  let historicoAtual = [];
+  let timerAtualizacao = null;
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    await validarAcesso();
+    await carregarTudo(false);
+    timerAtualizacao = setInterval(() => carregarTudo(false), INTERVALO);
+  });
+
+  async function validarAcesso(){
+    try{
+      const r = await fetch(`${API}/acesso`, {credentials:'include'});
+      const data = await lerResposta(r);
+      if(!r.ok || !data.permitido) throw new Error(data.erro || 'Acesso restrito à empresa 1.');
+      document.getElementById('usuarioTopo').textContent = data.usuario?.nome || 'Administrador';
+    }catch(e){
+      document.body.innerHTML = `<div style="min-height:100vh;display:grid;place-items:center;background:#f4f7fb;padding:20px"><div style="max-width:520px;background:white;padding:30px;border-radius:18px;box-shadow:0 15px 45px rgba(0,0,0,.12);text-align:center"><h2 style="color:#b42335">Acesso não autorizado</h2><p style="color:#64748b">${esc(e.message)}</p><button onclick="location.href='painel.html'" style="border:0;background:#1557c0;color:white;padding:12px 18px;border-radius:10px;font-weight:800;cursor:pointer">Voltar ao painel</button></div></div>`;
+      throw e;
+    }
+  }
+
+  async function carregarTudo(manual){
+    try{
+      if(manual) atualizarTexto('Atualizando...');
+      const r = await fetch(`${API}/usuarios`, {credentials:'include'});
+      const data = await lerResposta(r);
+      if(!r.ok) throw new Error(data.erro || 'Não foi possível carregar os usuários.');
+      usuarios = Array.isArray(data.usuarios) ? data.usuarios : [];
+      preencherEmpresas();
+      preencherUsuariosHistorico();
+      atualizarCards(data.resumo);
+      aplicarFiltros();
+      ocultarErro();
+      atualizarTexto(`Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`);
+    }catch(e){
+      mostrarErro(e.message);
+      atualizarTexto('Falha na atualização');
+    }
+  }
+
+  function atualizarCards(resumo={}){
+    const online = usuarios.filter(u=>u.status==='online').length;
+    const offline = usuarios.length-online;
+    const empresas = new Set(usuarios.map(u=>String(u.empresa_id))).size;
+    document.getElementById('totalUsuarios').textContent = resumo.total_usuarios ?? usuarios.length;
+    document.getElementById('totalOnline').textContent = resumo.online ?? online;
+    document.getElementById('totalOffline').textContent = resumo.offline ?? offline;
+    document.getElementById('totalEmpresas').textContent = resumo.empresas ?? empresas;
+  }
+
+  function preencherEmpresas(){
+    const select = document.getElementById('filtroEmpresa');
+    const atual = select.value;
+    const empresas = [...new Map(usuarios.map(u=>[String(u.empresa_id),{id:String(u.empresa_id),nome:u.empresa_nome||`Empresa ${u.empresa_id}`}])).values()].sort((a,b)=>a.nome.localeCompare(b.nome));
+    select.innerHTML = '<option value="">Todas as empresas</option>'+empresas.map(e=>`<option value="${escAttr(e.id)}">${esc(e.nome)}</option>`).join('');
+    select.value = empresas.some(e=>e.id===atual)?atual:'';
+  }
+
+  function preencherUsuariosHistorico(){
+    const select=document.getElementById('historicoUsuario');
+    const atual=select.value;
+    const ordenados=[...usuarios].sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+    select.innerHTML='<option value="">Selecione um usuário</option>'+ordenados.map(u=>`<option value="${escAttr(u.id)}">${esc(u.nome)} — ${esc(u.empresa_nome||'Sem empresa')}</option>`).join('');
+    select.value=ordenados.some(u=>String(u.id)===atual)?atual:'';
+  }
+
+  function aplicarFiltros(){
+    const busca=document.getElementById('filtroBusca').value.trim().toLowerCase();
+    const empresa=document.getElementById('filtroEmpresa').value;
+    const status=document.getElementById('filtroStatus').value;
+    usuariosFiltrados=usuarios.filter(u=>{
+      const texto=`${u.nome||''} ${u.login||''} ${u.email||''}`.toLowerCase();
+      return (!busca||texto.includes(busca))&&(!empresa||String(u.empresa_id)===empresa)&&(!status||u.status===status);
+    });
+    renderizarUsuarios();
+  }
+
+  function renderizarUsuarios(){
+    const tbody=document.getElementById('corpoUsuarios');
+    if(!usuariosFiltrados.length){tbody.innerHTML='<tr><td colspan="8" class="vazio">Nenhum usuário encontrado com os filtros selecionados.</td></tr>';return}
+    tbody.innerHTML=usuariosFiltrados.map(u=>{
+      const iniciais=(u.nome||'?').split(/\s+/).slice(0,2).map(p=>p[0]).join('').toUpperCase();
+      return `<tr>
+        <td><div class="usuario"><div class="avatar">${esc(iniciais)}</div><div><div class="usuario-nome">${esc(u.nome||'Sem nome')}</div><div class="usuario-login">${esc(u.login||u.email||'Sem login')}</div></div></div></td>
+        <td><span class="tag">${esc(u.empresa_nome||`Empresa ${u.empresa_id}`)}</span></td>
+        <td>${esc(formatarPerfil(u.tipo||u.perfil))}</td>
+        <td><span class="status ${u.status==='online'?'status-online':'status-offline'}">${u.status==='online'?'Online':'Offline'}</span></td>
+        <td>${formatarData(u.ultima_atividade)}</td>
+        <td>${esc(u.ip||'-')}</td>
+        <td>${u.status==='online'?formatarData(u.conectado_em):'-'}</td>
+        <td><div class="acoes"><button class="btn-icone" title="Ver histórico" onclick="abrirHistoricoModal('${escAttr(u.id)}')"><svg viewBox="0 0 24 24"><path d="M3 3v5h5M3.5 15a9 9 0 1 0 .5-8M12 7v5l3 2"/></svg></button></div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function abrirAba(nome){
+    document.querySelectorAll('.aba').forEach(b=>b.classList.toggle('ativa',b.dataset.aba===nome));
+    document.querySelectorAll('.area-aba').forEach(a=>a.classList.toggle('ativa',a.id===`aba-${nome}`));
+  }
+
+  async function carregarHistoricoSelecionado(){
+    const id=document.getElementById('historicoUsuario').value;
+    if(!id){historicoAtual=[];renderizarHistorico();return}
+    const alvo=document.getElementById('linhaTempo');
+    alvo.innerHTML='<div class="carregando">Carregando histórico...</div>';
+    try{
+      historicoAtual=await buscarHistorico(id);
+      renderizarHistorico();
+    }catch(e){alvo.innerHTML=`<div class="vazio">${esc(e.message)}</div>`}
+  }
+
+  async function buscarHistorico(id){
+    const r=await fetch(`${API}/usuarios/${encodeURIComponent(id)}/logs?limite=100`,{credentials:'include'});
+    const data=await lerResposta(r);
+    if(!r.ok) throw new Error(data.erro||'Não foi possível carregar o histórico.');
+    return Array.isArray(data.logs)?data.logs:[];
+  }
+
+  function renderizarHistorico(){
+    const tipo=document.getElementById('historicoTipo').value;
+    const logs=tipo?historicoAtual.filter(l=>l.tipo===tipo):historicoAtual;
+    document.getElementById('linhaTempo').innerHTML=htmlHistorico(logs);
+  }
+
+  async function abrirHistoricoModal(id){
+    const usuario=usuarios.find(u=>String(u.id)===String(id));
+    document.getElementById('modalTitulo').textContent=`Histórico — ${usuario?.nome||'Usuário'}`;
+    const area=document.getElementById('modalLinhaTempo');
+    area.innerHTML='<div class="carregando">Carregando histórico...</div>';
+    document.getElementById('modalHistorico').classList.add('aberto');
+    try{area.innerHTML=htmlHistorico(await buscarHistorico(id))}catch(e){area.innerHTML=`<div class="vazio">${esc(e.message)}</div>`}
+  }
+
+  function htmlHistorico(logs){
+    if(!logs.length)return '<div class="vazio">Nenhum registro de conexão ou desconexão encontrado.</div>';
+    return logs.map(l=>`<div class="evento"><div class="evento-icone ${l.tipo}"><svg viewBox="0 0 24 24">${l.tipo==='conexao'?'<path d="M10 17l5-5-5-5M15 12H3M21 3v18"/>':'<path d="M14 7l-5 5 5 5M9 12h12M3 3v18"/>'}</svg></div><div><div class="evento-titulo">${l.tipo==='conexao'?'Conexão iniciada':'Usuário desconectado'}</div><div class="evento-detalhe">IP: ${esc(l.ip||'-')} · Navegador/dispositivo: ${esc(l.user_agent||'Não informado')}</div></div><div class="evento-data">${formatarData(l.ocorrido_em)}<br>${esc(l.motivo||'')}</div></div>`).join('');
+  }
+
+  function limparFiltros(){document.getElementById('filtroBusca').value='';document.getElementById('filtroEmpresa').value='';document.getElementById('filtroStatus').value='';aplicarFiltros()}
+  function fecharModal(){document.getElementById('modalHistorico').classList.remove('aberto')}
+  function fecharModalFora(e){if(e.target.id==='modalHistorico')fecharModal()}
+  function atualizarTexto(t){document.getElementById('textoAtualizacao').textContent=t}
+  function mostrarErro(t){const el=document.getElementById('erro');el.textContent=t;el.style.display='block'}
+  function ocultarErro(){document.getElementById('erro').style.display='none'}
+  function formatarData(v){if(!v)return '-';const d=new Date(v);return Number.isNaN(d.getTime())?esc(String(v)):d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'medium'})}
+  function formatarPerfil(v){if(!v)return 'Não informado';return String(v).replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}
+  async function lerResposta(r){const texto=await r.text();try{return JSON.parse(texto)}catch{return {erro:texto||`Erro HTTP ${r.status}`}}}
+  function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+  function escAttr(v){return esc(v).replace(/`/g,'&#96;')}
+</script>
+</body>
+</html>
