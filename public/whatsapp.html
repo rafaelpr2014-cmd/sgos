@@ -10,8 +10,11 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <style>
 :root{--azul:#2563eb;--azul2:#1d4ed8;--navy:#061426;--texto:#0f172a;--muted:#64748b;--borda:#e2e8f0;--fundo:#f5f7fb;--verde:#16a34a;--vermelho:#dc2626;--laranja:#d97706}
-*{box-sizing:border-box}body{margin:0;visibility:hidden;}body.acesso-validado{visibility:visible;}font-family:Arial,Helvetica,sans-serif;background:var(--fundo);color:var(--texto)}
-.sidebar{position:fixed;inset:0 auto 0 0;width:230px;background:linear-gradient(180deg,#081a31,var(--navy));padding:12px 18px;display:flex;flex-direction:column;z-index:20}.sidebar-logo img{width:190px}.menu-titulo{margin:14px 10px 6px;font-size:12px;color:#94a3b8;text-transform:uppercase}.sidebar a{color:#dbeafe;text-decoration:none;padding:11px 13px;border-radius:9px;display:flex;gap:11px;align-items:center;font-size:14px;margin-bottom:2px}.sidebar a:hover,.sidebar a.ativo{background:var(--azul);color:#fff}.menu-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.sidebar-footer{margin-top:auto}.main{margin-left:230px;min-height:100vh}.header{height:92px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;justify-content:space-between;padding:0 34px;position:sticky;top:0;z-index:10}.header-left{display:flex;align-items:center;gap:22px}.header-logo img{height:60px;max-width:190px;object-fit:contain}.divisor{height:34px;width:1px;background:var(--borda)}.header-title strong{display:block;font-size:18px}.header-title span{font-size:12px;color:var(--muted)}.user-box{text-align:right}.user-box strong{display:block;font-size:13px}.user-box small{color:var(--muted)}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);color:var(--texto);visibility:hidden}
+body.acesso-validado{visibility:visible}
+.sidebar{position:fixed;inset:0 auto 0 0;width:230px;background:linear-gradient(180deg,#081a31,var(--navy));padding:12px 18px;display:flex;flex-direction:column;z-index:20}.sidebar-logo img{width:190px}.menu-titulo{margin:14px 10px 6px;font-size:12px;color:#94a3b8;text-transform:uppercase}.sidebar a{color:#dbeafe;text-decoration:none;padding:11px 13px;border-radius:9px;display:flex;gap:11px;align-items:center;font-size:14px;margin-bottom:2px}.sidebar a:hover,.sidebar a.ativo{background:var(--azul);color:#fff}.menu-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.sidebar-footer{margin-top:auto}.main{margin-left:230px;min-height:100vh}.header{height:92px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;justify-content:space-between;padding:0 34px;position:sticky;top:0;z-index:10}.header-left{display:flex;align-items:center;gap:22px}.header-logo img{height:60px;max-width:190px;object-fit:contain}.divisor{height:34px;width:1px;background:var(--borda)}.header-title strong{display:block;font-size:18px}.header-title span{font-size:12px;color:var(--muted)}
+.usuario-dropdown{position:relative}.usuario-btn{border:0;background:transparent;display:flex;align-items:center;gap:10px;cursor:pointer;padding:4px 6px}.avatar{width:44px;height:44px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid #dbeafe}.avatar svg{width:28px;height:28px;fill:none;stroke:#2563eb;stroke-width:1.8}.usuario-info{text-align:left}.usuario-info strong{display:block;font-size:13px;color:#0f172a}.usuario-info small{display:block;font-size:11px;color:#64748b;margin-top:2px}.seta{width:18px;height:18px;color:#1e3a8a;transition:.2s}.usuario-dropdown.aberto .seta{transform:rotate(180deg)}.usuario-menu{display:none;position:absolute;right:0;top:58px;width:270px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 18px 40px rgba(15,23,42,.16);padding:14px;z-index:9999}.usuario-menu.ativo{display:block}.usuario-menu-titulo{font-size:12px;font-weight:800;color:#64748b;margin-bottom:10px;text-transform:uppercase}.usuarios-online{font-size:13px;color:#0f172a;line-height:1.8;max-height:180px;overflow:auto}.usuario-online-item{display:flex;align-items:center;gap:8px;padding:5px 2px}.usuario-online-item:before{content:"";width:8px;height:8px;border-radius:50%;background:#22c55e;flex:none}.usuario-menu hr{border:0;border-top:1px solid #e5e7eb;margin:12px 0}.usuario-menu a{display:flex;align-items:center;gap:8px;color:#ef4444;text-decoration:none;font-weight:800;font-size:14px;padding:8px;border-radius:8px}.usuario-menu a:hover{background:#fef2f2}
 .content{padding:28px}.hero{background:linear-gradient(135deg,#0b2850,#2563eb);color:#fff;padding:25px;border-radius:18px;display:flex;align-items:center;justify-content:space-between;gap:25px;box-shadow:0 14px 32px rgba(37,99,235,.22);margin-bottom:20px}.hero h1{font-size:24px;margin:0 0 8px}.hero p{margin:0;color:#dbeafe;max-width:700px;line-height:1.55}.badge-restrito{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);padding:10px 14px;border-radius:999px;font-weight:800;font-size:12px;white-space:nowrap}
 .cards{display:grid;grid-template-columns:1.05fr .95fr;gap:20px}.card{background:#fff;border:1px solid var(--borda);border-radius:16px;padding:22px;box-shadow:0 8px 22px rgba(15,23,42,.05)}.card-header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}.card-title{font-size:17px;font-weight:800}.card-sub{font-size:13px;color:var(--muted);margin-top:5px}.status-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;font-weight:800;font-size:12px}.status-pill:before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}.desconectado{background:#fee2e2;color:var(--vermelho)}.conectado{background:#dcfce7;color:var(--verde)}.iniciando,.aguardando_qr{background:#fef3c7;color:var(--laranja)}
 .qr-area{min-height:345px;border:1px dashed #cbd5e1;background:#f8fafc;border-radius:15px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:22px}.qr-area canvas{background:#fff;padding:10px;border-radius:14px;box-shadow:0 8px 25px rgba(15,23,42,.12)}.qr-placeholder{font-size:48px;margin-bottom:12px}.qr-area p{max-width:430px;color:var(--muted);font-size:13px;line-height:1.5}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}button{border:0;border-radius:10px;padding:11px 15px;font-weight:800;cursor:pointer}.btn-primary{background:var(--azul);color:#fff}.btn-primary:hover{background:var(--azul2)}.btn-danger{background:#fee2e2;color:var(--vermelho)}.btn-light{background:#e2e8f0;color:#0f172a}.btn-success{background:#dcfce7;color:#15803d}button:disabled{opacity:.55;cursor:not-allowed}
@@ -22,8 +25,8 @@
 </head>
 <body>
 <div class="bloqueio" id="bloqueio"><div class="bloqueio-box"><div style="font-size:52px">🔒</div><h2>Acesso restrito</h2><p>Esta página administra o WhatsApp central usado pelos serviços automáticos do SGOS e está disponível exclusivamente para a empresa 1.</p><button class="btn-primary" onclick="location.href='painel.html'">Voltar ao painel</button></div></div>
-<aside class="sidebar"><div class="sidebar-logo"><img src="https://iili.io/CujQzXa.png" alt="SGOS"></div><a href="painel.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg><span>Painel Inicial</span></a><div class="menu-titulo">Comunicação</div><a href="whatsapp.html" class="ativo"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.9L3 20l1.1-4.7a8.5 8.5 0 1 1 16.9-3.8z"/><path d="M9 8.5c.8 2.2 2.3 3.7 4.5 4.5"/></svg><span>WhatsApp SGOS</span></a><a href="whatsapp-cliente.html"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg><span>WhatsApp da Empresa</span></a><div class="menu-titulo">Operação</div><a href="relatorios.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-8"/></svg><span>Relatórios</span></a><a href="logs_acoes.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h4"/></svg><span>Logs de Ações</span></a><div class="sidebar-footer"><a href="#" onclick="logout();return false"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6"/></svg><span>Sair</span></a></div></aside>
-<main class="main"><header class="header"><div class="header-left"><div class="header-logo"><img id="logoEmpresa" src="/img/logo-default.png" alt="Logo"></div><div class="divisor"></div><div class="header-title"><strong>WhatsApp Central SGOS</strong><span>Relatórios automáticos e comunicação institucional</span></div></div><div class="user-box"><strong id="usuarioNome">Carregando...</strong><small id="empresaNome">Empresa</small></div></header>
+<aside class="sidebar"><div class="sidebar-logo"><img src="https://iili.io/CujQzXa.png" alt="SGOS"></div><a href="painel.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg><span>Painel Inicial</span></a><div class="menu-titulo">Comunicação</div><a href="whatsapp.html" class="ativo"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.9L3 20l1.1-4.7a8.5 8.5 0 1 1 16.9-3.8z"/><path d="M9 8.5c.8 2.2 2.3 3.7 4.5 4.5"/></svg><span>WhatsApp Central SGOS</span></a><a href="whatsapp-cliente.html"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg><span>WhatsApp da Empresa</span></a><div class="menu-titulo">Operação</div><a href="relatorios.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-8"/></svg><span>Relatórios</span></a><a href="logs_acoes.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h4"/></svg><span>Logs de Ações</span></a><div class="sidebar-footer"><a href="#" onclick="logout();return false"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6"/></svg><span>Sair</span></a></div></aside>
+<main class="main"><header class="header"><div class="header-left"><div class="header-logo"><img id="logoEmpresa" src="/img/logo-default.png" alt="Logo"></div><div class="divisor"></div><div class="header-title"><strong>WhatsApp Central SGOS</strong><span>Relatórios automáticos e comunicação institucional</span></div></div><div class="usuario-dropdown" id="usuarioDropdown"><button class="usuario-btn" type="button" onclick="toggleUserDropdown()"><div class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.6-5 14.4-5 16 0"/></svg></div><div class="usuario-info"><strong id="usuarioNome">Carregando...</strong><small id="empresaNome">Empresa</small></div><svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button><div class="usuario-menu" id="usuarioMenuDropdown"><div class="usuario-menu-titulo">Usuários online</div><div id="usuariosOnline" class="usuarios-online">Carregando...</div><hr><a href="#" onclick="logout();return false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6"/></svg>Sair do sistema</a></div></div></header>
 <section class="content"><div class="hero"><div><h1>Central de conexão exclusiva do SGOS</h1><p>Este número é separado dos WhatsApps dos clientes e será usado exclusivamente para os relatórios automáticos enviados pela plataforma.</p></div><div class="badge-restrito">🔐 SOMENTE EMPRESA 1</div></div>
 <div class="cards"><div class="card"><div class="card-header"><div><div class="card-title">Conexão do WhatsApp central</div><div class="card-sub">Leia o QR Code com o aparelho oficial do SGOS.</div></div><span id="statusPill" class="status-pill desconectado">Desconectado</span></div><div class="qr-area" id="qrArea"><div class="qr-placeholder">📲</div><strong>Nenhum QR Code ativo</strong><p>Clique em “Gerar QR Code” para iniciar ou recuperar a sessão central.</p></div><div class="actions"><button class="btn-primary" id="btnConectar" onclick="conectar()">Gerar QR Code</button><button class="btn-light" onclick="verificarStatus(true)">Atualizar status</button><button class="btn-danger" id="btnDesconectar" onclick="desconectar()">Desconectar</button></div></div>
 <div class="card"><div class="card-header"><div><div class="card-title">Informações da sessão</div><div class="card-sub">Dados atuais da conexão exclusiva.</div></div></div><div class="info-grid"><div class="info"><small>Finalidade</small><strong>Relatórios automáticos</strong></div><div class="info"><small>Empresa autorizada</small><strong>Empresa 1</strong></div><div class="info"><small>Número conectado</small><strong id="numeroConectado">Não identificado</strong></div><div class="info"><small>Nome do perfil</small><strong id="nomeConectado">Não identificado</strong></div></div><div class="test-box"><div class="field"><label>Enviar mensagem de teste</label><input id="telefoneTeste" placeholder="Ex.: (73) 99999-9999"></div><div class="actions"><button class="btn-success" id="btnEnviarTeste" onclick="enviarTeste()" disabled>Enviar teste</button></div></div><div class="notice"><strong>Atenção:</strong> este WhatsApp não deve ser usado para informativos ou disparos manuais das empresas clientes. Cada empresa terá sua própria conexão na página “WhatsApp da Empresa”.</div></div>
@@ -269,11 +272,53 @@ async function carregarLogs() {
     }
 }
 
+function toggleUserDropdown() {
+    const menu = document.getElementById("usuarioMenuDropdown");
+    const box = document.getElementById("usuarioDropdown");
+    if (menu) menu.classList.toggle("ativo");
+    if (box) box.classList.toggle("aberto");
+}
+
+document.addEventListener("click", event => {
+    const box = document.getElementById("usuarioDropdown");
+    const menu = document.getElementById("usuarioMenuDropdown");
+    if (box && menu && !box.contains(event.target)) {
+        menu.classList.remove("ativo");
+        box.classList.remove("aberto");
+    }
+});
+
+async function carregarUsuariosOnline() {
+    const container = document.getElementById("usuariosOnline");
+    if (!container) return;
+    try {
+        const local = usuarioLocal();
+        const resposta = await fetch("/api/logs", {
+            credentials: "include",
+            cache: "no-store",
+            headers: local?.id ? { "x-usuario-id": String(local.id) } : {}
+        });
+        if (!resposta.ok) throw new Error(`Erro HTTP ${resposta.status}`);
+        const logs = await resposta.json();
+        const nomes = [...new Set((Array.isArray(logs) ? logs : [])
+            .filter(item => !item.logout && item.usuario)
+            .map(item => String(item.usuario).trim())
+            .filter(Boolean))];
+        container.innerHTML = nomes.length
+            ? nomes.map(nome => `<div class="usuario-online-item">${nome.replace(/[<>&"]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]))}</div>`).join("")
+            : "Nenhum usuário online";
+    } catch (erro) {
+        console.error("Erro ao carregar usuários online:", erro);
+        container.textContent = "Online indisponível";
+    }
+}
+
 function iniciarAtualizacoes() {
     clearInterval(timerStatus);
     clearInterval(timerLogs);
     timerStatus = setInterval(() => verificarStatus(true), 10000);
     timerLogs = setInterval(carregarLogs, 30000);
+    setInterval(carregarUsuariosOnline, 30000);
 }
 
 function logout() {
@@ -319,6 +364,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     await verificarStatus(true);
     carregarLogs();
+    carregarUsuariosOnline();
     iniciarAtualizacoes();
 });
 </script>
