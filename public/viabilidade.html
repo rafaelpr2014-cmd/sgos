@@ -408,7 +408,7 @@ th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
     <div class="card">
         <div class="card-header lista-toolbar"><div><div class="titulo-card">Lista de Viabilidades</div><div class="sub-card">Clique em uma viabilidade para abrir o resumo completo.</div></div><div class="lista-toolbar-acoes"><button class="btn btn-imprimir" type="button" onclick="imprimirSelecionadas()"><svg class="btn-icon-svg" viewBox="0 0 24 24"><path d="M7 8V4h10v4"/><rect x="5" y="12" width="14" height="8" rx="1"/><path d="M5 16H3V9h18v7h-2"/><path d="M17 11h.01"/></svg> Imprimir selecionadas</button></div></div>
         <div class="table-wrap">
-            <table><thead><tr><th><input type="checkbox" class="checkbox-viabilidade" id="selecionarTodas" title="Selecionar todas"></th><th>Nome</th><th>Localidade</th><th>Endereço</th><th>Observação inicial</th><th>Observação do técnico pós-visita</th><th>Observação pós-instalação</th><th>Clientes ERP</th><th>Telefones</th><th>Técnicos</th><th>Cadastrado por</th><th>Registrado em</th><th>Atualizado por</th><th>Atualizado em</th><th>Viabilidade</th><th>Instalação</th><th>Anexos</th><th>Localização</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="19" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
+            <table><thead><tr><th><input type="checkbox" class="checkbox-viabilidade" id="selecionarTodas" title="Selecionar todas"></th><th>Nome</th><th>Localidade</th><th>Endereço</th><th>Observação inicial</th><th>Observação do técnico pós-visita</th><th>Observação pós-instalação</th><th>Telefones</th><th>Técnicos</th><th>Cadastrado por</th><th>Registrado em</th><th>Atualizado por</th><th>Atualizado em</th><th>Viabilidade</th><th>Instalação</th><th>Anexos</th><th>Localização</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="18" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
         </div>
     </div>
 </section>
@@ -798,7 +798,7 @@ async function salvarViabilidade(){
 }
 
 async function carregarViabilidades(){
-    const tbody=document.getElementById("tabelaViabilidades");tbody.innerHTML='<tr><td colspan="19" class="vazio">Carregando viabilidades...</td></tr>';
+    const tbody=document.getElementById("tabelaViabilidades");tbody.innerHTML='<tr><td colspan="18" class="vazio">Carregando viabilidades...</td></tr>';
     try{
         const r=await fetch(API_VIABILIDADE,{headers:getAuthHeaders()});
         if(!r.ok)throw new Error(`Erro ${r.status}`);
@@ -813,7 +813,7 @@ async function carregarViabilidades(){
             }
         }
         renderTabela()
-    }catch(e){console.error(e);tbody.innerHTML='<tr><td colspan="19" class="vazio">Erro ao carregar viabilidades.</td></tr>'}
+    }catch(e){console.error(e);tbody.innerHTML='<tr><td colspan="18" class="vazio">Erro ao carregar viabilidades.</td></tr>'}
 }
 function dentroDias(v,dias){if(!v)return false;const d=new Date(v);if(isNaN(d))return false;const ini=new Date();ini.setDate(ini.getDate()-(dias-1));ini.setHours(0,0,0,0);const fim=new Date();fim.setHours(23,59,59,999);return d>=ini&&d<=fim}
 function mesmoDia(v){if(!v)return false;const d=new Date(v),h=new Date();return !isNaN(d)&&d.toDateString()===h.toDateString()}
@@ -850,7 +850,7 @@ function renderTabela(){
     viabilidadesFiltradas=lista;
     atualizarCards(lista);
     const tbody=document.getElementById("tabelaViabilidades");
-    if(!lista.length){tbody.innerHTML='<tr><td colspan="19" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
+    if(!lista.length){tbody.innerHTML='<tr><td colspan="18" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
     tbody.innerHTML=lista.map(o=>{
         const anexos=anexosDoRegistro(o).length;
         const st=String(o.status||"PENDENTE").toUpperCase();
@@ -864,7 +864,6 @@ function renderTabela(){
             <td class="tabela-observacao"><div class="texto-limitado" title="${escapar(o.observacao||o.observacoes||"-")}">${escapar(o.observacao||o.observacoes||"-")}</div></td>
             <td class="tabela-observacao"><div class="texto-limitado" title="${escapar(o.observacao_pos_aprovacao||"-")}">${escapar(o.observacao_pos_aprovacao||"-")}</div></td>
             <td class="tabela-observacao"><div class="texto-limitado" title="${escapar(o.observacao_pos_instalacao||"-")}">${escapar(o.observacao_pos_instalacao||"-")}</div></td>
-            <td><span class="erp-contador">${Number(o.clientes_erp_total||clientesERPDoRegistro(o).length||0)} cliente${Number(o.clientes_erp_total||clientesERPDoRegistro(o).length||0)===1?"":"s"} ERP</span></td>
             <td class="col-telefones">${telefones}</td>
             <td>${escapar(o.tecnico_responsavel||"-")}</td>
             <td>${escapar(nomeCadastrador(o))}</td>
@@ -886,7 +885,7 @@ function selecionarTodasViabilidades(marcado){document.querySelectorAll(".chk-it
 function renderAnexosResumo(lista){if(!lista.length)return '<div class="muted">Nenhum anexo.</div>';return `<div class="resumo-anexos">${lista.map(a=>{const u=getUrl(typeof a==="object"?(a.url||a.caminho||a.arquivo):a),video=String(a?.tipo||"").startsWith("video/")||ehVideo(u);return video?`<div class="resumo-anexo" onclick="abrirMidia('${escapar(u)}',true)">▶</div>`:`<div class="resumo-anexo" onclick="abrirMidia('${escapar(u)}',false)"><img src="${escapar(u)}" alt="Anexo"></div>`}).join("")}</div>`}
 function abrirResumoViabilidade(id,foco=""){
     const o=viabilidades.find(v=>Number(v.id)===Number(id));if(!o)return;
-    const analise=anexosPorCategoria(o,"ANALISE"),visita=anexosPorCategoria(o,"COMPROVACAO_VISITA"),clientesErp=clientesERPDoRegistro(o),st=String(o.status||"PENDENTE").toUpperCase();
+    const analise=anexosPorCategoria(o,"ANALISE"),visita=anexosPorCategoria(o,"COMPROVACAO_VISITA"),posInstalacao=anexosPorCategoria(o,"POS_INSTALACAO"),clientesErp=clientesERPDoRegistro(o),st=String(o.status||"PENDENTE").toUpperCase();
     document.getElementById("resumoTitulo").textContent=o.nome||"Detalhes da viabilidade";
     document.getElementById("resumoSubtitulo").textContent=`${localidadeDoRegistro(o)==="-"?"Localidade não informada":localidadeDoRegistro(o)} • ${formatarData(dataRegistro(o))}`;
     const mapa=coordenadasValidas(o)?`<div class="resumo-mapa" id="resumoLocalizacao"><iframe loading="lazy" src="${urlMapaEmbed(Number(o.latitude),Number(o.longitude))}"></iframe><div class="resumo-mapa-info"><span>Latitude: ${Number(o.latitude).toFixed(8)} | Longitude: ${Number(o.longitude).toFixed(8)}</span><a class="mapa-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${Number(o.latitude)},${Number(o.longitude)}">Abrir no Google Maps</a></div></div>`:'<div class="muted">Localização ainda não registrada.</div>';
