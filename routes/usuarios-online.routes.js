@@ -5,6 +5,38 @@ module.exports = (pool, verificarAutenticacao) => {
     const OFFLINE_MINUTOS = 5;
     const LIMITE_EVENTOS = 300;
 
+    async function garantirTabelaEventos() {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS usuarios_online_eventos (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                log_id BIGINT NULL,
+                usuario_id BIGINT NULL,
+                usuario VARCHAR(150) NOT NULL,
+                empresa_id BIGINT NULL,
+                ip VARCHAR(100) NULL,
+                porta_origem VARCHAR(30) NULL,
+                tipo VARCHAR(30) NOT NULL,
+                motivo VARCHAR(255) NULL,
+                ocorrido_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_eventos_data (ocorrido_em),
+                KEY idx_eventos_usuario (usuario_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `);
+    }
+
+    async function limparEventosAntigos() {
+        await garantirTabelaEventos();
+        await pool.query(`
+            DELETE FROM usuarios_online_eventos
+            WHERE id NOT IN (
+                SELECT id FROM (
+                    SELECT id FROM usuarios_online_eventos ORDER BY id DESC LIMIT ${LIMITE_EVENTOS}
+                ) ultimos
+            )
+        `);
+    }
+
     function somenteEmpresa1(req, res, next) {
         if (Number(req.usuario?.empresa_id) !== 1) {
             return res.status(403).json({ erro: "Página disponível somente para usuários da empresa 1." });
@@ -19,15 +51,30 @@ module.exports = (pool, verificarAutenticacao) => {
     });
 
     async function atualizarInativos() {
-        await pool.query(
-            `UPDATE log_acessos
-             SET status = 'offline'
+        await garantirTabelaEventos();
+        const [inativos] = await pool.query(
+            `SELECT id, usuario_id, usuario, empresa_id, ip_origem, porta_origem
+             FROM log_acessos
              WHERE logout IS NULL
                AND status = 'ativo'
                AND ultimo_ping IS NOT NULL
                AND ultimo_ping <= DATE_SUB(NOW(), INTERVAL ? MINUTE)`,
             [OFFLINE_MINUTOS]
         );
+
+        for (const sessao of inativos) {
+            await pool.query(
+                `UPDATE log_acessos SET status = 'offline' WHERE id = ? AND logout IS NULL AND status = 'ativo'`,
+                [sessao.id]
+            );
+            await pool.query(
+                `INSERT INTO usuarios_online_eventos
+                 (log_id, usuario_id, usuario, empresa_id, ip, porta_origem, tipo, motivo)
+                 VALUES (?, ?, ?, ?, ?, ?, 'offline', 'Desconectado por inatividade')`,
+                [sessao.id, sessao.usuario_id, sessao.usuario, sessao.empresa_id, sessao.ip_origem, sessao.porta_origem]
+            );
+        }
+        await limparEventosAntigos();
     }
 
     // Mantém sessões ativas e somente os 300 registros encerrados mais recentes.
@@ -111,35 +158,20 @@ module.exports = (pool, verificarAutenticacao) => {
     router.get("/eventos", async (req, res) => {
         const limite = Math.min(Math.max(Number(req.query.limite) || LIMITE_EVENTOS, 1), LIMITE_EVENTOS);
         try {
-            await limparLogsAntigos();
-            const [sessoes] = await pool.query(`
-                SELECT l.id, l.usuario_id, l.usuario, l.empresa_id,
-                       COALESCE(e.nome_provedor, CONCAT('Empresa ', l.empresa_id)) AS empresa_nome,
-                       l.ip_origem AS ip, l.porta_origem, l.login, l.logout,
-                       l.status, l.motivo_logout
-                FROM log_acessos l
-                LEFT JOIN empresa e ON e.id = l.empresa_id
-                ORDER BY l.id DESC
+            await atualizarInativos();
+            await limparEventosAntigos();
+
+            const [eventos] = await pool.query(`
+                SELECT ev.id AS chave, ev.log_id, ev.usuario_id, ev.usuario, ev.empresa_id,
+                       COALESCE(e.nome_provedor, CONCAT('Empresa ', ev.empresa_id)) AS empresa_nome,
+                       ev.ip, ev.porta_origem, ev.tipo, ev.motivo, ev.ocorrido_em
+                FROM usuarios_online_eventos ev
+                LEFT JOIN empresa e ON e.id = ev.empresa_id
+                ORDER BY ev.id DESC
                 LIMIT ?
             `, [limite]);
 
-            const eventos = [];
-            for (const s of sessoes) {
-                if (s.login) eventos.push({
-                    chave: `${s.id}-login`, log_id: s.id, usuario_id: s.usuario_id,
-                    usuario: s.usuario, empresa_id: s.empresa_id, empresa_nome: s.empresa_nome,
-                    tipo: 'conexao', ocorrido_em: s.login, ip: s.ip,
-                    porta_origem: s.porta_origem, motivo: 'Login realizado'
-                });
-                if (s.logout) eventos.push({
-                    chave: `${s.id}-logout`, log_id: s.id, usuario_id: s.usuario_id,
-                    usuario: s.usuario, empresa_id: s.empresa_id, empresa_nome: s.empresa_nome,
-                    tipo: 'desconexao', ocorrido_em: s.logout, ip: s.ip,
-                    porta_origem: s.porta_origem, motivo: s.motivo_logout || 'Sessão encerrada'
-                });
-            }
-            eventos.sort((a, b) => new Date(b.ocorrido_em) - new Date(a.ocorrido_em));
-            res.json({ eventos: eventos.slice(0, limite) });
+            res.json({ eventos });
         } catch (err) {
             console.error("ERRO AO LISTAR EVENTOS DE ACESSO:", err);
             res.status(500).json({ erro: err.message });
@@ -193,6 +225,12 @@ module.exports = (pool, verificarAutenticacao) => {
             if (!usuarios.length) return res.status(404).json({ erro: "Usuário não encontrado." });
 
             const alvo = usuarios[0];
+            await garantirTabelaEventos();
+            const [sessoesAtivas] = await pool.query(
+                `SELECT id, usuario_id, usuario, empresa_id, ip_origem, porta_origem
+                 FROM log_acessos WHERE usuario_id = ? AND logout IS NULL`,
+                [usuarioId]
+            );
             let resultado;
 
             // logout é o campo que efetivamente invalida a sessão no verificarAutenticacao.
@@ -211,6 +249,16 @@ module.exports = (pool, verificarAutenticacao) => {
                     WHERE usuario_id = ? AND logout IS NULL
                 `, [usuarioId]);
             }
+
+            for (const sessao of sessoesAtivas) {
+                await pool.query(
+                    `INSERT INTO usuarios_online_eventos
+                     (log_id, usuario_id, usuario, empresa_id, ip, porta_origem, tipo, motivo)
+                     VALUES (?, ?, ?, ?, ?, ?, 'logout', 'Sessão encerrada pela administração SGOS')`,
+                    [sessao.id, sessao.usuario_id, sessao.usuario, sessao.empresa_id, sessao.ip_origem, sessao.porta_origem]
+                );
+            }
+            await limparEventosAntigos();
 
             const io = req.app.get("io");
             if (io) {

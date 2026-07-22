@@ -79,6 +79,59 @@ async function registrarEventoAcesso({ usuario = "desconhecido", acao, detalhes 
     }
 }
 
+async function garantirTabelaEventosUsuariosOnline() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS usuarios_online_eventos (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            log_id BIGINT NULL,
+            usuario_id BIGINT NULL,
+            usuario VARCHAR(150) NOT NULL,
+            empresa_id BIGINT NULL,
+            ip VARCHAR(100) NULL,
+            porta_origem VARCHAR(30) NULL,
+            tipo VARCHAR(30) NOT NULL,
+            motivo VARCHAR(255) NULL,
+            ocorrido_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_eventos_data (ocorrido_em),
+            KEY idx_eventos_usuario (usuario_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+}
+
+async function registrarEventoUsuariosOnline(logId, tipo, motivo) {
+    try {
+        await garantirTabelaEventosUsuariosOnline();
+        const [rows] = await pool.query(
+            `SELECT id, usuario_id, usuario, empresa_id, ip_origem, porta_origem
+             FROM log_acessos WHERE id = ? LIMIT 1`,
+            [logId]
+        );
+        if (!rows.length) return;
+        const s = rows[0];
+        await pool.query(
+            `INSERT INTO usuarios_online_eventos
+             (log_id, usuario_id, usuario, empresa_id, ip, porta_origem, tipo, motivo)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [s.id, s.usuario_id, s.usuario, s.empresa_id, s.ip_origem, s.porta_origem, tipo, motivo]
+        );
+        await pool.query(`
+            DELETE FROM usuarios_online_eventos
+            WHERE id NOT IN (
+                SELECT id FROM (
+                    SELECT id FROM usuarios_online_eventos ORDER BY id DESC LIMIT 300
+                ) ultimos
+            )
+        `);
+    } catch (err) {
+        console.error("ERRO AO REGISTRAR EVENTO DE USUÁRIOS ONLINE:", err.message);
+    }
+}
+
+setTimeout(() => garantirTabelaEventosUsuariosOnline().catch(err =>
+    console.error("ERRO AO PREPARAR EVENTOS DE USUÁRIOS ONLINE:", err.message)
+), 2000);
+
 async function atualizarStatusPresenca(logId, novoStatus, motivo = null) {
     const [rows] = await pool.query(
         `SELECT id, usuario, status, logout FROM log_acessos WHERE id = ? LIMIT 1`,
@@ -130,6 +183,7 @@ async function expirarSessoesInativas() {
                 acao: "LOGOUT_AUTOMATICO",
                 detalhes: "Sessão encerrada após 8 horas sem atividade"
             });
+            await registrarEventoUsuariosOnline(sessao.id, "expirado", "Logout — sessão expirada");
         }
     } catch (err) {
         console.error("ERRO AO EXPIRAR SESSÕES:", err.message);
@@ -324,6 +378,7 @@ async function verificarAutenticacao(req, res, next) {
                     acao: "USUARIO_ONLINE",
                     detalhes: "Usuário voltou a interagir com o sistema"
                 });
+                await registrarEventoUsuariosOnline(log_id, "conexao", "Usuário reconectado");
             }
         }
 
@@ -532,6 +587,7 @@ app.post("/api/login", async (req, res) => {
             acao: "LOGIN",
             detalhes: `Login realizado | IP: ${ip || "-"} | Porta: ${porta || "-"}`
         });
+        await registrarEventoUsuariosOnline(logResult.insertId, "conexao", "Login realizado");
 
         return res.json({
             ok: true,
@@ -592,6 +648,7 @@ app.post("/api/ping", async (req, res) => {
                 acao: "LOGOUT_AUTOMATICO",
                 detalhes: "Sessão encerrada após 8 horas sem atividade"
             });
+            await registrarEventoUsuariosOnline(log_id, "expirado", "Logout — sessão expirada");
             return res.status(401).json({ erro: "Sessão expirada", motivo: "inatividade_8h" });
         }
 
@@ -619,6 +676,7 @@ app.post("/api/ping", async (req, res) => {
                     acao: "USUARIO_OFFLINE",
                     detalhes: "Usuário sem atividade por 5 minutos; sessão permanece ativa"
                 });
+                await registrarEventoUsuariosOnline(log_id, "offline", "Desconectado por inatividade");
             }
         }
 
@@ -661,6 +719,11 @@ app.post("/api/logout", async (req, res) => {
                     ? "Logout solicitado pelo usuário"
                     : "Sessão encerrada após 8 horas sem atividade"
             });
+            await registrarEventoUsuariosOnline(
+                log_id,
+                motivo === "manual" ? "logout" : "expirado",
+                motivo === "manual" ? "Logout realizado" : "Logout — sessão expirada"
+            );
         }
 
         return res.json({ ok: true });
