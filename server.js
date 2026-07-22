@@ -15,11 +15,8 @@ const estoqueRoutes = require('./routes/estoque.routes');
 const escritoriosRoutesFactory = require('./routes/escritorios.routes');
 const financeiroRoutesFactory = require('./routes/financeiro.routes');
 
-const viabilidadeClientesErpRoutes =
-       require("./routes/viabilidade-clientes-erp.routes")(
-           pool,
-           verificarAutenticacao
-       );
+const viabilidadeClientesErpRoutesFactory =
+    require("./routes/viabilidade-clientes-erp.routes");
 
 const pool = require("./database");
 const bcrypt = require("bcryptjs");
@@ -308,10 +305,16 @@ const usuariosOnlineRoutes =
 
 app.use('/api/admin/usuarios-online', usuariosOnlineRoutes);
 
+const viabilidadeClientesErpRoutes =
+    viabilidadeClientesErpRoutesFactory(
+        pool,
+        verificarAutenticacao
+    );
+
 app.use(
-       "/api/viabilidade-clientes-erp",
-       viabilidadeClientesErpRoutes
-   );
+    "/api/viabilidade-clientes-erp",
+    viabilidadeClientesErpRoutes
+);
 
 
 // ===============================
