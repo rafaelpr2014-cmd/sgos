@@ -295,6 +295,15 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                 `DELETE FROM viabilidade_anexos WHERE viabilidade_id = ? AND empresa_id = ?`,
                 [req.params.id, req.usuario.empresa_id]
             );
+
+            // Remove os clientes ERP armazenados em cache para esta viabilidade.
+            // A tabela não usa FOREIGN KEY para manter compatibilidade com bancos antigos do SGOS.
+            await conexao.query(
+                `DELETE FROM viabilidade_clientes_erp
+                 WHERE viabilidade_id = ? AND empresa_id = ?`,
+                [req.params.id, req.usuario.empresa_id]
+            );
+
             await conexao.query(
                 `DELETE FROM viabilidade WHERE id = ? AND empresa_id = ?`,
                 [req.params.id, req.usuario.empresa_id]

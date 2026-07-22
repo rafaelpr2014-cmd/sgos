@@ -7,8 +7,8 @@ module.exports = function viabilidadeClientesErpRoutes(pool, verificarAutenticac
         await pool.query(`
             CREATE TABLE IF NOT EXISTS viabilidade_clientes_erp (
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                empresa_id BIGINT UNSIGNED NOT NULL,
-                viabilidade_id BIGINT UNSIGNED NOT NULL,
+                empresa_id TINYINT UNSIGNED NOT NULL,
+                viabilidade_id INT UNSIGNED NOT NULL,
                 origem_erp VARCHAR(30) NOT NULL,
                 id_erp VARCHAR(100) NOT NULL,
                 cliente_id_erp VARCHAR(100) NULL,
@@ -22,15 +22,12 @@ module.exports = function viabilidadeClientesErpRoutes(pool, verificarAutenticac
                 telefone VARCHAR(60) NULL,
                 status_contrato VARCHAR(80) NULL,
                 servidor VARCHAR(255) NULL,
-                criado_por BIGINT UNSIGNED NULL,
+                criado_por INT UNSIGNED NULL,
                 criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (id),
                 UNIQUE KEY uk_viabilidade_cliente_erp
                     (empresa_id, viabilidade_id, origem_erp, id_erp),
-                KEY idx_vce_viabilidade (empresa_id, viabilidade_id),
-                CONSTRAINT fk_vce_viabilidade
-                    FOREIGN KEY (viabilidade_id) REFERENCES viabilidades(id)
-                    ON DELETE CASCADE
+                KEY idx_vce_viabilidade (empresa_id, viabilidade_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
 
@@ -38,13 +35,13 @@ module.exports = function viabilidadeClientesErpRoutes(pool, verificarAutenticac
             SELECT COLUMN_NAME
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = DATABASE()
-              AND TABLE_NAME = 'viabilidades'
+              AND TABLE_NAME = 'viabilidade'
               AND COLUMN_NAME = 'observacao_pos_instalacao'
         `);
 
         if (!colunas.length) {
             await pool.query(`
-                ALTER TABLE viabilidades
+                ALTER TABLE viabilidade
                 ADD COLUMN observacao_pos_instalacao TEXT NULL
                 AFTER observacao_pos_aprovacao
             `);
@@ -168,7 +165,7 @@ module.exports = function viabilidadeClientesErpRoutes(pool, verificarAutenticac
 
             const [viabilidade] = await pool.query(`
                 SELECT id
-                FROM viabilidades
+                FROM viabilidade
                 WHERE id = ?
                   AND empresa_id = ?
                 LIMIT 1
