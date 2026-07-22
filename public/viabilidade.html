@@ -732,8 +732,8 @@ function editarViabilidade(id){
     const localidadeEncontrada=localidades.find(x=>String(x.id)===localidadeRegistro||String(x.nome).trim().toLowerCase()===localidadeDoRegistro(o).toLowerCase());
     document.getElementById("localidade").value=localidadeEncontrada?String(localidadeEncontrada.id):localidadeRegistro;
     document.getElementById("observacao").value=o.observacao||o.observacoes||"";
-    document.getElementById("observacao").readOnly=true;
-    document.getElementById("ajudaObservacaoInicial").textContent="Observação inicial bloqueada para edição após o cadastro.";
+    document.getElementById("observacao").readOnly=false;
+    document.getElementById("ajudaObservacaoInicial").textContent="A observação inicial está preenchida e pode ser atualizada.";
     document.getElementById("observacaoPosAprovacao").value=o.observacao_pos_aprovacao||"";
     document.getElementById("observacaoPosInstalacao").value=o.observacao_pos_instalacao||"";
     definirTecnicosSelecionados(o.tecnico_responsavel||o.tecnicos_responsaveis||"");
@@ -755,7 +755,7 @@ function editarViabilidade(id){
 function limparFormulario(){
     ["viabilidadeId","nome","endereco","telefone","telefone2","localidade","observacao","observacaoPosAprovacao","observacaoPosInstalacao","latitude","longitude","localizacaoTecnico"].forEach(id=>document.getElementById(id).value="");
     document.getElementById("observacao").readOnly=false;
-    document.getElementById("ajudaObservacaoInicial").textContent="A observação inicial será bloqueada depois do primeiro salvamento.";
+    document.getElementById("ajudaObservacaoInicial").textContent="Preencha a observação inicial. Ela poderá ser editada posteriormente.";
     clientesErpVinculados=[];clienteErpConsultado=null;
     document.getElementById("erpResultado").innerHTML="";
     renderClientesERPVinculados();
@@ -983,7 +983,7 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
         .grade{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr);gap:3mm;flex:1;min-height:0}
         .item{border:1px solid #cbd5e1;border-radius:3mm;padding:3mm;overflow:hidden;page-break-inside:avoid;background:#fff}
         .item-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:2mm;border-bottom:1px solid #e2e8f0;padding-bottom:1.5mm;margin-bottom:1.5mm}.item h2{font-size:10.5pt;margin:0;line-height:1.15}.status-grupo{display:flex;gap:1mm;flex-wrap:wrap;justify-content:flex-end}.status{font-size:7pt;font-weight:bold;border-radius:999px;padding:1mm 2mm;white-space:nowrap;border:1px solid transparent}.pdf-vermelho{background:#fee2e2;color:#b91c1c;border-color:#fecaca}.pdf-analise{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}.pdf-verde{background:#dcfce7;color:#15803d;border-color:#bbf7d0}
-        .linha,.duas,.obs{font-size:7.5pt;line-height:1.25;margin-top:1.2mm}.duas{display:grid;grid-template-columns:1fr 1fr;gap:2mm}.instalacao-data{background:#ecfdf5;border:1px solid #a7f3d0;border-radius:2mm;padding:1.2mm;color:#065f46}.obs{border-top:1px dashed #cbd5e1;padding-top:1.3mm;max-height:15mm;overflow:hidden}.obs.pos{max-height:11mm}
+        .linha,.duas,.obs,.pdf-erp{font-size:7.5pt;line-height:1.25;margin-top:1.2mm}.duas{display:grid;grid-template-columns:1fr 1fr;gap:2mm}.instalacao-data{background:#ecfdf5;border:1px solid #a7f3d0;border-radius:2mm;padding:1.2mm;color:#065f46}.obs{border-top:1px dashed #cbd5e1;padding-top:1.3mm;max-height:15mm;overflow:hidden}.obs.pos{max-height:11mm}.pdf-erp{border-top:1px dashed #cbd5e1;padding-top:1.3mm;max-height:15mm;overflow:hidden;font-weight:400}.pdf-erp b{font-size:inherit;line-height:inherit;font-weight:700}
         .rodape{height:9mm;margin-top:3mm;border-top:1px solid #cbd5e1;display:flex;align-items:flex-end;justify-content:center;font-size:7.5pt;color:#475569;text-align:center}
         @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
     </style></head><body>${paginas.map((pagina,indice)=>`<section class="pagina">
