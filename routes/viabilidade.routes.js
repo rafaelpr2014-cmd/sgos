@@ -81,7 +81,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                 `SELECT v.id, v.nome, v.endereco, v.observacao, v.telefone, v.telefone2, v.localidade,
                         COALESCE(l.nome, NULLIF(v.localidade, '')) AS localidade_nome,
                         v.empresa_id, v.cadastrado_por, v.registrado_em, v.status, v.status_instalacao, v.instalacao_aprovada_em,
-                        v.atualizado_em, v.atualizado_por, v.tecnico_responsavel, v.observacao_pos_aprovacao,
+                        v.atualizado_em, v.atualizado_por, v.tecnico_responsavel, v.observacao_pos_aprovacao, v.observacao_pos_instalacao,
                         v.latitude, v.longitude
                  FROM viabilidade v
                  LEFT JOIN localidades l
@@ -125,7 +125,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                 `SELECT v.id, v.nome, v.endereco, v.observacao, v.telefone, v.telefone2, v.localidade,
                         COALESCE(l.nome, NULLIF(v.localidade, '')) AS localidade_nome,
                         v.empresa_id, v.cadastrado_por, v.registrado_em, v.status, v.status_instalacao, v.instalacao_aprovada_em,
-                        v.atualizado_em, v.atualizado_por, v.tecnico_responsavel, v.observacao_pos_aprovacao,
+                        v.atualizado_em, v.atualizado_por, v.tecnico_responsavel, v.observacao_pos_aprovacao, v.observacao_pos_instalacao,
                         v.latitude, v.longitude
                  FROM viabilidade v
                  LEFT JOIN localidades l
@@ -162,6 +162,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const localidade = String(req.body.localidade || "").trim();
             const tecnicoResponsavel = normalizarTecnicosResponsaveis(req.body.tecnico_responsavel);
             const observacaoPosAprovacao = String(req.body.observacao_pos_aprovacao || "").trim() || null;
+            const observacaoPosInstalacao = String(req.body.observacao_pos_instalacao || "").trim() || null;
             const latitudeRecebida = req.body.latitude;
             const longitudeRecebida = req.body.longitude;
             const latitude = latitudeRecebida === "" || latitudeRecebida === null || latitudeRecebida === undefined
@@ -188,15 +189,15 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const cadastradoPor = req.usuario.usuario || String(req.usuario.id);
             const [resultado] = await pool.query(
                 `INSERT INTO viabilidade
-                    (nome, endereco, observacao, telefone, telefone2, localidade, tecnico_responsavel, observacao_pos_aprovacao, status, status_instalacao, instalacao_aprovada_em,
+                    (nome, endereco, observacao, telefone, telefone2, localidade, tecnico_responsavel, observacao_pos_aprovacao, observacao_pos_instalacao, status, status_instalacao, instalacao_aprovada_em,
                      latitude, longitude, empresa_id, cadastrado_por, registrado_em, atualizado_em, atualizado_por)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                          CASE WHEN ? = 'INSTALADO'
                               THEN DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 HOUR)
                               ELSE NULL
                          END,
                          ?, ?, ?, ?, NOW(), NOW(), ?)`,
-                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status, statusInstalacao, statusInstalacao,
+                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, observacaoPosInstalacao, status, statusInstalacao, statusInstalacao,
                  latitude, longitude, req.usuario.empresa_id, cadastradoPor, cadastradoPor]
             );
 
@@ -217,6 +218,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const localidade = String(req.body.localidade || "").trim();
             const tecnicoResponsavel = normalizarTecnicosResponsaveis(req.body.tecnico_responsavel);
             const observacaoPosAprovacao = String(req.body.observacao_pos_aprovacao || "").trim() || null;
+            const observacaoPosInstalacao = String(req.body.observacao_pos_instalacao || "").trim() || null;
             const latitudeRecebida = req.body.latitude;
             const longitudeRecebida = req.body.longitude;
             const latitude = latitudeRecebida === "" || latitudeRecebida === null || latitudeRecebida === undefined
@@ -244,8 +246,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const atualizadoPor = req.usuario.usuario || String(req.usuario.id);
             const [resultado] = await pool.query(
                 `UPDATE viabilidade
-                 SET nome = ?, endereco = ?, observacao = ?, telefone = ?, telefone2 = ?, localidade = ?,
-                     tecnico_responsavel = ?, observacao_pos_aprovacao = ?, status = ?,
+                 SET nome = ?, endereco = ?, telefone = ?, telefone2 = ?, localidade = ?,
+                     tecnico_responsavel = ?, observacao_pos_aprovacao = ?, observacao_pos_instalacao = ?, status = ?,
                      instalacao_aprovada_em = CASE
                          WHEN ? = 'INSTALADO'
                               AND (COALESCE(status_instalacao, '') <> 'INSTALADO' OR instalacao_aprovada_em IS NULL)
@@ -256,7 +258,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                      status_instalacao = ?,
                      latitude = ?, longitude = ?, atualizado_em = NOW(), atualizado_por = ?
                  WHERE id = ? AND empresa_id = ?`,
-                [nome, endereco, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, status,
+                [nome, endereco, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, observacaoPosInstalacao, status,
                  statusInstalacao, statusInstalacao, statusInstalacao, latitude, longitude, atualizadoPor, req.params.id, req.usuario.empresa_id]
             );
 
@@ -362,7 +364,8 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
 
                 const cadastradoPor = req.usuario.usuario || String(req.usuario.id);
                 const categoriaRecebida = String(req.body.categoria || "ANALISE").trim().toUpperCase();
-                const categoria = categoriaRecebida === "COMPROVACAO_VISITA" ? "COMPROVACAO_VISITA" : "ANALISE";
+                const categoriasPermitidas = ["ANALISE", "COMPROVACAO_VISITA", "POS_INSTALACAO"];
+                const categoria = categoriasPermitidas.includes(categoriaRecebida) ? categoriaRecebida : "ANALISE";
                 const caminho = caminhoPublico(req.file.filename);
                 const [resultado] = await pool.query(
                     `INSERT INTO viabilidade_anexos

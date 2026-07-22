@@ -237,6 +237,20 @@ th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
 @media(max-width:1200px){.campo.observacao-tripla{grid-column:span 4}.erp-cliente{grid-template-columns:1fr 1fr}}
 @media(max-width:900px){.campo.observacao-tripla{grid-column:1/-1}.erp-cliente{grid-template-columns:1fr}.resumo-erp-grid{grid-template-columns:1fr}}
 
+
+/* ===== ANEXOS COM MINIATURA E ADIÇÃO CONTROLADA ===== */
+.anexo-upload-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:9px}
+.btn-adicionar-anexo{border:0;background:#2563eb;color:#fff;border-radius:9px;padding:9px 12px;font-weight:800;cursor:pointer}
+.btn-adicionar-anexo:hover{background:#1d4ed8}
+.input-anexo-oculto{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.anexo-vazio{font-size:12px;color:#64748b;padding:10px 0}
+.preview-item{cursor:pointer}
+.preview-item button{z-index:3}
+.preview-item video{pointer-events:none}
+.campo.anexo-terco{grid-column:span 8}
+@media(max-width:1200px){.campo.anexo-terco{grid-column:span 6}}
+@media(max-width:900px){.campo.anexo-terco{grid-column:1/-1}}
+
 </style>
 </head>
 <body>
@@ -326,13 +340,41 @@ th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
                 <div id="erpVinculados" class="erp-vinculados"></div>
             </div>
 
-            <div class="campo anexo-metade">
-                <label for="arquivos">Anexos da análise inicial</label>
-                <div class="arquivo-box"><input type="file" id="arquivos" accept="image/*,video/*" multiple><div class="arquivo-ajuda">Fotos e vídeos da análise inicial. Limite de 30 MB por arquivo.</div><div id="anexosExistentes" class="preview-lista"></div><div id="previewArquivos" class="preview-lista"></div></div>
+            <div class="campo anexo-terco">
+                <label>Anexos da análise inicial</label>
+                <div class="arquivo-box">
+                    <div id="anexosExistentes" class="preview-lista"></div>
+                    <div id="previewArquivos" class="preview-lista"></div>
+                    <div class="anexo-upload-toolbar">
+                        <button class="btn-adicionar-anexo" type="button" onclick="document.getElementById('arquivos').click()">+ Adicionar foto ou vídeo</button>
+                        <span class="arquivo-ajuda">Limite de 30 MB por arquivo.</span>
+                    </div>
+                    <input class="input-anexo-oculto" type="file" id="arquivos" accept="image/*,video/*" multiple>
+                </div>
             </div>
-            <div class="campo anexo-metade">
-                <label for="arquivosVisita">Anexo de comprovação de visita</label>
-                <div class="arquivo-box"><input type="file" id="arquivosVisita" accept="image/*,video/*" multiple><div class="arquivo-ajuda">Fotos ou vídeos de comprovação. Limite de 30 MB por arquivo.</div><div id="anexosVisitaExistentes" class="preview-lista"></div><div id="previewArquivosVisita" class="preview-lista"></div></div>
+            <div class="campo anexo-terco">
+                <label>Anexo de comprovação de visita</label>
+                <div class="arquivo-box">
+                    <div id="anexosVisitaExistentes" class="preview-lista"></div>
+                    <div id="previewArquivosVisita" class="preview-lista"></div>
+                    <div class="anexo-upload-toolbar">
+                        <button class="btn-adicionar-anexo" type="button" onclick="document.getElementById('arquivosVisita').click()">+ Adicionar nova comprovação</button>
+                        <span class="arquivo-ajuda">Fotos ou vídeos da visita.</span>
+                    </div>
+                    <input class="input-anexo-oculto" type="file" id="arquivosVisita" accept="image/*,video/*" multiple>
+                </div>
+            </div>
+            <div class="campo anexo-terco">
+                <label>Anexo pós-instalação</label>
+                <div class="arquivo-box">
+                    <div id="anexosPosInstalacaoExistentes" class="preview-lista"></div>
+                    <div id="previewArquivosPosInstalacao" class="preview-lista"></div>
+                    <div class="anexo-upload-toolbar">
+                        <button class="btn-adicionar-anexo" type="button" onclick="document.getElementById('arquivosPosInstalacao').click()">+ Adicionar pós-instalação</button>
+                        <span class="arquivo-ajuda">Fotos ou vídeos após a instalação realizada.</span>
+                    </div>
+                    <input class="input-anexo-oculto" type="file" id="arquivosPosInstalacao" accept="image/*,video/*" multiple>
+                </div>
             </div>
         </div>
         <div class="form-actions"><button class="btn btn-salvar" id="btnSalvar" onclick="salvarViabilidade()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span id="textoBtnSalvar">Salvar Viabilidade</span></button><button class="btn btn-limpar" type="button" onclick="limparFormulario()" id="btnCancelar">Limpar</button></div>
@@ -390,6 +432,7 @@ let viabilidades = [];
 let viabilidadesFiltradas = [];
 let arquivosSelecionados = [];
 let arquivosVisitaSelecionados = [];
+let arquivosPosInstalacaoSelecionados = [];
 let anexosExistentesEdicao = [];
 let localidades = [];
 let idsSelecionados = new Set();
@@ -515,10 +558,43 @@ function processarArquivosVisita(){
 }
 function renderPreviewArquivosVisita(){const box=document.getElementById("previewArquivosVisita");box.innerHTML="";arquivosVisitaSelecionados.forEach((f,i)=>{const url=URL.createObjectURL(f),div=document.createElement("div");div.className="preview-item";div.innerHTML=f.type.startsWith("video/")?`<video src="${url}" muted></video><button type="button" onclick="removerArquivoVisita(${i})">×</button>`:`<img src="${url}" alt="${escapar(f.name)}"><button type="button" onclick="removerArquivoVisita(${i})">×</button>`;box.appendChild(div)})}
 function removerArquivoVisita(i){arquivosVisitaSelecionados.splice(i,1);renderPreviewArquivosVisita()}
+function processarArquivosPosInstalacao(){
+    const novos=[...document.getElementById("arquivosPosInstalacao").files];
+    for(const f of novos){
+        if(f.size>30*1024*1024){alert(`O arquivo ${f.name} ultrapassa 30 MB.`);continue}
+        if(!f.type.startsWith("image/")&&!f.type.startsWith("video/")){alert(`Formato não permitido: ${f.name}`);continue}
+        arquivosPosInstalacaoSelecionados.push(f)
+    }
+    document.getElementById("arquivosPosInstalacao").value="";
+    renderPreviewArquivosPosInstalacao();
+}
+function renderPreviewArquivosPosInstalacao(){
+    const box=document.getElementById("previewArquivosPosInstalacao");
+    box.innerHTML="";
+    arquivosPosInstalacaoSelecionados.forEach((f,i)=>{
+        const url=URL.createObjectURL(f),div=document.createElement("div");
+        div.className="preview-item";
+        div.onclick=()=>abrirMidia(url,f.type.startsWith("video/"));
+        div.innerHTML=f.type.startsWith("video/")
+          ? `<video src="${url}" muted></video><button type="button" onclick="event.stopPropagation();removerArquivoPosInstalacao(${i})">×</button>`
+          : `<img src="${url}" alt="${escapar(f.name)}"><button type="button" onclick="event.stopPropagation();removerArquivoPosInstalacao(${i})">×</button>`;
+        box.appendChild(div)
+    })
+}
+function removerArquivoPosInstalacao(i){arquivosPosInstalacaoSelecionados.splice(i,1);renderPreviewArquivosPosInstalacao()}
 function renderAnexosExistentes(){
-    const render=(lista)=>lista.map(a=>{const u=getUrl(a.url||a.caminho||a.arquivo),video=String(a.tipo||"").startsWith("video/")||ehVideo(u);return `<div class="preview-item anexo-existente">${video?`<video src="${escapar(u)}" muted></video>`:`<img src="${escapar(u)}" alt="Anexo">`}<button type="button" title="Excluir anexo" onclick="excluirAnexoEdicao(${Number(a.id)})">×</button></div>`}).join("");
-    document.getElementById("anexosExistentes").innerHTML=render(anexosExistentesEdicao.filter(a=>String(a.categoria||"ANALISE").toUpperCase()!=="COMPROVACAO_VISITA"));
-    document.getElementById("anexosVisitaExistentes").innerHTML=render(anexosExistentesEdicao.filter(a=>String(a.categoria||"").toUpperCase()==="COMPROVACAO_VISITA"));
+    const render=(lista)=>lista.map(a=>{
+        const u=getUrl(a.url||a.caminho||a.arquivo);
+        const video=String(a.tipo||"").startsWith("video/")||ehVideo(u);
+        return `<div class="preview-item anexo-existente" onclick="abrirMidia('${escapar(u)}',${video})">${video?`<video src="${escapar(u)}" muted></video>`:`<img src="${escapar(u)}" alt="Anexo">`}<button type="button" title="Excluir anexo" onclick="event.stopPropagation();excluirAnexoEdicao(${Number(a.id)})">×</button></div>`
+    }).join("");
+    const categoria=a=>String(a.categoria||"ANALISE").toUpperCase();
+    const analise=anexosExistentesEdicao.filter(a=>!["COMPROVACAO_VISITA","POS_INSTALACAO"].includes(categoria(a)));
+    const visita=anexosExistentesEdicao.filter(a=>categoria(a)==="COMPROVACAO_VISITA");
+    const pos=anexosExistentesEdicao.filter(a=>categoria(a)==="POS_INSTALACAO");
+    document.getElementById("anexosExistentes").innerHTML=render(analise)||'<div class="anexo-vazio">Nenhum anexo inicial.</div>';
+    document.getElementById("anexosVisitaExistentes").innerHTML=render(visita)||'<div class="anexo-vazio">Nenhuma comprovação anexada.</div>';
+    document.getElementById("anexosPosInstalacaoExistentes").innerHTML=render(pos)||'<div class="anexo-vazio">Nenhum anexo pós-instalação.</div>';
 }
 async function excluirAnexoEdicao(id){
     if(!id||!confirm("Excluir este anexo?"))return;
@@ -670,7 +746,7 @@ function editarViabilidade(id){
     document.getElementById("cadastradoPor").value=nomeCadastrador(o)==="-"?"":nomeCadastrador(o);
     document.getElementById("registradoEm").value=formatarData(dataRegistro(o));
     anexosExistentesEdicao=Array.isArray(o.anexos)?o.anexos:[];
-    arquivosSelecionados=[];arquivosVisitaSelecionados=[];renderPreviewArquivos();renderPreviewArquivosVisita();renderAnexosExistentes();
+    arquivosSelecionados=[];arquivosVisitaSelecionados=[];arquivosPosInstalacaoSelecionados=[];renderPreviewArquivos();renderPreviewArquivosVisita();renderPreviewArquivosPosInstalacao();renderAnexosExistentes();
     document.getElementById("textoBtnSalvar").textContent="Atualizar Viabilidade";
     document.getElementById("btnCancelar").textContent="Cancelar edição";
     carregarClientesERPDaViabilidade(o.id);
@@ -689,9 +765,11 @@ function limparFormulario(){
     atualizarCampoInstalacao();
     arquivosSelecionados=[];
     arquivosVisitaSelecionados=[];
+    arquivosPosInstalacaoSelecionados=[];
     anexosExistentesEdicao=[];
     renderPreviewArquivos();
     renderPreviewArquivosVisita();
+    renderPreviewArquivosPosInstalacao();
     renderAnexosExistentes();
     document.getElementById("textoBtnSalvar").textContent="Salvar Viabilidade";
     document.getElementById("btnCancelar").textContent="Limpar";
@@ -714,7 +792,7 @@ async function salvarViabilidade(){
         const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.erro||j.mensagem||`Erro ${r.status}`);
         const registroId=Number(id||j.id||j.viabilidade_id||j.insertId||j?.dados?.id);
         const enviarArquivos=async(lista,categoria)=>{for(const arquivo of lista){const fd=new FormData();fd.append("arquivo",arquivo);fd.append("viabilidade_id",registroId);fd.append("categoria",categoria);const up=await fetch(API_UPLOAD,{method:"POST",headers:getAuthHeaders(),body:fd});const ej=await up.json().catch(()=>({}));if(!up.ok)throw new Error(ej.erro||`Falha ao enviar ${arquivo.name}`)}};
-        if(registroId){await enviarArquivos(arquivosSelecionados,"ANALISE");await enviarArquivos(arquivosVisitaSelecionados,"COMPROVACAO_VISITA");await salvarClientesERPDaViabilidade(registroId);}
+        if(registroId){await enviarArquivos(arquivosSelecionados,"ANALISE");await enviarArquivos(arquivosVisitaSelecionados,"COMPROVACAO_VISITA");await enviarArquivos(arquivosPosInstalacaoSelecionados,"POS_INSTALACAO");await salvarClientesERPDaViabilidade(registroId);}
         alert(id?"Viabilidade atualizada com sucesso!":"Viabilidade salva com sucesso!");limparFormulario();await carregarViabilidades();
     }catch(e){console.error(e);alert("Erro ao salvar viabilidade: "+e.message)}finally{btn.disabled=false;document.getElementById("textoBtnSalvar").textContent=document.getElementById("viabilidadeId").value?"Atualizar Viabilidade":"Salvar Viabilidade"}
 }
@@ -832,6 +910,7 @@ function abrirResumoViabilidade(id,foco=""){
     <div class="resumo-secao"><h3>Clientes integrados via ERP <span class="erp-contador">${clientesErp.length}</span></h3>${renderClientesERPResumo(clientesErp)}</div>
     <div class="resumo-secao"><h3>Anexo inicial</h3>${renderAnexosResumo(analise)}</div>
     <div class="resumo-secao"><h3>Anexo da comprovação de visita</h3>${renderAnexosResumo(visita)}</div>
+    <div class="resumo-secao"><h3>Anexo pós-instalação</h3>${renderAnexosResumo(posInstalacao)}</div>
     <div class="resumo-secao"><h3>Localização</h3>${mapa}</div>`;
     document.getElementById("resumoAcoes").innerHTML=`<button class="btn btn-fechar-resumo" type="button" onclick="fecharResumo()">Fechar</button><button class="btn btn-imprimir" type="button" onclick="imprimirViabilidade(${Number(o.id)})">🖨️ Imprimir</button><button class="btn btn-secundario" type="button" onclick="fecharResumo();editarViabilidade(${Number(o.id)})">✏️ Editar</button><button class="btn btn-excluir" type="button" onclick="excluirViabilidade(${Number(o.id)})">🗑️ Excluir</button>`;
     document.getElementById("popupResumo").classList.add("ativo");document.body.style.overflow="hidden";
@@ -928,7 +1007,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     atualizarHorario();setInterval(atualizarHorario,60000);renderClientesERPVinculados();detectarERPAtivo();carregarUsuario();carregarTecnicos();carregarLocalidades();carregarUsuariosOnline();carregarViabilidades();
     document.getElementById("telefone").addEventListener("input",aplicarMascaraTelefone);document.getElementById("tecnicoResponsavel").addEventListener("change",limitarSelecaoTecnicos);
     document.getElementById("status").addEventListener("change",atualizarCampoInstalacao);
-    atualizarCampoInstalacao();document.getElementById("telefone2").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);document.getElementById("arquivosVisita").addEventListener("change",processarArquivosVisita);
+    atualizarCampoInstalacao();document.getElementById("telefone2").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);document.getElementById("arquivosVisita").addEventListener("change",processarArquivosVisita);document.getElementById("arquivosPosInstalacao").addEventListener("change",processarArquivosPosInstalacao);
     document.querySelectorAll("#filtroNome,#filtroEndereco,#filtroLocalidade,#filtroStatusViabilidade,#filtroStatusInstalacao,#registroDataInicio,#registroDataFim,#atualizacaoDataInicio,#atualizacaoDataFim").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
     document.getElementById("buscaViabilidade").addEventListener("input",e=>{document.getElementById("filtroNome").value=e.target.value;renderTabela()});
     document.getElementById("selecionarTodas").addEventListener("change",e=>selecionarTodasViabilidades(e.target.checked));
