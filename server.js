@@ -378,7 +378,7 @@ async function verificarAutenticacao(req, res, next) {
                     acao: "USUARIO_ONLINE",
                     detalhes: "Usuário voltou a interagir com o sistema"
                 });
-                await registrarEventoUsuariosOnline(log_id, "conexao", "Usuário reconectado");
+                await registrarEventoUsuariosOnline(logId, "conexao", "Usuário reconectado");
             }
         }
 
@@ -663,6 +663,11 @@ app.post("/api/ping", async (req, res) => {
                     acao: "USUARIO_ONLINE",
                     detalhes: "Usuário voltou a interagir com o sistema"
                 });
+                await registrarEventoUsuariosOnline(
+                    log_id,
+                    "reconectado",
+                    "Usuário reconectado após inatividade"
+                );
             }
         } else {
             const cincoMinutosSemAtividade = Date.now() - ultimaAtividade >= OFFLINE_MINUTOS * 60 * 1000;
