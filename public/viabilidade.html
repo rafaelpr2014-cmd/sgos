@@ -253,37 +253,75 @@ th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
 
 
 
-/* ===== FILTROS ORGANIZADOS EM DUAS LINHAS ===== */
+
+/* ===== TÉCNICOS E OBSERVAÇÕES NA MESMA LINHA ===== */
+.form-grid{
+    grid-template-columns:repeat(24,minmax(0,1fr)) !important;
+}
+.campo.tecnicos-linha2{
+    grid-column:span 6 !important;
+}
+.campo.observacao-tripla{
+    grid-column:span 6 !important;
+}
+.campo.tecnicos-linha2 select,
+.campo.observacao-tripla textarea{
+    min-height:96px;
+    height:96px;
+}
+.campo.tecnicos-linha2 .arquivo-ajuda,
+.campo.observacao-tripla .arquivo-ajuda{
+    min-height:28px;
+}
+@media(max-width:1300px){
+    .campo.tecnicos-linha2,
+    .campo.observacao-tripla{
+        grid-column:span 12 !important;
+    }
+}
+@media(max-width:760px){
+    .campo.tecnicos-linha2,
+    .campo.observacao-tripla{
+        grid-column:1/-1 !important;
+    }
+}
+
+/* ===== FILTROS: SEIS NA PRIMEIRA LINHA E TRÊS NA SEGUNDA ===== */
 .filtros{
     display:grid !important;
-    grid-template-columns:
-        minmax(170px,1fr)
-        minmax(150px,1.1fr)
-        minmax(170px,1fr)
-        minmax(150px,1.15fr)
-        minmax(150px,1fr)
-        minmax(145px,1fr);
+    grid-template-columns:repeat(6,minmax(0,1fr)) !important;
     gap:10px !important;
     align-items:stretch;
     overflow:visible !important;
 }
 .filtros>input,
 .filtros>select{
+    grid-column:span 1 !important;
     width:100% !important;
     min-width:0 !important;
-    height:52px;
+    height:48px !important;
     margin:0 !important;
 }
-.filtros .filtro-periodo{
-    grid-column:span 5;
+.filtros .filtro-periodo,
+.filtros .filtro-periodo-rapido{
+    grid-column:span 2 !important;
     width:auto !important;
     min-width:0 !important;
     margin:0 !important;
-    padding:8px 10px !important;
+    border:1px solid var(--borda);
+    border-radius:12px;
+    padding:9px 11px;
+    background:#f8fafc;
 }
-.filtros .filtro-periodo>label{
-    margin-bottom:6px;
-    font-size:10px;
+.filtros .filtro-periodo>label,
+.filtros .filtro-periodo-rapido>label{
+    display:block;
+    font-size:11px;
+    font-weight:800;
+    color:#334155;
+    margin-bottom:7px;
+    text-transform:uppercase;
+    letter-spacing:.2px;
     white-space:nowrap;
 }
 .filtros .periodo-duplo{
@@ -293,27 +331,37 @@ th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
 }
 .filtros .periodo-campo input{
     width:100% !important;
-    min-height:35px;
+    min-height:35px !important;
+    height:35px !important;
     padding:6px 7px;
     font-size:12px;
 }
-.contador-erp-filtro{
-    margin-top:8px;
+.filtro-periodo-rapido select{
+    width:100%;
+    min-height:35px;
+    height:35px;
+    padding:6px 9px;
+    border:1px solid var(--borda);
+    border-radius:8px;
+    background:#fff;
+    font-size:12px;
 }
 @media(max-width:1250px){
     .filtros{
-        grid-template-columns:repeat(3,minmax(180px,1fr));
+        grid-template-columns:repeat(3,minmax(0,1fr)) !important;
     }
-    .filtros .filtro-periodo{
-        grid-column:span 3;
+    .filtros .filtro-periodo,
+    .filtros .filtro-periodo-rapido{
+        grid-column:span 1 !important;
     }
 }
 @media(max-width:760px){
     .filtros{
-        grid-template-columns:1fr;
+        grid-template-columns:1fr !important;
     }
-    .filtros .filtro-periodo{
-        grid-column:span 1;
+    .filtros .filtro-periodo,
+    .filtros .filtro-periodo-rapido{
+        grid-column:span 1 !important;
     }
 }
 
@@ -385,7 +433,7 @@ th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
             <div class="campo status-linha1"><label for="status">Status</label><select id="status"><option value="PENDENTE">Pendente</option><option value="EM_ANALISE">Em análise</option><option value="APROVADA">Aprovada</option><option value="REPROVADA">Reprovada</option></select><div id="campoStatusInstalacao" style="display:none"><label for="statusInstalacao">Status da instalação</label><select id="statusInstalacao"><option value="PENDENTE">Pendente</option><option value="INSTALADO">Instalação realizada</option></select><div class="arquivo-ajuda">Liberado automaticamente após aprovação.</div></div></div>
             <div class="campo tecnicos-linha2"><label for="tecnicoResponsavel">Técnicos responsáveis <span style="font-weight:400;color:#64748b">(até 4)</span></label><select id="tecnicoResponsavel" multiple size="4" aria-describedby="ajudaTecnicos"></select><div id="ajudaTecnicos" class="arquivo-ajuda">Selecione de 1 a 4 técnicos. Use Ctrl no Windows ou Command no Mac para selecionar mais de um.</div></div>
 
-            <div class="campo observacao-tripla"><label for="observacao">Observação inicial</label><textarea id="observacao" maxlength="2000" placeholder="Detalhes iniciais da viabilidade. Após salvar, este texto não poderá mais ser alterado."></textarea><div class="arquivo-ajuda" id="ajudaObservacaoInicial">A observação inicial será bloqueada depois do primeiro salvamento.</div></div>
+            <div class="campo observacao-tripla"><label for="observacao">Observação inicial</label><textarea id="observacao" maxlength="2000" placeholder="Detalhes iniciais da viabilidade. Este texto poderá ser atualizado posteriormente."></textarea><div class="arquivo-ajuda" id="ajudaObservacaoInicial">A observação inicial vem preenchida na edição e pode ser atualizada.</div></div>
             <div class="campo observacao-tripla"><label for="observacaoPosAprovacao">Observação do técnico pós-visita</label><textarea id="observacaoPosAprovacao" maxlength="3000" placeholder="Texto já salvo permanece visível e pode ser atualizado pelo técnico."></textarea></div>
             <div class="campo observacao-tripla"><label for="observacaoPosInstalacao">Observação pós-instalação realizada</label><textarea id="observacaoPosInstalacao" maxlength="3000" placeholder="Resultado final da instalação, materiais utilizados, pendências e orientações ao cliente."></textarea></div>
 
@@ -472,6 +520,14 @@ th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
                     <label class="periodo-campo"><span>Atualização inicial</span><input type="date" id="atualizacaoDataInicio"></label>
                     <label class="periodo-campo"><span>Atualização final</span><input type="date" id="atualizacaoDataFim"></label>
                 </div>
+            </div>
+            <div class="filtro-periodo-rapido">
+                <label>Período rápido</label>
+                <select id="filtroPeriodoRapido">
+                    <option value="TODOS" selected>Todo período</option>
+                    <option value="7">Últimos 7 dias</option>
+                    <option value="30">Últimos 30 dias</option>
+                </select>
             </div>
         </div>
     </div>
@@ -905,6 +961,7 @@ function renderTabela(){
     const registroFim=document.getElementById("registroDataFim").value;
     const atualizacaoInicio=document.getElementById("atualizacaoDataInicio").value;
     const atualizacaoFim=document.getElementById("atualizacaoDataFim").value;
+    const periodoRapido=document.getElementById("filtroPeriodoRapido").value;
 
     const lista=viabilidades.filter(o=>{
         const dataRegistroValor=dataRegistro(o)?new Date(dataRegistro(o)):null;
@@ -926,6 +983,16 @@ function renderTabela(){
         if(registroFim)ok=ok&&dataRegistroValor&&!isNaN(dataRegistroValor)&&dataRegistroValor<=new Date(registroFim+"T23:59:59");
         if(atualizacaoInicio)ok=ok&&dataAtualizacaoValor&&!isNaN(dataAtualizacaoValor)&&dataAtualizacaoValor>=new Date(atualizacaoInicio+"T00:00:00");
         if(atualizacaoFim)ok=ok&&dataAtualizacaoValor&&!isNaN(dataAtualizacaoValor)&&dataAtualizacaoValor<=new Date(atualizacaoFim+"T23:59:59");
+
+        if(periodoRapido!=="TODOS"){
+            const dias=Number(periodoRapido);
+            const inicioRapido=new Date();
+            inicioRapido.setDate(inicioRapido.getDate()-(dias-1));
+            inicioRapido.setHours(0,0,0,0);
+            const fimRapido=new Date();
+            fimRapido.setHours(23,59,59,999);
+            ok=ok&&dataRegistroValor&&!isNaN(dataRegistroValor)&&dataRegistroValor>=inicioRapido&&dataRegistroValor<=fimRapido;
+        }
         return ok;
     }).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
 
@@ -1094,7 +1161,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById("telefone").addEventListener("input",aplicarMascaraTelefone);document.getElementById("tecnicoResponsavel").addEventListener("change",limitarSelecaoTecnicos);
     document.getElementById("status").addEventListener("change",atualizarCampoInstalacao);
     atualizarCampoInstalacao();document.getElementById("telefone2").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);document.getElementById("arquivosVisita").addEventListener("change",processarArquivosVisita);document.getElementById("arquivosPosInstalacao").addEventListener("change",processarArquivosPosInstalacao);
-    document.querySelectorAll("#filtroNome,#filtroEndereco,#filtroLocalidade,#filtroStatusViabilidade,#filtroStatusInstalacao,#filtroClientesERP,#registroDataInicio,#registroDataFim,#atualizacaoDataInicio,#atualizacaoDataFim").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
+    document.querySelectorAll("#filtroNome,#filtroEndereco,#filtroLocalidade,#filtroStatusViabilidade,#filtroStatusInstalacao,#filtroClientesERP,#registroDataInicio,#registroDataFim,#atualizacaoDataInicio,#atualizacaoDataFim,#filtroPeriodoRapido").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
     document.getElementById("buscaViabilidade").addEventListener("input",e=>{document.getElementById("filtroNome").value=e.target.value;renderTabela()});
     document.getElementById("selecionarTodas").addEventListener("change",e=>selecionarTodasViabilidades(e.target.checked));
     document.addEventListener("keydown",e=>{if(e.key==="Escape"){fecharMidia();fecharResumo()}});
