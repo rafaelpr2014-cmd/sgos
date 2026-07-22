@@ -251,6 +251,73 @@ th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
 @media(max-width:1200px){.campo.anexo-terco{grid-column:span 6}}
 @media(max-width:900px){.campo.anexo-terco{grid-column:1/-1}}
 
+
+/* ===== FILTROS COMPACTOS EM UMA ÚNICA LINHA ===== */
+.filtros{
+    display:flex !important;
+    align-items:stretch;
+    gap:8px;
+    flex-wrap:nowrap !important;
+    overflow-x:auto;
+    padding-bottom:3px;
+}
+.filtros>input,
+.filtros>select{
+    flex:0 0 auto;
+    min-width:145px;
+    width:auto !important;
+}
+#filtroNome{min-width:175px}
+#filtroEndereco{min-width:185px}
+#filtroLocalidade{min-width:155px}
+#filtroStatusViabilidade{min-width:170px}
+#filtroStatusInstalacao{min-width:170px}
+#filtroClientesERP{min-width:165px}
+.filtros .filtro-periodo{
+    flex:0 0 275px;
+    min-width:275px;
+    padding:7px 9px;
+    margin:0;
+}
+.filtros .filtro-periodo>label{
+    margin-bottom:5px;
+    font-size:10px;
+    white-space:nowrap;
+}
+.filtros .periodo-duplo{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+}
+.filtros .periodo-campo span{
+    font-size:9px;
+    white-space:nowrap;
+}
+.filtros .periodo-campo input{
+    min-height:34px;
+    padding:6px 7px;
+    font-size:12px;
+}
+.contador-erp-filtro{
+    display:inline-flex;
+    align-items:center;
+    margin-top:5px;
+    padding:5px 10px;
+    border-radius:999px;
+    background:#eff6ff;
+    border:1px solid #bfdbfe;
+    color:#1d4ed8;
+    font-size:12px;
+    font-weight:800;
+}
+@media(max-width:900px){
+    .filtros{
+        display:flex !important;
+        flex-wrap:nowrap !important;
+        overflow-x:auto;
+    }
+}
+
 </style>
 </head>
 <body>
@@ -388,6 +455,11 @@ th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
             <select id="filtroLocalidade"><option value="">Todas as localidades</option></select>
             <select id="filtroStatusViabilidade"><option value="">Todos os status da viabilidade</option><option value="PENDENTE">Pendente</option><option value="EM_ANALISE">Em análise</option><option value="APROVADA">Aprovada</option><option value="REPROVADA">Reprovada</option></select>
             <select id="filtroStatusInstalacao" class="filtro-instalacao"><option value="">Todas as instalações</option><option value="PENDENTE">Instalação pendente</option><option value="INSTALADO">Instalação realizada</option></select>
+            <select id="filtroClientesERP">
+                <option value="">Todos os clientes ERP</option>
+                <option value="COM">Com integração ERP</option>
+                <option value="SEM">Sem integração ERP</option>
+            </select>
             <div class="filtro-periodo">
                 <label>Filtro pela data de registro</label>
                 <div class="periodo-duplo">
@@ -406,7 +478,7 @@ th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
     </div>
 
     <div class="card">
-        <div class="card-header lista-toolbar"><div><div class="titulo-card">Lista de Viabilidades</div><div class="sub-card">Clique em uma viabilidade para abrir o resumo completo.</div></div><div class="lista-toolbar-acoes"><button class="btn btn-imprimir" type="button" onclick="imprimirSelecionadas()"><svg class="btn-icon-svg" viewBox="0 0 24 24"><path d="M7 8V4h10v4"/><rect x="5" y="12" width="14" height="8" rx="1"/><path d="M5 16H3V9h18v7h-2"/><path d="M17 11h.01"/></svg> Imprimir selecionadas</button></div></div>
+        <div class="card-header lista-toolbar"><div><div class="titulo-card">Lista de Viabilidades</div><div class="sub-card">Clique em uma viabilidade para abrir o resumo completo.</div><div id="contadorClientesERPFiltrados" class="contador-erp-filtro">Clientes integrados via ERP (0)</div></div><div class="lista-toolbar-acoes"><button class="btn btn-imprimir" type="button" onclick="imprimirSelecionadas()"><svg class="btn-icon-svg" viewBox="0 0 24 24"><path d="M7 8V4h10v4"/><rect x="5" y="12" width="14" height="8" rx="1"/><path d="M5 16H3V9h18v7h-2"/><path d="M17 11h.01"/></svg> Imprimir selecionadas</button></div></div>
         <div class="table-wrap">
             <table><thead><tr><th><input type="checkbox" class="checkbox-viabilidade" id="selecionarTodas" title="Selecionar todas"></th><th>Nome</th><th>Localidade</th><th>Endereço</th><th>Observação inicial</th><th>Observação do técnico pós-visita</th><th>Observação pós-instalação</th><th>Telefones</th><th>Técnicos</th><th>Cadastrado por</th><th>Registrado em</th><th>Atualizado por</th><th>Atualizado em</th><th>Viabilidade</th><th>Instalação</th><th>Anexos</th><th>Localização</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="18" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
         </div>
@@ -824,6 +896,7 @@ function renderTabela(){
     const loc=document.getElementById("filtroLocalidade").value.toLowerCase();
     const statusViabilidade=document.getElementById("filtroStatusViabilidade").value;
     const statusInstalacao=document.getElementById("filtroStatusInstalacao").value;
+    const filtroClientesERP=document.getElementById("filtroClientesERP").value;
     const registroInicio=document.getElementById("registroDataInicio").value;
     const registroFim=document.getElementById("registroDataFim").value;
     const atualizacaoInicio=document.getElementById("atualizacaoDataInicio").value;
@@ -838,7 +911,12 @@ function renderTabela(){
             &&(!end||String(o.endereco||"").toLowerCase().includes(end))
             &&(!loc||localidadeDoRegistro(o).toLowerCase()===loc)
             &&(!statusViabilidade||st===statusViabilidade)
-            &&(!statusInstalacao||sti===statusInstalacao);
+            &&(!statusInstalacao||sti===statusInstalacao)
+            &&(
+                !filtroClientesERP
+                ||(filtroClientesERP==="COM"&&clientesERPDoRegistro(o).length>0)
+                ||(filtroClientesERP==="SEM"&&clientesERPDoRegistro(o).length===0)
+            );
 
         if(registroInicio)ok=ok&&dataRegistroValor&&!isNaN(dataRegistroValor)&&dataRegistroValor>=new Date(registroInicio+"T00:00:00");
         if(registroFim)ok=ok&&dataRegistroValor&&!isNaN(dataRegistroValor)&&dataRegistroValor<=new Date(registroFim+"T23:59:59");
@@ -848,6 +926,9 @@ function renderTabela(){
     }).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
 
     viabilidadesFiltradas=lista;
+    const totalClientesERPFiltrados=lista.reduce((total,o)=>total+clientesERPDoRegistro(o).length,0);
+    const contadorERP=document.getElementById("contadorClientesERPFiltrados");
+    if(contadorERP)contadorERP.textContent=`Clientes integrados via ERP (${totalClientesERPFiltrados})`;
     atualizarCards(lista);
     const tbody=document.getElementById("tabelaViabilidades");
     if(!lista.length){tbody.innerHTML='<tr><td colspan="18" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
@@ -906,7 +987,7 @@ function abrirResumoViabilidade(id,foco=""){
         <div class="resumo-item span-2"><small>Observação pós-instalação realizada</small><div>${escapar(o.observacao_pos_instalacao||"-")}</div></div>
         ${statusInstalacaoRegistro(o)==="INSTALADO"?`<div class="resumo-item span-2"><small>Instalação confirmada em</small><div>${formatarData(o.instalacao_aprovada_em)}</div></div>`:""}
     </div>
-    <div class="resumo-secao"><h3>Clientes integrados via ERP <span class="erp-contador">${clientesErp.length}</span></h3>${renderClientesERPResumo(clientesErp)}</div>
+    <div class="resumo-secao"><h3>Clientes integrados via ERP (${clientesErp.length})</h3>${renderClientesERPResumo(clientesErp)}</div>
     <div class="resumo-secao"><h3>Anexo inicial</h3>${renderAnexosResumo(analise)}</div>
     <div class="resumo-secao"><h3>Anexo da comprovação de visita</h3>${renderAnexosResumo(visita)}</div>
     <div class="resumo-secao"><h3>Anexo pós-instalação</h3>${renderAnexosResumo(posInstalacao)}</div>
@@ -939,7 +1020,8 @@ function contarResumoPdf(registros){
         instalacaoPendente:registros.filter(o=>status(o)==="APROVADA"&&statusInstalacaoRegistro(o)==="PENDENTE").length,
         pendentes:registros.filter(o=>status(o)==="PENDENTE").length,
         emAnalise:registros.filter(o=>status(o)==="EM_ANALISE").length,
-        reprovadas:registros.filter(o=>status(o)==="REPROVADA").length
+        reprovadas:registros.filter(o=>status(o)==="REPROVADA").length,
+        clientesERP:registros.reduce((total,o)=>total+clientesERPDoRegistro(o).length,0)
     };
 }
 function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
@@ -952,6 +1034,7 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
         <div class="resumo-periodos"><strong>VIABILIDADES SELECIONADAS: ${resumo.total}</strong><span>PERÍODO DE REGISTRO: ${escapar(contextoFiltros.periodoRegistro)}</span><span>PERÍODO DE ATUALIZAÇÃO: ${escapar(contextoFiltros.periodoAtualizacao)}</span></div>
         <div class="resumo-contagens">
             <span><b>VIABILIDADES APROVADAS</b> ${resumo.aprovadas}</span>
+            <span><b>CLIENTES INTEGRADOS VIA ERP</b> ${resumo.clientesERP}</span>
             <span><b>INSTALAÇÃO APROVADA / REALIZADA</b> ${resumo.instalados}</span>
             <span><b>INSTALAÇÃO APROVADA / PENDENTE</b> ${resumo.instalacaoPendente}</span>
             <span><b>PENDENTE</b> ${resumo.pendentes}</span>
@@ -970,7 +1053,7 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
         <div class="obs"><b>Observação inicial:</b> ${escapar(o.observacao||o.observacoes||"-")}</div>
         ${o.observacao_pos_aprovacao?`<div class="obs pos"><b>Observação do técnico pós-visita:</b> ${escapar(o.observacao_pos_aprovacao)}</div>`:""}
         ${o.observacao_pos_instalacao?`<div class="obs pos"><b>Observação pós-instalação realizada:</b> ${escapar(o.observacao_pos_instalacao)}</div>`:""}
-        ${clientesERPDoRegistro(o).length?`<div class="pdf-erp"><b>${clientesERPDoRegistro(o).length} cliente${clientesERPDoRegistro(o).length===1?"":"s"} integrado${clientesERPDoRegistro(o).length===1?"":"s"} via ERP:</b> ${clientesERPDoRegistro(o).map(c=>`${escapar(c.nome||"-")} | ID ${escapar(c.id_erp||c.id||"-")} | ${escapar(c.plano_nome_erp||"-")} | Login ${escapar(c.login||"-")} | ${escapar(c.status_contrato||"-")}`).join("<br>")}</div>`:""}
+        ${clientesERPDoRegistro(o).length?`<div class="pdf-erp"><div class="pdf-erp-titulo"><b>Clientes integrados via ERP (${clientesERPDoRegistro(o).length})</b></div>${clientesERPDoRegistro(o).map((c,indice)=>`<div class="pdf-erp-cliente"><b>${indice+1}. ${escapar(c.nome||"-")}</b><span>ID ERP: ${escapar(c.id_erp||c.id||"-")}</span><span>Plano: ${escapar(c.plano_nome_erp||"-")}</span><span>Login: ${escapar(c.login||"-")}</span>${c.telefone?`<span>Telefone: ${escapar(c.telefone)}</span>`:""}</div>`).join("")}</div>`:""}
         ${statusInstalacaoRegistro(o)==="INSTALADO"?`<div class="linha instalacao-data"><b>Instalação confirmada em:</b> ${formatarData(o.instalacao_aprovada_em)}</div>`:""}
     </article>`;
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relatório de Viabilidades</title><style>
@@ -983,7 +1066,7 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
         .grade{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr);gap:3mm;flex:1;min-height:0}
         .item{border:1px solid #cbd5e1;border-radius:3mm;padding:3mm;overflow:hidden;page-break-inside:avoid;background:#fff}
         .item-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:2mm;border-bottom:1px solid #e2e8f0;padding-bottom:1.5mm;margin-bottom:1.5mm}.item h2{font-size:10.5pt;margin:0;line-height:1.15}.status-grupo{display:flex;gap:1mm;flex-wrap:wrap;justify-content:flex-end}.status{font-size:7pt;font-weight:bold;border-radius:999px;padding:1mm 2mm;white-space:nowrap;border:1px solid transparent}.pdf-vermelho{background:#fee2e2;color:#b91c1c;border-color:#fecaca}.pdf-analise{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}.pdf-verde{background:#dcfce7;color:#15803d;border-color:#bbf7d0}
-        .linha,.duas,.obs,.pdf-erp{font-size:7.5pt;line-height:1.25;margin-top:1.2mm}.duas{display:grid;grid-template-columns:1fr 1fr;gap:2mm}.instalacao-data{background:#ecfdf5;border:1px solid #a7f3d0;border-radius:2mm;padding:1.2mm;color:#065f46}.obs{border-top:1px dashed #cbd5e1;padding-top:1.3mm;max-height:15mm;overflow:hidden}.obs.pos{max-height:11mm}.pdf-erp{border-top:1px dashed #cbd5e1;padding-top:1.3mm;max-height:15mm;overflow:hidden;font-weight:400}.pdf-erp b{font-size:inherit;line-height:inherit;font-weight:700}
+        .linha,.duas,.obs,.pdf-erp{font-size:7.5pt;line-height:1.25;margin-top:1.2mm}.duas{display:grid;grid-template-columns:1fr 1fr;gap:2mm}.instalacao-data{background:#ecfdf5;border:1px solid #a7f3d0;border-radius:2mm;padding:1.2mm;color:#065f46}.obs{border-top:1px dashed #cbd5e1;padding-top:1.3mm;max-height:15mm;overflow:hidden}.obs.pos{max-height:11mm}.pdf-erp{border-top:1px dashed #cbd5e1;padding-top:1.3mm;max-height:25mm;overflow:hidden;font-weight:400}.pdf-erp b{font-size:inherit;line-height:inherit;font-weight:700}.pdf-erp-titulo{margin-bottom:.8mm}.pdf-erp-cliente{display:grid;grid-template-columns:minmax(30mm,1.35fr) minmax(17mm,.55fr) minmax(34mm,1fr) minmax(25mm,.8fr);gap:1mm 2mm;padding:.8mm 0;border-top:1px solid #e2e8f0}.pdf-erp-cliente:first-of-type{border-top:0}.pdf-erp-cliente span,.pdf-erp-cliente b{display:block;white-space:normal;overflow-wrap:anywhere}
         .rodape{height:9mm;margin-top:3mm;border-top:1px solid #cbd5e1;display:flex;align-items:flex-end;justify-content:center;font-size:7.5pt;color:#475569;text-align:center}
         @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
     </style></head><body>${paginas.map((pagina,indice)=>`<section class="pagina">
@@ -1007,7 +1090,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById("telefone").addEventListener("input",aplicarMascaraTelefone);document.getElementById("tecnicoResponsavel").addEventListener("change",limitarSelecaoTecnicos);
     document.getElementById("status").addEventListener("change",atualizarCampoInstalacao);
     atualizarCampoInstalacao();document.getElementById("telefone2").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);document.getElementById("arquivosVisita").addEventListener("change",processarArquivosVisita);document.getElementById("arquivosPosInstalacao").addEventListener("change",processarArquivosPosInstalacao);
-    document.querySelectorAll("#filtroNome,#filtroEndereco,#filtroLocalidade,#filtroStatusViabilidade,#filtroStatusInstalacao,#registroDataInicio,#registroDataFim,#atualizacaoDataInicio,#atualizacaoDataFim").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
+    document.querySelectorAll("#filtroNome,#filtroEndereco,#filtroLocalidade,#filtroStatusViabilidade,#filtroStatusInstalacao,#filtroClientesERP,#registroDataInicio,#registroDataFim,#atualizacaoDataInicio,#atualizacaoDataFim").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
     document.getElementById("buscaViabilidade").addEventListener("input",e=>{document.getElementById("filtroNome").value=e.target.value;renderTabela()});
     document.getElementById("selecionarTodas").addEventListener("change",e=>selecionarTodasViabilidades(e.target.checked));
     document.addEventListener("keydown",e=>{if(e.key==="Escape"){fecharMidia();fecharResumo()}});
