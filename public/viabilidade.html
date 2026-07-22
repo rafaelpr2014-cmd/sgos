@@ -252,69 +252,68 @@ th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
 @media(max-width:900px){.campo.anexo-terco{grid-column:1/-1}}
 
 
-/* ===== FILTROS COMPACTOS EM UMA ÚNICA LINHA ===== */
+
+/* ===== FILTROS ORGANIZADOS EM DUAS LINHAS ===== */
 .filtros{
-    display:flex !important;
+    display:grid !important;
+    grid-template-columns:
+        minmax(170px,1fr)
+        minmax(180px,1.1fr)
+        minmax(170px,1fr)
+        minmax(190px,1.15fr)
+        minmax(170px,1fr)
+        minmax(175px,1fr);
+    gap:10px !important;
     align-items:stretch;
-    gap:8px;
-    flex-wrap:nowrap !important;
-    overflow-x:auto;
-    padding-bottom:3px;
+    overflow:visible !important;
 }
 .filtros>input,
 .filtros>select{
-    flex:0 0 auto;
-    min-width:145px;
-    width:auto !important;
+    width:100% !important;
+    min-width:0 !important;
+    height:52px;
+    margin:0 !important;
 }
-#filtroNome{min-width:175px}
-#filtroEndereco{min-width:185px}
-#filtroLocalidade{min-width:155px}
-#filtroStatusViabilidade{min-width:170px}
-#filtroStatusInstalacao{min-width:170px}
-#filtroClientesERP{min-width:165px}
 .filtros .filtro-periodo{
-    flex:0 0 275px;
-    min-width:275px;
-    padding:7px 9px;
-    margin:0;
+    grid-column:span 3;
+    width:auto !important;
+    min-width:0 !important;
+    margin:0 !important;
+    padding:8px 10px !important;
 }
 .filtros .filtro-periodo>label{
-    margin-bottom:5px;
+    margin-bottom:6px;
     font-size:10px;
     white-space:nowrap;
 }
 .filtros .periodo-duplo{
     display:grid;
     grid-template-columns:1fr 1fr;
-    gap:6px;
-}
-.filtros .periodo-campo span{
-    font-size:9px;
-    white-space:nowrap;
+    gap:8px;
 }
 .filtros .periodo-campo input{
-    min-height:34px;
+    width:100% !important;
+    min-height:35px;
     padding:6px 7px;
     font-size:12px;
 }
 .contador-erp-filtro{
-    display:inline-flex;
-    align-items:center;
-    margin-top:5px;
-    padding:5px 10px;
-    border-radius:999px;
-    background:#eff6ff;
-    border:1px solid #bfdbfe;
-    color:#1d4ed8;
-    font-size:12px;
-    font-weight:800;
+    margin-top:8px;
 }
-@media(max-width:900px){
+@media(max-width:1250px){
     .filtros{
-        display:flex !important;
-        flex-wrap:nowrap !important;
-        overflow-x:auto;
+        grid-template-columns:repeat(3,minmax(180px,1fr));
+    }
+    .filtros .filtro-periodo{
+        grid-column:span 3;
+    }
+}
+@media(max-width:760px){
+    .filtros{
+        grid-template-columns:1fr;
+    }
+    .filtros .filtro-periodo{
+        grid-column:span 1;
     }
 }
 
@@ -363,7 +362,7 @@ th{padding:11px 9px;font-size:12px}td{padding:9px 9px;font-size:13px}
     <div class="top-actions">
         <div class="card-indicador"><div class="icon-box icon-blue"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></div><div class="card-info"><small>Total</small><strong id="cardTotal">0</strong><span>Viabilidades cadastradas</span></div></div>
         <div class="card-indicador"><div class="icon-box icon-orange"><svg viewBox="0 0 24 24"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="9"/></svg></div><div class="card-info"><small>Últimos 7 dias</small><strong id="card7Dias">0</strong><span>Registros recentes</span></div></div>
-        <div class="card-indicador"><div class="icon-box icon-green"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><path d="M8 11l3 3 5-5"/></svg></div><div class="card-info"><small>Com anexo</small><strong id="cardAnexos">0</strong><span>Fotos ou vídeos</span></div></div>
+        <div class="card-indicador"><div class="icon-box icon-green"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><path d="M8 11l3 3 5-5"/></svg></div><div class="card-info"><small>Clientes com ERP integrado</small><strong id="cardClientesERP">0</strong><span>Clientes vinculados às viabilidades</span></div></div>
         <div class="card-indicador"><div class="icon-box icon-red"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div><div class="card-info"><small>Hoje</small><strong id="cardHoje">0</strong><span>Cadastros do dia</span></div></div>
     </div>
 
@@ -889,7 +888,12 @@ async function carregarViabilidades(){
 }
 function dentroDias(v,dias){if(!v)return false;const d=new Date(v);if(isNaN(d))return false;const ini=new Date();ini.setDate(ini.getDate()-(dias-1));ini.setHours(0,0,0,0);const fim=new Date();fim.setHours(23,59,59,999);return d>=ini&&d<=fim}
 function mesmoDia(v){if(!v)return false;const d=new Date(v),h=new Date();return !isNaN(d)&&d.toDateString()===h.toDateString()}
-function atualizarCards(lista){document.getElementById("cardTotal").innerText=lista.length;document.getElementById("card7Dias").innerText=viabilidades.filter(x=>dentroDias(dataRegistro(x),7)).length;document.getElementById("cardAnexos").innerText=lista.filter(x=>anexosDoRegistro(x).length).length;document.getElementById("cardHoje").innerText=viabilidades.filter(x=>mesmoDia(dataRegistro(x))).length}
+function atualizarCards(lista){
+    document.getElementById("cardTotal").innerText=lista.length;
+    document.getElementById("card7Dias").innerText=viabilidades.filter(x=>dentroDias(dataRegistro(x),7)).length;
+    document.getElementById("cardClientesERP").innerText=lista.reduce((total,o)=>total+clientesERPDoRegistro(o).length,0);
+    document.getElementById("cardHoje").innerText=viabilidades.filter(x=>mesmoDia(dataRegistro(x))).length;
+}
 function renderTabela(){
     const nome=document.getElementById("filtroNome").value.toLowerCase();
     const end=document.getElementById("filtroEndereco").value.toLowerCase();
