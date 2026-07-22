@@ -1121,9 +1121,9 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
         <div class="duas"><div><b>Técnicos:</b> ${escapar(o.tecnico_responsavel||"-")}</div><div><b>Registro:</b> ${formatarData(dataRegistro(o))}</div></div>
         <div class="duas"><div><b>Cadastrado por:</b> ${escapar(nomeCadastrador(o))}</div><div><b>Atualizado por:</b> ${escapar(nomeAtualizador(o))}</div></div>
         <div class="linha"><b>Atualizado em:</b> ${formatarData(o.atualizado_em)}</div>
-        ${o.observacao_pos_aprovacao?`<div class="obs pos"><b>Observação do técnico pós-visita:</b> ${escapar(o.observacao_pos_aprovacao)}</div>`:""}
-        ${o.observacao_pos_instalacao?`<div class="obs pos obs-pos-instalacao"><b>Observação pós-instalação realizada:</b> ${escapar(o.observacao_pos_instalacao)}</div>`:""}
-        ${o.observacao_pos_instalacao?`<div class="obs pos"><b>Observação pós-instalação realizada:</b> ${escapar(o.observacao_pos_instalacao)}</div>`:""}
+        ${statusInstalacaoRegistro(o)==="INSTALADO"
+            ? `${o.observacao_pos_aprovacao?`<div class="obs pos"><b>Observação do técnico pós-visita:</b> ${escapar(o.observacao_pos_aprovacao)}</div>`:""}${o.observacao_pos_instalacao?`<div class="obs pos obs-pos-instalacao"><b>Observação pós-instalação realizada:</b> ${escapar(o.observacao_pos_instalacao)}</div>`:""}`
+            : `${(o.observacao||o.observacoes)?`<div class="obs"><b>Observação inicial:</b> ${escapar(o.observacao||o.observacoes)}</div>`:""}${o.observacao_pos_aprovacao?`<div class="obs pos"><b>Observação do técnico pós-visita:</b> ${escapar(o.observacao_pos_aprovacao)}</div>`:""}`}
         ${clientesERPDoRegistro(o).length?`<div class="pdf-erp">
             <div class="pdf-erp-titulo"><b>Clientes integrados via ERP (${clientesERPDoRegistro(o).length})</b></div>
             <div class="pdf-erp-cabecalho">
