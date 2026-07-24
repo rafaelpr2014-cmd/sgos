@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SGOS - Viabilidades</title>
+<title>SGOS - Cadastro de Viabilidade</title>
 
 <link rel="icon" type="image/png" href="/img/favicon.png">
 <script src="/js/auth.js" defer></script>
@@ -377,69 +377,77 @@ body.pagina-cadastro .content{max-width:1500px;margin:0 auto}
 .btn-nova-viabilidade{background:#16a34a}.btn-nova-viabilidade:hover{background:#15803d}
 
 
-
-/* ===== FILTROS EM DUAS LINHAS, SEM ESPAÇO SOBRANDO ===== */
-body.pagina-lista .card-filtros .filtros{
+/* ===== AJUSTE FINAL: CADASTRO OCUPANDO TODA A ÁREA ÚTIL ===== */
+body.pagina-cadastro .content{
+    width:100%;
+    max-width:none;
+    margin:0;
+    padding:18px 22px 30px;
+}
+body.pagina-cadastro .card-cadastro-viabilidade{
+    width:100%;
+    max-width:none;
+    margin:0 0 14px;
+}
+body.pagina-cadastro .form-grid{
     display:grid !important;
-    grid-template-columns:repeat(21,minmax(0,1fr)) !important;
-    gap:10px !important;
-    align-items:stretch !important;
-    width:100% !important;
+    grid-template-columns:repeat(28,minmax(0,1fr)) !important;
+    gap:12px 12px !important;
+    align-items:start;
 }
-body.pagina-lista .card-filtros #filtroNome,
-body.pagina-lista .card-filtros #filtroEndereco,
-body.pagina-lista .card-filtros #filtroReferencia,
-body.pagina-lista .card-filtros #filtroLocalidade,
-body.pagina-lista .card-filtros #filtroStatusViabilidade,
-body.pagina-lista .card-filtros #filtroStatusInstalacao,
-body.pagina-lista .card-filtros #filtroClientesERP{
-    grid-column:span 3 !important;
-    width:100% !important;
-    min-width:0 !important;
-    height:48px !important;
-    margin:0 !important;
+body.pagina-cadastro .campo.nome-linha1,
+body.pagina-cadastro .campo.endereco-linha1,
+body.pagina-cadastro .campo.referencia-linha1,
+body.pagina-cadastro .campo.telefone-linha1,
+body.pagina-cadastro .campo.localidade-linha1,
+body.pagina-cadastro .campo.status-linha1{
+    grid-column:span 4 !important;
 }
-body.pagina-lista .card-filtros .filtro-periodo,
-body.pagina-lista .card-filtros .filtro-periodo-rapido{
+body.pagina-cadastro .campo.tecnicos-linha2,
+body.pagina-cadastro .campo.observacao-tripla{
     grid-column:span 7 !important;
-    width:100% !important;
-    min-width:0 !important;
-    margin:0 !important;
 }
-body.pagina-lista .card-filtros .filtro-periodo-rapido select{
-    width:100% !important;
+body.pagina-cadastro .campo.tecnicos-linha2 select,
+body.pagina-cadastro .campo.observacao-tripla textarea{
+    width:100%;
+    min-height:108px;
+    height:108px;
 }
+body.pagina-cadastro .erp-card{grid-column:1/-1 !important}
+body.pagina-cadastro .campo.anexo-terco{grid-column:span 9 !important}
+body.pagina-cadastro .campo.anexo-terco:last-of-type{grid-column:span 10 !important}
+
 @media(max-width:1450px){
-    body.pagina-lista .card-filtros .filtros{grid-template-columns:repeat(14,minmax(0,1fr)) !important;}
-    body.pagina-lista .card-filtros #filtroNome,
-    body.pagina-lista .card-filtros #filtroEndereco,
-    body.pagina-lista .card-filtros #filtroReferencia,
-    body.pagina-lista .card-filtros #filtroLocalidade,
-    body.pagina-lista .card-filtros #filtroStatusViabilidade,
-    body.pagina-lista .card-filtros #filtroStatusInstalacao,
-    body.pagina-lista .card-filtros #filtroClientesERP{grid-column:span 2 !important;}
-    body.pagina-lista .card-filtros .filtro-periodo,
-    body.pagina-lista .card-filtros .filtro-periodo-rapido{grid-column:span 14 !important;}
+    body.pagina-cadastro .form-grid{grid-template-columns:repeat(14,minmax(0,1fr)) !important}
+    body.pagina-cadastro .campo.nome-linha1,
+    body.pagina-cadastro .campo.endereco-linha1,
+    body.pagina-cadastro .campo.referencia-linha1,
+    body.pagina-cadastro .campo.telefone-linha1,
+    body.pagina-cadastro .campo.localidade-linha1,
+    body.pagina-cadastro .campo.status-linha1{grid-column:span 2 !important}
+    body.pagina-cadastro .campo.tecnicos-linha2,
+    body.pagina-cadastro .campo.observacao-tripla{grid-column:span 7 !important}
 }
 @media(max-width:1100px){
-    body.pagina-lista .card-filtros .filtros{grid-template-columns:repeat(2,minmax(0,1fr)) !important;}
-    body.pagina-lista .card-filtros #filtroNome,
-    body.pagina-lista .card-filtros #filtroEndereco,
-    body.pagina-lista .card-filtros #filtroReferencia,
-    body.pagina-lista .card-filtros #filtroLocalidade,
-    body.pagina-lista .card-filtros #filtroStatusViabilidade,
-    body.pagina-lista .card-filtros #filtroStatusInstalacao,
-    body.pagina-lista .card-filtros #filtroClientesERP,
-    body.pagina-lista .card-filtros .filtro-periodo,
-    body.pagina-lista .card-filtros .filtro-periodo-rapido{grid-column:span 1 !important;}
+    body.pagina-cadastro .form-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+    body.pagina-cadastro .campo.nome-linha1,
+    body.pagina-cadastro .campo.endereco-linha1,
+    body.pagina-cadastro .campo.referencia-linha1,
+    body.pagina-cadastro .campo.telefone-linha1,
+    body.pagina-cadastro .campo.localidade-linha1,
+    body.pagina-cadastro .campo.status-linha1,
+    body.pagina-cadastro .campo.tecnicos-linha2,
+    body.pagina-cadastro .campo.observacao-tripla,
+    body.pagina-cadastro .campo.anexo-terco{grid-column:span 1 !important}
 }
-@media(max-width:760px){
-    body.pagina-lista .card-filtros .filtros{grid-template-columns:1fr !important;}
+@media(max-width:700px){
+    body.pagina-cadastro .content{padding:14px}
+    body.pagina-cadastro .form-grid{grid-template-columns:1fr !important}
 }
 
 </style>
 </head>
-<body class="pagina-lista">
+<body class="pagina-cadastro">
 
 <aside class="sidebar">
     <div class="sidebar-logo">
@@ -468,7 +476,7 @@ body.pagina-lista .card-filtros .filtro-periodo-rapido select{
 
 <main class="main">
 <header class="header">
-    <div class="header-left"><div class="header-logo"><img id="logoEmpresa" src="/img/logo-default.png" alt="Logo Empresa"></div><div class="divisor"></div><div class="header-title">Viabilidades</div></div>
+    <div class="header-left"><div class="header-logo"><img id="logoEmpresa" src="/img/logo-default.png" alt="Logo Empresa"></div><div class="divisor"></div><div class="header-title">Cadastro de Viabilidade</div></div>
     <div class="header-actions">
         <div class="busca-wrap"><svg class="busca-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input type="text" id="buscaViabilidade" placeholder="Buscar cliente..." class="input-busca-menu"></div>
         <div class="usuario-dropdown" id="usuarioDropdown">
@@ -564,7 +572,7 @@ body.pagina-lista .card-filtros .filtro-periodo-rapido select{
                 </div>
             </div>
         </div>
-        <div class="form-actions"><button class="btn btn-salvar" id="btnSalvar" onclick="salvarViabilidade()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span id="textoBtnSalvar">Salvar Viabilidade</span></button><button class="btn btn-limpar" type="button" onclick="limparFormulario()" id="btnCancelar">Limpar</button></div>
+        <div class="form-actions"><button class="btn btn-salvar" id="btnSalvar" onclick="salvarViabilidade()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span id="textoBtnSalvar">Salvar Viabilidade</span></button><button class="btn btn-limpar" type="button" onclick="limparFormulario()" id="btnCancelar">Limpar</button><button class="btn btn-secundario" type="button" onclick="location.href='viabilidade.html'">Voltar para Viabilidades</button></div>
     </div>
 
     <div class="card card-filtros">
@@ -607,7 +615,7 @@ body.pagina-lista .card-filtros .filtro-periodo-rapido select{
     </div>
 
     <div class="card card-lista">
-        <div class="card-header lista-toolbar"><div><div class="titulo-card">Lista de Viabilidades</div><div class="sub-card">Clique em uma viabilidade para abrir o resumo completo.</div><div id="contadorClientesERPFiltrados" class="contador-erp-filtro">Clientes integrados via ERP (0)</div></div><div class="lista-toolbar-acoes"><button class="btn btn-nova-viabilidade" type="button" onclick="location.href='cadastro-viabilidade.html'"><svg class="btn-icon-svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Cadastrar Nova Viabilidade</button><button class="btn btn-imprimir" type="button" onclick="imprimirSelecionadas()"><svg class="btn-icon-svg" viewBox="0 0 24 24"><path d="M7 8V4h10v4"/><rect x="5" y="12" width="14" height="8" rx="1"/><path d="M5 16H3V9h18v7h-2"/><path d="M17 11h.01"/></svg> Imprimir selecionadas</button></div></div>
+        <div class="card-header lista-toolbar"><div><div class="titulo-card">Lista de Viabilidades</div><div class="sub-card">Clique em uma viabilidade para abrir o resumo completo.</div><div id="contadorClientesERPFiltrados" class="contador-erp-filtro">Clientes integrados via ERP (0)</div></div><div class="lista-toolbar-acoes"><button class="btn btn-imprimir" type="button" onclick="imprimirSelecionadas()"><svg class="btn-icon-svg" viewBox="0 0 24 24"><path d="M7 8V4h10v4"/><rect x="5" y="12" width="14" height="8" rx="1"/><path d="M5 16H3V9h18v7h-2"/><path d="M17 11h.01"/></svg> Imprimir selecionadas</button></div></div>
         <div class="table-wrap">
             <table><thead><tr><th><input type="checkbox" class="checkbox-viabilidade" id="selecionarTodas" title="Selecionar todas"></th><th>Nome</th><th>Localidade</th><th>Endereço</th><th>Referência</th><th>Observação inicial</th><th>Observação do técnico pós-visita</th><th>Observação pós-instalação</th><th>Telefones</th><th>Técnicos</th><th>Cadastrado por</th><th>Registrado em</th><th>Atualizado por</th><th>Atualizado em</th><th>Viabilidade</th><th>Instalação</th><th>Anexos</th><th>Localização</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="19" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
         </div>
@@ -923,11 +931,39 @@ function renderClientesERPResumo(lista){
 }
 
 function editarViabilidade(id){
-    if(!id)return;
-    location.href=`cadastro-viabilidade.html?id=${encodeURIComponent(id)}`;
+    const o=viabilidades.find(v=>Number(v.id)===Number(id));if(!o)return;
+    document.getElementById("viabilidadeId").value=o.id;
+    document.getElementById("nome").value=o.nome||"";
+    document.getElementById("endereco").value=o.endereco||"";
+    document.getElementById("referencia").value=o.referencia||"";
+    document.getElementById("telefone").value=o.telefone||"";
+    document.getElementById("telefone2").value=o.telefone2||o.telefone_secundario||"";
+    const localidadeRegistro=String(o.localidade??"").trim();
+    const localidadeEncontrada=localidades.find(x=>String(x.id)===localidadeRegistro||String(x.nome).trim().toLowerCase()===localidadeDoRegistro(o).toLowerCase());
+    document.getElementById("localidade").value=localidadeEncontrada?String(localidadeEncontrada.id):localidadeRegistro;
+    document.getElementById("observacao").value=o.observacao||o.observacoes||"";
+    document.getElementById("observacao").readOnly=false;
+    document.getElementById("ajudaObservacaoInicial").textContent="A observação inicial está preenchida e pode ser atualizada.";
+    document.getElementById("observacaoPosAprovacao").value=o.observacao_pos_aprovacao||"";
+    document.getElementById("observacaoPosInstalacao").value=o.observacao_pos_instalacao||"";
+    definirTecnicosSelecionados(o.tecnico_responsavel||o.tecnicos_responsaveis||"");
+    document.getElementById("status").value=String(o.status||"PENDENTE").toUpperCase();
+    document.getElementById("statusInstalacao").value=statusInstalacaoRegistro(o)||"PENDENTE";
+    atualizarCampoInstalacao();
+    document.getElementById("latitude").value=o.latitude??"";
+    document.getElementById("longitude").value=o.longitude??"";
+    document.getElementById("localizacaoTecnico").value=coordenadasValidas(o)?`${Number(o.latitude).toFixed(8)}, ${Number(o.longitude).toFixed(8)}`:"Ainda não registrada";
+    document.getElementById("cadastradoPor").value=nomeCadastrador(o)==="-"?"":nomeCadastrador(o);
+    document.getElementById("registradoEm").value=formatarData(dataRegistro(o));
+    anexosExistentesEdicao=Array.isArray(o.anexos)?o.anexos:[];
+    arquivosSelecionados=[];arquivosVisitaSelecionados=[];arquivosPosInstalacaoSelecionados=[];renderPreviewArquivos();renderPreviewArquivosVisita();renderPreviewArquivosPosInstalacao();renderAnexosExistentes();
+    document.getElementById("textoBtnSalvar").textContent="Atualizar Viabilidade";
+    document.getElementById("btnCancelar").textContent="Cancelar edição";
+    carregarClientesERPDaViabilidade(o.id);
+    document.querySelector(".card").scrollIntoView({behavior:"smooth",block:"start"});
 }
-
 function limparFormulario(){
+    if(document.getElementById("viabilidadeId")?.value){ location.href="viabilidade.html"; return; }
     ["viabilidadeId","nome","endereco","referencia","telefone","telefone2","localidade","observacao","observacaoPosAprovacao","observacaoPosInstalacao","latitude","longitude","localizacaoTecnico"].forEach(id=>document.getElementById(id).value="");
     document.getElementById("observacao").readOnly=false;
     document.getElementById("ajudaObservacaoInicial").textContent="Preencha a observação inicial. Ela poderá ser editada posteriormente.";
@@ -968,7 +1004,7 @@ async function salvarViabilidade(){
         const registroId=Number(id||j.id||j.viabilidade_id||j.insertId||j?.dados?.id);
         const enviarArquivos=async(lista,categoria)=>{for(const arquivo of lista){const fd=new FormData();fd.append("arquivo",arquivo);fd.append("viabilidade_id",registroId);fd.append("categoria",categoria);const up=await fetch(API_UPLOAD,{method:"POST",headers:getAuthHeaders(),body:fd});const ej=await up.json().catch(()=>({}));if(!up.ok)throw new Error(ej.erro||`Falha ao enviar ${arquivo.name}`)}};
         if(registroId){await enviarArquivos(arquivosSelecionados,"ANALISE");await enviarArquivos(arquivosVisitaSelecionados,"COMPROVACAO_VISITA");await enviarArquivos(arquivosPosInstalacaoSelecionados,"POS_INSTALACAO");await salvarClientesERPDaViabilidade(registroId);}
-        alert(id?"Viabilidade atualizada com sucesso!":"Viabilidade salva com sucesso!");limparFormulario();await carregarViabilidades();
+        alert(id?"Viabilidade atualizada com sucesso!":"Viabilidade salva com sucesso!");location.href="viabilidade.html";
     }catch(e){console.error(e);alert("Erro ao salvar viabilidade: "+e.message)}finally{btn.disabled=false;document.getElementById("textoBtnSalvar").textContent=document.getElementById("viabilidadeId").value?"Atualizar Viabilidade":"Salvar Viabilidade"}
 }
 
@@ -1249,6 +1285,14 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.getElementById("buscaViabilidade").addEventListener("input",e=>{document.getElementById("filtroNome").value=e.target.value;renderTabela()});
     document.getElementById("selecionarTodas").addEventListener("change",e=>selecionarTodasViabilidades(e.target.checked));
     document.addEventListener("keydown",e=>{if(e.key==="Escape"){fecharMidia();fecharResumo()}});
+    const editarId=Number(new URLSearchParams(location.search).get("id"));
+    if(editarId){
+        const aguardar=setInterval(()=>{
+            const existe=viabilidades.some(v=>Number(v.id)===editarId);
+            if(existe){clearInterval(aguardar);editarViabilidade(editarId)}
+        },120);
+        setTimeout(()=>clearInterval(aguardar),10000);
+    }
 });
 setInterval(()=>{const id=localStorage.getItem("log_id");if(id)fetch("/api/ping",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({log_id:id})}).catch(()=>{});carregarUsuariosOnline()},300000);
 </script>
