@@ -1382,6 +1382,74 @@ button{touch-action:manipulation}
 @media(min-width:760px){.modal-confirmacao-pagamento{align-items:center}.confirmacao-pagamento-card{border-radius:28px}}
 @media(min-width:760px){.modal-confirmacao-equipamento{align-items:center}.confirmacao-equipamento-card{border-radius:28px}}
 
+
+
+/* ===== RESUMO DOS TIPOS DE SERVIÇO EM EXECUÇÃO ===== */
+.resumo-tipos-servico{
+    margin:0 12px 14px;
+    padding:13px 14px;
+    border:1px solid var(--line);
+    border-radius:17px;
+    background:#fff;
+    box-shadow:var(--shadow-soft);
+}
+.resumo-tipos-titulo{
+    margin-bottom:9px;
+    color:var(--ink);
+    font-size:13px;
+    font-weight:900;
+}
+.resumo-tipos-lista{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+}
+.resumo-tipo-item{
+    min-width:0;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:7px;
+    padding:9px 10px;
+    border:1px solid #dbe7fb;
+    border-radius:12px;
+    background:#f5f9ff;
+    color:#18345f;
+    font-size:11px;
+    font-weight:800;
+}
+.resumo-tipo-item span{
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+.resumo-tipo-item strong{
+    flex:0 0 auto;
+    color:#075cf6;
+    font-size:12px;
+}
+.resumo-tipos-vazio{
+    grid-column:1/-1;
+    padding:6px 2px;
+    color:#64748b;
+    font-size:11px;
+    font-weight:800;
+}
+.drawer-push-silenciar{
+    background:rgba(245,158,11,.16) !important;
+    border-color:rgba(245,158,11,.32) !important;
+    color:#fde68a !important;
+}
+@media(max-width:390px){
+    .resumo-tipos-lista{grid-template-columns:1fr}
+}
+
+/* Fonte menor no título principal do app */
+.topbar-title strong{font-size:22px !important}
+@media(max-width:759px){.topbar-title strong{font-size:17px !important}}
+@media(max-width:390px){.topbar-title strong{font-size:16px !important}}
+
 </style>
 
 
@@ -1408,7 +1476,11 @@ button{touch-action:manipulation}
         <a href="app-planos.html"><span class="ico">📦</span>Planos</a>
         <a href="app-historico-os.html"><span class="ico">🕘</span>Histórico de OS</a>
     </nav>
-    <div class="drawer-footer"><button class="drawer-push" onclick="ativarNotificacoesManual()" type="button">🔔 Ativar notificações</button><button class="drawer-logout" onclick="logout()" type="button">Sair</button></div>
+    <div class="drawer-footer">
+        <button class="drawer-push" onclick="ativarNotificacoesManual()" type="button">🔔 Ativar notificações</button>
+        <button class="drawer-push drawer-push-silenciar" onclick="silenciarNotificacoesManual()" type="button">🔕 Silenciar notificações</button>
+        <button class="drawer-logout" onclick="logout()" type="button">Sair</button>
+    </div>
 </aside>
 
 <div class="mobile-topbar-app">
@@ -1448,10 +1520,10 @@ button{touch-action:manipulation}
         <input type="search" id="busca" placeholder="Buscar OS ou cliente..." autocomplete="off">
     </div>
     <select id="filtroPeriodo" class="filtro-periodo" onchange="alterarPeriodo(this.value)" aria-label="Filtrar período">
-        <option value="hoje">Hoje</option>
+        <option value="hoje" selected>Hoje</option>
         <option value="ontem">Ontem</option>
         <option value="7dias">7 dias</option>
-        <option value="30dias" selected>30 dias</option>
+        <option value="30dias">30 dias</option>
     </select>
 </div>
 
@@ -1498,6 +1570,13 @@ button{touch-action:manipulation}
     </div>
 
 </div>
+
+<section class="resumo-tipos-servico" id="resumoTiposServico" aria-live="polite">
+    <div class="resumo-tipos-titulo">Tipos de serviços em execução</div>
+    <div class="resumo-tipos-lista" id="listaTiposServico">
+        <div class="resumo-tipos-vazio">Nenhum serviço em execução no período</div>
+    </div>
+</section>
 
 <div class="lista-cabecalho">
     <strong id="tituloLista">Ordens em andamento</strong>
@@ -1619,7 +1698,29 @@ function apiUrl(path){
 }
 
 function apiFetch(path, options = {}){
-    return fetch(apiUrl(path), options);
+    const urlFinal = apiUrl(path);
+    const opcoes = { ...options };
+
+    // O servidor remoto responde CORS com Access-Control-Allow-Origin: *.
+    // Nesse cenário o navegador proíbe credentials: "include".
+    // A autenticação do SGOS já é enviada pelos cabeçalhos x-usuario-id,
+    // x-log-id e x-empresa-id, então requisições entre origens usam "omit".
+    try{
+        const destino = new URL(urlFinal, window.location.href);
+        const origemDiferente = destino.origin !== window.location.origin;
+
+        if(origemDiferente){
+            opcoes.credentials = "omit";
+        }else if(!opcoes.credentials){
+            opcoes.credentials = "same-origin";
+        }
+    }catch(e){
+        if(!opcoes.credentials){
+            opcoes.credentials = "same-origin";
+        }
+    }
+
+    return fetch(urlFinal, opcoes);
 }
 
 function getPlataformaApp(){
@@ -1795,7 +1896,8 @@ let socketConectado = false;
 let user = {};
 let OS = [];
 let tab = "andamento";
-let periodoSelecionado = localStorage.getItem("app_periodo_os") || "30dias";
+let periodoSelecionado = "hoje";
+localStorage.setItem("app_periodo_os", periodoSelecionado);
 function setTab(novaTab){
 
     tab = novaTab;
@@ -2218,6 +2320,45 @@ console.log("DEPOIS iniciarPush");
 
 let idsJaCarregados = new Set();
 
+function extrairListaOrdens(payload){
+    if(Array.isArray(payload)) return payload;
+    if(!payload || typeof payload !== "object") return [];
+
+    const candidatos = [
+        payload.ordens,
+        payload.os,
+        payload.data,
+        payload.resultados,
+        payload.lista,
+        payload.items
+    ];
+
+    for(const candidato of candidatos){
+        if(Array.isArray(candidato)) return candidato;
+        if(candidato && typeof candidato === "object"){
+            const interno = candidato.ordens || candidato.os || candidato.items || candidato.data;
+            if(Array.isArray(interno)) return interno;
+        }
+    }
+
+    return [];
+}
+
+function headersSessaoApp(){
+    const logId = user.log_id || localStorage.getItem("log_id") || "";
+    const empresaId = user.empresa_id || localStorage.getItem("empresa_id") || "";
+
+    const headers = {
+        "Accept":"application/json",
+        "x-usuario-id": String(user.id || "")
+    };
+
+    if(logId) headers["x-log-id"] = String(logId);
+    if(empresaId) headers["x-empresa-id"] = String(empresaId);
+
+    return headers;
+}
+
 async function load(){
 
     if(!user.id){
@@ -2226,101 +2367,78 @@ async function load(){
     }
 
     try {
-
-        const res = await apiFetch(API_PATH, {
-            headers: {
-                "x-usuario-id": user.id
-            }
+        const urlOrdens = `${API_PATH}?periodo=${encodeURIComponent(periodoSelecionado)}&_=${Date.now()}`;
+        const res = await apiFetch(urlOrdens, {
+            method:"GET",
+            headers: headersSessaoApp(),
+            credentials:"include",
+            cache:"no-store"
         });
 
-        const listaNormal = await res.json();
+        const payloadNormal = await res.json().catch(() => null);
+
+        if(!res.ok){
+            const mensagem = payloadNormal?.erro || payloadNormal?.mensagem || `Erro HTTP ${res.status}`;
+            throw new Error(mensagem);
+        }
+
+        const listaNormal = extrairListaOrdens(payloadNormal);
+        console.log("📥 OS recebidas da API:", listaNormal.length, payloadNormal);
 
         let listaAvulsas = [];
 
         try {
-            const resAvulsas = await apiFetch("/api/os-avulsas/painel?periodo=30dias", {
-                headers: {
-                    "x-usuario-id": user.id
-                }
+            const resAvulsas = await apiFetch(`/api/os-avulsas/painel?periodo=${encodeURIComponent(periodoSelecionado)}&_=${Date.now()}`, {
+                method:"GET",
+                headers: headersSessaoApp(),
+                credentials:"include",
+                cache:"no-store"
             });
 
+            const payloadAvulsas = await resAvulsas.json().catch(() => null);
             if(resAvulsas.ok){
-                listaAvulsas = await resAvulsas.json();
+                listaAvulsas = extrairListaOrdens(payloadAvulsas);
             }
         } catch(errAvulsa){
             console.warn("Não foi possível carregar OS Avulsas no app:", errAvulsa);
         }
 
         const novaLista = [
-            ...(Array.isArray(listaNormal) ? listaNormal.map(normalizarOSNormal) : []),
-            ...(Array.isArray(listaAvulsas) ? listaAvulsas.map(normalizarOSAvulsa) : [])
+            ...listaNormal.map(normalizarOSNormal),
+            ...listaAvulsas.map(normalizarOSAvulsa)
         ];
 
-        // =========================
-        // DETECTA NOVAS OS
-        // =========================
         const novosIds = [];
 
         novaLista.forEach(os => {
-
-            // primeira vez NÃO notifica
             if(primeiraCarga){
                 idsJaCarregados.add(chaveOS(os));
                 return;
             }
 
-            // nova OS encontrada
             if(!idsJaCarregados.has(chaveOS(os))){
-
                 idsJaCarregados.add(chaveOS(os));
-
                 novosIds.push(chaveOS(os));
-
             }
-
         });
 
-        // remove ids inexistentes
-        const idsAtuais =
-        new Set(novaLista.map(o => chaveOS(o)));
-
+        const idsAtuais = new Set(novaLista.map(o => chaveOS(o)));
         idsJaCarregados.forEach(id => {
-
-            if(!idsAtuais.has(id)){
-                idsJaCarregados.delete(id);
-            }
-
+            if(!idsAtuais.has(id)) idsJaCarregados.delete(id);
         });
 
-        // =========================
-        // NOTIFICA
-        // =========================
         if(novosIds.length > 0){
-
             tocarSomNovaOS();
-
             mostrarNotificacao(novosIds.length);
-
-            console.log(
-                "Nova OS detectada:",
-                novosIds
-            );
-
+            console.log("Nova OS detectada:", novosIds);
         }
 
         primeiraCarga = false;
-
         OS = novaLista;
-
         abrirOSDaNotificacaoSeExistir();
 
     } catch (e){
-
-        console.error(
-            "Erro ao carregar OS:",
-            e
-        );
-
+        console.error("Erro ao carregar OS:", e);
         OS = [];
     }
 
@@ -2349,15 +2467,19 @@ function render(){
         return matchBusca && matchStatus && dentroDoPeriodo(o);
     });
 
-    // CONTADORES
+    // CONTADORES DO PERÍODO SELECIONADO
+    const osPeriodo = OS.filter(dentroDoPeriodo);
+
     document.getElementById("cA").innerText =
-        OS.filter(o => norm(o.status).includes("andamento")).length;
+        osPeriodo.filter(o => norm(o.status).includes("andamento")).length;
 
     document.getElementById("cC").innerText =
-        OS.filter(o => norm(o.status).includes("concluido")).length;
+        osPeriodo.filter(o => norm(o.status).includes("concluido")).length;
 
     document.getElementById("cX").innerText =
-        OS.filter(o => norm(o.status).includes("ausente")).length;
+        osPeriodo.filter(o => norm(o.status).includes("ausente")).length;
+
+    renderizarResumoTiposServico(osPeriodo);
 
     // ATIVO
     document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
@@ -2367,7 +2489,7 @@ function render(){
     const el = document.getElementById("lista");
 
     if(!filtrado.length){
-        el.innerHTML = "<p>Nenhuma OS</p>";
+        el.innerHTML = "<p>Nenhuma OS encontrada</p>";
         return;
     }
 
@@ -2814,7 +2936,13 @@ function logout(){
 }
 
 /* ================= SOM ================= */
+function notificacoesSilenciadas(){
+    return localStorage.getItem("app_notificacoes_silenciadas") === "1";
+}
+
 function tocarSomNovaOS(){
+
+    if(notificacoesSilenciadas()) return;
 
     const audio = new Audio(
         "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
@@ -2830,6 +2958,8 @@ function tocarSomNovaOS(){
 /* ================= NOTIFICAÇÃO APP ================= */
 
 async function mostrarNotificacao(qtd = 1){
+
+    if(notificacoesSilenciadas()) return;
 
     try {
 
@@ -2931,6 +3061,8 @@ async function mostrarNotificacao(qtd = 1){
 
 
 async function mostrarNotificacaoCustom(titulo, mensagem){
+    if(notificacoesSilenciadas()) return;
+
     try {
         tocarSomNovaOS();
 
@@ -3119,6 +3251,8 @@ async function iniciarPush(){
         await PushNotifications.addListener("pushNotificationReceived", (notification) => {
             console.log("Push recebido com app aberto:", notification);
 
+            if(notificacoesSilenciadas()) return;
+
             tocarSomNovaOS();
             if(navigator.vibrate) navigator.vibrate([300,100,300]);
 
@@ -3206,6 +3340,7 @@ pushRegistrado = false;
 
 async function ativarNotificacoesManual(){
     try{
+        localStorage.removeItem("app_notificacoes_silenciadas");
         const PushNotifications = getPushPlugin();
 
         if(!PushNotifications){
@@ -3228,6 +3363,25 @@ async function ativarNotificacoesManual(){
     }catch(err){
         console.error("Erro ao ativar notificações:", err);
         alert("Não foi possível ativar as notificações.");
+    }
+}
+
+async function silenciarNotificacoesManual(){
+    try{
+        localStorage.setItem("app_notificacoes_silenciadas", "1");
+        pushRegistrado = false;
+
+        const PushNotifications = getPushPlugin();
+        if(PushNotifications && typeof PushNotifications.unregister === "function"){
+            await PushNotifications.unregister();
+        }
+
+        fecharMenu();
+        alert("Notificações silenciadas com sucesso!");
+    }catch(err){
+        console.error("Erro ao silenciar notificações:", err);
+        fecharMenu();
+        alert("As notificações locais foram silenciadas. Talvez seja necessário desativá-las também nas configurações do aparelho.");
     }
 }
 
@@ -3387,23 +3541,69 @@ function nomeClienteOS(os){
            "-";
 }
 
+function parseDataApp(valor){
+    if(!valor) return null;
+    if(valor instanceof Date) return Number.isNaN(valor.getTime()) ? null : valor;
+
+    let texto = String(valor).trim();
+    if(!texto || texto === "0000-00-00 00:00:00") return null;
+
+    // Formato brasileiro: 24/07/2026 18:30:00
+    let m = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+    if(m){
+        const d = new Date(
+            Number(m[3]), Number(m[2]) - 1, Number(m[1]),
+            Number(m[4] || 0), Number(m[5] || 0), Number(m[6] || 0)
+        );
+        return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    // MySQL sem timezone: 2026-07-24 18:30:00
+    m = texto.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+    if(m){
+        const d = new Date(
+            Number(m[1]), Number(m[2]) - 1, Number(m[3]),
+            Number(m[4] || 0), Number(m[5] || 0), Number(m[6] || 0)
+        );
+        return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    const d = new Date(texto);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
 function dataReferenciaOS(os){
     if(!os) return null;
 
-    let valor = null;
+    const status = normalizarStatusApp(os.status);
+    let candidatos = [];
 
-    if(tab === "concluido"){
-        valor = os.finalizado_em || os.concluido_em || os.atualizado_em || os.criado_em;
-    }else if(tab === "ausente"){
-        valor = os.finalizado_em || os.atualizado_em || os.iniciado_em || os.criado_em;
+    if(status === "concluido"){
+        candidatos = [
+            os.finalizado_em, os.finalizada_em, os.concluido_em, os.concluida_em,
+            os.data_finalizacao, os.data_conclusao, os.atualizado_em, os.updated_at,
+            os.iniciado_em, os.criado_em, os.created_at
+        ];
+    }else if(status === "cliente_ausente"){
+        candidatos = [
+            os.ausente_em, os.finalizado_em, os.atualizado_em, os.updated_at,
+            os.iniciado_em, os.iniciada_em, os.data_inicio, os.criado_em, os.created_at
+        ];
     }else{
-        valor = os.iniciado_em || os.agendamento || os.atualizado_em || os.criado_em;
+        candidatos = [
+            os.iniciado_em, os.iniciada_em, os.data_inicio, os.inicio_em,
+            os.executado_em, os.em_andamento_em, os.atualizado_em, os.updated_at,
+            os.agendamento, os.agendado_para, os.data_agendamento,
+            os.criado_em, os.created_at, os.data_criacao
+        ];
     }
 
-    if(!valor) return null;
+    for(const valor of candidatos){
+        const data = parseDataApp(valor);
+        if(data) return data;
+    }
 
-    const d = new Date(valor);
-    return Number.isNaN(d.getTime()) ? null : d;
+    return null;
 }
 
 function inicioDoDia(data){
@@ -3420,7 +3620,9 @@ function fimDoDia(data){
 
 function dentroDoPeriodo(os){
     const data = dataReferenciaOS(os);
-    if(!data) return periodoSelecionado === "30dias";
+
+    // Não esconder uma OS válida só porque a API não trouxe a data esperada.
+    if(!data) return true;
 
     const agora = new Date();
     let inicio;
@@ -3445,9 +3647,37 @@ function dentroDoPeriodo(os){
 }
 
 function alterarPeriodo(valor){
-    periodoSelecionado = valor || "30dias";
+    periodoSelecionado = valor || "hoje";
     localStorage.setItem("app_periodo_os", periodoSelecionado);
-    render();
+    load();
+}
+
+function renderizarResumoTiposServico(osPeriodo){
+    const lista = document.getElementById("listaTiposServico");
+    if(!lista) return;
+
+    const grupos = new Map();
+
+    osPeriodo
+        .filter(o => String(o.status || "").toLowerCase().includes("andamento"))
+        .forEach(o => {
+            const nome = String(o.tipo_servico_nome || o.tipo_servico || "Não informado").trim() || "Não informado";
+            grupos.set(nome, (grupos.get(nome) || 0) + 1);
+        });
+
+    const itens = [...grupos.entries()].sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-BR"));
+
+    if(!itens.length){
+        lista.innerHTML = '<div class="resumo-tipos-vazio">Nenhum serviço em execução no período</div>';
+        return;
+    }
+
+    lista.innerHTML = itens.map(([nome, quantidade]) => `
+        <div class="resumo-tipo-item">
+            <span>${escapeHTML(nome)}</span>
+            <strong>(${quantidade})</strong>
+        </div>
+    `).join("");
 }
 
 function render(){
@@ -3473,6 +3703,7 @@ function render(){
     document.getElementById("cA").innerText = osPeriodo.filter(o => norm(o.status).includes("andamento")).length;
     document.getElementById("cC").innerText = osPeriodo.filter(o => norm(o.status).includes("concluido")).length;
     document.getElementById("cX").innerText = osPeriodo.filter(o => norm(o.status).includes("ausente")).length;
+    renderizarResumoTiposServico(osPeriodo);
 
     document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
     document.querySelector("." + tab)?.classList.add("active");
