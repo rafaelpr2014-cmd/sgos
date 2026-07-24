@@ -609,7 +609,7 @@ body.pagina-lista .card-filtros .filtro-periodo-rapido select{
     <div class="card card-lista">
         <div class="card-header lista-toolbar"><div><div class="titulo-card">Lista de Viabilidades</div><div class="sub-card">Clique em uma viabilidade para abrir o resumo completo.</div><div id="contadorClientesERPFiltrados" class="contador-erp-filtro">Clientes integrados via ERP (0)</div></div><div class="lista-toolbar-acoes"><button class="btn btn-nova-viabilidade" type="button" onclick="location.href='cadastro-viabilidade.html'"><svg class="btn-icon-svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Cadastrar Nova Viabilidade</button><button class="btn btn-imprimir" type="button" onclick="imprimirSelecionadas()"><svg class="btn-icon-svg" viewBox="0 0 24 24"><path d="M7 8V4h10v4"/><rect x="5" y="12" width="14" height="8" rx="1"/><path d="M5 16H3V9h18v7h-2"/><path d="M17 11h.01"/></svg> Imprimir selecionadas</button></div></div>
         <div class="table-wrap">
-            <table><thead><tr><th><input type="checkbox" class="checkbox-viabilidade" id="selecionarTodas" title="Selecionar todas"></th><th>Nome</th><th>Localidade</th><th>Endereço</th><th>Referência</th><th>Observação inicial</th><th>Observação do técnico pós-visita</th><th>Observação pós-instalação</th><th>Telefones</th><th>Técnicos</th><th>Cadastrado por</th><th>Registrado em</th><th>Atualizado por</th><th>Atualizado em</th><th>Viabilidade</th><th>Instalação</th><th>Anexos</th><th>Localização</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="19" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
+            <table><thead><tr><th><input type="checkbox" class="checkbox-viabilidade" id="selecionarTodas" title="Selecionar todas"></th><th>Nome</th><th>Localidade</th><th>Endereço</th><th>Referência</th><th>Observação inicial</th><th>Observação do técnico pós-visita</th><th>Telefones</th><th>Técnicos</th><th>Cadastrado por</th><th>Registrado em</th><th>Atualizado por</th><th>Atualizado em</th><th>Viabilidade</th><th>Instalação</th><th>Anexos</th><th>Localização</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="18" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
         </div>
     </div>
 </section>
@@ -973,7 +973,7 @@ async function salvarViabilidade(){
 }
 
 async function carregarViabilidades(){
-    const tbody=document.getElementById("tabelaViabilidades");tbody.innerHTML='<tr><td colspan="19" class="vazio">Carregando viabilidades...</td></tr>';
+    const tbody=document.getElementById("tabelaViabilidades");tbody.innerHTML='<tr><td colspan="18" class="vazio">Carregando viabilidades...</td></tr>';
     try{
         const r=await fetch(API_VIABILIDADE,{headers:getAuthHeaders()});
         if(!r.ok)throw new Error(`Erro ${r.status}`);
@@ -988,7 +988,7 @@ async function carregarViabilidades(){
             }
         }
         renderTabela()
-    }catch(e){console.error(e);tbody.innerHTML='<tr><td colspan="19" class="vazio">Erro ao carregar viabilidades.</td></tr>'}
+    }catch(e){console.error(e);tbody.innerHTML='<tr><td colspan="18" class="vazio">Erro ao carregar viabilidades.</td></tr>'}
 }
 function dentroDias(v,dias){if(!v)return false;const d=new Date(v);if(isNaN(d))return false;const ini=new Date();ini.setDate(ini.getDate()-(dias-1));ini.setHours(0,0,0,0);const fim=new Date();fim.setHours(23,59,59,999);return d>=ini&&d<=fim}
 function mesmoDia(v){if(!v)return false;const d=new Date(v),h=new Date();return !isNaN(d)&&d.toDateString()===h.toDateString()}
@@ -1052,7 +1052,7 @@ function renderTabela(){
     if(contadorERP)contadorERP.textContent=`Clientes integrados via ERP (${totalClientesERPFiltrados})`;
     atualizarCards(lista);
     const tbody=document.getElementById("tabelaViabilidades");
-    if(!lista.length){tbody.innerHTML='<tr><td colspan="19" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
+    if(!lista.length){tbody.innerHTML='<tr><td colspan="18" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
     tbody.innerHTML=lista.map(o=>{
         const anexos=anexosDoRegistro(o).length;
         const st=String(o.status||"PENDENTE").toUpperCase();
@@ -1066,7 +1066,7 @@ function renderTabela(){
             <td>${escapar(o.referencia||"-")}</td>
             <td class="tabela-observacao"><div class="texto-limitado" title="${escapar(o.observacao||o.observacoes||"-")}">${escapar(o.observacao||o.observacoes||"-")}</div></td>
             <td class="tabela-observacao"><div class="texto-limitado" title="${escapar(o.observacao_pos_aprovacao||"-")}">${escapar(o.observacao_pos_aprovacao||"-")}</div></td>
-            <td class="tabela-observacao"><div class="texto-limitado" title="${escapar(o.observacao_pos_instalacao||"-")}">${escapar(o.observacao_pos_instalacao||"-")}</div></td>
+            
             <td class="col-telefones">${telefones}</td>
             <td>${escapar(o.tecnico_responsavel||"-")}</td>
             <td>${escapar(nomeCadastrador(o))}</td>
@@ -1152,7 +1152,7 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
     const emitidoEm=new Date().toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"});
     const resumo=contarResumoPdf(registros);
     const paginas=[];
-    for(let i=0;i<registros.length;i+=5)paginas.push(registros.slice(i,i+6));
+    for(let i=0;i<registros.length;i+=4)paginas.push(registros.slice(i,i+4));
     const resumoHtml=`<section class="resumo-relatorio">
         <div class="resumo-periodos"><strong>VIABILIDADES SELECIONADAS: ${resumo.total}</strong><span>PERÍODO DE REGISTRO: ${escapar(contextoFiltros.periodoRegistro)}</span><span>PERÍODO DE ATUALIZAÇÃO: ${escapar(contextoFiltros.periodoAtualizacao)}</span></div>
         <div class="resumo-contagens">
@@ -1184,7 +1184,7 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
         </div>
         <div class="detalhes-inferiores">
             ${statusInstalacaoRegistro(o)==="INSTALADO"
-                ? `${o.observacao_pos_aprovacao?`<div class="obs pos"><b>Observação do técnico pós-visita:</b> ${escapar(o.observacao_pos_aprovacao)}</div>`:""}${o.observacao_pos_instalacao?`<div class="obs pos obs-pos-instalacao"><b>Observação pós-instalação realizada:</b> ${escapar(o.observacao_pos_instalacao)}</div>`:""}`
+                ? `${o.observacao_pos_aprovacao?`<div class="obs pos"><b>Observação do técnico pós-visita:</b> ${escapar(o.observacao_pos_aprovacao)}</div>`:""}`
                 : `${(o.observacao||o.observacoes)?`<div class="obs"><b>Observação inicial:</b> ${escapar(o.observacao||o.observacoes)}</div>`:""}${o.observacao_pos_aprovacao?`<div class="obs pos"><b>Observação do técnico pós-visita:</b> ${escapar(o.observacao_pos_aprovacao)}</div>`:""}`}
             ${clientesERPDoRegistro(o).length?`<div class="pdf-erp">
                 <div class="pdf-erp-titulo"><b>Clientes integrados via ERP (${clientesERPDoRegistro(o).length})</b></div>
