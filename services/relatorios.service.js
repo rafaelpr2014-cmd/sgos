@@ -859,7 +859,10 @@ function montarPdfExato({
     }
 
     function desenharOrdensDoDia() {
-        if (tipo !== "diario") return;
+        const descricaoPeriodoOS =
+            tipo === "diario"
+                ? dataBR(inicio)
+                : `${dataBR(inicio)} ATÉ ${dataBR(fim)}`;
 
         function cabecalhoOrdens(continuacao = false) {
             doc.setFillColor(0, 102, 204);
@@ -867,7 +870,7 @@ function montarPdfExato({
             doc.setTextColor(255, 255, 255);
             doc.setFont("helvetica", "bold");
             doc.setFontSize(10);
-            doc.text(`ORDENS DE SERVIÇO - ${dataBR(inicio)}${continuacao ? " (CONTINUAÇÃO)" : ""}`, 12, y - 0.5);
+            doc.text(`ORDENS DE SERVIÇO - ${descricaoPeriodoOS}${continuacao ? " (CONTINUAÇÃO)" : ""}`, 12, y - 0.5);
             doc.setTextColor(0, 0, 0);
             y += 11;
         }

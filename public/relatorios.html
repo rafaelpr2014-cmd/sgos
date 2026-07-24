@@ -2025,15 +2025,35 @@ function relatorioEhDeUmDia(){
 }
 
 function desenharOrdensDoDiaPDF(doc, yAtual, tituloAzul, mapaPlanosLocal){
-    if(!relatorioEhDeUmDia()) return yAtual;
-
     let y = yAtual;
-    const dataTitulo =
-        periodo === "personalizado"
-            ? new Date(`${dataInicio}T12:00:00`).toLocaleDateString("pt-BR")
+    function formatarDataTitulo(valor){
+        if(!valor) return "-";
+        const data = new Date(`${valor}T12:00:00`);
+        return Number.isNaN(data.getTime()) ? valor : data.toLocaleDateString("pt-BR");
+    }
+
+    const hojeTitulo = new Date();
+    const ontemTitulo = new Date();
+    ontemTitulo.setDate(ontemTitulo.getDate() - 1);
+
+    const inicio7Titulo = new Date();
+    inicio7Titulo.setDate(inicio7Titulo.getDate() - 6);
+
+    const inicio30Titulo = new Date();
+    inicio30Titulo.setDate(inicio30Titulo.getDate() - 29);
+
+    const descricaoPeriodoOS =
+        periodo === "hoje"
+            ? hojeTitulo.toLocaleDateString("pt-BR")
             : periodo === "ontem"
-                ? new Date(Date.now() - 86400000).toLocaleDateString("pt-BR")
-                : new Date().toLocaleDateString("pt-BR");
+                ? ontemTitulo.toLocaleDateString("pt-BR")
+                : periodo === "7"
+                    ? `${inicio7Titulo.toLocaleDateString("pt-BR")} ATÉ ${hojeTitulo.toLocaleDateString("pt-BR")}`
+                    : periodo === "30"
+                        ? `${inicio30Titulo.toLocaleDateString("pt-BR")} ATÉ ${hojeTitulo.toLocaleDateString("pt-BR")}`
+                        : periodo === "personalizado"
+                            ? `${formatarDataTitulo(dataInicio)} ATÉ ${formatarDataTitulo(dataFim)}`
+                            : "PERÍODO FILTRADO";
 
     function cabecalhoSecao(continuacao = false){
         doc.setFillColor(0,102,204);
@@ -2041,7 +2061,7 @@ function desenharOrdensDoDiaPDF(doc, yAtual, tituloAzul, mapaPlanosLocal){
         doc.setTextColor(255,255,255);
         doc.setFont("helvetica","bold");
         doc.setFontSize(10);
-        doc.text(`ORDENS DE SERVIÇO - ${dataTitulo}${continuacao ? " (CONTINUAÇÃO)" : ""}`, 12, y - 0.5);
+        doc.text(`ORDENS DE SERVIÇO - ${descricaoPeriodoOS}${continuacao ? " (CONTINUAÇÃO)" : ""}`, 12, y - 0.5);
         doc.setTextColor(0,0,0);
         y += 11;
     }
