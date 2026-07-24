@@ -1251,7 +1251,7 @@ td:last-child{
     </section>
 
     <footer class="footer">
-        <span>SGOS - Sistema de Gestão Operacional e Sistemas</span>
+        <span>SGOS - Sistema de Gestão Operacional e Serviços</span>
         <span>Versão 1.0.0</span>
     </footer>
 
@@ -1614,7 +1614,7 @@ if(!window.tecnicosCarregados){
 
             if(!o) return false;
 
-            if(o.status === "em_andamento") return false;
+            
 
             // data
             if(filtros.status === "abertas"){
@@ -1971,6 +1971,242 @@ function gerarResumoPeriodo(lista){
 // ===============================
 // 🔥 GERAR PDF RELATÓRIO COMPLETO FINAL (LOGO DINÂMICA BD)
 // ===============================
+
+
+function valorOSPDF(o, ...campos){
+    for(const campo of campos){
+        const valor = o?.[campo];
+        if(valor !== null && valor !== undefined && String(valor).trim() !== "") return String(valor).trim();
+    }
+    return "-";
+}
+
+function dataHoraOSPDF(valor){
+    if(!valor || valor === "-") return "-";
+    const d = new Date(valor);
+    if(isNaN(d.getTime())) return String(valor);
+    return d.toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
+}
+
+function tecnicosOSPDF(o){
+    let lista = [];
+    try{
+        if(Array.isArray(o.tecnico)) lista = o.tecnico;
+        else if(typeof o.tecnico === "string" && o.tecnico.trim().startsWith("[")) lista = JSON.parse(o.tecnico);
+        else if(o.tecnico) lista = [o.tecnico];
+    }catch{ lista = o.tecnico ? [o.tecnico] : []; }
+    const nomes = lista.map(t => mapaTecnicos[String(t)] || String(t)).filter(Boolean);
+    return nomes.length ? nomes.join(", ") : "-";
+}
+
+function ultimoStatusOSPDF(o){
+    const bruto = valorOSPDF(o,"status").toLowerCase();
+    const mapaStatus = {
+        aberto:"ABERTA", aberta:"ABERTA", agendado:"AGENDADA", agendada:"AGENDADA",
+        em_andamento:"EM ANDAMENTO", "em andamento":"EM ANDAMENTO", andamento:"EM ANDAMENTO",
+        concluido:"FINALIZADA", concluida:"FINALIZADA", finalizado:"FINALIZADA", finalizada:"FINALIZADA",
+        cliente_ausente:"CLIENTE AUSENTE", "cliente ausente":"CLIENTE AUSENTE"
+    };
+    if(o.finalizado_em && ["-","aberto","aberta","agendado","agendada","em_andamento","em andamento","andamento"].includes(bruto)) return "FINALIZADA";
+    return mapaStatus[bruto] || bruto.replaceAll("_"," ").toUpperCase();
+}
+
+function enderecoOSPDF(o){
+    const direto = valorOSPDF(o,"endereco");
+    if(direto !== "-") return direto;
+    const numero = valorOSPDF(o,"n","numero");
+    return [valorOSPDF(o,"rua","logradouro"), numero !== "-" ? `Nº ${numero}` : "", valorOSPDF(o,"bairro"), valorOSPDF(o,"referencia") !== "-" ? `Ref.: ${valorOSPDF(o,"referencia")}` : ""]
+        .filter(v => v && v !== "-").join(" - ") || "-";
+}
+
+function relatorioEhDeUmDia(){
+    if(periodo === "hoje" || periodo === "ontem") return true;
+    return periodo === "personalizado" && dataInicio && dataFim && dataInicio === dataFim;
+}
+
+function desenharOrdensDoDiaPDF(doc, yAtual, tituloAzul, mapaPlanosLocal){
+    if(!relatorioEhDeUmDia()) return yAtual;
+
+    let y = yAtual;
+    const dataTitulo =
+        periodo === "personalizado"
+            ? new Date(`${dataInicio}T12:00:00`).toLocaleDateString("pt-BR")
+            : periodo === "ontem"
+                ? new Date(Date.now() - 86400000).toLocaleDateString("pt-BR")
+                : new Date().toLocaleDateString("pt-BR");
+
+    function cabecalhoSecao(continuacao = false){
+        doc.setFillColor(0,102,204);
+        doc.rect(10, y - 6, 190, 8, "F");
+        doc.setTextColor(255,255,255);
+        doc.setFont("helvetica","bold");
+        doc.setFontSize(10);
+        doc.text(`ORDENS DE SERVIÇO - ${dataTitulo}${continuacao ? " (CONTINUAÇÃO)" : ""}`, 12, y - 0.5);
+        doc.setTextColor(0,0,0);
+        y += 11;
+    }
+
+    function novaPagina(){
+        doc.addPage();
+        y = 20;
+        cabecalhoSecao(true);
+    }
+
+    function nomeUsuarioOS(o, campoNome, campoId){
+        const nome = valorOSPDF(o, campoNome);
+        if(nome !== "-") return nome;
+        const id = valorOSPDF(o, campoId);
+        return id === "-" ? "-" : `Usuário ${id}`;
+    }
+
+    function quebrarValor(rotulo, valor, largura){
+        doc.setFontSize(7.4);
+        doc.setFont("helvetica","bold");
+        const larguraRotulo = doc.getTextWidth(`${rotulo}: `);
+
+        doc.setFont("helvetica","normal");
+        const limitePrimeira = Math.max(12, largura - larguraRotulo);
+        const palavras = String(valor || "-").split(/\s+/);
+        const linhas = [];
+        let atual = "";
+
+        for(const palavra of palavras){
+            const teste = atual ? `${atual} ${palavra}` : palavra;
+            const limite = linhas.length === 0 ? limitePrimeira : largura;
+            if(doc.getTextWidth(teste) <= limite){
+                atual = teste;
+            }else{
+                if(atual) linhas.push(atual);
+                atual = palavra;
+            }
+        }
+        if(atual) linhas.push(atual);
+        if(!linhas.length) linhas.push("-");
+        return { linhas, larguraRotulo };
+    }
+
+    function alturaBloco(campos, largura){
+        let altura = 8;
+        for(const [rotulo, valor] of campos){
+            const info = quebrarValor(rotulo, valor, largura);
+            altura += Math.max(4.8, info.linhas.length * 3.8 + 1);
+        }
+        return altura;
+    }
+
+    function desenharBloco(x, largura, titulo, campos, topo){
+        doc.setTextColor(15,23,42);
+        doc.setFont("helvetica","bold");
+        doc.setFontSize(8);
+        doc.text(titulo, x, topo);
+
+        let yy = topo + 6;
+        for(const [rotulo, valor] of campos){
+            const info = quebrarValor(rotulo, valor, largura);
+
+            doc.setFontSize(7.4);
+            doc.setFont("helvetica","bold");
+            doc.text(`${rotulo}:`, x, yy);
+
+            doc.setFont("helvetica","normal");
+            doc.text(info.linhas[0], x + info.larguraRotulo, yy);
+
+            for(let i = 1; i < info.linhas.length; i++){
+                yy += 3.8;
+                doc.text(info.linhas[i], x, yy);
+            }
+            yy += 4.8;
+        }
+        return yy;
+    }
+
+    if(!dadosFiltrados.length){
+        if(y > 258) novaPagina();
+        else cabecalhoSecao(false);
+        doc.setFont("helvetica","normal");
+        doc.setFontSize(8);
+        doc.text("Nenhuma ordem de serviço encontrada neste dia.", 12, y);
+        return y + 7;
+    }
+
+    if(y > 218){
+        doc.addPage();
+        y = 20;
+    }
+    cabecalhoSecao(false);
+
+    for(const o of dadosFiltrados){
+        const plano = mapaPlanosLocal[String(o.plano)] || valorOSPDF(o,"plano_nome","plano");
+        const status = ultimoStatusOSPDF(o);
+
+        const blocoEsquerdo = [
+            ["Cliente", valorOSPDF(o,"cliente","nome")],
+            ["Localidade", valorOSPDF(o,"nome_localidade","localidade")],
+            ["Endereço", enderecoOSPDF(o)],
+            ["Telefone", valorOSPDF(o,"telefone","telefone_principal")],
+            ["Criado por", nomeUsuarioOS(o,"criado_por_nome","criado_por")],
+            ["Iniciado em", dataHoraOSPDF(valorOSPDF(o,"iniciado_em","data_inicio","inicio_em"))]
+        ];
+
+        const blocoDireito = [
+            ["Técnicos", tecnicosOSPDF(o)],
+            ["Tipo de serviço", valorOSPDF(o,"nome_tipo_servico","tipo_servico")],
+            ["Plano", plano],
+            ["ID", valorOSPDF(o,"id")],
+            ["Login", valorOSPDF(o,"login")],
+            ["VLAN", valorOSPDF(o,"vlan")],
+            ["Finalizado em", dataHoraOSPDF(o.finalizado_em)],
+            ["Finalizado por", nomeUsuarioOS(o,"finalizado_por_nome","finalizado_por")]
+        ];
+
+        const alturaConteudo = Math.max(
+            alturaBloco(blocoEsquerdo, 84),
+            alturaBloco(blocoDireito, 84)
+        );
+        const alturaCard = Math.max(48, alturaConteudo + 9);
+
+        if(y + alturaCard > 281) novaPagina();
+
+        const corpoY = y + 5;
+        const corpoH = alturaCard - 5;
+
+        doc.setFillColor(255,255,255);
+        doc.setDrawColor(205,216,228);
+        doc.roundedRect(10, corpoY, 190, corpoH, 1.6, 1.6, "FD");
+
+        doc.setFillColor(0,82,170);
+        doc.roundedRect(13, corpoY - 3.5, 31, 7, 1, 1, "F");
+        doc.setTextColor(255,255,255);
+        doc.setFont("helvetica","bold");
+        doc.setFontSize(7.6);
+        doc.text(`OS: ${valorOSPDF(o,"id")}`, 15, corpoY + 1.2);
+
+        let cor = [37,99,235];
+        if(status === "FINALIZADA") cor = [22,163,74];
+        else if(status === "CLIENTE AUSENTE") cor = [220,38,38];
+        else if(status === "AGENDADA") cor = [245,158,11];
+        else if(status === "ABERTA") cor = [100,116,139];
+
+        const textoStatus = `ÚLTIMO STATUS: ${status}`;
+        doc.setFontSize(7.2);
+        const larguraStatus = Math.min(82, Math.max(48, doc.getTextWidth(textoStatus) + 7));
+        doc.setFillColor(...cor);
+        doc.roundedRect(197 - larguraStatus, corpoY - 3.5, larguraStatus, 7, 1, 1, "F");
+        doc.setTextColor(255,255,255);
+        doc.text(textoStatus, 200 - larguraStatus, corpoY + 1.2);
+
+        doc.setDrawColor(218,226,235);
+        doc.line(105, corpoY + 5, 105, corpoY + corpoH - 4);
+
+        const topoTexto = corpoY + 9;
+        const fim1 = desenharBloco(14, 84, "CLIENTE / LOCALIDADE / ENDEREÇO", blocoEsquerdo, topoTexto);
+        const fim2 = desenharBloco(110, 84, "SERVIÇO / PLANO / DADOS DA OS", blocoDireito, topoTexto);
+
+        y = Math.max(fim1, fim2, corpoY + corpoH) + 6;
+    }
+    return y;
+}
+
 async function gerarPDFRelatorio(){
 
     // 🔥 GARANTE QUE NÃO ESTÁ VAZIO
@@ -2041,55 +2277,43 @@ async function gerarPDFRelatorio(){
 // 🔥 LOGO
 // ===============================
 async function carregarLogoBase64(url){
-
     try{
-
         if(!url) return null;
 
-        console.log("LOGO ORIGINAL:", url);
+        let caminho = String(url).trim();
 
-        // remove barras extras
-        url = String(url).replace(/^\/+/, "");
-
-        // 🔥 se já vier completo
-        if(url.startsWith("http")){
-            // mantém
+        if(caminho.startsWith("data:image/")){
+            return caminho;
         }
 
-        // 🔥 se já vier uploads/
-        else if(url.startsWith("uploads/")){
-            url = window.location.origin + "/" + url;
+        if(/^https?:\/\//i.test(caminho)){
+            // URL completa: mantém.
+        }else{
+            caminho = caminho.replace(/^\/+/, "");
+
+            if(caminho.startsWith("uploads/")){
+                caminho = `${window.location.origin}/${caminho}`;
+            }else if(caminho.startsWith("logos/")){
+                caminho = `${window.location.origin}/uploads/${caminho}`;
+            }else if(caminho.startsWith("img/")){
+                caminho = `${window.location.origin}/${caminho}`;
+            }else{
+                caminho = `${window.location.origin}/uploads/logos/${caminho}`;
+            }
         }
 
-        // 🔥 padrão correto
-        else{
-            url = window.location.origin + "/uploads/logos/" + url;
-        }
-
-        console.log("URL FINAL LOGO:", url);
-
-        const res = await fetch(url);
-
-        if(!res.ok){
-            throw new Error("Logo não encontrada");
-        }
+        const res = await fetch(caminho, { cache:"no-store" });
+        if(!res.ok) throw new Error(`Logo não encontrada (${res.status})`);
 
         const blob = await res.blob();
-
-        return await new Promise(resolve=>{
-
+        return await new Promise((resolve, reject)=>{
             const reader = new FileReader();
-
             reader.onloadend = ()=> resolve(reader.result);
-
+            reader.onerror = reject;
             reader.readAsDataURL(blob);
-
         });
-
     }catch(e){
-
         console.error("Erro ao carregar logo:", e.message);
-
         return null;
     }
 }
@@ -2098,9 +2322,15 @@ async function carregarLogoBase64(url){
     // ===============================
     let logoBase64 = null;
 
-    if(empresa.logo){
+    const logoEmpresaPDF =
+        empresa.logo ||
+        empresa.logo_url ||
+        empresa.logo_empresa ||
+        empresa.logotipo ||
+        empresa.imagem_logo;
 
-        logoBase64 = await carregarLogoBase64(empresa.logo);
+    if(logoEmpresaPDF){
+        logoBase64 = await carregarLogoBase64(logoEmpresaPDF);
     }
 
     // ===============================
@@ -2705,15 +2935,13 @@ desenharListaAgrupada(
     instalacoesLocalidade,
     false
 );
+
+y = desenharOrdensDoDiaPDF(doc, y, tituloAzul, mapaPlanos);
+
 // ===============================
 // 🔥 RETORNO PDF
 // ===============================
 return doc.output("datauristring");
-
-    // ===============================
-    // 🔥 RETORNO PDF
-    // ===============================
-    return doc.output("datauristring");
 }
 
 // ===============================

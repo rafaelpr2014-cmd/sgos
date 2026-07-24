@@ -173,14 +173,7 @@ async function buscarOrdens(pool, empresaId, inicio, fim) {
     const [rows] = await pool.query(
         `
         SELECT
-            os.id,
-            os.cliente,
-            os.plano,
-            os.status,
-            os.tecnico,
-            os.data_abertura,
-            os.finalizado_em,
-            os.agendamento,
+            os.*,
             COALESCE(l.nome, os.localidade) AS nome_localidade,
             COALESCE(ts.nome, os.tipo_servico) AS nome_tipo_servico
         FROM ordens_servico os
@@ -191,7 +184,6 @@ async function buscarOrdens(pool, empresaId, inicio, fim) {
             ON os.tipo_servico = ts.id
            AND ts.empresa_id = os.empresa_id
         WHERE os.empresa_id = ?
-          AND os.status <> 'em_andamento'
           AND (
                 os.data_abertura BETWEEN ? AND ?
                 OR os.finalizado_em BETWEEN ? AND ?
@@ -210,7 +202,44 @@ async function buscarOrdens(pool, empresaId, inicio, fim) {
         ]
     );
 
-    return rows;
+    const idsUsuarios = [
+        ...new Set(
+            rows.flatMap(os => [os.criado_por, os.finalizado_por])
+                .filter(id => id !== null && id !== undefined && String(id).trim() !== "")
+                .map(id => String(id))
+        )
+    ];
+
+    const mapaUsuarios = {};
+
+    if (idsUsuarios.length) {
+        const placeholders = idsUsuarios.map(() => "?").join(",");
+
+        const [usuarios] = await pool.query(
+            `SELECT * FROM usuarios WHERE empresa_id = ? AND id IN (${placeholders})`,
+            [empresaId, ...idsUsuarios]
+        );
+
+        for (const usuario of usuarios) {
+            mapaUsuarios[String(usuario.id)] =
+                usuario.nome ||
+                usuario.nome_completo ||
+                usuario.usuario ||
+                usuario.login ||
+                usuario.email ||
+                `Usuário ${usuario.id}`;
+        }
+    }
+
+    return rows.map(os => ({
+        ...os,
+        criado_por_nome:
+            mapaUsuarios[String(os.criado_por)] ||
+            (os.criado_por ? `Usuário ${os.criado_por}` : "-"),
+        finalizado_por_nome:
+            mapaUsuarios[String(os.finalizado_por)] ||
+            (os.finalizado_por ? `Usuário ${os.finalizado_por}` : "-")
+    }));
 }
 
 function criarMapa(lista) {
@@ -307,21 +336,38 @@ function agrupar(lista, campo, mapaTecnicos) {
 }
 
 function carregarLogoDataUri(empresa) {
-    if (!empresa.logo) return null;
+    const logo =
+        empresa.logo ||
+        empresa.logo_url ||
+        empresa.logo_empresa ||
+        empresa.logotipo ||
+        empresa.imagem_logo;
 
-    const arquivo = path.join(
-        __dirname,
-        "../uploads/logos",
-        path.basename(empresa.logo)
-    );
+    if (!logo) return null;
 
-    if (!fs.existsSync(arquivo)) return null;
+    const nomeLimpo = path.basename(String(logo).split("?")[0]);
+    const candidatos = [
+        path.join(__dirname, "../uploads/logos", nomeLimpo),
+        path.join(__dirname, "../uploads", nomeLimpo),
+        path.join(__dirname, "../public/uploads/logos", nomeLimpo),
+        path.join(__dirname, "../public/uploads", nomeLimpo),
+        path.join(process.cwd(), "uploads/logos", nomeLimpo),
+        path.join(process.cwd(), "public/uploads/logos", nomeLimpo)
+    ];
+
+    const arquivo = candidatos.find(caminho => fs.existsSync(caminho));
+    if (!arquivo) {
+        console.error("Logo da empresa não encontrada. Arquivo:", nomeLimpo);
+        return null;
+    }
 
     const ext = path.extname(arquivo).toLowerCase();
     const mime =
         ext === ".jpg" || ext === ".jpeg"
             ? "image/jpeg"
-            : "image/png";
+            : ext === ".webp"
+                ? "image/webp"
+                : "image/png";
 
     return `data:${mime};base64,${fs.readFileSync(arquivo).toString("base64")}`;
 }
@@ -755,6 +801,246 @@ function montarPdfExato({
         "PLANOS DAS INSTALAÇÕES POR LOCALIDADE",
         instalacoesLocalidade
     );
+
+    function valorOS(o, ...campos) {
+        for (const campo of campos) {
+            const valor = o?.[campo];
+            if (valor !== null && valor !== undefined && String(valor).trim() !== "") {
+                return String(valor).trim();
+            }
+        }
+        return "-";
+    }
+
+    function dataHoraOS(valor) {
+        if (!valor) return "-";
+        const d = new Date(valor);
+        if (Number.isNaN(d.getTime())) return String(valor);
+        return new Intl.DateTimeFormat("pt-BR", {
+            timeZone: FUSO,
+            day: "2-digit", month: "2-digit", year: "numeric",
+            hour: "2-digit", minute: "2-digit"
+        }).format(d);
+    }
+
+    function nomeTecnicosOS(o) {
+        const lista = normalizarTecnicos(o.tecnico || o.tecnicos)
+            .map(t => mapaTecnicos[String(t)] || String(t))
+            .filter(Boolean);
+        return lista.length ? lista.join(", ") : "-";
+    }
+
+    function ultimoStatusOS(o) {
+        const bruto = valorOS(o, "status").toLowerCase();
+        const mapa = {
+            aberto: "ABERTA", aberta: "ABERTA",
+            agendado: "AGENDADA", agendada: "AGENDADA",
+            em_andamento: "EM ANDAMENTO", "em andamento": "EM ANDAMENTO", andamento: "EM ANDAMENTO",
+            concluido: "FINALIZADA", concluida: "FINALIZADA", concluído: "FINALIZADA", concluída: "FINALIZADA",
+            finalizado: "FINALIZADA", finalizada: "FINALIZADA",
+            cliente_ausente: "CLIENTE AUSENTE", "cliente ausente": "CLIENTE AUSENTE",
+            inviabilidade: "INVIABILIDADE"
+        };
+        if (o.finalizado_em && ["-", "aberto", "aberta", "agendado", "agendada", "em_andamento", "em andamento", "andamento"].includes(bruto)) {
+            return "FINALIZADA";
+        }
+        return mapa[bruto] || bruto.replaceAll("_", " ").toUpperCase();
+    }
+
+    function enderecoOS(o) {
+        const direto = valorOS(o, "endereco", "endereço");
+        if (direto !== "-") return direto;
+        return [
+            valorOS(o, "rua", "logradouro"),
+            valorOS(o, "n", "numero", "número") !== "-" ? `Nº ${valorOS(o, "n", "numero", "número")}` : "",
+            valorOS(o, "bairro"),
+            valorOS(o, "referencia", "referência") !== "-" ? `Ref.: ${valorOS(o, "referencia", "referência")}` : ""
+        ].filter(v => v && v !== "-").join(" - ") || "-";
+    }
+
+    function desenharOrdensDoDia() {
+        if (tipo !== "diario") return;
+
+        function cabecalhoOrdens(continuacao = false) {
+            doc.setFillColor(0, 102, 204);
+            doc.rect(10, y - 6, 190, 8, "F");
+            doc.setTextColor(255, 255, 255);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.text(`ORDENS DE SERVIÇO - ${dataBR(inicio)}${continuacao ? " (CONTINUAÇÃO)" : ""}`, 12, y - 0.5);
+            doc.setTextColor(0, 0, 0);
+            y += 11;
+        }
+
+        function novaPaginaOrdens() {
+            doc.addPage();
+            y = 20;
+            desenharLogo(doc, logoDataUri);
+            cabecalhoOrdens(true);
+        }
+
+        function nomeUsuarioOS(o, campoNome, campoId) {
+            const nome = valorOS(o, campoNome);
+            if (nome !== "-") return nome;
+            const id = valorOS(o, campoId);
+            return id === "-" ? "-" : `Usuário ${id}`;
+        }
+
+        function quebrarValor(rotulo, valor, largura) {
+            doc.setFontSize(7.4);
+            doc.setFont("helvetica", "bold");
+            const larguraRotulo = doc.getTextWidth(`${rotulo}: `);
+
+            doc.setFont("helvetica", "normal");
+            const limitePrimeira = Math.max(12, largura - larguraRotulo);
+            const palavras = String(valor || "-").split(/\s+/);
+            const linhas = [];
+            let atual = "";
+
+            for (const palavra of palavras) {
+                const teste = atual ? `${atual} ${palavra}` : palavra;
+                const limite = linhas.length === 0 ? limitePrimeira : largura;
+                if (doc.getTextWidth(teste) <= limite) {
+                    atual = teste;
+                } else {
+                    if (atual) linhas.push(atual);
+                    atual = palavra;
+                }
+            }
+
+            if (atual) linhas.push(atual);
+            if (!linhas.length) linhas.push("-");
+            return { linhas, larguraRotulo };
+        }
+
+        function alturaBloco(campos, largura) {
+            let altura = 8;
+            for (const [rotulo, valor] of campos) {
+                const info = quebrarValor(rotulo, valor, largura);
+                altura += Math.max(4.8, info.linhas.length * 3.8 + 1);
+            }
+            return altura;
+        }
+
+        function desenharBloco(x, largura, titulo, campos, topo) {
+            doc.setTextColor(15, 23, 42);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8);
+            doc.text(titulo, x, topo);
+
+            let yy = topo + 6;
+            for (const [rotulo, valor] of campos) {
+                const info = quebrarValor(rotulo, valor, largura);
+
+                doc.setFontSize(7.4);
+                doc.setFont("helvetica", "bold");
+                doc.text(`${rotulo}:`, x, yy);
+
+                doc.setFont("helvetica", "normal");
+                doc.text(info.linhas[0], x + info.larguraRotulo, yy);
+
+                for (let i = 1; i < info.linhas.length; i++) {
+                    yy += 3.8;
+                    doc.text(info.linhas[i], x, yy);
+                }
+                yy += 4.8;
+            }
+            return yy;
+        }
+
+        if (!ordens.length) {
+            if (y > 258) novaPaginaOrdens();
+            else cabecalhoOrdens(false);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8);
+            doc.text("Nenhuma ordem de serviço encontrada neste dia.", 12, y);
+            y += 7;
+            return;
+        }
+
+        if (y > 218) {
+            doc.addPage();
+            y = 20;
+            desenharLogo(doc, logoDataUri);
+        }
+        cabecalhoOrdens(false);
+
+        for (const o of ordens) {
+            const plano = mapaPlanos[String(o.plano)] || valorOS(o, "plano_nome", "plano");
+            const status = ultimoStatusOS(o);
+
+            const blocoEsquerdo = [
+                ["Cliente", valorOS(o, "cliente", "nome")],
+                ["Localidade", valorOS(o, "nome_localidade", "localidade")],
+                ["Endereço", enderecoOS(o)],
+                ["Telefone", valorOS(o, "telefone", "telefone_principal")],
+                ["Criado por", nomeUsuarioOS(o, "criado_por_nome", "criado_por")],
+                ["Iniciado em", dataHoraOS(
+                    valorOS(o, "iniciado_em", "data_inicio", "inicio_em") !== "-"
+                        ? valorOS(o, "iniciado_em", "data_inicio", "inicio_em")
+                        : null
+                )]
+            ];
+
+            const blocoDireito = [
+                ["Técnicos", nomeTecnicosOS(o)],
+                ["Tipo de serviço", valorOS(o, "nome_tipo_servico", "tipo_servico")],
+                ["Plano", plano],
+                ["ID", valorOS(o, "id")],
+                ["Login", valorOS(o, "login")],
+                ["VLAN", valorOS(o, "vlan")],
+                ["Finalizado em", dataHoraOS(o.finalizado_em)],
+                ["Finalizado por", nomeUsuarioOS(o, "finalizado_por_nome", "finalizado_por")]
+            ];
+
+            const alturaConteudo = Math.max(
+                alturaBloco(blocoEsquerdo, 84),
+                alturaBloco(blocoDireito, 84)
+            );
+            const alturaCard = Math.max(48, alturaConteudo + 9);
+
+            if (y + alturaCard > 281) novaPaginaOrdens();
+
+            const corpoY = y + 5;
+            const corpoH = alturaCard - 5;
+
+            doc.setFillColor(255, 255, 255);
+            doc.setDrawColor(205, 216, 228);
+            doc.roundedRect(10, corpoY, 190, corpoH, 1.6, 1.6, "FD");
+
+            doc.setFillColor(0, 82, 170);
+            doc.roundedRect(13, corpoY - 3.5, 31, 7, 1, 1, "F");
+            doc.setTextColor(255, 255, 255);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(7.6);
+            doc.text(`OS: ${valorOS(o, "id")}`, 15, corpoY + 1.2);
+
+            let cor = [37, 99, 235];
+            if (status === "FINALIZADA") cor = [22, 163, 74];
+            else if (status === "CLIENTE AUSENTE") cor = [220, 38, 38];
+            else if (status === "AGENDADA") cor = [245, 158, 11];
+            else if (status === "ABERTA") cor = [100, 116, 139];
+
+            const textoStatus = `ÚLTIMO STATUS: ${status}`;
+            doc.setFontSize(7.2);
+            const larguraStatus = Math.min(82, Math.max(48, doc.getTextWidth(textoStatus) + 7));
+            doc.setFillColor(...cor);
+            doc.roundedRect(197 - larguraStatus, corpoY - 3.5, larguraStatus, 7, 1, 1, "F");
+            doc.setTextColor(255, 255, 255);
+            doc.text(textoStatus, 200 - larguraStatus, corpoY + 1.2);
+
+            doc.setDrawColor(218, 226, 235);
+            doc.line(105, corpoY + 5, 105, corpoY + corpoH - 4);
+
+            const topoTexto = corpoY + 9;
+            const fim1 = desenharBloco(14, 84, "CLIENTE / LOCALIDADE / ENDEREÇO", blocoEsquerdo, topoTexto);
+            const fim2 = desenharBloco(110, 84, "SERVIÇO / PLANO / DADOS DA OS", blocoDireito, topoTexto);
+
+            y = Math.max(fim1, fim2, corpoY + corpoH) + 6;
+        }
+    }
+
+    desenharOrdensDoDia();
 
     return Buffer.from(
         doc.output("arraybuffer")

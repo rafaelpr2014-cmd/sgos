@@ -15,19 +15,9 @@ module.exports = (pool, verificarAutenticacao) => {
         try {
             const empresa_id = req.usuario.empresa_id;
             const [rows] = await pool.query(`
-                SELECT 
-                    os.id,
-                    os.cliente,
-                    os.plano,
-                    os.status,
-                    os.observacao,
-                    os.tecnico,
-                    os.data_abertura,
-                    os.finalizado_em,
-                    os.agendamento,
-                    os.localidade,
+                SELECT
+                    os.*,
                     l.nome AS nome_localidade,
-                    os.tipo_servico,
                     ts.nome AS nome_tipo_servico
                 FROM ordens_servico os
                 LEFT JOIN localidades l
@@ -38,7 +28,46 @@ module.exports = (pool, verificarAutenticacao) => {
                 ORDER BY os.id DESC
             `, [empresa_id]);
 
-            return res.json(rows);
+            const idsUsuarios = [
+                ...new Set(
+                    rows.flatMap(os => [os.criado_por, os.finalizado_por])
+                        .filter(id => id !== null && id !== undefined && String(id).trim() !== "")
+                        .map(id => String(id))
+                )
+            ];
+
+            const mapaUsuarios = {};
+
+            if (idsUsuarios.length) {
+                const placeholders = idsUsuarios.map(() => "?").join(",");
+
+                const [usuarios] = await pool.query(
+                    `SELECT * FROM usuarios WHERE empresa_id = ? AND id IN (${placeholders})`,
+                    [empresa_id, ...idsUsuarios]
+                );
+
+                for (const usuario of usuarios) {
+                    mapaUsuarios[String(usuario.id)] =
+                        usuario.nome ||
+                        usuario.nome_completo ||
+                        usuario.usuario ||
+                        usuario.login ||
+                        usuario.email ||
+                        `Usuário ${usuario.id}`;
+                }
+            }
+
+            const resultado = rows.map(os => ({
+                ...os,
+                criado_por_nome:
+                    mapaUsuarios[String(os.criado_por)] ||
+                    (os.criado_por ? `Usuário ${os.criado_por}` : "-"),
+                finalizado_por_nome:
+                    mapaUsuarios[String(os.finalizado_por)] ||
+                    (os.finalizado_por ? `Usuário ${os.finalizado_por}` : "-")
+            }));
+
+            return res.json(resultado);
         } catch (err) {
             console.error("Erro relatorios:", err);
             return res.status(500).json({ erro: "Erro ao buscar relatórios" });
