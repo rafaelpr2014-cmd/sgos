@@ -169,7 +169,31 @@ async function buscarPlanos(pool, empresaId) {
     return rows;
 }
 
+function dataHoraSqlLocal(data, fimDoPeriodo = false) {
+    // Envia texto DATETIME ao MariaDB para impedir que mysql2 converta o
+    // período novamente conforme UTC/timezone da conexão.
+    const partes = new Intl.DateTimeFormat("en-CA", {
+        timeZone: FUSO,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).formatToParts(new Date(data));
+
+    const mapa = Object.fromEntries(
+        partes
+            .filter(parte => parte.type !== "literal")
+            .map(parte => [parte.type, parte.value])
+    );
+
+    return `${mapa.year}-${mapa.month}-${mapa.day} ${
+        fimDoPeriodo ? "23:59:59" : "00:00:00"
+    }`;
+}
+
 async function buscarOrdens(pool, empresaId, inicio, fim) {
+    const inicioSql = dataHoraSqlLocal(inicio, false);
+    const fimSql = dataHoraSqlLocal(fim, true);
+
     const [rows] = await pool.query(
         `
         SELECT
@@ -193,13 +217,17 @@ async function buscarOrdens(pool, empresaId, inicio, fim) {
         `,
         [
             empresaId,
-            inicio,
-            fim,
-            inicio,
-            fim,
-            inicio,
-            fim
+            inicioSql,
+            fimSql,
+            inicioSql,
+            fimSql,
+            inicioSql,
+            fimSql
         ]
+    );
+
+    console.log(
+        `[RELATÓRIO] empresa=${empresaId} período=${inicioSql} até ${fimSql} ordens=${rows.length}`
     );
 
     const idsUsuarios = [
