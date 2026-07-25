@@ -14,6 +14,7 @@ const lembretesRoutes = require("./routes/lembretes.routes");
 const estoqueRoutes = require('./routes/estoque.routes');
 const escritoriosRoutesFactory = require('./routes/escritorios.routes');
 const financeiroRoutesFactory = require('./routes/financeiro.routes');
+const mapaTecnicosRoutes = require("./routes/mapa-tecnicos.routes");
 
 const viabilidadeClientesErpRoutesFactory =
     require("./routes/viabilidade-clientes-erp.routes");
@@ -350,6 +351,10 @@ app.use(
     viabilidadeClientesErpRoutes
 );
 
+app.use(
+    "/api/mapa-tecnicos",
+    mapaTecnicosRoutes(pool, verificarAutenticacao)
+);
 
 // ===============================
 // APP MOBILE

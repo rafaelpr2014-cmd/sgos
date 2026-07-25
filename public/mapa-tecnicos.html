@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SGOS - Mapa dos Técnicos</title>
+<link rel="icon" href="/img/favicon.png">
+
+<script src="/js/auth.js" defer></script>
+<script src="/js/init.js" defer></script>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+:root{
+  --azul:#2563eb;--azul2:#1d4ed8;--texto:#0f172a;--muted:#64748b;
+  --borda:#e5e7eb;--fundo:#f5f7fb;--verde:#16a34a;--laranja:#f59e0b;
+  --vermelho:#ef4444;--navy:#07182d;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);color:var(--texto)}
+.sidebar{
+  position:fixed;inset:0 auto 0 0;width:230px;background:linear-gradient(180deg,#081a31,#061426);
+  color:#fff;display:flex;flex-direction:column;padding:12px 0 14px;z-index:1000;overflow:hidden
+}
+.sidebar-logo{padding:0 18px;margin-bottom:14px}
+.sidebar-logo img{width:190px;display:block}
+.sidebar-scroll{flex:1;overflow-y:auto;padding:0 18px 10px}
+.menu-titulo{margin:14px 10px 6px;font-size:12px;color:#94a3b8;text-transform:uppercase}
+.sidebar a{color:#dbeafe;text-decoration:none;padding:11px 13px;border-radius:9px;display:flex;gap:16px;align-items:center;font-size:14px;margin-bottom:2px}
+.sidebar a:hover,.sidebar a.ativo{background:var(--azul);color:white}
+.menu-icon{width:18px;height:18px;min-width:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sidebar-footer{padding:12px 18px 0;border-top:1px solid rgba(255,255,255,.1)}
+.btn-recolher{width:100%;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);color:white;border-radius:10px;padding:13px;display:flex;gap:10px;align-items:center;cursor:pointer}
+.sidebar.recolhida{width:82px}
+.sidebar.recolhida .sidebar-logo{padding:0 15px}
+.sidebar.recolhida .sidebar-logo img{width:48px;margin:auto}
+.sidebar.recolhida .menu-titulo,.sidebar.recolhida a span,.sidebar.recolhida .btn-recolher span{display:none}
+.sidebar.recolhida a,.sidebar.recolhida .btn-recolher{width:52px;margin-left:auto;margin-right:auto;justify-content:center}
+.sidebar.recolhida + .main{margin-left:82px}
+.main{margin-left:230px;min-height:100vh;transition:.25s}
+.header{
+  height:92px;background:white;border-bottom:1px solid var(--borda);display:flex;align-items:center;
+  justify-content:space-between;padding:0 34px;position:sticky;top:0;z-index:900
+}
+.header-left{display:flex;align-items:center;gap:22px}
+.header-logo img{height:56px;max-width:180px;object-fit:contain}
+.divisor{height:34px;width:1px;background:var(--borda)}
+.header-title{font-size:18px;font-weight:800}
+.header-subtitle{font-size:12px;color:var(--muted);margin-top:4px}
+.usuario{display:flex;align-items:center;gap:10px}
+.avatar{width:44px;height:44px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center}
+.avatar svg{width:27px;height:27px;fill:#cbd5e1}
+.usuario strong{display:block;font-size:13px}
+.usuario small{font-size:11px;color:var(--muted)}
+.content{padding:28px 18px 38px}
+.page-title{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}
+.page-title h2{margin:0;font-size:24px}
+.page-title p{margin:6px 0 0;color:var(--muted);font-size:14px}
+.card{background:white;border:1px solid var(--borda);border-radius:14px;padding:20px;box-shadow:0 8px 20px rgba(15,23,42,.04)}
+.filtros{display:grid;grid-template-columns:1fr 1fr 1.35fr auto auto;gap:12px;align-items:end}
+.campo{display:flex;flex-direction:column;gap:7px}
+.campo label{font-size:12px;font-weight:800;color:#334155}
+.campo input,.campo select{width:100%;padding:11px 12px;border:1px solid var(--borda);border-radius:10px;background:#fff;outline:none;font:inherit}
+.btn{border:0;border-radius:10px;padding:11px 16px;font-weight:800;cursor:pointer;font:inherit;white-space:nowrap}
+.btn-primary{background:var(--azul);color:white}
+.btn-secondary{background:#e2e8f0;color:#334155}
+.cards-kpi{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin:18px 0}
+.kpi{background:white;border:1px solid var(--borda);border-radius:14px;padding:18px;display:flex;gap:14px;align-items:center;box-shadow:0 8px 20px rgba(15,23,42,.04)}
+.kpi-icon{width:50px;height:50px;border-radius:16px;background:#dbeafe;color:var(--azul);display:flex;align-items:center;justify-content:center}
+.kpi-icon svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:2}
+.kpi small{display:block;color:var(--muted);font-size:12px}
+.kpi strong{display:block;font-size:25px;margin-top:5px}
+.aviso{padding:13px 15px;border:1px solid #fde68a;background:#fffbeb;border-radius:12px;color:#92400e;font-size:13px;line-height:1.45;margin-bottom:18px}
+.dias{display:grid;gap:18px}
+.dia-card{background:white;border:1px solid var(--borda);border-radius:16px;overflow:hidden;box-shadow:0 8px 22px rgba(15,23,42,.05)}
+.dia-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:17px 19px;border-bottom:1px solid var(--borda)}
+.dia-head h3{margin:0;font-size:18px}
+.badges{display:flex;flex-wrap:wrap;gap:8px}
+.badge{padding:6px 10px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:800}
+.dia-layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;min-height:520px}
+.mapa{min-height:520px;width:100%}
+.timeline{border-left:1px solid var(--borda);background:#fff;padding:18px;overflow:auto;max-height:520px}
+.timeline h4{margin:0 0 14px;font-size:15px}
+.tecnico-grupo{margin-bottom:18px}
+.tecnico-titulo{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.tecnico-titulo strong{font-size:13px}
+.tecnico-titulo span{font-size:12px;font-weight:800;color:#1d4ed8}
+.evento{position:relative;padding:0 0 16px 28px}
+.evento:before{content:"";position:absolute;left:7px;top:8px;width:10px;height:10px;border-radius:50%;background:var(--cor)}
+.evento:after{content:"";position:absolute;left:11px;top:20px;bottom:0;width:2px;background:#dbeafe}
+.evento:last-child:after{display:none}
+.evento strong{display:block;font-size:13px}
+.evento small{display:block;color:var(--muted);font-size:11px;line-height:1.4;margin-top:3px}
+.estado{padding:38px;text-align:center;color:var(--muted);background:white;border:1px dashed #cbd5e1;border-radius:14px}
+.footer{display:flex;justify-content:space-between;padding:20px 34px;color:#475569;font-size:12px;border-top:1px solid var(--borda)}
+.marker-num{
+  width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  color:white;font-weight:800;font-size:12px;border:2px solid white;box-shadow:0 3px 10px rgba(0,0,0,.25)
+}
+@media(max-width:1450px){.cards-kpi{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:1200px){.filtros{grid-template-columns:1fr 1fr 1fr}.dia-layout{grid-template-columns:1fr}.timeline{border-left:0;border-top:1px solid var(--borda);max-height:none}.mapa{min-height:460px}}
+@media(max-width:900px){.sidebar{display:none}.main{margin-left:0}.header{height:auto;flex-direction:column;align-items:flex-start;gap:14px;padding:20px}.content{padding:20px}.filtros,.cards-kpi{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <img id="logoSidebar" src="https://iili.io/CujQzXa.png" data-logo-aberta="https://iili.io/CujQzXa.png" data-logo-fechada="https://iili.io/CuwvauR.png" alt="SGOS">
+  </div>
+  <div class="sidebar-scroll">
+    <a href="painel.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg><span>Painel Inicial</span></a>
+    <div class="menu-titulo">Operação</div>
+    <a href="agendamentos.html"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg><span>Agendamentos</span></a>
+    <a href="relatorios.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg><span>Relatórios</span></a>
+    <a href="mapa-tecnicos.html" class="ativo"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/><circle cx="15" cy="10" r="2"/></svg><span>Mapa dos Técnicos</span></a>
+    <a href="historico-os.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/><path d="M12 8v5l3 2"/></svg><span>Histórico de OS</span></a>
+  </div>
+  <div class="sidebar-footer">
+    <button class="btn-recolher" id="btnRecolher" type="button"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M2 12h20"/></svg><span>Recolher menu</span></button>
+  </div>
+</aside>
+
+<main class="main">
+<header class="header">
+  <div class="header-left">
+    <div class="header-logo"><img id="logoEmpresa" src="/img/logo-default.png" alt="Logo da empresa" onerror="this.src='https://iili.io/CujQzXa.png'"></div>
+    <div class="divisor"></div>
+    <div><div class="header-title">Mapa dos Técnicos</div><div class="header-subtitle">Timeline diária, deslocamentos e estimativa de quilometragem</div></div>
+  </div>
+  <div class="usuario">
+    <div class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22c1.6-5 14.4-5 16 0"/></svg></div>
+    <div><strong id="userEmpresa">Carregando...</strong><small id="empresaLogada">Empresa</small></div>
+  </div>
+</header>
+
+<section class="content">
+  <div class="page-title"><div><h2>Rotas percorridas</h2><p>Mapas separados por dia, com todos os técnicos ou apenas um selecionado.</p></div></div>
+
+  <div class="card">
+    <div class="filtros">
+      <div class="campo"><label>Data inicial</label><input id="dataInicio" type="date"></div>
+      <div class="campo"><label>Data final</label><input id="dataFim" type="date"></div>
+      <div class="campo"><label>Usuário que realizou o check-in</label><select id="tecnicoFiltro"><option value="">Todos os técnicos</option></select></div>
+      <button id="btnFiltrar" class="btn btn-primary" type="button">Aplicar filtros</button>
+      <button id="btnHoje" class="btn btn-secondary" type="button">Hoje</button>
+    </div>
+  </div>
+
+  <div class="cards-kpi">
+    <div class="kpi"><div class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div><div><small>Pontos registrados</small><strong id="kpiPontos">0</strong></div></div>
+    <div class="kpi"><div class="kpi-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg></div><div><small>Técnicos no período</small><strong id="kpiTecnicos">0</strong></div></div>
+    <div class="kpi"><div class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M3 17l4-4 4 3 5-7 5 4"/><path d="M3 21h18"/></svg></div><div><small>Distância estimada</small><strong id="kpiKm">0 km</strong></div></div>
+    <div class="kpi"><div class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="9"/></svg></div><div><small>Tempo em atendimento</small><strong id="kpiTempo">0h</strong></div></div>
+    <div class="kpi"><div class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div><div><small>OS visitadas</small><strong id="kpiOS">0</strong></div></div>
+  </div>
+
+  <div class="aviso"><strong>Estimativa:</strong> a quilometragem é calculada em linha reta entre os pontos GPS registrados, na ordem dos horários. Ela é um indicador operacional e pode ser menor que a distância real pelas ruas.</div>
+
+  <div id="estado" class="estado">Carregando pontos...</div>
+  <div id="dias" class="dias"></div>
+</section>
+
+<footer class="footer"><span>SGOS - Sistema de Gestão Operacional e Serviços</span><span>Mapa dos Técnicos</span></footer>
+</main>
+
+<script>
+const mapasAtivos=[];
+const cores=["#2563eb","#16a34a","#f59e0b","#ef4444","#7c3aed","#0891b2","#be123c","#4f46e5"];
+
+function usuarioLocal(){try{return JSON.parse(localStorage.getItem("usuario")||"{}")}catch{return {}}}
+function headersAuth(){
+  const u=usuarioLocal(); const h={"Accept":"application/json"};
+  if(u.id!=null)h["x-usuario-id"]=String(u.id);
+  const log=localStorage.getItem("log_id"); if(log)h["x-log-id"]=String(log);
+  return h;
+}
+function hojeISO(){const d=new Date(Date.now()-new Date().getTimezoneOffset()*60000);return d.toISOString().slice(0,10)}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function dataBR(v){const d=new Date(v);return Number.isNaN(d.getTime())?"-":d.toLocaleDateString("pt-BR")}
+function horaBR(v){const d=new Date(v);return Number.isNaN(d.getTime())?"-":d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}
+function duracao(seg){seg=Math.max(0,Number(seg||0));const h=Math.floor(seg/3600);const m=Math.floor((seg%3600)/60);return h?`${h}h ${m}min`:`${m}min`}
+function haversine(a,b){const R=6371,rad=x=>x*Math.PI/180,dLat=rad(b.latitude-a.latitude),dLon=rad(b.longitude-a.longitude),l1=rad(a.latitude),l2=rad(b.latitude);const h=Math.sin(dLat/2)**2+Math.cos(l1)*Math.cos(l2)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function markerIcon(numero,cor){return L.divIcon({className:"",html:`<div class="marker-num" style="background:${cor}">${numero}</div>`,iconSize:[28,28],iconAnchor:[14,14]})}
+function limparMapas(){while(mapasAtivos.length){try{mapasAtivos.pop().remove()}catch{}}}
+
+function agrupar(pontos){
+  const dias={};
+  pontos.forEach(p=>{
+    if(!dias[p.dia])dias[p.dia]={};
+    const chave=String(p.usuario_id||p.usuario_nome||"sem_usuario");
+    if(!dias[p.dia][chave])dias[p.dia][chave]={usuario_id:p.usuario_id,usuario_nome:p.usuario_nome||"Usuário não identificado",tecnico_nome:p.tecnico_nome||"",pontos:[]};
+    dias[p.dia][chave].pontos.push(p);
+  });
+  Object.values(dias).forEach(grupos=>Object.values(grupos).forEach(g=>{
+    g.pontos.sort((a,b)=>new Date(a.momento)-new Date(b.momento));
+    g.km=0;for(let i=1;i<g.pontos.length;i++)g.km+=haversine(g.pontos[i-1],g.pontos[i]);
+  }));
+  return dias;
+}
+
+function render(data){
+  limparMapas();
+  const pontos=Array.isArray(data.pontos)?data.pontos:[];
+  const gruposDias=agrupar(pontos);
+  const dias=Object.keys(gruposDias).sort().reverse();
+  const tecnicos=new Set(pontos.map(p=>String(p.usuario_id||p.usuario_nome)));
+  const osIds=new Set(pontos.map(p=>p.os_id));
+  let km=0,tempo=0;
+  Object.values(gruposDias).forEach(gs=>Object.values(gs).forEach(g=>km+=g.km||0));
+  data.os_duracoes?.forEach(x=>tempo+=Number(x.tempo_atendimento_segundos||0));
+
+  document.getElementById("kpiPontos").textContent=pontos.length;
+  document.getElementById("kpiTecnicos").textContent=tecnicos.size;
+  document.getElementById("kpiKm").textContent=`${km.toFixed(1)} km`;
+  document.getElementById("kpiTempo").textContent=duracao(tempo);
+  document.getElementById("kpiOS").textContent=osIds.size;
+
+  const estado=document.getElementById("estado"),container=document.getElementById("dias");
+  if(!dias.length){estado.style.display="block";estado.textContent="Nenhum check-in encontrado no período selecionado.";container.innerHTML="";return}
+  estado.style.display="none";container.innerHTML="";
+
+  dias.forEach((dia,idxDia)=>{
+    const grupos=Object.values(gruposDias[dia]);
+    const pontosDia=grupos.flatMap(g=>g.pontos);
+    const kmDia=grupos.reduce((s,g)=>s+(g.km||0),0);
+    const mapaId=`mapa_${idxDia}`;
+
+    const card=document.createElement("section");
+    card.className="dia-card";
+    card.innerHTML=`
+      <div class="dia-head">
+        <h3>${esc(dataBR(dia+"T12:00:00"))}</h3>
+        <div class="badges"><span class="badge">${pontosDia.length} pontos</span><span class="badge">${grupos.length} técnicos</span><span class="badge">${kmDia.toFixed(1)} km estimados</span></div>
+      </div>
+      <div class="dia-layout">
+        <div id="${mapaId}" class="mapa"></div>
+        <aside class="timeline">
+          <h4>Timeline do dia</h4>
+          ${grupos.map((g,gi)=>`
+            <div class="tecnico-grupo">
+              <div class="tecnico-titulo"><strong>${esc(g.usuario_nome)}</strong><span>${g.km.toFixed(1)} km</span></div>
+              ${g.pontos.map((p,pi)=>`
+                <div class="evento" style="--cor:${cores[gi%cores.length]}">
+                  <strong>${horaBR(p.momento)} · ${p.tipo_ponto==="checkin_inicio"?"Chegada":"Conclusão"}</strong>
+                  <small>OS #${esc(p.os_id)} · ${esc(p.cliente||"-")}</small>
+                  <small>${esc(p.localidade_nome||"-")} · ${esc(p.endereco||"-")}</small>
+                </div>`).join("")}
+            </div>`).join("")}
+        </aside>
+      </div>`;
+    container.appendChild(card);
+
+    const mapa=L.map(mapaId);
+    mapasAtivos.push(mapa);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap"}).addTo(mapa);
+    const bounds=[];
+
+    grupos.forEach((g,gi)=>{
+      const cor=cores[gi%cores.length];
+      const latlngs=[];
+      g.pontos.forEach((p,pi)=>{
+        const ll=[p.latitude,p.longitude];latlngs.push(ll);bounds.push(ll);
+        L.marker(ll,{icon:markerIcon(pi+1,cor)}).addTo(mapa).bindPopup(`
+          <strong>${esc(g.usuario_nome)}</strong><br>
+          ${p.tipo_ponto==="checkin_inicio"?"Chegada / check-in":"Conclusão / check-out"}<br>
+          OS #${esc(p.os_id)} — ${esc(p.cliente||"-")}<br>
+          ${horaBR(p.momento)}<br>${esc(p.endereco||p.localidade_nome||"-")}`);
+      });
+      if(latlngs.length>1)L.polyline(latlngs,{color:cor,weight:4,opacity:.8}).addTo(mapa);
+    });
+
+    if(bounds.length===1)mapa.setView(bounds[0],16);
+    else if(bounds.length>1)mapa.fitBounds(bounds,{padding:[30,30]});
+    else mapa.setView([-14.235,-51.925],4);
+    setTimeout(()=>mapa.invalidateSize(),100);
+  });
+}
+
+async function carregarUsuarios(){
+  try{
+    const r=await fetch("/api/mapa-tecnicos/usuarios",{headers:headersAuth(),cache:"no-store"});
+    const d=await r.json(); if(!r.ok)throw new Error(d.erro||"Erro");
+    document.getElementById("tecnicoFiltro").innerHTML='<option value="">Todos os técnicos</option>'+d.usuarios.map(u=>`<option value="${u.id}">${esc(u.usuario_nome)}${u.tecnico_nome?` — ${esc(u.tecnico_nome)}`:""}</option>`).join("");
+  }catch(e){console.error(e)}
+}
+
+async function carregar(){
+  const estado=document.getElementById("estado");estado.style.display="block";estado.textContent="Carregando pontos...";
+  document.getElementById("dias").innerHTML="";
+  try{
+    const p=new URLSearchParams({inicio:document.getElementById("dataInicio").value,fim:document.getElementById("dataFim").value});
+    const uid=document.getElementById("tecnicoFiltro").value;if(uid)p.set("usuario_id",uid);
+    const r=await fetch(`/api/mapa-tecnicos/pontos?${p}`,{headers:headersAuth(),cache:"no-store"});
+    const d=await r.json();if(!r.ok)throw new Error(d.erro||"Erro ao carregar mapa");
+    render(d);
+  }catch(e){estado.style.display="block";estado.textContent=e.message||"Erro ao carregar dados";console.error(e)}
+}
+
+async function carregarUsuario(){
+  const u=usuarioLocal();document.getElementById("userEmpresa").textContent=u.usuario||u.nome||"Usuário";document.getElementById("empresaLogada").textContent=u.empresa_nome||"Empresa";
+  try{
+    const r=await fetch("/api/me",{headers:headersAuth()});const d=await r.json();
+    if(d.usuario)document.getElementById("userEmpresa").textContent=d.usuario;
+    if(d.empresa_nome)document.getElementById("empresaLogada").textContent=d.empresa_nome;
+    if(d.empresa_logo){const logo=document.getElementById("logoEmpresa");logo.src=d.empresa_logo.startsWith("/")?d.empresa_logo:"/"+d.empresa_logo}
+  }catch{}
+}
+
+document.getElementById("btnRecolher").addEventListener("click",()=>{const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");s.classList.toggle("recolhida");l.src=s.classList.contains("recolhida")?l.dataset.logoFechada:l.dataset.logoAberta});
+document.getElementById("btnFiltrar").addEventListener("click",carregar);
+document.getElementById("btnHoje").addEventListener("click",()=>{const h=hojeISO();document.getElementById("dataInicio").value=h;document.getElementById("dataFim").value=h;carregar()});
+document.addEventListener("DOMContentLoaded",async()=>{const h=hojeISO();document.getElementById("dataInicio").value=h;document.getElementById("dataFim").value=h;await Promise.all([carregarUsuario(),carregarUsuarios()]);carregar()});
+</script>
+</body>
+</html>
