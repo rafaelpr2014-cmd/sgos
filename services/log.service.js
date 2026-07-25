@@ -6,21 +6,35 @@ module.exports = (db) => {
     // REGISTRAR LOG
     // ===============================
     async function registrarLog(
-
         req,
         acao,
         modulo,
         referenciaId = null,
         detalhes = null
-
     ){
-
         try {
 
-            // usuário
             const usuario =
                 req?.usuario?.usuario
                 || "desconhecido";
+
+            const empresaId =
+                Number(req?.usuario?.empresa_id || 0);
+
+            // Evita gravar logs sem vínculo de empresa.
+            if (!empresaId) {
+                console.error(
+                    "❌ LOG IGNORADO: empresa_id não encontrado.",
+                    {
+                        usuario,
+                        acao,
+                        modulo,
+                        referenciaId
+                    }
+                );
+
+                return;
+            }
 
             let detalhesFormatado = "-";
 
@@ -31,14 +45,11 @@ module.exports = (db) => {
                 detalhes &&
                 typeof detalhes === "object"
             ){
-
                 detalhesFormatado =
-
                     Object.entries(detalhes)
 
                     // remove vazios
                     .filter(([_, valor]) => {
-
                         return (
                             valor !== undefined &&
                             valor !== null &&
@@ -49,11 +60,19 @@ module.exports = (db) => {
                     // formata
                     .map(([chave, valor]) => {
 
-                        // array
-                        if(Array.isArray(valor)){
+                        if (Array.isArray(valor)) {
+                            valor = valor.join(", ");
+                        }
 
-                            valor =
-                                valor.join(", ");
+                        if (
+                            valor &&
+                            typeof valor === "object"
+                        ) {
+                            try {
+                                valor = JSON.stringify(valor);
+                            } catch {
+                                valor = String(valor);
+                            }
                         }
 
                         return `${chave}: ${valor}`;
@@ -61,6 +80,10 @@ module.exports = (db) => {
 
                     // junta
                     .join(" | ");
+
+                if (!detalhesFormatado) {
+                    detalhesFormatado = "-";
+                }
             }
 
             // ===========================
@@ -69,9 +92,8 @@ module.exports = (db) => {
             else if (
                 typeof detalhes === "string"
             ){
-
                 detalhesFormatado =
-                    detalhes;
+                    detalhes.trim() || "-";
             }
 
             // ===========================
@@ -81,16 +103,19 @@ module.exports = (db) => {
 
                 INSERT INTO logs_acoes (
 
+                    empresa_id,
                     usuario,
                     acao,
                     modulo,
                     referencia_id,
-                    detalhes
+                    detalhes,
+                    created_at
 
-                ) VALUES (?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, NOW())
 
             `, [
 
+                empresaId,
                 usuario,
                 acao || "-",
                 modulo || "-",
