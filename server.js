@@ -404,7 +404,7 @@ app.get("/appmobile.html", (req, res) => {
     );
 });
 
-app.use("/api/crm", verificar Autenticação, crmRoutes);
+app.use("/api/crm", crmRoutes);
 
 
 // ===============================
