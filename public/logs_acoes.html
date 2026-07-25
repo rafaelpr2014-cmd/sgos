@@ -532,6 +532,11 @@ tr:hover{
     white-space:nowrap;
 }
 
+.badge-empresa{
+    background:#ede9fe;
+    color:#6d28d9;
+}
+
 .badge-user{
     background:#dcfce7;
     color:#15803d;
@@ -896,6 +901,11 @@ tr:hover{
             </div>
 
             <div class="refresh-box">
+                <label>Empresa:</label>
+                <select id="empresaFiltro">
+                    <option value="">Empresa logada</option>
+                </select>
+
                 <label>Atualização:</label>
 
                 <select id="refreshSelect">
@@ -915,6 +925,7 @@ tr:hover{
 
                 <thead>
                     <tr>
+                        <th>Empresa</th>
                         <th>Usuário</th>
                         <th>Ação</th>
                         <th>Detalhes</th>
@@ -924,7 +935,7 @@ tr:hover{
 
                 <tbody id="tbodyLogs">
                     <tr>
-                        <td colspan="4" class="empty">
+                        <td colspan="5" class="empty">
                             Carregando logs...
                         </td>
                     </tr>
@@ -939,7 +950,7 @@ tr:hover{
 </section>
 
 <footer class="footer">
-    <span>SGOS - Sistema de Gestão Operacional e Sistemas</span>
+    <span>SGOS - Sistema de Gestão Operacional e Serviços</span>
     <span>Versão 1.0.0</span>
 </footer>
 
@@ -1101,14 +1112,36 @@ function logout(){
 // ===============================
 // HELPERS
 // ===============================
+function getUsuarioLocal(){
+    try{
+        return JSON.parse(localStorage.getItem("usuario") || "{}");
+    }catch{
+        return {};
+    }
+}
+
 function getUsuarioId(){
-    const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+    const usuario = getUsuarioLocal();
 
     return (
         usuario.id ||
         localStorage.getItem("usuario_id") ||
         ""
     );
+}
+
+function getEmpresaId(){
+    const usuario = getUsuarioLocal();
+
+    return (
+        usuario.empresa_id ||
+        localStorage.getItem("empresa_id") ||
+        ""
+    );
+}
+
+function getLogId(){
+    return localStorage.getItem("log_id") || "";
 }
 
 function atualizarCardsLogs(lista){
@@ -1155,17 +1188,30 @@ async function carregarLogs(){
 
     try{
         const usuarioId = getUsuarioId();
+        const empresaId = getEmpresaId();
+        const logId = getLogId();
+        const empresaFiltro = document.getElementById("empresaFiltro")?.value || "";
 
-        const res = await fetch("/api/logs_acoes", {
+        const params = new URLSearchParams();
+        if(empresaFiltro) params.set("empresa_id", empresaFiltro);
+
+        const url = params.toString()
+            ? `/api/logs_acoes?${params.toString()}`
+            : "/api/logs_acoes";
+
+        const res = await fetch(url, {
             headers:{
-                "x-usuario-id": usuarioId
-            }
+                "x-usuario-id": usuarioId,
+                "x-empresa-id": empresaId,
+                "x-log-id": logId
+            },
+            cache:"no-store"
         });
 
         if(res.status === 401){
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="4" class="erro">
+                    <td colspan="5" class="erro">
                         Não autenticado
                     </td>
                 </tr>
@@ -1188,7 +1234,7 @@ async function carregarLogs(){
 
         tbody.innerHTML = `
             <tr>
-                <td colspan="4" class="erro">
+                <td colspan="5" class="erro">
                     Erro ao carregar logs
                 </td>
             </tr>
@@ -1209,7 +1255,7 @@ function renderizarLogs(lista){
     if(!lista || !lista.length){
         tbody.innerHTML = `
             <tr>
-                <td colspan="4" class="empty">
+                <td colspan="5" class="empty">
                     Nenhum log encontrado
                 </td>
             </tr>
@@ -1225,6 +1271,12 @@ function renderizarLogs(lista){
             : "-";
 
         tr.innerHTML = `
+            <td>
+                <span class="badge badge-empresa">
+                    ${log.empresa_nome || ("Empresa #" + (log.empresa_id || "-"))}
+                </span>
+            </td>
+
             <td>
                 <span class="badge badge-user">
                     ${log.usuario || "Desconhecido"}
@@ -1293,6 +1345,8 @@ function aplicarBuscaAtual(){
 
     const filtrados = logsOriginais.filter(log => {
         return (
+            (log.empresa_nome || "").toLowerCase().includes(termo) ||
+            String(log.empresa_id || "").includes(termo) ||
             (log.usuario || "").toLowerCase().includes(termo) ||
             (log.acao || "").toLowerCase().includes(termo) ||
             (log.detalhes || "").toLowerCase().includes(termo)
@@ -1341,6 +1395,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if(busca){
         busca.addEventListener("input", aplicarBuscaAtual);
+    }
+
+    const empresaFiltro = document.getElementById("empresaFiltro");
+
+    if(empresaFiltro){
+        const usuario = getUsuarioLocal();
+        const empresaId = getEmpresaId();
+        const empresaNome = usuario.empresa_nome || "Empresa logada";
+
+        empresaFiltro.innerHTML = `
+            <option value="${empresaId}">
+                ${empresaNome}
+            </option>
+        `;
+
+        empresaFiltro.addEventListener("change", carregarLogs);
     }
 
     const refreshSelect = document.getElementById("refreshSelect");

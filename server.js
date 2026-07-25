@@ -15,6 +15,7 @@ const estoqueRoutes = require('./routes/estoque.routes');
 const escritoriosRoutesFactory = require('./routes/escritorios.routes');
 const financeiroRoutesFactory = require('./routes/financeiro.routes');
 const mapaTecnicosRoutes = require("./routes/mapa-tecnicos.routes");
+const logsAcoesRoutes = require("./routes/logs-acoes.routes");
 
 const viabilidadeClientesErpRoutesFactory =
     require("./routes/viabilidade-clientes-erp.routes");
@@ -102,12 +103,43 @@ function requisicaoDoApp(req) {
 
 setTimeout(() => garantirColunaSessaoApp(), 1000);
 
-async function registrarEventoAcesso({ usuario = "desconhecido", acao, detalhes = "-" }) {
+async function registrarEventoAcesso({
+    empresa_id,
+    usuario = "desconhecido",
+    acao,
+    detalhes = "-"
+}) {
     try {
+        let empresaId = Number(empresa_id || 0);
+
+        // Compatibilidade: tenta localizar a empresa quando algum fluxo antigo
+        // ainda chamar a função sem empresa_id.
+        if (!empresaId && usuario) {
+            const [usuarios] = await pool.query(
+                `SELECT empresa_id
+                 FROM usuarios
+                 WHERE usuario = ?
+                 ORDER BY id DESC
+                 LIMIT 1`,
+                [usuario]
+            );
+
+            empresaId = Number(usuarios[0]?.empresa_id || 0);
+        }
+
+        if (!empresaId) {
+            console.error(
+                "LOG DE AÇÃO NÃO GRAVADO: empresa_id não identificado",
+                { usuario, acao }
+            );
+            return;
+        }
+
         await pool.query(
-            `INSERT INTO logs_acoes (usuario, acao, modulo, referencia_id, detalhes)
-             VALUES (?, ?, 'SESSAO', NULL, ?)`,
-            [usuario, acao, detalhes]
+            `INSERT INTO logs_acoes
+             (empresa_id, usuario, acao, modulo, referencia_id, detalhes, created_at)
+             VALUES (?, ?, ?, 'SESSAO', NULL, ?, NOW())`,
+            [empresaId, usuario, acao, detalhes]
         );
     } catch (err) {
         console.error("ERRO AO REGISTRAR EVENTO DE SESSÃO:", err.message);
@@ -169,7 +201,10 @@ setTimeout(() => garantirTabelaEventosUsuariosOnline().catch(err =>
 
 async function atualizarStatusPresenca(logId, novoStatus, motivo = null) {
     const [rows] = await pool.query(
-        `SELECT id, usuario, status, logout FROM log_acessos WHERE id = ? LIMIT 1`,
+        `SELECT id, usuario, empresa_id, status, logout
+         FROM log_acessos
+         WHERE id = ?
+         LIMIT 1`,
         [logId]
     );
 
@@ -183,6 +218,7 @@ async function atualizarStatusPresenca(logId, novoStatus, motivo = null) {
         );
 
         await registrarEventoAcesso({
+            empresa_id: atual.empresa_id,
             usuario: atual.usuario,
             acao: novoStatus === "ativo" ? "USUARIO_ONLINE" : "USUARIO_OFFLINE",
             detalhes: motivo || (novoStatus === "ativo"
@@ -197,7 +233,7 @@ async function atualizarStatusPresenca(logId, novoStatus, motivo = null) {
 async function expirarSessoesInativas() {
     try {
         const [sessoes] = await pool.query(
-            `SELECT id, usuario
+            `SELECT id, usuario, empresa_id
              FROM log_acessos
              WHERE logout IS NULL
                AND COALESCE(app_mobile, 0) = 0
@@ -215,6 +251,7 @@ async function expirarSessoesInativas() {
             );
 
             await registrarEventoAcesso({
+                empresa_id: sessao.empresa_id,
                 usuario: sessao.usuario,
                 acao: "LOGOUT_AUTOMATICO",
                 detalhes: "Sessão encerrada após 8 horas sem atividade"
@@ -424,6 +461,7 @@ async function verificarAutenticacao(req, res, next) {
                 [logId]
             );
             await registrarEventoAcesso({
+                empresa_id: sessao.empresa_id,
                 usuario: sessao.usuario,
                 acao: "LOGOUT_AUTOMATICO",
                 detalhes: "Sessão encerrada após 8 horas sem atividade"
@@ -441,6 +479,7 @@ async function verificarAutenticacao(req, res, next) {
             );
             if (sessao.status !== "ativo") {
                 await registrarEventoAcesso({
+                    empresa_id: sessao.empresa_id,
                     usuario: sessao.usuario,
                     acao: "USUARIO_ONLINE",
                     detalhes: sessaoApp
@@ -658,6 +697,7 @@ app.post("/api/login", async (req, res) => {
 );
 
         await registrarEventoAcesso({
+            empresa_id: user.empresa_id,
             usuario: user.usuario,
             acao: "LOGIN",
             detalhes: `Login realizado | IP: ${ip || "-"} | Porta: ${porta || "-"}`
@@ -704,8 +744,11 @@ app.post("/api/ping", async (req, res) => {
         }
 
         const [rows] = await pool.query(
-            `SELECT id, usuario, status, ultimo_ping, logout, COALESCE(app_mobile,0) AS app_mobile
-             FROM log_acessos WHERE id = ? LIMIT 1`,
+            `SELECT id, usuario, empresa_id, status, ultimo_ping, logout,
+                    COALESCE(app_mobile,0) AS app_mobile
+             FROM log_acessos
+             WHERE id = ?
+             LIMIT 1`,
             [log_id]
         );
 
@@ -729,6 +772,7 @@ app.post("/api/ping", async (req, res) => {
                 [log_id]
             );
             await registrarEventoAcesso({
+                empresa_id: sessao.empresa_id,
                 usuario: sessao.usuario,
                 acao: "LOGOUT_AUTOMATICO",
                 detalhes: "Sessão encerrada após 8 horas sem atividade"
@@ -745,6 +789,7 @@ app.post("/api/ping", async (req, res) => {
             );
             if (sessao.status !== "ativo") {
                 await registrarEventoAcesso({
+                    empresa_id: sessao.empresa_id,
                     usuario: sessao.usuario,
                     acao: "USUARIO_ONLINE",
                     detalhes: sessaoApp
@@ -761,6 +806,7 @@ app.post("/api/ping", async (req, res) => {
                     [log_id]
                 );
                 await registrarEventoAcesso({
+                    empresa_id: sessao.empresa_id,
                     usuario: sessao.usuario,
                     acao: "USUARIO_OFFLINE",
                     detalhes: "Usuário sem atividade por 5 minutos; sessão permanece ativa"
@@ -789,7 +835,10 @@ app.post("/api/logout", async (req, res) => {
 
     try {
         const [rows] = await pool.query(
-            `SELECT usuario, logout FROM log_acessos WHERE id = ? LIMIT 1`,
+            `SELECT usuario, empresa_id, logout
+             FROM log_acessos
+             WHERE id = ?
+             LIMIT 1`,
             [log_id]
         );
 
@@ -802,6 +851,7 @@ app.post("/api/logout", async (req, res) => {
             );
 
             await registrarEventoAcesso({
+                empresa_id: rows[0].empresa_id,
                 usuario: rows[0].usuario,
                 acao: motivo === "manual" ? "LOGOUT_MANUAL" : "LOGOUT_AUTOMATICO",
                 detalhes: motivo === "manual"
@@ -920,10 +970,10 @@ const financeiroRoutes =
 app.use("/api/escritorios", escritoriosRoutes);
 app.use("/api/financeiro", financeiroRoutes);
 
-const logsAcoesRoutes =
-    require("./routes/logs_acoes.routes")(pool, verificarAutenticacao);
-
-app.use("/api/logs_acoes", logsAcoesRoutes);
+app.use(
+    "/api/logs_acoes",
+    logsAcoesRoutes(pool, verificarAutenticacao)
+);
 
 // ===============================
 // ME
