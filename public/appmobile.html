@@ -1597,7 +1597,7 @@ button{touch-action:manipulation}
         <input type="file" id="foto" accept="image/*,video/*,.pdf,application/pdf" hidden onchange="arquivoSelecionado(this)">
         <div class="anexo-acoes">
             <button type="button" class="btn-anexo-escolher" onclick="escolherAnexo()">📎 Anexar foto, vídeo ou PDF</button>
-            <button type="button" class="btn-camera" onclick="tirarFotoAgora()">📷 Foto / Vídeo</button>
+            <button type="button" class="btn-camera" onclick="tirarFotoAgora()">📷 Tirar Foto</button>
         </div>
         <div id="arquivoSelecionadoInfo" class="arquivo-selecionado-info">Nenhum arquivo selecionado</div>
 
@@ -1700,6 +1700,19 @@ function apiUrl(path){
 function apiFetch(path, options = {}){
     const urlFinal = apiUrl(path);
     const opcoes = { ...options };
+
+    // Centraliza a autenticação de TODAS as chamadas do aplicativo.
+    // Isso evita que ações com FormData enviem apenas x-usuario-id.
+    const headersAtuais = new Headers(opcoes.headers || {});
+    const headersSessao = headersSessaoApp();
+    Object.entries(headersSessao).forEach(([chave, valor]) => {
+        if(valor !== undefined && valor !== null && String(valor) !== "" && !headersAtuais.has(chave)){
+            headersAtuais.set(chave, String(valor));
+        }
+    });
+    headersAtuais.set("x-sgos-app", "1");
+    headersAtuais.set("x-sgos-active", "1");
+    opcoes.headers = headersAtuais;
 
     // O servidor remoto responde CORS com Access-Control-Allow-Origin: *.
     // Nesse cenário o navegador proíbe credentials: "include".
@@ -1821,10 +1834,20 @@ if(provedorParam){
 
 const osPushId = params.get("os_id") || params.get("os") || params.get("id_os");
 
+// Impede que Android/iOS restaurem uma URL antiga com o primeiro usuário
+// depois de um logout. O bloqueio é removido somente por um novo login manual.
+const logoutBloqueadoApp = localStorage.getItem("sgos_logout_bloqueado") === "1";
+if(logoutBloqueadoApp && token && id){
+    try{
+        window.history.replaceState({}, document.title, "index.html?logout=1&t=" + Date.now());
+    }catch(e){}
+    window.location.replace("index.html?logout=1&t=" + Date.now());
+}
+
 // =========================
 // RECEBE LOGIN APK
 // =========================
-if(token && id){
+if(token && id && !logoutBloqueadoApp){
 
     // IMPORTANTE:
     // No app Android/iOS o WebView pode reabrir a última URL usada.
@@ -2348,13 +2371,22 @@ function headersSessaoApp(){
     const logId = user.log_id || localStorage.getItem("log_id") || "";
     const empresaId = user.empresa_id || localStorage.getItem("empresa_id") || "";
 
+    const usuarioSalvo = (() => {
+        try { return JSON.parse(localStorage.getItem("usuario") || "{}"); }
+        catch(e){ return {}; }
+    })();
+
     const headers = {
         "Accept":"application/json",
-        "x-usuario-id": String(user.id || "")
+        "x-usuario-id": String(user.id || usuarioSalvo.id || localStorage.getItem("usuario_id") || ""),
+        "x-sgos-app":"1",
+        "x-sgos-active":"1"
     };
 
-    if(logId) headers["x-log-id"] = String(logId);
-    if(empresaId) headers["x-empresa-id"] = String(empresaId);
+    const logFinal = logId || usuarioSalvo.log_id || "";
+    const empresaFinal = empresaId || usuarioSalvo.empresa_id || "";
+    if(logFinal) headers["x-log-id"] = String(logFinal);
+    if(empresaFinal) headers["x-empresa-id"] = String(empresaFinal);
 
     return headers;
 }
@@ -2909,9 +2941,16 @@ function logout(){
         }).catch(console.error);
     }
 
-    // Limpa sessão web completa
+    // Marca o logout antes da limpeza. Isso impede que o WebView restaure
+    // uma URL antiga contendo token/id do primeiro usuário.
+    try{ localStorage.setItem("sgos_logout_bloqueado", "1"); }catch(e){}
+
+    // Limpa sessão web completa e recria somente a trava de restauração.
     try{ sessionStorage.clear(); }catch(e){}
-    try{ localStorage.clear(); }catch(e){}
+    try{
+        localStorage.clear();
+        localStorage.setItem("sgos_logout_bloqueado", "1");
+    }catch(e){}
 
     // Limpa sessão salva no app nativo, se existir bridge Android/iOS.
     // Mantém compatibilidade mesmo se o método ainda não existir no app.
@@ -3945,16 +3984,16 @@ async function tirarFotoAgora(){
     }
 
     /*
-      O plugin @capacitor/camera captura apenas fotos.
-      Para permitir foto OU vídeo com o seletor nativo do iOS/Android,
-      usamos input file com capture=environment e accept image/video.
+      Captura direta somente de FOTO. Abrir gravação de vídeo por input
+      capture dentro do WebView pode encerrar o processo no Android/iOS.
+      Vídeos continuam disponíveis pelo botão “Anexar foto, vídeo ou PDF”.
     */
     input.value = "";
-    input.accept = "image/*,video/*";
+    input.accept = "image/*";
     input.setAttribute("capture", "environment");
 
     if(info){
-        info.textContent = "Abra a câmera e escolha foto ou vídeo.";
+        info.textContent = "Abra a câmera para tirar uma foto. Para vídeo, use o botão Anexar.";
     }
 
     input.click();

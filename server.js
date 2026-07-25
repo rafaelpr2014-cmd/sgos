@@ -68,6 +68,39 @@ const onlineUsers = new Map();
 const OFFLINE_MINUTOS = 5;
 const LOGOUT_AUTOMATICO_HORAS = 8;
 
+// Sessões do aplicativo móvel permanecem válidas até logout manual.
+// A coluna é criada automaticamente para manter compatibilidade com bancos existentes.
+async function garantirColunaSessaoApp() {
+    try {
+        const [colunas] = await pool.query(`
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'log_acessos'
+              AND COLUMN_NAME = 'app_mobile'
+            LIMIT 1
+        `);
+
+        if (!colunas.length) {
+            await pool.query(`
+                ALTER TABLE log_acessos
+                ADD COLUMN app_mobile TINYINT(1) NOT NULL DEFAULT 0 AFTER status
+            `);
+        }
+    } catch (err) {
+        console.error("ERRO AO PREPARAR SESSÃO DO APP:", err.message);
+    }
+}
+
+function requisicaoDoApp(req) {
+    const cabecalho = String(req.headers["x-sgos-app"] || "").trim().toLowerCase();
+    const corpo = String(req.body?.app_mobile ?? req.body?.is_app ?? "").trim().toLowerCase();
+    return ["1", "true", "sim", "mobile", "app"].includes(cabecalho) ||
+           ["1", "true", "sim", "mobile", "app"].includes(corpo);
+}
+
+setTimeout(() => garantirColunaSessaoApp(), 1000);
+
 async function registrarEventoAcesso({ usuario = "desconhecido", acao, detalhes = "-" }) {
     try {
         await pool.query(
@@ -166,6 +199,7 @@ async function expirarSessoesInativas() {
             `SELECT id, usuario
              FROM log_acessos
              WHERE logout IS NULL
+               AND COALESCE(app_mobile, 0) = 0
                AND ultimo_ping IS NOT NULL
                AND ultimo_ping <= DATE_SUB(NOW(), INTERVAL ? HOUR)`,
             [LOGOUT_AUTOMATICO_HORAS]
@@ -335,15 +369,26 @@ async function verificarAutenticacao(req, res, next) {
     const usuarioId = req.headers["x-usuario-id"];
     const logId = req.headers["x-log-id"];
     const usuarioAtivo = req.headers["x-sgos-active"] === "1";
+    const acessoApp = requisicaoDoApp(req);
 
     if (!usuarioId || !logId) {
         return res.status(401).json({ erro: "Não autenticado", motivo: "sessao_invalida" });
     }
 
     try {
+        await garantirColunaSessaoApp();
+
+        if (acessoApp) {
+            await pool.query(
+                `UPDATE log_acessos SET app_mobile = 1 WHERE id = ? AND usuario_id = ?`,
+                [logId, usuarioId]
+            );
+        }
+
         const [rows] = await pool.query(
             `SELECT u.id, u.usuario, u.cargo, u.empresa_id,
-                    l.id AS log_id, l.ultimo_ping, l.logout, l.status
+                    l.id AS log_id, l.ultimo_ping, l.logout, l.status,
+                    COALESCE(l.app_mobile, 0) AS app_mobile
              FROM usuarios u
              INNER JOIN log_acessos l
                 ON l.usuario_id = u.id
@@ -359,9 +404,12 @@ async function verificarAutenticacao(req, res, next) {
         }
 
         const sessao = rows[0];
+        const sessaoApp = acessoApp || Number(sessao.app_mobile) === 1;
         const ultimaAtividade = new Date(sessao.ultimo_ping).getTime();
-        const expirou = !Number.isFinite(ultimaAtividade) ||
-            (Date.now() - ultimaAtividade >= LOGOUT_AUTOMATICO_HORAS * 60 * 60 * 1000);
+        const expirou = !sessaoApp && (
+            !Number.isFinite(ultimaAtividade) ||
+            Date.now() - ultimaAtividade >= LOGOUT_AUTOMATICO_HORAS * 60 * 60 * 1000
+        );
 
         if (expirou) {
             await pool.query(
@@ -378,16 +426,21 @@ async function verificarAutenticacao(req, res, next) {
             return res.status(401).json({ erro: "Sessão expirada por inatividade", motivo: "inatividade_8h" });
         }
 
-        if (usuarioAtivo) {
+        // No app, cada requisição autenticada renova a presença sem expirar a sessão.
+        if (usuarioAtivo || sessaoApp) {
             await pool.query(
-                `UPDATE log_acessos SET ultimo_ping = NOW(), status = 'ativo' WHERE id = ? AND logout IS NULL`,
-                [logId]
+                `UPDATE log_acessos
+                 SET ultimo_ping = NOW(), status = 'ativo', app_mobile = ?
+                 WHERE id = ? AND logout IS NULL`,
+                [sessaoApp ? 1 : 0, logId]
             );
             if (sessao.status !== "ativo") {
                 await registrarEventoAcesso({
                     usuario: sessao.usuario,
                     acao: "USUARIO_ONLINE",
-                    detalhes: "Usuário voltou a interagir com o sistema"
+                    detalhes: sessaoApp
+                        ? "Usuário ativo pelo aplicativo móvel"
+                        : "Usuário voltou a interagir com o sistema"
                 });
                 await registrarEventoUsuariosOnline(logId, "conexao", "Usuário reconectado");
             }
@@ -400,6 +453,7 @@ async function verificarAutenticacao(req, res, next) {
             empresa_id: sessao.empresa_id
         };
         req.log_id = Number(logId);
+        req.sessao_app = sessaoApp;
         next();
     } catch (err) {
         console.error("ERRO AUTH:", err);
@@ -473,6 +527,7 @@ async function obterEmpresaPorSubdominio(req) {
 app.post("/api/login", async (req, res) => {
 
     const { usuario, senha } = req.body;
+    const loginPeloApp = requisicaoDoApp(req);
 
     if (!usuario || !senha) {
         return res.status(400).json({
@@ -524,6 +579,8 @@ app.post("/api/login", async (req, res) => {
                 erro: "Senha incorreta"
             });
         }
+
+        await garantirColunaSessaoApp();
 
         // ===============================
         // 🔥 LIMPA SESSÃO ANTIGA (EVITA FANTASMAS)
@@ -579,17 +636,19 @@ app.post("/api/login", async (req, res) => {
         porta_origem,
         login,
         ultimo_ping,
-        status
+        status,
+        app_mobile
     )
     VALUES
-    (?, ?, ?, ?, ?, NOW(), NOW(), 'ativo')
+    (?, ?, ?, ?, ?, NOW(), NOW(), 'ativo', ?)
     `,
     [
         user.id,
         user.usuario,
         user.empresa_id,
         ip,
-        porta
+        porta,
+        loginPeloApp ? 1 : 0
     ]
 );
 
@@ -626,14 +685,21 @@ app.post("/api/login", async (req, res) => {
 // ===============================
 app.post("/api/ping", async (req, res) => {
     const { log_id, ativo } = req.body || {};
+    const acessoApp = requisicaoDoApp(req);
 
     if (!log_id) {
         return res.status(400).json({ erro: "log_id não informado" });
     }
 
     try {
+        await garantirColunaSessaoApp();
+
+        if (acessoApp) {
+            await pool.query(`UPDATE log_acessos SET app_mobile = 1 WHERE id = ?`, [log_id]);
+        }
+
         const [rows] = await pool.query(
-            `SELECT id, usuario, status, ultimo_ping, logout
+            `SELECT id, usuario, status, ultimo_ping, logout, COALESCE(app_mobile,0) AS app_mobile
              FROM log_acessos WHERE id = ? LIMIT 1`,
             [log_id]
         );
@@ -643,9 +709,12 @@ app.post("/api/ping", async (req, res) => {
         }
 
         const sessao = rows[0];
+        const sessaoApp = acessoApp || Number(sessao.app_mobile) === 1;
         const ultimaAtividade = new Date(sessao.ultimo_ping).getTime();
-        const expirou = !Number.isFinite(ultimaAtividade) ||
-            Date.now() - ultimaAtividade >= LOGOUT_AUTOMATICO_HORAS * 60 * 60 * 1000;
+        const expirou = !sessaoApp && (
+            !Number.isFinite(ultimaAtividade) ||
+            Date.now() - ultimaAtividade >= LOGOUT_AUTOMATICO_HORAS * 60 * 60 * 1000
+        );
 
         if (expirou) {
             await pool.query(
@@ -663,22 +732,21 @@ app.post("/api/ping", async (req, res) => {
             return res.status(401).json({ erro: "Sessão expirada", motivo: "inatividade_8h" });
         }
 
-        if (ativo === true) {
+        if (sessaoApp || ativo === true) {
             await pool.query(
-                `UPDATE log_acessos SET ultimo_ping = NOW(), status = 'ativo' WHERE id = ? AND logout IS NULL`,
-                [log_id]
+                `UPDATE log_acessos SET ultimo_ping = NOW(), status = 'ativo', app_mobile = ?
+                 WHERE id = ? AND logout IS NULL`,
+                [sessaoApp ? 1 : 0, log_id]
             );
             if (sessao.status !== "ativo") {
                 await registrarEventoAcesso({
                     usuario: sessao.usuario,
                     acao: "USUARIO_ONLINE",
-                    detalhes: "Usuário voltou a interagir com o sistema"
+                    detalhes: sessaoApp
+                        ? "Usuário ativo pelo aplicativo móvel"
+                        : "Usuário voltou a interagir com o sistema"
                 });
-                await registrarEventoUsuariosOnline(
-                    log_id,
-                    "reconectado",
-                    "Usuário reconectado após inatividade"
-                );
+                await registrarEventoUsuariosOnline(log_id, "reconectado", "Usuário reconectado após inatividade");
             }
         } else {
             const cincoMinutosSemAtividade = Date.now() - ultimaAtividade >= OFFLINE_MINUTOS * 60 * 1000;
@@ -696,7 +764,7 @@ app.post("/api/ping", async (req, res) => {
             }
         }
 
-        return res.json({ ok: true, status: ativo === true ? "ativo" : "offline" });
+        return res.json({ ok: true, status: sessaoApp || ativo === true ? "ativo" : "offline", app_mobile: sessaoApp });
     } catch (err) {
         console.error("ERRO PING:", err);
         return res.status(500).json({ erro: err.message });

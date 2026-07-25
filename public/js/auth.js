@@ -9,6 +9,17 @@ const SGOS_LOGOUT_MS = 8 * 60 * 60 * 1000;
 const SGOS_PING_MS = 60 * 1000;
 const SGOS_ACTIVITY_KEY = "sgos_ultima_atividade";
 
+function executandoNoApp() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        return localStorage.getItem("is_app") === "1" ||
+               params.get("app") === "1" ||
+               Boolean(window.Capacitor);
+    } catch {
+        return localStorage.getItem("is_app") === "1";
+    }
+}
+
 function obterUsuario() {
     try {
         const valor = localStorage.getItem("usuario");
@@ -32,9 +43,19 @@ function salvarUltimaAtividade(timestamp = Date.now()) {
 }
 
 function limparSessao() {
-    localStorage.removeItem("usuario");
-    localStorage.removeItem("log_id");
-    localStorage.removeItem(SGOS_ACTIVITY_KEY);
+    [
+        "usuario",
+        "log_id",
+        "usuario_id",
+        "sessao_app",
+        "token",
+        "sgos_token",
+        SGOS_ACTIVITY_KEY
+    ].forEach(chave => localStorage.removeItem(chave));
+
+    // Mantém provedor/api_base para o app saber em qual empresa abrir,
+    // mas impede a restauração do usuário anterior.
+    sessionStorage.clear();
 }
 
 function irLogin(motivo = "") {
@@ -64,6 +85,7 @@ function usuarioEstaAtivo() {
 }
 
 function sessaoExpiradaLocalmente() {
+    if (executandoNoApp()) return false;
     return tempoInativo() >= SGOS_LOGOUT_MS;
 }
 
@@ -131,11 +153,22 @@ window.fetch = async function(url, opcoes = {}) {
 
         const empresaId = usuario.empresa_id ?? usuario.empresaId ?? usuario.id_empresa ?? usuario.empresa?.id;
         if (empresaId != null && empresaId !== "") headers.set("x-empresa-id", String(empresaId));
+        if (executandoNoApp()) headers.set("x-sgos-app", "1");
+    }
+
+    let credentials = opcoes.credentials;
+    if (!credentials) {
+        try {
+            const destino = new URL(url, window.location.href);
+            credentials = destino.origin === window.location.origin ? "same-origin" : "omit";
+        } catch {
+            credentials = "same-origin";
+        }
     }
 
     const response = await fetchOriginal(url, {
         ...opcoes,
-        credentials: opcoes.credentials || "same-origin",
+        credentials,
         headers
     });
 
@@ -144,15 +177,25 @@ window.fetch = async function(url, opcoes = {}) {
     }
 
     if (response.status === 401) {
-        let motivo = "sessao_expirada";
+        let motivo = "sessao_invalida";
         try {
             const body = await response.clone().json();
             motivo = body?.motivo || motivo;
         } catch {}
-        limparSessao();
-        irLogin(motivo);
-        const erro = new Error("Sessão expirada");
+
+        // No aplicativo não tratamos inatividade como logout.
+        // Apenas sessões realmente encerradas/inválidas voltam ao login.
+        const encerrar = !executandoNoApp() ||
+            ["sessao_encerrada", "sessao_invalida", "usuario_invalido"].includes(motivo);
+
+        if (encerrar) {
+            limparSessao();
+            irLogin(motivo);
+        }
+
+        const erro = new Error(motivo === "inatividade_8h" ? "Sessão expirada" : "Não autenticado");
         erro.status = 401;
+        erro.motivo = motivo;
         throw erro;
     }
 
@@ -186,18 +229,22 @@ async function enviarPing(forcar = false) {
                 "Content-Type": "application/json",
                 "x-usuario-id": String(usuario.id),
                 "x-log-id": String(log_id),
-                "x-empresa-id": String(usuario.empresa_id || "")
+                "x-empresa-id": String(usuario.empresa_id || ""),
+                "x-sgos-app": executandoNoApp() ? "1" : "0"
             },
             body: JSON.stringify({
                 log_id,
-                ativo,
+                ativo: executandoNoApp() ? true : ativo,
+                app_mobile: executandoNoApp() ? 1 : 0,
                 ultima_atividade: new Date(obterUltimaAtividade()).toISOString()
             })
         });
 
         if (response.status === 401) {
-            limparSessao();
-            irLogin("sessao_expirada");
+            if (!executandoNoApp()) {
+                limparSessao();
+                irLogin("sessao_expirada");
+            }
             return;
         }
 
@@ -251,7 +298,10 @@ async function logout() {
             await fetchOriginal("/api/logout", {
                 method: "POST",
                 keepalive: true,
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-sgos-app": executandoNoApp() ? "1" : "0"
+                },
                 body: JSON.stringify({ log_id, motivo: "manual" })
             });
         }

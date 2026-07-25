@@ -1567,7 +1567,7 @@ router.post(
 router.post(
     "/inviabilidade/:id",
     verificarAutenticacao,
-    upload.single("foto"),
+    uploadAnexo.single("foto"),
     async (req, res) => {
 
         try {
@@ -3530,6 +3530,34 @@ router.delete(
         }
     }
 );
+
+// ===============================
+// ERROS DE UPLOAD EM JSON
+// Evita que Multer devolva uma página HTML dentro do aplicativo.
+// ===============================
+router.use((err, req, res, next) => {
+    if (err instanceof multer.MulterError) {
+        const mensagens = {
+            LIMIT_FILE_SIZE: "O anexo excede o limite de 30 MB.",
+            LIMIT_UNEXPECTED_FILE: "Campo de anexo inválido. Envie o arquivo no campo 'foto'.",
+            LIMIT_FILE_COUNT: "Envie apenas um anexo por ação."
+        };
+
+        return res.status(400).json({
+            erro: mensagens[err.code] || err.message || "Erro ao enviar anexo.",
+            codigo: err.code || "MULTER_ERROR"
+        });
+    }
+
+    if (err) {
+        console.error("ERRO DE UPLOAD/ROTA OS:", err);
+        return res.status(err.statusCode || 400).json({
+            erro: err.message || "Não foi possível processar a solicitação."
+        });
+    }
+
+    next();
+});
 
 return router;
 
