@@ -2,77 +2,188 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CRM Operacional - SGOS</title>
-<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SGOS - CRM Operacional</title>
+<link rel="icon" type="image/png" href="/img/favicon.png">
+<script src="/js/auth.js" defer></script>
+<script src="/js/init.js" defer></script>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f7fb;color:#0f172a}
-:root{--azul:#2563eb;--borda:#dbe3ee;--texto2:#64748b;--card:#fff}
-.topo{height:68px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:50}
-.marca{display:flex;align-items:center;gap:18px}.marca img{width:142px;height:44px;object-fit:contain}.divisor{width:1px;height:32px;background:#d8dee8}.titulo-topo strong{font-size:17px}.titulo-topo span{display:block;font-size:11px;color:var(--texto2);margin-top:3px}
-.topo-direita{display:flex;align-items:center;gap:20px}.busca-topo{width:290px;position:relative}.busca-topo input{width:100%;height:40px;border:1px solid var(--borda);border-radius:11px;padding:0 14px 0 38px;font-size:13px}.busca-topo b{position:absolute;left:13px;top:11px;color:#64748b}.usuario{display:flex;align-items:center;gap:10px}.avatar{width:40px;height:40px;border-radius:50%;background:#e8eef7;display:grid;place-items:center;font-weight:800;color:#64748b}.usuario small{display:block;color:#64748b;font-size:10px;margin-top:2px}
-.conteudo{padding:14px}.acoes-topo{display:flex;justify-content:flex-end;margin-bottom:10px}.btn{height:36px;border:1px solid var(--borda);background:#fff;border-radius:8px;padding:0 14px;font-weight:800;cursor:pointer}.btn-primary{background:var(--azul);color:#fff;border-color:var(--azul)}.btn-danger{color:#b91c1c}.btn-sm{height:30px;padding:0 10px;font-size:12px}
-.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:14px}.card-ind{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:14px;min-height:105px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.02)}.icone{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:22px}.i1{background:#e8f0ff;color:#2563eb}.i2{background:#fff1dd;color:#f59e0b}.i3{background:#ecfdf5;color:#16a34a}.i4{background:#e8f7fb;color:#0891b2}.i5{background:#f1eaff;color:#7c3aed}.i6{background:#feecec;color:#dc2626}.card-ind label{font-size:12px;font-weight:800}.numero{font-size:23px;font-weight:900;margin-top:4px}.legenda{font-size:10px;color:#64748b;margin-top:7px}
-.painel{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:14px;margin-bottom:14px}.painel-cab{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}.painel-cab h2{font-size:16px;margin:0 0 4px}.painel-cab p{font-size:11px;color:#64748b;margin:0}
-.filtros{display:grid;grid-template-columns:1.25fr repeat(5,1fr);gap:8px}.campo label{display:block;font-size:9px;font-weight:900;margin:0 0 5px;text-transform:uppercase}.campo input,.campo select,.campo textarea{width:100%;border:1px solid var(--borda);border-radius:7px;padding:9px 10px;font-size:12px;background:#fff}.campo textarea{min-height:78px;resize:vertical}
-.funil-cab{display:flex;justify-content:space-between;align-items:center}.alternar{display:flex;gap:6px}
-.kanban{display:grid;grid-template-columns:repeat(7,minmax(190px,1fr));gap:8px;overflow-x:auto;padding-bottom:4px}.coluna{border:1px solid var(--borda);border-radius:10px;background:#f8fafc;min-height:390px}.coluna-titulo{height:43px;border-bottom:1px solid var(--borda);display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:12px;font-weight:900;background:#fff;border-radius:10px 10px 0 0}.ponto{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:7px}.contador{background:#fff;border:1px solid var(--borda);width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:10px}.lista-cards{padding:8px;min-height:340px}.vazio{color:#64748b;text-align:center;font-size:10px;margin-top:30px}.sol-card{background:#fff;border:1px solid var(--borda);border-radius:9px;padding:10px;margin-bottom:8px;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,.04)}.sol-card:hover{border-color:#93b4f8}.sol-nome{font-size:12px;font-weight:900}.sol-servico{font-size:11px;color:#334155;margin-top:5px}.sol-meta{font-size:9px;color:#64748b;margin-top:8px;line-height:1.5}.tag{display:inline-block;border-radius:20px;padding:3px 7px;font-size:9px;font-weight:800;margin-top:6px}.alta,.urgente{background:#fee2e2;color:#b91c1c}.media{background:#fef3c7;color:#92400e}.baixa{background:#dcfce7;color:#166534}
-.tabela-wrap{overflow:auto}.tabela{width:100%;border-collapse:collapse;font-size:11px}.tabela th,.tabela td{padding:10px;border-bottom:1px solid var(--borda);text-align:left;white-space:nowrap}.tabela th{font-size:9px;text-transform:uppercase;background:#f8fafc}
+:root{
+    --azul:#2563eb;--azul-hover:#1d4ed8;--texto:#0f172a;--muted:#64748b;
+    --borda:#e5e7eb;--fundo:#f5f7fb;--verde:#16a34a;--laranja:#f59e0b;
+    --vermelho:#ef4444;--roxo:#7c3aed;--ciano:#0891b2;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);color:var(--texto)}
+button,input,textarea,select{font:inherit}
+.sidebar{position:fixed;left:0;top:0;width:230px;height:100vh;background:linear-gradient(180deg,#081a31,#061426);color:#fff;padding:12px 18px 18px;display:flex;flex-direction:column;z-index:20;overflow-y:auto}
+.sidebar-logo{display:flex;align-items:center;margin-bottom:14px}
+.sidebar-logo img{width:190px;height:auto;display:block}
+.menu-titulo{margin:14px 10px 6px;font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:.2px}
+.sidebar a{color:#dbeafe;text-decoration:none;padding:11px 13px;border-radius:9px;display:flex;align-items:center;gap:12px;font-size:14px;margin-bottom:2px;transition:.2s}
+.sidebar a:hover,.sidebar a.ativo{background:var(--azul);color:#fff}
+.menu-icon{width:18px;height:18px;min-width:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sidebar-footer{margin-top:auto;padding-top:15px}
+.btn-recolher{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#e5efff;padding:13px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px}
+.sidebar.recolhida{width:82px;padding:16px 12px;align-items:center}
+.sidebar.recolhida .sidebar-logo{justify-content:center}
+.sidebar.recolhida .sidebar-logo img{width:48px}
+.sidebar.recolhida .menu-titulo,.sidebar.recolhida a span,.sidebar.recolhida .btn-recolher span{display:none}
+.sidebar.recolhida a,.sidebar.recolhida .btn-recolher{justify-content:center;width:52px;padding:13px}
+.sidebar.recolhida + .main{margin-left:82px}
+.main{margin-left:230px;min-height:100vh;transition:.25s ease}
+.header{height:92px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;justify-content:space-between;padding:0 34px;position:sticky;top:0;z-index:10}
+.header-left,.header-actions{display:flex;align-items:center;gap:22px}
+.header-logo img{height:60px;max-width:190px;object-fit:contain}
+.divisor{height:34px;width:1px;background:var(--borda)}
+.header-title{font-weight:800;font-size:18px}
+.busca-wrap{position:relative}
+.busca-icone{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#334155;width:18px;height:18px}
+.input-busca-menu{width:310px;padding:12px 14px 12px 40px;border:1px solid var(--borda);border-radius:12px;outline:none;background:#fff}
+.usuario-dropdown{position:relative}
+.usuario-btn{border:0;background:transparent;display:flex;align-items:center;gap:10px;cursor:pointer;padding:0}
+.avatar{width:44px;height:44px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center}
+.avatar svg{width:28px;height:28px;fill:#cbd5e1}
+.usuario-info{text-align:left}.usuario-info strong{font-size:13px;display:block}.usuario-info small{font-size:11px;color:#64748b}
+.seta{width:18px;height:18px;color:#1e3a8a;transition:.2s}.usuario-dropdown.aberto .seta{transform:rotate(180deg)}
+.usuario-menu{display:none;position:absolute;right:0;top:58px;width:260px;background:#fff;border:1px solid var(--borda);border-radius:14px;box-shadow:0 18px 40px rgba(15,23,42,.16);padding:14px;z-index:9999}
+.usuario-menu.ativo{display:block}.usuario-menu-titulo{font-size:12px;font-weight:800;color:#64748b;margin-bottom:10px;text-transform:uppercase}
+#usuariosOnline{font-size:13px;line-height:1.8;max-height:180px;overflow:auto}.usuario-menu hr{border:0;border-top:1px solid var(--borda);margin:12px 0}.usuario-menu a{color:#ef4444;text-decoration:none;font-weight:800;font-size:14px}
+.content{padding:18px 18px 32px}
+.top-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.top-toolbar h1{margin:0;font-size:20px}.top-toolbar p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.btn{border:0;padding:10px 15px;border-radius:9px;cursor:pointer;font-weight:800;color:#fff;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:var(--azul)}.btn-primary:hover{background:var(--azul-hover)}
+.btn-secundario{background:#64748b}.btn-danger{background:var(--vermelho)}
+.btn-claro{background:#fff;color:#0f172a;border:1px solid var(--borda)}
+.btn-sm{padding:7px 10px;font-size:12px}
+.top-actions{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:12px}
+.card-indicador{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:15px 16px;min-height:92px;box-shadow:0 8px 22px rgba(15,23,42,.04);display:flex;align-items:center;gap:13px}
+.icon-box{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center}
+.icon-box svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.icon-blue{background:#dbeafe;color:#2563eb}.icon-orange{background:#ffedd5;color:#f59e0b}.icon-green{background:#dcfce7;color:#16a34a}.icon-cyan{background:#cffafe;color:#0891b2}.icon-purple{background:#ede9fe;color:#7c3aed}.icon-red{background:#fee2e2;color:#ef4444}
+.card-info small{font-size:12px;font-weight:800}.card-info strong{display:block;font-size:26px;margin:3px 0;line-height:1}.card-info span{font-size:11px;color:#64748b}
+.card{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:16px 18px;margin-bottom:13px;box-shadow:0 8px 20px rgba(15,23,42,.04);overflow:hidden}
+.card-header{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:12px}.titulo-card{font-size:18px;font-weight:800}.sub-card{font-size:13px;color:var(--muted);margin-top:3px}
+.filtros{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.campo{display:flex;flex-direction:column;gap:5px;min-width:0}.campo label{font-size:12px;font-weight:800;color:#334155}
+.campo input,.campo select,.campo textarea{width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--borda);background:#fff;outline:none;font-size:14px}
+.campo input:focus,.campo select:focus,.campo textarea:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.funil-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.alternar{display:flex;gap:7px}
+.kanban{display:grid;grid-template-columns:repeat(7,minmax(205px,1fr));gap:9px;overflow-x:auto;padding-bottom:5px}
+.coluna{border:1px solid var(--borda);border-radius:11px;background:#f8fafc;min-height:420px}
+.coluna-titulo{height:46px;border-bottom:1px solid var(--borda);display:flex;align-items:center;justify-content:space-between;padding:0 11px;font-size:12px;font-weight:900;background:#fff;border-radius:11px 11px 0 0}
+.ponto{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:7px}.contador{background:#fff;border:1px solid var(--borda);width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:10px}
+.lista-cards{padding:8px;min-height:360px}.vazio{text-align:center;color:#64748b;font-size:11px;padding:30px 8px}
+.sol-card{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:11px;margin-bottom:8px;cursor:pointer;box-shadow:0 3px 9px rgba(15,23,42,.05);transition:.18s}
+.sol-card:hover{border-color:#93c5fd;transform:translateY(-1px)}.sol-nome{font-size:13px;font-weight:900}.sol-servico{font-size:12px;color:#334155;margin-top:5px}
+.sol-meta{font-size:10px;color:#64748b;margin-top:8px;line-height:1.55}.tag{display:inline-block;border-radius:999px;padding:4px 8px;font-size:9px;font-weight:800;margin-top:7px;text-transform:uppercase}
+.tag.urgente,.tag.alta{background:#fee2e2;color:#b91c1c}.tag.media{background:#fef3c7;color:#92400e}.tag.baixa{background:#dcfce7;color:#166534}
+.tabela-wrap{width:100%;overflow:auto}.tabela{width:100%;border-collapse:collapse;min-width:1250px}.tabela th{background:#f8fafc;color:#0f172a;padding:12px 10px;text-align:left;font-size:11px;border-bottom:1px solid var(--borda);white-space:nowrap}.tabela td{padding:10px;border-bottom:1px solid var(--borda);font-size:12px;color:#1e293b;vertical-align:middle}
 .oculto{display:none!important}
-.modal-fundo{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:100}.modal-fundo.aberto{display:flex}.modal{width:min(930px,94vw);max-height:92vh;overflow:auto;background:#fff;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.2)}.modal-topo{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--borda);padding:15px 18px;display:flex;justify-content:space-between;align-items:center;z-index:2}.modal-topo h3{margin:0;font-size:17px}.fechar{border:0;background:#eef2f7;width:32px;height:32px;border-radius:8px;cursor:pointer}.modal-corpo{padding:16px}.grid-form{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.span2{grid-column:span 2}.span4{grid-column:span 4}.modal-acoes{display:flex;justify-content:space-between;gap:8px;padding:14px 16px;border-top:1px solid var(--borda)}
-@media(max-width:1300px){.cards{grid-template-columns:repeat(3,1fr)}.filtros{grid-template-columns:repeat(3,1fr)}}@media(max-width:760px){.topo{padding:0 12px}.marca img{width:105px}.busca-topo{display:none}.cards{grid-template-columns:repeat(2,1fr)}.filtros,.grid-form{grid-template-columns:1fr}.span2,.span4{grid-column:span 1}.conteudo{padding:8px}}
+.modal-fundo{position:fixed;inset:0;background:rgba(15,23,42,.72);display:none;align-items:center;justify-content:center;padding:20px;z-index:99998}
+.modal-fundo.aberto{display:flex}.modal{width:min(980px,96vw);max-height:92vh;background:#fff;border-radius:18px;box-shadow:0 28px 80px rgba(15,23,42,.35);overflow:hidden;display:flex;flex-direction:column}
+.modal-topo{padding:18px 22px;border-bottom:1px solid var(--borda);display:flex;justify-content:space-between;align-items:center;background:#f8fafc}.modal-topo h3{margin:0;font-size:20px}
+.fechar{border:0;background:#fee2e2;color:#dc2626;width:38px;height:38px;border-radius:50%;font-size:20px;font-weight:800;cursor:pointer}
+.modal-corpo{padding:18px 22px;overflow:auto}.grid-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.span2{grid-column:span 2}.span4{grid-column:span 4}.campo textarea{min-height:90px;resize:vertical}
+.modal-acoes{padding:15px 22px;border-top:1px solid var(--borda);display:flex;justify-content:space-between;gap:10px;background:#fff}
+.footer{display:flex;justify-content:space-between;padding:20px 34px;color:#475569;font-size:12px;border-top:1px solid var(--borda)}
+@media(max-width:1450px){.top-actions{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:1200px){.filtros{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.sidebar{display:none}.main{margin-left:0}.header{height:auto;flex-direction:column;align-items:flex-start;gap:15px;padding:20px}.header-actions{width:100%;justify-content:space-between;flex-wrap:wrap}.busca-wrap,.input-busca-menu{width:100%}.content{padding:14px}.top-actions{grid-template-columns:repeat(2,1fr)}.filtros,.grid-form{grid-template-columns:1fr}.span2,.span4{grid-column:span 1}.footer{flex-direction:column;gap:8px}}
 </style>
 </head>
 <body>
-<header class="topo">
-  <div class="marca">
-    <img id="logoEmpresa" src="https://iili.io/CujQzXa.png" alt="SGOS">
-    <div class="divisor"></div>
-    <div class="titulo-topo"><strong>CRM Operacional</strong><span>Relacionamento, solicitações e acompanhamento de serviços</span></div>
-  </div>
-  <div class="topo-direita">
-    <div class="busca-topo"><b>⌕</b><input id="buscaTopo" placeholder="Buscar cliente, telefone, serviço ou OS"></div>
-    <div class="usuario"><div class="avatar">◉</div><div><strong id="usuarioNome">Usuário</strong><small id="empresaNome">SGOS</small></div></div>
-  </div>
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <img id="logoSidebar" src="https://iili.io/CujQzXa.png" data-logo-aberta="https://iili.io/CujQzXa.png" data-logo-fechada="https://iili.io/CuwvauR.png" alt="SGOS">
+    </div>
+    <a href="painel.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg><span>Painel Inicial</span></a>
+    <div class="menu-titulo">Operação</div>
+    <a href="crm.html" class="ativo"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/><circle cx="17" cy="16" r="2"/></svg><span>CRM Operacional</span></a>
+    <a href="agendamentos.html"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg><span>Agendamentos</span></a>
+    <a href="relatorios.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg><span>Relatórios</span></a>
+    <a href="escala.html"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 14h6"/></svg><span>Escala</span></a>
+    <a href="cronograma.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg><span>Cronograma</span></a>
+    <a href="viabilidade.html"><svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg><span>Viabilidades</span></a>
+    <a href="inviabilidade.html"><svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg><span>Inviabilidades</span></a>
+    <div class="menu-titulo">Cadastros</div>
+    <a href="planos.html"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span>Planos</span></a>
+    <a href="localidades.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Localidades</span></a>
+    <a href="tecnicos.html"><svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg><span>Técnicos</span></a>
+    <a href="tipos_servicos.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.5 2.5-3-3z"/></svg><span>Tipos de Serviços</span></a>
+    <div class="menu-titulo">Configurações</div>
+    <a href="usuarios.html"><svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg><span>Usuários</span></a>
+    <a href="logs_acesso.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>Logs do Sistema</span></a>
+    <a href="logs_acoes.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>Log de Ações</span></a>
+    <a href="historico-os.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/><path d="M12 8v5l3 2"/></svg><span>Histórico de OS</span></a>
+    <div class="sidebar-footer"><button class="btn-recolher" onclick="toggleSidebar()" type="button"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M2 12h20"/></svg><span>Recolher menu</span></button></div>
+</aside>
+<main class="main">
+
+<header class="header">
+    <div class="header-left">
+        <div class="header-logo"><img id="logoEmpresa" src="https://iili.io/CujQzXa.png" alt="Logo Empresa"></div>
+        <div class="divisor"></div>
+        <div class="header-title">CRM Operacional</div>
+    </div>
+    <div class="header-actions">
+        <div class="busca-wrap"><svg class="busca-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input type="text" id="buscaCRM" placeholder="Buscar cliente, telefone, serviço ou OS..." class="input-busca-menu"></div>
+        <div class="usuario-dropdown" id="usuarioDropdown">
+            <button class="usuario-btn" onclick="toggleUserDropdown()" type="button"><div class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22c1.6-5 14.4-5 16 0"/></svg></div><div class="usuario-info"><strong id="userEmpresa">Carregando...</strong><small id="empresaLogada">Empresa</small></div><svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+            <div class="usuario-menu" id="usuarioMenuDropdown"><div class="usuario-menu-titulo">Usuários online</div><div id="usuariosOnline">Carregando...</div><hr><a href="#" onclick="logout();return false">Sair</a></div>
+        </div>
+    </div>
 </header>
 
-<main class="conteudo">
-  <div class="acoes-topo"><button class="btn btn-primary" onclick="abrirNovo()">+ Nova solicitação</button></div>
 
-  <section class="cards">
-    <div class="card-ind"><div class="icone i1">☷</div><div><label>Solicitações abertas</label><div class="numero" id="stAbertas">0</div><div class="legenda">Em acompanhamento</div></div></div>
-    <div class="card-ind"><div class="icone i2">◷</div><div><label>Lembretes hoje</label><div class="numero" id="stHoje">0</div><div class="legenda">Retornos programados</div></div></div>
-    <div class="card-ind"><div class="icone i3">⌗</div><div><label>Aguardando agenda</label><div class="numero" id="stAgenda">0</div><div class="legenda">Prontos para agendar</div></div></div>
-    <div class="card-ind"><div class="icone i4">⚙</div><div><label>OS em execução</label><div class="numero" id="stOS">0</div><div class="legenda">Serviços em campo</div></div></div>
-    <div class="card-ind"><div class="icone i5">✓</div><div><label>Concluídos no mês</label><div class="numero" id="stConcluidos">0</div><div class="legenda">Serviços finalizados</div></div></div>
-    <div class="card-ind"><div class="icone i6">!</div><div><label>Pendências atrasadas</label><div class="numero" id="stAtrasadas">0</div><div class="legenda">Exigem atenção</div></div></div>
-  </section>
-
-  <section class="painel">
-    <div class="painel-cab"><div><h2>Filtros operacionais</h2><p>Resultados limitados à empresa autenticada.</p></div><button class="btn" onclick="limparFiltros()">Limpar filtros</button></div>
-    <div class="filtros">
-      <div class="campo"><label>Cliente / telefone / serviço</label><input id="fBusca" placeholder="Digite para buscar"></div>
-      <div class="campo"><label>Localidade</label><select id="fLocalidade"><option value="">Todas</option></select></div>
-      <div class="campo"><label>Responsável</label><select id="fResponsavel"><option value="">Todos</option></select></div>
-      <div class="campo"><label>Canal</label><select id="fCanal"><option value="">Todos</option><option>Telefone</option><option>WhatsApp</option><option>E-mail</option><option>Presencial</option><option>ERP</option><option>Interno</option><option>Outro</option></select></div>
-      <div class="campo"><label>Prioridade</label><select id="fPrioridade"><option value="">Todas</option><option value="urgente">Urgente</option><option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option></select></div>
-      <div class="campo"><label>Período</label><select id="fPeriodo"><option value="">Todo período</option><option value="hoje">Hoje</option><option value="ontem">Ontem</option><option value="7dias">Últimos 7 dias</option><option value="30dias">Últimos 30 dias</option></select></div>
+<section class="content">
+    <div class="top-toolbar">
+        <div><h1>CRM Operacional</h1><p>Central de solicitações, serviços, lembretes e acompanhamento operacional.</p></div>
+        <button class="btn btn-primary" type="button" onclick="abrirNovo()">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            Nova solicitação
+        </button>
     </div>
-  </section>
 
-  <section class="painel">
-    <div class="painel-cab funil-cab">
-      <div><h2>Fluxo operacional</h2><p>Clique em uma solicitação para editar ou altere sua etapa pelo formulário.</p></div>
-      <div class="alternar"><button id="btnKanban" class="btn btn-primary" onclick="mudarVisao('kanban')">Kanban</button><button id="btnTabela" class="btn" onclick="mudarVisao('tabela')">Tabela</button></div>
+    <div class="top-actions">
+        <div class="card-indicador"><div class="icon-box icon-blue"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"/><path d="M8 9h8M8 13h5"/></svg></div><div class="card-info"><small>Solicitações abertas</small><strong id="stAbertas">0</strong><span>Em acompanhamento</span></div></div>
+        <div class="card-indicador"><div class="icon-box icon-orange"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div class="card-info"><small>Lembretes hoje</small><strong id="stHoje">0</strong><span>Retornos programados</span></div></div>
+        <div class="card-indicador"><div class="icon-box icon-green"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg></div><div class="card-info"><small>Aguardando agenda</small><strong id="stAgenda">0</strong><span>Prontos para agendar</span></div></div>
+        <div class="card-indicador"><div class="icon-box icon-cyan"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.5 2.5-3-3z"/></svg></div><div class="card-info"><small>OS em execução</small><strong id="stOS">0</strong><span>Serviços em campo</span></div></div>
+        <div class="card-indicador"><div class="icon-box icon-purple"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg></div><div class="card-info"><small>Concluídos no mês</small><strong id="stConcluidos">0</strong><span>Serviços finalizados</span></div></div>
+        <div class="card-indicador"><div class="icon-box icon-red"><svg viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 9v5M12 18h.01"/></svg></div><div class="card-info"><small>Pendências atrasadas</small><strong id="stAtrasadas">0</strong><span>Exigem atenção</span></div></div>
     </div>
-    <div id="kanban" class="kanban"></div>
-    <div id="visaoTabela" class="tabela-wrap oculto"><table class="tabela"><thead><tr><th>Cliente</th><th>Serviço solicitado</th><th>Etapa</th><th>Responsável</th><th>Localidade</th><th>Próximo retorno</th><th>Viabilidade</th><th>Agendamento</th><th>OS</th><th>Prioridade</th><th>Ações</th></tr></thead><tbody id="corpoTabela"></tbody></table></div>
-  </section>
+
+    <div class="card">
+        <div class="card-header"><div><div class="titulo-card">Filtros operacionais</div><div class="sub-card">Os resultados são sempre limitados à empresa autenticada.</div></div><button class="btn btn-claro" type="button" onclick="limparFiltros()">Limpar filtros</button></div>
+        <div class="filtros">
+            <div class="campo"><label>Cliente / telefone / serviço</label><input id="fBusca" placeholder="Digite para buscar"></div>
+            <div class="campo"><label>Localidade</label><select id="fLocalidade"><option value="">Todas</option></select></div>
+            <div class="campo"><label>Responsável</label><select id="fResponsavel"><option value="">Todos</option></select></div>
+            <div class="campo"><label>Canal da solicitação</label><select id="fCanal"><option value="">Todos</option><option>Telefone</option><option>WhatsApp</option><option>E-mail</option><option>Presencial</option><option>ERP</option><option>Interno</option><option>Outro</option></select></div>
+            <div class="campo"><label>Prioridade</label><select id="fPrioridade"><option value="">Todas</option><option value="urgente">Urgente</option><option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option></select></div>
+            <div class="campo"><label>Período</label><select id="fPeriodo"><option value="">Todo período</option><option value="hoje">Hoje</option><option value="ontem">Ontem</option><option value="7dias">Últimos 7 dias</option><option value="30dias">Últimos 30 dias</option></select></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header funil-toolbar">
+            <div><div class="titulo-card">Fluxo operacional</div><div class="sub-card">Clique em uma solicitação para consultar ou atualizar o andamento.</div></div>
+            <div class="alternar"><button id="btnKanban" class="btn btn-primary" onclick="mudarVisao('kanban')" type="button">Kanban</button><button id="btnTabela" class="btn btn-claro" onclick="mudarVisao('tabela')" type="button">Tabela</button></div>
+        </div>
+        <div id="kanban" class="kanban"></div>
+        <div id="visaoTabela" class="tabela-wrap oculto"><table class="tabela"><thead><tr><th>Cliente</th><th>Serviço solicitado</th><th>Etapa</th><th>Responsável</th><th>Localidade</th><th>Próximo retorno</th><th>Viabilidade</th><th>Agendamento</th><th>OS</th><th>Prioridade</th><th>Ações</th></tr></thead><tbody id="corpoTabela"></tbody></table></div>
+    </div>
+</section>
+
+<footer class="footer"><span>SGOS - Sistema de Gestão Operacional e Serviços</span><span>CRM Operacional</span></footer>
 </main>
 
 <div id="modal" class="modal-fundo">
   <div class="modal">
-    <div class="modal-topo"><h3 id="tituloModal">Nova solicitação</h3><button class="fechar" onclick="fecharModal()">×</button></div>
+    <div class="modal-topo"><h3 id="tituloModal">Nova solicitação</h3><button class="fechar" onclick="fecharModal()" type="button">×</button></div>
     <form id="form">
       <div class="modal-corpo"><div class="grid-form">
         <input type="hidden" id="id">
@@ -85,16 +196,16 @@
         <div class="campo"><label>Canal da solicitação</label><select id="canal"><option>Telefone</option><option>WhatsApp</option><option>E-mail</option><option>Presencial</option><option>ERP</option><option>Interno</option><option>Outro</option></select></div>
         <div class="campo"><label>Responsável</label><select id="responsavel_id"><option value="">Selecione</option></select></div>
         <div class="campo"><label>Prioridade</label><select id="prioridade"><option value="baixa">Baixa</option><option value="media" selected>Média</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
-        <div class="campo span2"><label>Serviço solicitado *</label><input id="servico_solicitado" required placeholder="Ex.: instalação, manutenção, visita técnica..."></div>
+        <div class="campo span2"><label>Serviço solicitado *</label><input id="servico_solicitado" required placeholder="Instalação, manutenção, visita técnica..."></div>
         <div class="campo"><label>Etapa</label><select id="etapa"></select></div>
         <div class="campo"><label>Próximo retorno / lembrete</label><input id="proximo_retorno" type="datetime-local"></div>
         <div class="campo"><label>ID da viabilidade</label><input id="viabilidade_id" type="number" min="1"></div>
         <div class="campo"><label>ID do agendamento</label><input id="agendamento_id" type="number" min="1"></div>
         <div class="campo"><label>ID da ordem de serviço</label><input id="ordem_servico_id" type="number" min="1"></div>
         <div class="campo"><label>Motivo do cancelamento</label><input id="motivo_cancelamento"></div>
-        <div class="campo span4"><label>Observações operacionais</label><textarea id="observacoes" placeholder="Registre informações importantes, materiais, pendências e próximos passos."></textarea></div>
+        <div class="campo span4"><label>Observações operacionais</label><textarea id="observacoes" placeholder="Materiais, pendências, orientações e próximos passos."></textarea></div>
       </div></div>
-      <div class="modal-acoes"><div><button type="button" id="btnExcluir" class="btn btn-danger oculto" onclick="excluirAtual()">Excluir solicitação</button></div><div><button type="button" class="btn" onclick="fecharModal()">Cancelar</button> <button class="btn btn-primary" type="submit">Salvar solicitação</button></div></div>
+      <div class="modal-acoes"><div><button type="button" id="btnExcluir" class="btn btn-danger oculto" onclick="excluirAtual()">Excluir solicitação</button></div><div style="display:flex;gap:8px"><button type="button" class="btn btn-secundario" onclick="fecharModal()">Cancelar</button><button class="btn btn-primary" type="submit">Salvar solicitação</button></div></div>
     </form>
   </div>
 </div>
@@ -110,34 +221,59 @@ const ETAPAS=[
  {id:"pos_atendimento",nome:"Pós-atendimento",cor:"#0f9f6e"},
  {id:"concluido",nome:"Concluído",cor:"#22c55e"}
 ];
-let dados=[], localidades=[], responsaveis=[];
+let dados=[],localidades=[],responsaveis=[];
 
+function usuarioLocal(){try{return JSON.parse(localStorage.getItem("usuario")||"{}")}catch{return {}}}
+function getAuthHeaders(extra={}){
+ const u=usuarioLocal();
+ return {"x-usuario-id":u.id||"","x-log-id":localStorage.getItem("log_id")||"","x-usuario-nome":u.usuario||u.nome||"","x-usuario-cargo":u.cargo||"",...extra};
+}
 async function api(url,opt={}){
- const r=typeof fetchAuth==="function"?await fetchAuth(url,opt):await fetch(url,{...opt,headers:{"Content-Type":"application/json",...(opt.headers||{})}});
- const t=await r.text(); let d={}; try{d=t?JSON.parse(t):{}}catch{d={erro:t}}
- if(!r.ok)throw new Error(d.erro||`Erro ${r.status}`); return d;
+ const headers=getAuthHeaders(opt.headers||{});
+ const r=await fetch(url,{...opt,headers});
+ const t=await r.text();let d={};try{d=t?JSON.parse(t):{}}catch{d={erro:t}}
+ if(r.status===401){location.href="login.html";throw new Error("Sessão não autenticada.")}
+ if(!r.ok)throw new Error(d.erro||`Erro ${r.status}`);
+ return d;
 }
 function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function valor(id){return document.getElementById(id)?.value||""}
+function setValor(id,v){const el=document.getElementById(id);if(el)el.value=v??""}
 function etapaNome(id){return ETAPAS.find(e=>e.id===id)?.nome||id||"-"}
-function fmtData(v){if(!v)return"-";const d=new Date(v);return isNaN(d)?v:d.toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}
-function valor(id){return document.getElementById(id).value}
-function setValor(id,v){document.getElementById(id).value=v??""}
+function fmtData(v){if(!v)return"-";const d=new Date(v);return isNaN(d)?"-":d.toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"})}
+
+function toggleSidebar(){const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");if(!s||!l)return;s.classList.toggle("recolhida");const r=s.classList.contains("recolhida");l.src=r?l.dataset.logoFechada:l.dataset.logoAberta;localStorage.setItem("sidebar_recolhida",r?"1":"0")}
+function toggleUserDropdown(){document.getElementById("usuarioMenuDropdown")?.classList.toggle("ativo");document.getElementById("usuarioDropdown")?.classList.toggle("aberto")}
+document.addEventListener("click",e=>{const b=document.getElementById("usuarioDropdown");if(b&&!b.contains(e.target)){document.getElementById("usuarioMenuDropdown")?.classList.remove("ativo");b.classList.remove("aberto")}})
+function logout(){const id=localStorage.getItem("log_id");if(id)fetch("/api/logout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({log_id:id})}).catch(()=>{});sessionStorage.clear();localStorage.clear();location.href="login.html"}
 
 async function carregarUsuario(){
+ const local=usuarioLocal();
+ if(!local?.id){location.href="login.html";return}
+ document.getElementById("userEmpresa").innerText=local.usuario||local.nome||"Usuário";
+ document.getElementById("empresaLogada").innerText=local.empresa_nome||"Empresa";
  try{
-  const u=await api("/api/me");
-  document.getElementById("usuarioNome").textContent=u.usuario||u.nome||"Usuário";
-  document.getElementById("empresaNome").textContent=u.empresa_nome||u.nome_empresa||"SGOS";
-  const logo=u.logo||u.logo_empresa;
-  if(logo)document.getElementById("logoEmpresa").src=logo.startsWith("http")||logo.startsWith("/")?logo:"/"+logo;
- }catch(e){}
+  const r=await fetch("/api/me",{headers:getAuthHeaders()});
+  if(!r.ok)throw new Error(`Erro ${r.status}`);
+  const d=await r.json();
+  document.getElementById("userEmpresa").innerText=d.usuario||d.nome||local.usuario||"Usuário";
+  document.getElementById("empresaLogada").innerText=d.empresa_nome||local.empresa_nome||"Empresa";
+  const logo=d.empresa_logo||d.logo_empresa||d.logo;
+  if(logo)document.getElementById("logoEmpresa").src=logo.startsWith("/")||logo.startsWith("http")?logo:"/"+logo;
+ }catch(e){console.error("Erro ao carregar usuário:",e)}
+}
+async function carregarUsuariosOnline(){
+ try{
+  const u=usuarioLocal();
+  const r=await fetch("/api/logs",{headers:getAuthHeaders({"x-empresa-id":u.empresa_id||""})});
+  const logs=await r.json();
+  const nomes=[...new Set((Array.isArray(logs)?logs:[]).filter(x=>!x.logout).map(x=>x.usuario).filter(Boolean))];
+  document.getElementById("usuariosOnline").innerHTML=nomes.length?nomes.map(x=>`🟢 ${esc(x)}`).join("<br>"):"Nenhum usuário online";
+ }catch{document.getElementById("usuariosOnline").innerText="Online indisponível"}
 }
 async function carregarApoio(){
  const [l,r]=await Promise.all([api(API+"/localidades"),api(API+"/responsaveis")]);
  localidades=l.localidades||[];responsaveis=r.responsaveis||[];
- preencherSelects();
-}
-function preencherSelects(){
  const optsL=localidades.map(x=>`<option value="${x.id}">${esc(x.nome)}</option>`).join("");
  const optsR=responsaveis.map(x=>`<option value="${x.id}">${esc(x.nome)}</option>`).join("");
  document.getElementById("fLocalidade").innerHTML='<option value="">Todas</option>'+optsL;
@@ -154,64 +290,41 @@ function queryFiltros(){
 async function carregar(){
  const [lista,st]=await Promise.all([api(API+"/leads?"+queryFiltros()),api(API+"/estatisticas?periodo="+encodeURIComponent(valor("fPeriodo")))]);
  dados=lista.solicitacoes||lista.leads||[];
- document.getElementById("stAbertas").textContent=st.solicitacoes_abertas||0;
- document.getElementById("stHoje").textContent=st.lembretes_hoje||0;
- document.getElementById("stAgenda").textContent=st.aguardando_agendamento||0;
- document.getElementById("stOS").textContent=st.os_execucao||0;
- document.getElementById("stConcluidos").textContent=st.concluidos_mes||0;
- document.getElementById("stAtrasadas").textContent=st.pendencias_atrasadas||0;
+ stAbertas.textContent=st.solicitacoes_abertas||0;stHoje.textContent=st.lembretes_hoje||0;stAgenda.textContent=st.aguardando_agendamento||0;stOS.textContent=st.os_execucao||0;stConcluidos.textContent=st.concluidos_mes||0;stAtrasadas.textContent=st.pendencias_atrasadas||0;
  renderKanban();renderTabela();
 }
+function card(x){return `<div class="sol-card" onclick="editar(${x.id})"><div class="sol-nome">${esc(x.nome)}</div><div class="sol-servico">${esc(x.servico_solicitado||x.interesse||"Serviço não informado")}</div><span class="tag ${esc(x.prioridade)}">${esc(x.prioridade||"média")}</span><div class="sol-meta">${esc(x.localidade_nome||"Sem localidade")}<br>${esc(x.responsavel_nome||"Sem responsável")}<br>Retorno: ${esc(fmtData(x.proximo_retorno))}${x.ordem_servico_id?`<br>OS #${x.ordem_servico_id}`:""}</div></div>`}
 function renderKanban(){
- const k=document.getElementById("kanban");
- k.innerHTML=ETAPAS.map(e=>{
-  const itens=dados.filter(x=>x.etapa===e.id);
-  return `<div class="coluna"><div class="coluna-titulo"><span><i class="ponto" style="background:${e.cor}"></i>${e.nome}</span><span class="contador">${itens.length}</span></div><div class="lista-cards">${itens.length?itens.map(card).join(""):'<div class="vazio">Nenhum registro</div>'}</div></div>`;
- }).join("");
-}
-function card(x){
- return `<div class="sol-card" onclick="editar(${x.id})"><div class="sol-nome">${esc(x.nome)}</div><div class="sol-servico">${esc(x.servico_solicitado||x.interesse||"Serviço não informado")}</div><span class="tag ${esc(x.prioridade)}">${esc(x.prioridade||"média")}</span><div class="sol-meta">${esc(x.localidade_nome||"Sem localidade")}<br>${esc(x.responsavel_nome||"Sem responsável")}<br>Retorno: ${esc(fmtData(x.proximo_retorno))}${x.ordem_servico_id?`<br>OS #${x.ordem_servico_id}`:""}</div></div>`;
+ kanban.innerHTML=ETAPAS.map(e=>{const itens=dados.filter(x=>x.etapa===e.id);return `<div class="coluna"><div class="coluna-titulo"><span><i class="ponto" style="background:${e.cor}"></i>${e.nome}</span><span class="contador">${itens.length}</span></div><div class="lista-cards">${itens.length?itens.map(card).join(""):'<div class="vazio">Nenhum registro</div>'}</div></div>`}).join("");
 }
 function renderTabela(){
- const b=document.getElementById("corpoTabela");
- b.innerHTML=dados.length?dados.map(x=>`<tr><td><b>${esc(x.nome)}</b><br>${esc(x.telefone||"")}</td><td>${esc(x.servico_solicitado||x.interesse||"-")}</td><td>${esc(etapaNome(x.etapa))}</td><td>${esc(x.responsavel_nome||"-")}</td><td>${esc(x.localidade_nome||"-")}</td><td>${esc(fmtData(x.proximo_retorno))}</td><td>${x.viabilidade_id||"-"}</td><td>${x.agendamento_id||"-"}</td><td>${x.ordem_servico_id||"-"}</td><td><span class="tag ${esc(x.prioridade)}">${esc(x.prioridade||"-")}</span></td><td><button class="btn btn-sm" onclick="editar(${x.id})">Editar</button></td></tr>`).join(""):'<tr><td colspan="11" style="text-align:center;color:#64748b">Nenhuma solicitação encontrada.</td></tr>';
+ corpoTabela.innerHTML=dados.length?dados.map(x=>`<tr><td><b>${esc(x.nome)}</b><br>${esc(x.telefone||"")}</td><td>${esc(x.servico_solicitado||x.interesse||"-")}</td><td>${esc(etapaNome(x.etapa))}</td><td>${esc(x.responsavel_nome||"-")}</td><td>${esc(x.localidade_nome||"-")}</td><td>${esc(fmtData(x.proximo_retorno))}</td><td>${x.viabilidade_id||"-"}</td><td>${x.agendamento_id||"-"}</td><td>${x.ordem_servico_id||"-"}</td><td><span class="tag ${esc(x.prioridade)}">${esc(x.prioridade||"-")}</span></td><td><button class="btn btn-primary btn-sm" onclick="editar(${x.id})">Editar</button></td></tr>`).join(""):'<tr><td colspan="11" class="vazio">Nenhuma solicitação encontrada.</td></tr>';
 }
-function mudarVisao(v){
- const k=document.getElementById("kanban"),t=document.getElementById("visaoTabela");
- k.classList.toggle("oculto",v!=="kanban");t.classList.toggle("oculto",v!=="tabela");
- document.getElementById("btnKanban").classList.toggle("btn-primary",v==="kanban");
- document.getElementById("btnTabela").classList.toggle("btn-primary",v==="tabela");
-}
-function abrirNovo(){
- document.getElementById("form").reset();setValor("id","");setValor("etapa","nova_solicitacao");setValor("prioridade","media");setValor("canal","Telefone");
- document.getElementById("tituloModal").textContent="Nova solicitação";
- document.getElementById("btnExcluir").classList.add("oculto");document.getElementById("modal").classList.add("aberto");
-}
+function mudarVisao(v){kanban.classList.toggle("oculto",v!=="kanban");visaoTabela.classList.toggle("oculto",v!=="tabela");btnKanban.className=v==="kanban"?"btn btn-primary":"btn btn-claro";btnTabela.className=v==="tabela"?"btn btn-primary":"btn btn-claro"}
+function abrirNovo(){form.reset();setValor("id","");setValor("etapa","nova_solicitacao");setValor("prioridade","media");setValor("canal","Telefone");tituloModal.textContent="Nova solicitação";btnExcluir.classList.add("oculto");modal.classList.add("aberto")}
 function editar(id){
  const x=dados.find(a=>Number(a.id)===Number(id));if(!x)return;
  ["id","nome","telefone","telefone2","endereco","referencia","localidade_id","responsavel_id","prioridade","etapa","viabilidade_id","agendamento_id","ordem_servico_id","observacoes"].forEach(k=>setValor(k,x[k]));
  setValor("canal",x.canal||x.origem||"Outro");setValor("servico_solicitado",x.servico_solicitado||x.interesse);setValor("motivo_cancelamento",x.motivo_cancelamento||x.motivo_perda);
  setValor("proximo_retorno",x.proximo_retorno?new Date(x.proximo_retorno).toISOString().slice(0,16):"");
- document.getElementById("tituloModal").textContent="Editar solicitação #"+x.id;
- document.getElementById("btnExcluir").classList.remove("oculto");document.getElementById("modal").classList.add("aberto");
+ tituloModal.textContent="Editar solicitação #"+x.id;btnExcluir.classList.remove("oculto");modal.classList.add("aberto");
 }
-function fecharModal(){document.getElementById("modal").classList.remove("aberto")}
-document.getElementById("form").addEventListener("submit",async e=>{
- e.preventDefault();
- const id=valor("id");
- const body={};
+function fecharModal(){modal.classList.remove("aberto")}
+form.addEventListener("submit",async e=>{
+ e.preventDefault();const id=valor("id"),body={};
  ["nome","telefone","telefone2","endereco","referencia","localidade_id","canal","responsavel_id","prioridade","etapa","proximo_retorno","viabilidade_id","agendamento_id","ordem_servico_id","motivo_cancelamento","servico_solicitado","observacoes"].forEach(k=>body[k]=valor(k)||null);
  try{await api(API+"/leads"+(id?"/"+id:""),{method:id?"PUT":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});fecharModal();await carregar()}catch(e){alert("Não foi possível salvar: "+e.message)}
 });
-async function excluirAtual(){
- const id=valor("id");if(!id||!confirm("Deseja excluir esta solicitação?"))return;
- try{await api(API+"/leads/"+id,{method:"DELETE"});fecharModal();await carregar()}catch(e){alert(e.message)}
-}
+async function excluirAtual(){const id=valor("id");if(!id||!confirm("Deseja excluir esta solicitação?"))return;try{await api(API+"/leads/"+id,{method:"DELETE"});fecharModal();await carregar()}catch(e){alert(e.message)}}
 function limparFiltros(){["fBusca","fLocalidade","fResponsavel","fCanal","fPrioridade","fPeriodo"].forEach(id=>setValor(id,""));carregar()}
 let timer;["fBusca","fLocalidade","fResponsavel","fCanal","fPrioridade","fPeriodo"].forEach(id=>document.getElementById(id).addEventListener(id==="fBusca"?"input":"change",()=>{clearTimeout(timer);timer=setTimeout(carregar,250)}));
-document.getElementById("buscaTopo").addEventListener("input",e=>{setValor("fBusca",e.target.value);clearTimeout(timer);timer=setTimeout(carregar,250)});
-document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")fecharModal()});
-document.addEventListener("DOMContentLoaded",async()=>{try{await carregarUsuario();await carregarApoio();await carregar()}catch(e){alert("Não foi possível carregar o CRM Operacional: "+e.message)}});
+buscaCRM.addEventListener("input",e=>{setValor("fBusca",e.target.value);clearTimeout(timer);timer=setTimeout(carregar,250)});
+modal.addEventListener("click",e=>{if(e.target===modal)fecharModal()});
+document.addEventListener("DOMContentLoaded",async()=>{
+ const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");if(s&&l&&localStorage.getItem("sidebar_recolhida")==="1"){s.classList.add("recolhida");l.src=l.dataset.logoFechada}
+ await carregarUsuario();carregarUsuariosOnline();
+ try{await carregarApoio();await carregar()}catch(e){console.error(e);alert("Não foi possível carregar o CRM Operacional: "+e.message)}
+});
 </script>
 </body>
 </html>
