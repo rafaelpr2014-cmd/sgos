@@ -9,6 +9,49 @@ const db = require("../database");
  * - todas as consultas obtêm a empresa pelo usuário autenticado.
  */
 
+
+let estruturaCache = null;
+
+async function obterEstruturaBanco() {
+    if (estruturaCache) return estruturaCache;
+
+    const [colunasUsuarios] = await db.query("SHOW COLUMNS FROM usuarios");
+    const [colunasLocalidades] = await db.query("SHOW COLUMNS FROM localidades");
+
+    const usuarios = new Set(colunasUsuarios.map(c => c.Field));
+    const localidades = new Set(colunasLocalidades.map(c => c.Field));
+
+    const colunaNomeUsuario =
+        usuarios.has("usuario") ? "usuario" :
+        usuarios.has("nome_usuario") ? "nome_usuario" :
+        usuarios.has("nome") ? "nome" :
+        null;
+
+    const colunaNomeLocalidade =
+        localidades.has("localidade") ? "localidade" :
+        localidades.has("nome") ? "nome" :
+        localidades.has("descricao") ? "descricao" :
+        null;
+
+    if (!colunaNomeUsuario) {
+        throw new Error("Não foi encontrada uma coluna de nome na tabela usuarios.");
+    }
+
+    if (!colunaNomeLocalidade) {
+        throw new Error("Não foi encontrada uma coluna de nome na tabela localidades.");
+    }
+
+    estruturaCache = {
+        colunaNomeUsuario,
+        colunaNomeLocalidade,
+        usuariosTemAtivo: usuarios.has("ativo"),
+        usuariosTemStatus: usuarios.has("status"),
+        localidadesTemEmpresaId: localidades.has("empresa_id")
+    };
+
+    return estruturaCache;
+}
+
 async function contextoUsuario(req) {
     const usuarioId =
         req.session?.usuario?.id ||
@@ -22,8 +65,10 @@ async function contextoUsuario(req) {
         throw erro;
     }
 
+    const estrutura = await obterEstruturaBanco();
+
     const [rows] = await db.query(
-        `SELECT id, empresa_id, COALESCE(nome, usuario) AS nome
+        `SELECT id, empresa_id, \`${estrutura.colunaNomeUsuario}\` AS nome
            FROM usuarios
           WHERE id = ?
           LIMIT 1`,
@@ -68,13 +113,24 @@ function periodoSql(periodo, campo = "c.criado_em") {
 router.get("/localidades", async (req, res) => {
     try {
         const usuario = await contextoUsuario(req);
+        const estrutura = await obterEstruturaBanco();
+
+        const filtroEmpresa = estrutura.localidadesTemEmpresaId
+            ? " WHERE empresa_id = ? "
+            : "";
+
+        const params = estrutura.localidadesTemEmpresaId
+            ? [usuario.empresa_id]
+            : [];
+
         const [rows] = await db.query(
-            `SELECT id, nome
+            `SELECT id, \`${estrutura.colunaNomeLocalidade}\` AS nome
                FROM localidades
-              WHERE empresa_id = ?
-              ORDER BY nome`,
-            [usuario.empresa_id]
+               ${filtroEmpresa}
+              ORDER BY \`${estrutura.colunaNomeLocalidade}\``,
+            params
         );
+
         res.json({ localidades: rows });
     } catch (erro) { tratarErro(res, erro); }
 });
@@ -82,14 +138,24 @@ router.get("/localidades", async (req, res) => {
 router.get("/responsaveis", async (req, res) => {
     try {
         const usuario = await contextoUsuario(req);
+        const estrutura = await obterEstruturaBanco();
+
+        let filtroAtivo = "";
+        if (estrutura.usuariosTemAtivo) {
+            filtroAtivo = " AND ativo = 1 ";
+        } else if (estrutura.usuariosTemStatus) {
+            filtroAtivo = " AND (status IS NULL OR LOWER(status) NOT IN ('inativo','bloqueado')) ";
+        }
+
         const [rows] = await db.query(
-            `SELECT id, COALESCE(nome, usuario) AS nome
+            `SELECT id, \`${estrutura.colunaNomeUsuario}\` AS nome
                FROM usuarios
               WHERE empresa_id = ?
-                AND ativo = 1
-              ORDER BY nome`,
+              ${filtroAtivo}
+              ORDER BY \`${estrutura.colunaNomeUsuario}\``,
             [usuario.empresa_id]
         );
+
         res.json({ responsaveis: rows });
     } catch (erro) { tratarErro(res, erro); }
 });
@@ -99,12 +165,14 @@ router.get("/leads", async (req, res) => {
         const usuario = await contextoUsuario(req);
         const { busca, localidade_id, responsavel_id, origem, prioridade, periodo } = req.query;
 
+        const estrutura = await obterEstruturaBanco();
+
         let sql = `
             SELECT
                 c.id, c.nome, c.telefone, c.telefone2, c.endereco, c.referencia,
-                c.localidade_id, l.nome AS localidade_nome,
+                c.localidade_id, l.\`${estrutura.colunaNomeLocalidade}\` AS localidade_nome,
                 c.origem, c.responsavel_id,
-                COALESCE(u.nome, u.usuario) AS responsavel_nome,
+                u.\`${estrutura.colunaNomeUsuario}\` AS responsavel_nome,
                 c.interesse, c.valor_estimado, c.etapa, c.prioridade,
                 c.proximo_retorno, c.motivo_perda, c.observacoes,
                 c.viabilidade_id, c.ordem_servico_id,
@@ -112,7 +180,7 @@ router.get("/leads", async (req, res) => {
             FROM crm_leads c
             LEFT JOIN localidades l
                    ON l.id = c.localidade_id
-                  AND l.empresa_id = c.empresa_id
+                  ${estrutura.localidadesTemEmpresaId ? "AND l.empresa_id = c.empresa_id" : ""}
             LEFT JOIN usuarios u
                    ON u.id = c.responsavel_id
                   AND u.empresa_id = c.empresa_id
