@@ -1508,6 +1508,102 @@ tr:hover{ background:#f8fbff; }
 .sgos-confirmacao-web.nao{border-color:#fecaca;background:#fff1f2;color:#991b1b}
 @media(max-width:700px){.sgos-equip-item-web{grid-template-columns:1fr 1fr}.sgos-equip-item-web strong{grid-column:1/-1}}
 
+
+/* ===== RESUMO DE CHECK-IN DA OS FINALIZADA ===== */
+.sgos-checkin-resumo-web{
+    margin-top:16px;
+    border:1px solid #bfdbfe;
+    border-radius:14px;
+    background:#eff6ff;
+    padding:15px;
+    color:#1e3a8a;
+}
+.sgos-checkin-resumo-web h4{
+    margin:0 0 12px;
+    font-size:15px;
+    color:#0f172a;
+}
+.sgos-checkin-grid-web{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px;
+}
+.sgos-checkin-card-web{
+    background:#fff;
+    border:1px solid #dbeafe;
+    border-radius:11px;
+    padding:11px;
+    min-width:0;
+}
+.sgos-checkin-card-web small{
+    display:block;
+    color:#64748b;
+    font-size:11px;
+    font-weight:800;
+    margin-bottom:5px;
+    text-transform:uppercase;
+}
+.sgos-checkin-card-web strong{
+    display:block;
+    color:#0f172a;
+    font-size:13px;
+    line-height:1.4;
+}
+.sgos-checkin-local-web{
+    margin-top:6px;
+    font-size:11px;
+    line-height:1.45;
+    color:#475569;
+    overflow-wrap:anywhere;
+}
+.sgos-checkin-local-web a{
+    color:#2563eb;
+    font-weight:800;
+    text-decoration:none;
+}
+.sgos-checkin-tempo-web{
+    background:#0f2147;
+    border-color:#0f2147;
+}
+.sgos-checkin-tempo-web small,
+.sgos-checkin-tempo-web strong{
+    color:#fff;
+}
+@media(max-width:760px){
+    .sgos-checkin-grid-web{
+        grid-template-columns:1fr;
+    }
+}
+
+
+/* ===== CHECK-IN DENTRO DO POP-UP CENTRAL ===== */
+.sgos-checkin-resumo-web{
+    width:100%;
+    margin:12px 0 14px !important;
+    border:1px solid #dbe3ee !important;
+    border-radius:14px !important;
+    background:#fff !important;
+    padding:14px !important;
+    color:#1e3a8a;
+    box-shadow:none !important;
+}
+.sgos-checkin-resumo-web h4{
+    margin:0 0 12px;
+    font-size:15px;
+    color:#0f172a;
+}
+.sgos-checkin-grid-web{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.sgos-checkin-card-web{
+    background:#f8fafc;
+    border:1px solid #e5e7eb;
+}
+.sgos-checkin-tempo-web{
+    background:#10234b !important;
+    border-color:#10234b !important;
+}
+
 </style>
 </head>
 
@@ -2672,45 +2768,316 @@ function modoTV() {
   const moeda=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
   const esc=v=>String(v??"-").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
   const forma=v=>({dinheiro:"Dinheiro",pix:"PIX",cartao_credito:"Cartão de crédito",cartao_debito:"Cartão de débito",cheque:"Cheque"}[String(v||"")]||v||"-");
-  function materiais(os){let l=os?.materiais_os||[];if(typeof l==="string"){try{l=JSON.parse(l)}catch(_){l=[]}}return Array.isArray(l)?l:[]}
-  function bloco(os){
+
+  function dataHora(v){
+    if(!v) return "-";
+    const d=new Date(v);
+    return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString("pt-BR");
+  }
+
+  function duracaoSegundos(os){
+    const gravado=Number(os?.tempo_atendimento_segundos);
+    if(Number.isFinite(gravado) && gravado>=0) return gravado;
+
+    const inicio=os?.checkin_inicio_em || os?.checkin_em;
+    const fim=os?.checkin_fim_em || os?.finalizado_em;
+    if(!inicio || !fim) return null;
+
+    const di=new Date(inicio);
+    const df=new Date(fim);
+    if(Number.isNaN(di.getTime()) || Number.isNaN(df.getTime())) return null;
+
+    return Math.max(0,Math.floor((df.getTime()-di.getTime())/1000));
+  }
+
+  function formatarDuracao(segundos){
+    if(segundos===null || segundos===undefined || !Number.isFinite(Number(segundos))) return "-";
+
+    let total=Math.max(0,Math.floor(Number(segundos)));
+    const dias=Math.floor(total/86400);
+    total%=86400;
+    const horas=Math.floor(total/3600);
+    total%=3600;
+    const minutos=Math.floor(total/60);
+    const segs=total%60;
+
+    const partes=[];
+    if(dias) partes.push(`${dias}d`);
+    if(horas || dias) partes.push(`${horas}h`);
+    partes.push(`${minutos}min`);
+    if(!dias && !horas && minutos<1) partes.push(`${segs}s`);
+
+    return partes.join(" ");
+  }
+
+  function mapaLink(lat,lng){
+    const latitude=Number(lat);
+    const longitude=Number(lng);
+    if(!Number.isFinite(latitude) || !Number.isFinite(longitude)) return "";
+    const url=`https://www.google.com/maps?q=${encodeURIComponent(latitude+","+longitude)}`;
+    return `<a href="${url}" target="_blank" rel="noopener">Abrir no mapa</a>`;
+  }
+
+  function localizacaoHtml(lat,lng,precisao){
+    const latitude=Number(lat);
+    const longitude=Number(lng);
+
+    if(!Number.isFinite(latitude) || !Number.isFinite(longitude)){
+      return `<div class="sgos-checkin-local-web">Localização não registrada</div>`;
+    }
+
+    const precisaoNum=Number(precisao);
+    return `<div class="sgos-checkin-local-web">
+      ${esc(latitude.toFixed(6))}, ${esc(longitude.toFixed(6))}
+      ${Number.isFinite(precisaoNum) ? `<br>Precisão: ${esc(Math.round(precisaoNum))} m` : ""}
+      <br>${mapaLink(latitude,longitude)}
+    </div>`;
+  }
+
+  function blocoCheckin(os){
+    const concluida=String(os?.status||"").toLowerCase()==="concluido";
+    if(!concluida) return "";
+
+    const inicio=os?.checkin_inicio_em || os?.checkin_em;
+    const fim=os?.checkin_fim_em || os?.finalizado_em;
+    const temAlgumDado=inicio || fim || os?.tempo_atendimento_segundos!=null;
+
+    if(!temAlgumDado) return "";
+
+    const inicioPor=os?.checkin_inicio_por_nome || os?.checkin_por_nome || "-";
+    const fimPor=os?.checkin_fim_por_nome || os?.finalizado_por_nome || "-";
+
+    return `<section class="sgos-checkin-resumo-web">
+      <h4>Check-in do atendimento</h4>
+
+      <div class="sgos-checkin-grid-web">
+        <div class="sgos-checkin-card-web">
+          <small>Chegada ao cliente</small>
+          <strong>${esc(dataHora(inicio))}</strong>
+          <div class="sgos-checkin-local-web"><strong>Check-in realizado por:</strong> ${esc(inicioPor)}</div>
+          ${localizacaoHtml(
+            os?.checkin_inicio_latitude ?? os?.checkin_latitude,
+            os?.checkin_inicio_longitude ?? os?.checkin_longitude,
+            os?.checkin_inicio_precisao ?? os?.checkin_precisao
+          )}
+        </div>
+
+        <div class="sgos-checkin-card-web">
+          <small>Conclusão / check-out</small>
+          <strong>${esc(dataHora(fim))}</strong>
+          <div class="sgos-checkin-local-web"><strong>Finalizado por:</strong> ${esc(fimPor)}</div>
+          ${localizacaoHtml(
+            os?.checkin_fim_latitude ?? os?.finalizacao_latitude,
+            os?.checkin_fim_longitude ?? os?.finalizacao_longitude,
+            os?.checkin_fim_precisao ?? os?.finalizacao_precisao
+          )}
+        </div>
+
+        <div class="sgos-checkin-card-web sgos-checkin-tempo-web">
+          <small>Tempo total no cliente</small>
+          <strong>${esc(formatarDuracao(duracaoSegundos(os)))}</strong>
+        </div>
+      </div>
+    </section>`;
+  }
+
+  function materiais(os){
+    let l=os?.materiais_os||[];
+    if(typeof l==="string"){
+      try{l=JSON.parse(l)}catch(_){l=[]}
+    }
+    return Array.isArray(l)?l:[];
+  }
+
+  function blocoEquipamentos(os){
     const lista=materiais(os);
-    if(!lista.length)return "";
+    if(!lista.length) return "";
+
     const itens=lista.map(i=>`<div class="sgos-equip-item-web"><strong>${esc(i.nome||("Produto #"+i.produto_id))}</strong><span>Qtd.: ${esc(i.quantidade||1)}</span><span>Unit.: ${moeda(i.valor_unitario)}</span><span>Total: ${moeda(i.valor_total??Number(i.valor_unitario||0)*Number(i.quantidade||1))}</span></div>`).join("");
+
     const concluida=String(os.status||"").toLowerCase()==="concluido";
     const brutoUso=os.equipamentos_utilizados ?? os.equipamento_utilizado ?? os.equipamento_usado ?? os.material_utilizado;
     const valorUso=String(brutoUso??"").trim().toLowerCase();
-    let uso=(brutoUso===true||brutoUso===1||["sim","1","true","yes","utilizado"].includes(valorUso))?"Sim":(brutoUso===false||brutoUso===0||["nao","não","0","false","no","nao_utilizado","não utilizado"].includes(valorUso))?"Não":"Não informado";
-    if(uso==="Não informado" && os.equipamentos_confirmado_em) uso=String(os.observacao_equipamento||"").trim()?"Não":"Sim";
-    const confirmacao=concluida?`<div class="sgos-confirmacao-web ${uso==="Não"?"nao":""}"><strong>Equipamento vinculado foi utilizado?</strong> ${uso}${os.observacao_equipamento?`<br><strong>Observação:</strong> ${esc(os.observacao_equipamento)}`:""}${os.equipamentos_confirmado_por_nome?`<br><strong>Confirmado por:</strong> ${esc(os.equipamentos_confirmado_por_nome)}`:""}${os.equipamentos_confirmado_em?`<br><strong>Confirmado em:</strong> ${esc(new Date(os.equipamentos_confirmado_em).toLocaleString("pt-BR"))}`:""}</div>`:"";
+
+    let uso=(brutoUso===true||brutoUso===1||["sim","1","true","yes","utilizado"].includes(valorUso))
+      ?"Sim"
+      :(brutoUso===false||brutoUso===0||["nao","não","0","false","no","nao_utilizado","não utilizado"].includes(valorUso))
+        ?"Não"
+        :"Não informado";
+
+    if(uso==="Não informado" && os.equipamentos_confirmado_em){
+      uso=String(os.observacao_equipamento||"").trim()?"Não":"Sim";
+    }
+
+    const confirmacao=concluida
+      ?`<div class="sgos-confirmacao-web ${uso==="Não"?"nao":""}"><strong>Equipamento vinculado foi utilizado?</strong> ${uso}${os.observacao_equipamento?`<br><strong>Observação:</strong> ${esc(os.observacao_equipamento)}`:""}${os.equipamentos_confirmado_por_nome?`<br><strong>Confirmado por:</strong> ${esc(os.equipamentos_confirmado_por_nome)}`:""}${os.equipamentos_confirmado_em?`<br><strong>Confirmado em:</strong> ${esc(dataHora(os.equipamentos_confirmado_em))}`:""}</div>`
+      :"";
+
     return `<section class="sgos-equip-resumo-web"><h4>Equipamentos vinculados</h4>${itens}<div class="sgos-equip-total-web"><span><strong>Pagamento:</strong> ${esc(forma(os.forma_pagamento_equipamento))}</span><span><strong>Total:</strong> ${moeda(os.total_equipamentos)}</span></div>${confirmacao}</section>`;
   }
+
+  function elementoVisivel(el){
+    if(!el) return false;
+    const st=getComputedStyle(el);
+    const rc=el.getBoundingClientRect();
+    return st.display!=="none"
+      && st.visibility!=="hidden"
+      && Number(st.opacity||1)>0
+      && rc.width>0
+      && rc.height>0;
+  }
+
+  function localizarPopupResumo(){
+    const titulos=[...document.querySelectorAll("h1,h2,h3,h4,strong,div,span,p")]
+      .filter(el=>{
+        if(!elementoVisivel(el)) return false;
+        const txt=String(el.textContent||"").trim();
+        return /^Resumo da OS\s*#/i.test(txt);
+      })
+      .sort((a,b)=>a.children.length-b.children.length);
+
+    const titulo=titulos[0];
+    if(!titulo) return null;
+
+    let atual=titulo;
+    let overlay=null;
+
+    while(atual && atual!==document.body){
+      const st=getComputedStyle(atual);
+      if(st.position==="fixed"){
+        overlay=atual;
+        break;
+      }
+      atual=atual.parentElement;
+    }
+
+    let popup=null;
+
+    if(overlay){
+      popup=[...overlay.children].find(filho=>filho.contains(titulo)) || null;
+    }
+
+    if(!popup){
+      popup=titulo.closest(
+        '[role="dialog"],.modal-content,.modal-box,.modal-dialog,.popup-content,'+
+        '[class*="modal-content"],[class*="modal-box"],[class*="popup-content"]'
+      );
+    }
+
+    if(!popup){
+      let p=titulo.parentElement;
+      while(p && p!==document.body){
+        const rc=p.getBoundingClientRect();
+        const fundo=getComputedStyle(p).backgroundColor;
+        if(rc.width>=600 && rc.height>=350 && fundo!=="rgba(0, 0, 0, 0)"){
+          popup=p;
+          break;
+        }
+        p=p.parentElement;
+      }
+    }
+
+    if(!popup) return null;
+
+    const rolaveis=[...popup.querySelectorAll("*")]
+      .filter(el=>{
+        if(!elementoVisivel(el)) return false;
+        const st=getComputedStyle(el);
+        const rc=el.getBoundingClientRect();
+        const podeRolar=["auto","scroll"].includes(st.overflowY)
+          || el.scrollHeight>el.clientHeight+20;
+        return podeRolar && rc.width>400 && rc.height>180;
+      })
+      .sort((a,b)=>{
+        const areaA=a.getBoundingClientRect().width*a.getBoundingClientRect().height;
+        const areaB=b.getBoundingClientRect().width*b.getBoundingClientRect().height;
+        return areaB-areaA;
+      });
+
+    const conteudo=rolaveis[0]
+      || popup.querySelector(
+          '.modal-body,.popup-body,[class*="modal-body"],[class*="popup-body"],[class*="conteudo"]'
+        )
+      || popup;
+
+    return {popup,conteudo};
+  }
+
+  function inserirCheckinNoPopup(html){
+    document.querySelectorAll(".sgos-checkin-resumo-web").forEach(el=>el.remove());
+    document.querySelectorAll(".sgos-equip-resumo-web").forEach(el=>el.remove());
+
+    const localizado=localizarPopupResumo();
+    if(!localizado) return false;
+
+    const {conteudo}=localizado;
+
+    const tituloEquip=[...conteudo.querySelectorAll("h1,h2,h3,h4,strong,div,span")]
+      .find(el=>{
+        const txt=String(el.textContent||"").trim().toLowerCase();
+        return txt==="equipamentos e materiais";
+      });
+
+    if(tituloEquip){
+      let card=tituloEquip;
+      while(
+        card.parentElement
+        && card.parentElement!==conteudo
+        && card.parentElement.getBoundingClientRect().width
+           < conteudo.getBoundingClientRect().width*0.98
+      ){
+        card=card.parentElement;
+      }
+
+      card.insertAdjacentHTML("beforebegin",html);
+    }else{
+      conteudo.insertAdjacentHTML("beforeend",html);
+    }
+
+    return true;
+  }
+
   async function enriquecer(id){
     try{
-      const r=await fetch(`/api/ordens_servico/${id}`,{credentials:"include",cache:"no-store"});
-      if(!r.ok)return;
+      const r=await fetch(`/api/ordens_servico/${id}`,{
+        credentials:"include",
+        cache:"no-store"
+      });
+
+      if(!r.ok) return;
+
       const os=await r.json();
-      const html=bloco(os);if(!html)return;
-      setTimeout(()=>{
-        const visiveis=[...document.querySelectorAll("body *")].filter(el=>{
-          const s=getComputedStyle(el),rc=el.getBoundingClientRect();
-          return s.position==="fixed"&&s.display!=="none"&&s.visibility!=="hidden"&&rc.width>320&&rc.height>180&&!el.closest(".modal-lembrete-overlay");
-        }).sort((a,b)=>b.getBoundingClientRect().width*a.getBoundingClientRect().height-a.getBoundingClientRect().width*b.getBoundingClientRect().height);
-        const overlay=visiveis[0];
-        const destino=overlay?.querySelector(".modal-content,.modal-box,[class*='modal'] > div")||overlay;
-        if(destino){
-          destino.querySelector(".sgos-equip-resumo-web")?.remove();
-          destino.insertAdjacentHTML("beforeend",html);
+      const html=blocoCheckin(os);
+      if(!html) return;
+
+      let tentativas=0;
+      const timer=setInterval(()=>{
+        tentativas++;
+
+        if(inserirCheckinNoPopup(html) || tentativas>=20){
+          clearInterval(timer);
         }
-      },250);
-    }catch(e){console.error("Erro ao enriquecer resumo da OS:",e)}
+      },100);
+    }catch(e){
+      console.error("Erro ao enriquecer resumo da OS:",e);
+    }
   }
+
   document.addEventListener("click",e=>{
-    const tr=e.target.closest("#tabelaAbertas tr[data-id],#tabelaAndamento tr[data-id],#tabelaConcluidas tr[data-id],#tabelaAbertas tr[onclick],#tabelaAndamento tr[onclick],#tabelaConcluidas tr[onclick]");
-    if(!tr)return;
+    const tr=e.target.closest(
+      "#tabelaAbertas tr[data-id],#tabelaAndamento tr[data-id],#tabelaConcluidas tr[data-id],"+
+      "#tabelaAbertas tr[onclick],#tabelaAndamento tr[onclick],#tabelaConcluidas tr[onclick]"
+    );
+
+    if(!tr) return;
+
     let id=tr.dataset.id;
-    if(!id){const m=String(tr.getAttribute("onclick")||"").match(/\b(\d+)\b/);id=m?.[1]}
-    if(id)enriquecer(id);
+    if(!id){
+      const m=String(tr.getAttribute("onclick")||"").match(/\b(\d+)\b/);
+      id=m?.[1];
+    }
+
+    if(id) enriquecer(id);
   },true);
 })();
 </script>

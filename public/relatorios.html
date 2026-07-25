@@ -624,9 +624,48 @@ canvas{
 
 .tables-container{
     display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:18px;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:16px;
     margin-bottom:18px;
+}
+
+.rankings-sgos .table-box{
+    min-width:0;
+    min-height:270px;
+    background:linear-gradient(135deg,#0f2147,#24418f);
+    border:1px solid rgba(147,197,253,.30);
+    color:white;
+    box-shadow:0 10px 24px rgba(15,33,71,.18);
+}
+
+.rankings-sgos .table-box h3{
+    color:white;
+}
+
+.rankings-sgos .table-box table{
+    table-layout:fixed;
+}
+
+.rankings-sgos .table-box td{
+    color:white;
+    border-bottom:1px solid rgba(255,255,255,.13);
+    overflow-wrap:anywhere;
+}
+
+.rankings-sgos .table-box td:last-child{
+    color:#fef08a;
+}
+
+.rankings-sgos .table-box tbody tr:hover{
+    background:rgba(255,255,255,.06);
+}
+
+.ranking-sgos-card{
+    background:linear-gradient(135deg,#0f2147,#24418f) !important;
+}
+
+.ranking-sgos-card h3{
+    color:white !important;
 }
 
 .table-box{
@@ -659,6 +698,59 @@ td:last-child{
     text-align:right;
     font-weight:800;
     color:#0f172a;
+}
+
+/* ===============================
+   KPI DE TEMPO DOS TÉCNICOS
+================================ */
+.kpi-tempo-box{
+    background:linear-gradient(135deg,#0f2147,#24418f);
+    color:white;
+    border:1px solid rgba(147,197,253,.30);
+}
+.kpi-tempo-box h3{color:white;}
+.kpi-tempo-sub{
+    color:#bfdbfe;
+    font-size:12px;
+    margin-top:-7px;
+    margin-bottom:12px;
+}
+.kpi-tempo-tabela thead th{
+    padding:9px 6px;
+    color:#bfdbfe;
+    font-size:11px;
+    text-align:left;
+    border-bottom:1px solid rgba(255,255,255,.15);
+}
+.kpi-tempo-tabela td{
+    padding:10px 6px;
+    border-bottom:1px solid rgba(255,255,255,.10);
+    color:white;
+    font-size:13px;
+}
+.kpi-tempo-tabela td:last-child{
+    color:#fef08a;
+}
+.kpi-posicao{
+    display:inline-flex;
+    width:26px;
+    height:26px;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    background:rgba(255,255,255,.12);
+    font-weight:800;
+}
+.kpi-tempo-vazio{
+    color:#bfdbfe;
+    font-size:13px;
+    padding:18px 0;
+}
+.kpi-legenda{
+    margin-top:12px;
+    font-size:11px;
+    line-height:1.5;
+    color:#bfdbfe;
 }
 
 /* ===============================
@@ -832,6 +924,205 @@ td:last-child{
         grid-template-columns:1fr;
     }
 }
+
+@media(max-width:1550px) and (min-width:1301px){
+    .tables-container{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+}
+
+
+/* ===== AJUSTE FINAL: GRÁFICOS E RANKINGS ===== */
+.rankings-sgos{
+    display:grid !important;
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+    gap:16px !important;
+}
+
+.rankings-sgos .table-box{
+    background:linear-gradient(135deg,#10234b,#274597) !important;
+    border:1px solid rgba(147,197,253,.30) !important;
+    color:#fff !important;
+    min-height:270px;
+    box-shadow:0 10px 24px rgba(15,33,71,.18);
+}
+
+.rankings-sgos .table-box h3,
+.rankings-sgos .table-box td{
+    color:#fff !important;
+}
+
+.rankings-sgos .table-box td{
+    border-bottom:1px solid rgba(255,255,255,.14) !important;
+}
+
+.rankings-sgos .table-box td:last-child{
+    color:#fef08a !important;
+}
+
+.rankings-sgos .kpi-tempo-sub,
+.rankings-sgos .kpi-legenda,
+.rankings-sgos .kpi-tempo-vazio{
+    color:#bfdbfe !important;
+}
+
+.charts-container.triple{
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+}
+
+@media(max-width:1350px){
+    .rankings-sgos{
+        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    }
+}
+
+@media(max-width:900px){
+    .charts-container.triple,
+    .rankings-sgos{
+        grid-template-columns:1fr !important;
+    }
+}
+
+
+/* =========================================================
+   CORREÇÃO DEFINITIVA — ORDEM E DIMENSÕES DE GRÁFICOS/RANKINGS
+========================================================= */
+.graficos-os{
+    display:grid !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:18px !important;
+    width:100% !important;
+}
+
+.graficos-pizza{
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:18px !important;
+    width:100% !important;
+    margin-bottom:18px !important;
+}
+
+.graficos-pizza .chart-box{
+    min-width:0 !important;
+}
+
+.graficos-pizza .chart-area{
+    height:280px !important;
+}
+
+.rankings-sgos{
+    display:grid !important;
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+    gap:18px !important;
+    width:100% !important;
+    margin-bottom:18px !important;
+}
+
+.rankings-sgos .table-box{
+    width:100% !important;
+    min-width:0 !important;
+    min-height:290px !important;
+    padding:22px !important;
+    border-radius:14px !important;
+    background:linear-gradient(135deg,#10234b,#274597) !important;
+    border:1px solid rgba(147,197,253,.30) !important;
+    color:#fff !important;
+    box-shadow:0 10px 24px rgba(15,33,71,.18) !important;
+    overflow:hidden !important;
+}
+
+.rankings-sgos .table-box h3{
+    color:#fff !important;
+    margin:0 0 16px !important;
+    font-size:17px !important;
+    line-height:1.25 !important;
+}
+
+.rankings-sgos .table-box table{
+    width:100% !important;
+    table-layout:auto !important;
+}
+
+.rankings-sgos .table-box td{
+    color:#fff !important;
+    padding:12px 0 !important;
+    border-bottom:1px solid rgba(255,255,255,.14) !important;
+    white-space:normal !important;
+    overflow-wrap:anywhere !important;
+    vertical-align:middle !important;
+}
+
+.rankings-sgos .table-box td:last-child{
+    color:#fef08a !important;
+    text-align:right !important;
+    padding-left:10px !important;
+    white-space:nowrap !important;
+}
+
+.rankings-sgos .kpi-tempo-tabela{
+    table-layout:fixed !important;
+}
+
+.rankings-sgos .kpi-tempo-tabela th{
+    color:#bfdbfe !important;
+    padding:9px 4px !important;
+    border-bottom:1px solid rgba(255,255,255,.18) !important;
+    font-size:11px !important;
+    text-align:left !important;
+}
+
+.rankings-sgos .kpi-tempo-tabela th:nth-child(1),
+.rankings-sgos .kpi-tempo-tabela td:nth-child(1){
+    width:34px !important;
+}
+
+.rankings-sgos .kpi-tempo-tabela th:nth-child(3),
+.rankings-sgos .kpi-tempo-tabela td:nth-child(3){
+    width:72px !important;
+}
+
+.rankings-sgos .kpi-tempo-tabela th:nth-child(4),
+.rankings-sgos .kpi-tempo-tabela td:nth-child(4){
+    width:36px !important;
+}
+
+.rankings-sgos .kpi-tempo-sub,
+.rankings-sgos .kpi-legenda,
+.rankings-sgos .kpi-tempo-vazio{
+    color:#bfdbfe !important;
+    line-height:1.45 !important;
+}
+
+.rankings-sgos .kpi-tempo-sub{
+    font-size:12px !important;
+    margin:-7px 0 12px !important;
+}
+
+.rankings-sgos .kpi-legenda{
+    font-size:11px !important;
+    margin-top:12px !important;
+}
+
+@media(max-width:1500px){
+    .rankings-sgos{
+        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    }
+}
+
+@media(max-width:1050px){
+    .graficos-pizza{
+        grid-template-columns:1fr !important;
+    }
+}
+
+@media(max-width:900px){
+    .graficos-os,
+    .rankings-sgos{
+        grid-template-columns:1fr !important;
+    }
+}
+
 </style>
 </head>
 
@@ -1186,8 +1477,9 @@ td:last-child{
             </div>
         </div>
 
-        <div class="charts-container" style="margin-top:18px;">
-
+        
+        <!-- GRÁFICOS DE OS -->
+        <div class="charts-container graficos-os" style="margin-top:18px;">
             <div class="chart-box">
                 <h3>OS Abertas</h3>
                 <div class="chart-area">
@@ -1201,30 +1493,10 @@ td:last-child{
                     <canvas id="chartConcluidas"></canvas>
                 </div>
             </div>
-
         </div>
 
-        <div class="titulo-ranking">Ranking</div>
-
-        <div class="tables-container">
-            <div class="table-box">
-                <h3>Técnicos</h3>
-                <table id="tabelaTecnicos"><tbody></tbody></table>
-            </div>
-
-            <div class="table-box">
-                <h3>Localidades</h3>
-                <table id="tabelaLocalidades"><tbody></tbody></table>
-            </div>
-
-            <div class="table-box">
-                <h3>Tipos</h3>
-                <table id="tabelaTipos"><tbody></tbody></table>
-            </div>
-        </div>
-
-        <div class="charts-container triple">
-
+        <!-- TRÊS GRÁFICOS DE PIZZA -->
+        <div class="charts-container triple graficos-pizza">
             <div class="chart-box">
                 <h3>Técnicos</h3>
                 <div class="chart-area">
@@ -1240,12 +1512,60 @@ td:last-child{
             </div>
 
             <div class="chart-box">
-                <h3>Tipos</h3>
+                <h3>Tipos de Serviços</h3>
                 <div class="chart-area">
                     <canvas id="chartTipos"></canvas>
                 </div>
             </div>
+        </div>
 
+        <!-- QUATRO RANKINGS EM TEXTO -->
+        <div class="titulo-ranking">Rankings</div>
+
+        <div class="tables-container rankings-sgos">
+            <div class="table-box ranking-sgos-card">
+                <h3>Técnicos</h3>
+                <table id="tabelaTecnicos">
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="table-box ranking-sgos-card">
+                <h3>Localidades</h3>
+                <table id="tabelaLocalidades">
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="table-box ranking-sgos-card">
+                <h3>Tipos de Serviços</h3>
+                <table id="tabelaTipos">
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="table-box ranking-sgos-card kpi-tempo-box">
+                <h3>KPI — Menor tempo médio de OS</h3>
+                <div class="kpi-tempo-sub">
+                    Considera somente OS concluídas com check-in e finalização válidos.
+                </div>
+
+                <table id="tabelaKpiTempo" class="kpi-tempo-tabela">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Técnico</th>
+                            <th>Média</th>
+                            <th>OS</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+
+                <div class="kpi-legenda">
+                    A posição é definida pela menor média entre o check-in e a conclusão.
+                </div>
+            </div>
         </div>
 
     </section>
@@ -1458,6 +1778,108 @@ function renderChart(id, type, labels, data){
             maintainAspectRatio:false
         }
     });
+}
+
+
+function listaTecnicosDaOS(o){
+    let lista = [];
+
+    try{
+        if(Array.isArray(o?.tecnico)){
+            lista = o.tecnico;
+        }else if(typeof o?.tecnico === "string" && o.tecnico.trim().startsWith("[")){
+            lista = JSON.parse(o.tecnico);
+        }else if(o?.tecnico){
+            lista = [o.tecnico];
+        }
+    }catch{
+        lista = o?.tecnico ? [o.tecnico] : [];
+    }
+
+    return [...new Set(lista)]
+        .map(t => String(t).trim())
+        .filter(t => t && t !== "null" && t !== "undefined")
+        .map(t => mapaTecnicos[String(t)] || String(t));
+}
+
+function duracaoSegundosOS(o){
+    const gravado = Number(o?.tempo_atendimento_segundos);
+    if(Number.isFinite(gravado) && gravado >= 0) return gravado;
+
+    const inicio = o?.checkin_inicio_em || o?.checkin_em;
+    const fim = o?.checkin_fim_em || o?.finalizado_em;
+
+    if(!inicio || !fim) return null;
+
+    const di = new Date(inicio);
+    const df = new Date(fim);
+
+    if(Number.isNaN(di.getTime()) || Number.isNaN(df.getTime())) return null;
+
+    const segundos = Math.floor((df.getTime() - di.getTime()) / 1000);
+    return segundos >= 0 ? segundos : null;
+}
+
+function formatarTempoKpi(segundos){
+    if(!Number.isFinite(Number(segundos))) return "-";
+
+    let total = Math.max(0, Math.round(Number(segundos)));
+    const horas = Math.floor(total / 3600);
+    total %= 3600;
+    const minutos = Math.floor(total / 60);
+
+    if(horas) return `${horas}h ${String(minutos).padStart(2,"0")}min`;
+    return `${minutos}min`;
+}
+
+function calcularRankingTempoTecnicos(lista){
+    const acumulado = {};
+
+    (lista || []).forEach(o => {
+        const status = String(o?.status || "").toLowerCase();
+        if(!o?.finalizado_em && !status.includes("concl") && !status.includes("final")) return;
+
+        const duracao = duracaoSegundosOS(o);
+        if(duracao === null) return;
+
+        const nomes = listaTecnicosDaOS(o);
+        nomes.forEach(nome => {
+            if(!acumulado[nome]){
+                acumulado[nome] = { totalSegundos:0, totalOS:0 };
+            }
+            acumulado[nome].totalSegundos += duracao;
+            acumulado[nome].totalOS += 1;
+        });
+    });
+
+    return Object.entries(acumulado)
+        .map(([nome, item]) => ({
+            nome,
+            totalOS:item.totalOS,
+            mediaSegundos:item.totalOS ? item.totalSegundos / item.totalOS : 0
+        }))
+        .sort((a,b) => a.mediaSegundos - b.mediaSegundos || b.totalOS - a.totalOS || a.nome.localeCompare(b.nome));
+}
+
+function renderizarKpiTempoTecnicos(lista){
+    const tbody = document.querySelector("#tabelaKpiTempo tbody");
+    if(!tbody) return;
+
+    const ranking = calcularRankingTempoTecnicos(lista);
+
+    if(!ranking.length){
+        tbody.innerHTML = `<tr><td colspan="4"><div class="kpi-tempo-vazio">Nenhuma OS com check-in e conclusão encontrada no período.</div></td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = ranking.slice(0,10).map((item, index) => `
+        <tr>
+            <td><span class="kpi-posicao">${index + 1}</span></td>
+            <td>${item.nome}</td>
+            <td>${formatarTempoKpi(item.mediaSegundos)}</td>
+            <td>${item.totalOS}</td>
+        </tr>
+    `).join("");
 }
 
 // ===============================
@@ -1799,11 +2221,12 @@ dadosFiltrados.forEach(o => {
         renderTabela("tabelaTecnicos", tecnicos);
         renderTabela("tabelaLocalidades", localidades);
         renderTabela("tabelaTipos", tipos);
+        renderizarKpiTempoTecnicos(dadosFiltrados);
 
         // ===============================
         // 🔥 GRÁFICOS
         // ===============================
-        renderChart("chartTecnicos","bar",
+        renderChart("chartTecnicos","doughnut",
             Object.keys(tecnicos),
             Object.values(tecnicos)
         );

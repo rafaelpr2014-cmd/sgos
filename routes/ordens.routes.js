@@ -2186,6 +2186,8 @@ router.get("/:id", verificarAutenticacao, async (req, res) => {
                     )
                 ) AS tecnicos_nomes,
                 (SELECT u.usuario FROM usuarios u WHERE u.id=os.equipamentos_confirmado_por AND u.empresa_id=os.empresa_id LIMIT 1) AS equipamentos_confirmado_por_nome,
+                (SELECT u.usuario FROM usuarios u WHERE u.id=os.checkin_inicio_por AND u.empresa_id=os.empresa_id LIMIT 1) AS checkin_inicio_por_nome,
+                (SELECT u.usuario FROM usuarios u WHERE u.id=os.checkin_fim_por AND u.empresa_id=os.empresa_id LIMIT 1) AS checkin_fim_por_nome,
 
                 (SELECT JSON_ARRAYAGG(JSON_OBJECT('produto_id',om.produto_id,'nome',ep.nome,'quantidade',om.quantidade,'valor_unitario',om.valor_unitario,'desconto',om.desconto,'valor_total',om.valor_total)) FROM os_materiais om LEFT JOIN estoque_produtos ep ON ep.id=om.produto_id AND ep.empresa_id=om.empresa_id WHERE om.os_id=os.id AND om.empresa_id=os.empresa_id) AS materiais_os
 

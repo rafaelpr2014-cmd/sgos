@@ -169,7 +169,9 @@ td{
                     <th>Descrição</th>
                     <th>Criada em</th>
                     <th>Iniciada em</th>
+                    <th>Check-in</th>
                     <th>Finalizada em</th>
+                    <th>Tempo total</th>
                     <th>Criada por</th>
                     <th>Finalizada por</th>
                     <th>Status</th>
@@ -177,7 +179,7 @@ td{
                 </tr>
             </thead>
             <tbody id="tbody">
-                <tr><td colspan="12">Carregando...</td></tr>
+                <tr><td colspan="14">Carregando...</td></tr>
             </tbody>
         </table>
     </div>
@@ -215,6 +217,50 @@ function formatarData(data) {
     if (!data) return "-";
     const d = new Date(data);
     return isNaN(d) ? "-" : d.toLocaleString("pt-BR");
+}
+
+
+function obterCheckinInicioOSAvulsa(os) {
+    return os?.checkin_inicio_em || os?.checkin_em || os?.iniciado_em || null;
+}
+
+function obterFimOSAvulsa(os) {
+    return os?.checkin_fim_em || os?.finalizado_em || os?.atualizado_em || null;
+}
+
+function obterDuracaoOSAvulsa(os) {
+    const gravado = Number(os?.tempo_atendimento_segundos);
+    if (Number.isFinite(gravado) && gravado >= 0) return gravado;
+
+    const inicio = obterCheckinInicioOSAvulsa(os);
+    const fim = obterFimOSAvulsa(os);
+    if (!inicio || !fim) return null;
+
+    const di = new Date(inicio);
+    const df = new Date(fim);
+    if (Number.isNaN(di.getTime()) || Number.isNaN(df.getTime())) return null;
+
+    return Math.max(0, Math.floor((df.getTime() - di.getTime()) / 1000));
+}
+
+function formatarDuracao(segundos) {
+    if (segundos === null || segundos === undefined || !Number.isFinite(Number(segundos))) return "-";
+
+    let total = Math.max(0, Math.floor(Number(segundos)));
+    const dias = Math.floor(total / 86400);
+    total %= 86400;
+    const horas = Math.floor(total / 3600);
+    total %= 3600;
+    const minutos = Math.floor(total / 60);
+    const segs = total % 60;
+
+    const partes = [];
+    if (dias) partes.push(`${dias}d`);
+    if (horas || dias) partes.push(`${horas}h`);
+    partes.push(`${minutos}min`);
+    if (!dias && !horas && minutos < 1) partes.push(`${segs}s`);
+
+    return partes.join(" ");
 }
 
 function normalizarStatus(status) {
@@ -275,7 +321,7 @@ async function carregarHistorico() {
     const busca = document.getElementById("busca").value.toLowerCase().trim();
     const statusFiltro = document.getElementById("status").value;
 
-    tbody.innerHTML = `<tr><td colspan="12">Carregando...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14">Carregando...</td></tr>`;
 
     let url = "/api/os-avulsas";
 
@@ -301,7 +347,7 @@ async function carregarHistorico() {
     });
 
     if (!filtrados.length) {
-        tbody.innerHTML = `<tr><td colspan="12">Nenhum registro encontrado</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="14">Nenhum registro encontrado</td></tr>`;
         return;
     }
 
@@ -331,7 +377,9 @@ async function carregarHistorico() {
                 <td><div class="descricao">${os.descricao || "-"}</div></td>
                 <td>${formatarData(os.criado_em)}</td>
                 <td>${formatarData(os.iniciado_em)}</td>
+                <td>${formatarData(obterCheckinInicioOSAvulsa(os))}</td>
                 <td>${formatarData(os.finalizado_em || os.atualizado_em)}</td>
+                <td><strong>${formatarDuracao(obterDuracaoOSAvulsa(os))}</strong></td>
                 <td>${os.criado_por_nome || "-"}</td>
                 <td>${os.finalizado_por_nome || "-"}</td>
                 <td>${statusHTML(os.status)}</td>

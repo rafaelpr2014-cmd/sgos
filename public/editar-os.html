@@ -2668,6 +2668,38 @@ function abrirPopupImagem(src){
 // ===============================
 // CARREGAR OS
 // ===============================
+
+function garantirReciclagemSemVinculos(){
+    if(!modoReciclagem) return;
+
+    const selectTecnicos = document.getElementById("tecnicos");
+    if(selectTecnicos){
+        [...selectTecnicos.options].forEach(opt => opt.selected = false);
+    }
+
+    materiaisSelecionadosOS = [];
+
+    const origem = document.getElementById("origem_equipamento");
+    const modalidade = document.getElementById("modalidade_equipamento");
+    const produto = document.getElementById("produto_material");
+    const pagamento = document.getElementById("forma_pagamento_equipamento");
+
+    if(origem) origem.value = "";
+    if(modalidade) modalidade.value = "comodato";
+    if(produto) produto.value = "";
+    if(pagamento) pagamento.value = "";
+
+    if(typeof renderMateriaisOS === "function"){
+        renderMateriaisOS();
+    }
+
+    document.getElementById("campoModalidadeEquipamento")?.classList.add("hidden");
+    document.getElementById("areaMateriaisOS")?.classList.add("hidden");
+    document.getElementById("campoPagamentoEquipamento")?.classList.add("hidden");
+    document.getElementById("listaMateriaisOS")?.classList.add("hidden");
+    document.getElementById("areaVendaEquipamento")?.classList.add("hidden");
+}
+
 async function carregarOS(){
 
     let os = null;
@@ -2724,14 +2756,48 @@ async function carregarOS(){
     }
 
     [...tecnicos.options].forEach(opt => {
-        opt.selected = listaTec.includes(Number(opt.value));
+        // Na reciclagem, nenhum técnico da OS antiga deve vir selecionado.
+        opt.selected = modoReciclagem
+            ? false
+            : listaTec.includes(Number(opt.value));
     });
 
     if(typeof preencherServicoTV === "function"){
         preencherServicoTV(os);
     }
 
-    preencherEquipamentosOS(os);
+    if(modoReciclagem){
+        // A nova OS reciclada deve iniciar sem qualquer vínculo de estoque.
+        materiaisSelecionadosOS = [];
+
+        const origemEquipamento = document.getElementById("origem_equipamento");
+        const modalidadeEquipamento = document.getElementById("modalidade_equipamento");
+        const produtoMaterial = document.getElementById("produto_material");
+        const formaPagamento = document.getElementById("forma_pagamento_equipamento");
+
+        if(origemEquipamento) origemEquipamento.value = "";
+        if(modalidadeEquipamento) modalidadeEquipamento.value = "comodato";
+        if(produtoMaterial) produtoMaterial.value = "";
+        if(formaPagamento) formaPagamento.value = "";
+
+        if(typeof renderMateriaisOS === "function"){
+            renderMateriaisOS();
+        }
+
+        if(typeof atualizarVisibilidadeEquipamentosOS === "function"){
+            atualizarVisibilidadeEquipamentosOS();
+        }else if(typeof toggleEquipamentosOS === "function"){
+            toggleEquipamentosOS();
+        }else{
+            document.getElementById("campoModalidadeEquipamento")?.classList.add("hidden");
+            document.getElementById("areaMateriaisOS")?.classList.add("hidden");
+            document.getElementById("campoPagamentoEquipamento")?.classList.add("hidden");
+            document.getElementById("listaMateriaisOS")?.classList.add("hidden");
+            document.getElementById("areaVendaEquipamento")?.classList.add("hidden");
+        }
+    }else{
+        preencherEquipamentosOS(os);
+    }
 
     // O anexo de execução da OS anterior permanece somente no histórico antigo.
     // Na nova OS reciclada o usuário pode anexar um novo arquivo.
@@ -2740,6 +2806,7 @@ async function carregarOS(){
         renderPreview(null, os.anexo_path);
     }
 
+    garantirReciclagemSemVinculos();
     toggleVlanMode();
 }
 
