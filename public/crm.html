@@ -92,6 +92,25 @@ button,input,textarea,select{font:inherit}
 @media(max-width:1450px){.top-actions{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:1200px){.filtros{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){.sidebar{display:none}.main{margin-left:0}.header{height:auto;flex-direction:column;align-items:flex-start;gap:15px;padding:20px}.header-actions{width:100%;justify-content:space-between;flex-wrap:wrap}.busca-wrap,.input-busca-menu{width:100%}.content{padding:14px}.top-actions{grid-template-columns:repeat(2,1fr)}.filtros,.grid-form{grid-template-columns:1fr}.span2,.span4{grid-column:span 1}.footer{flex-direction:column;gap:8px}}
+
+.central-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:13px}
+.central-card{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:14px;display:flex;gap:12px;align-items:center;min-height:90px;box-shadow:0 8px 20px rgba(15,23,42,.04);cursor:pointer}
+.central-card:hover{border-color:#93c5fd}
+.central-icon{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;background:#eff6ff}
+.central-card small{display:block;font-size:11px;font-weight:800;color:#334155}.central-card strong{display:block;font-size:23px;margin:3px 0}.central-card span{font-size:10px;color:var(--muted)}
+.central-secoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-bottom:13px}
+.central-lista{background:#fff;border:1px solid var(--borda);border-radius:12px;overflow:hidden;box-shadow:0 8px 20px rgba(15,23,42,.04)}
+.central-lista-topo{padding:13px 15px;border-bottom:1px solid var(--borda);display:flex;justify-content:space-between;align-items:center}
+.central-lista-topo strong{font-size:14px}.central-lista-topo a{font-size:11px;color:var(--azul);font-weight:800;text-decoration:none}
+.central-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:10px 15px;border-bottom:1px solid #f1f5f9}
+.central-item:last-child{border-bottom:0}.central-item b{display:block;font-size:12px}.central-item small{display:block;color:var(--muted);font-size:10px;margin-top:4px}.central-item-status{font-size:10px;font-weight:800;color:#334155;white-space:nowrap}
+.central-vazio{padding:22px;text-align:center;color:var(--muted);font-size:11px}
+.indicadores-faixa{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:13px}
+.ind-mini{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:11px;text-align:center}.ind-mini b{display:block;font-size:20px}.ind-mini span{font-size:10px;color:var(--muted)}
+@media(max-width:1450px){.central-grid{grid-template-columns:repeat(3,1fr)}.indicadores-faixa{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:1000px){.central-grid,.central-secoes{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){.central-grid,.central-secoes,.indicadores-faixa{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -145,6 +164,42 @@ button,input,textarea,select{font:inherit}
             <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             Nova solicitação
         </button>
+    </div>
+
+
+    <div class="card">
+        <div class="card-header"><div><div class="titulo-card">Central de Operações da Empresa</div><div class="sub-card">Informações consolidadas dos módulos do SGOS em tempo real.</div></div><button class="btn btn-claro" type="button" onclick="carregarCentral()">Atualizar dados</button></div>
+        <div class="central-grid">
+            <div class="central-card" onclick="location.href='crm.html'"><div class="central-icon">📞</div><div><small>Solicitações dos clientes</small><strong id="cSolicitacoes">0</strong><span>Em atendimento no CRM</span></div></div>
+            <div class="central-card" onclick="location.href='viabilidade.html'"><div class="central-icon">📍</div><div><small>Viabilidades</small><strong id="cViabilidades">0</strong><span>Pendentes ou em análise</span></div></div>
+            <div class="central-card" onclick="location.href='agendamentos.html'"><div class="central-icon">📅</div><div><small>Agendamentos</small><strong id="cAgendamentos">0</strong><span>Pendentes de execução</span></div></div>
+            <div class="central-card" onclick="location.href='painel.html'"><div class="central-icon">🔧</div><div><small>Ordens de serviço</small><strong id="cOrdens">0</strong><span>Abertas ou em execução</span></div></div>
+            <div class="central-card" onclick="location.href='escala.html'"><div class="central-icon">👷</div><div><small>Técnicos em campo</small><strong id="cTecnicos">0</strong><span>Vinculados às OS ativas</span></div></div>
+            <div class="central-card" onclick="location.href='estoque.html'"><div class="central-icon">📦</div><div><small>Estoque reservado</small><strong id="cEstoque">0</strong><span>Itens reservados para serviços</span></div></div>
+            <div class="central-card" onclick="location.href='financeiro.html'"><div class="central-icon">💰</div><div><small>Financeiro relacionado às OS</small><strong id="cFinanceiro">0</strong><span id="cFinanceiroValor">R$ 0,00 vinculados</span></div></div>
+            <div class="central-card" onclick="location.href='relatorios.html'"><div class="central-icon">📧</div><div><small>Relatórios enviados</small><strong id="cRelatorios">0</strong><span>Envios registrados no mês</span></div></div>
+            <div class="central-card" onclick="location.href='whatsapp.html'"><div class="central-icon">📱</div><div><small>WhatsApp pendentes</small><strong id="cWhatsapp">0</strong><span>Fila, falhas ou aguardando envio</span></div></div>
+            <div class="central-card"><div class="central-icon">⚠️</div><div><small>Pendências críticas</small><strong id="cCriticas">0</strong><span>Itens que exigem atenção</span></div></div>
+            <div class="central-card"><div class="central-icon">📊</div><div><small>Indicadores da empresa</small><strong id="cIndicadores">0</strong><span>OS concluídas no mês</span></div></div>
+        </div>
+    </div>
+
+    <div class="indicadores-faixa">
+        <div class="ind-mini"><b id="iLembretes">0</b><span>Lembretes hoje</span></div>
+        <div class="ind-mini"><b id="iOSAtrasadas">0</b><span>OS atrasadas</span></div>
+        <div class="ind-mini"><b id="iAgendaAtrasada">0</b><span>Agendamentos atrasados</span></div>
+        <div class="ind-mini"><b id="iEstoqueCritico">0</b><span>Produtos críticos</span></div>
+        <div class="ind-mini"><b id="iFinanceiroPendente">0</b><span>Financeiro pendente</span></div>
+        <div class="ind-mini"><b id="iOSFinalizadas">0</b><span>OS finalizadas no mês</span></div>
+    </div>
+
+    <div class="central-secoes">
+        <div class="central-lista"><div class="central-lista-topo"><strong>📞 Solicitações recentes</strong><a href="crm.html">Abrir CRM</a></div><div id="listaSolicitacoes"></div></div>
+        <div class="central-lista"><div class="central-lista-topo"><strong>📍 Viabilidades pendentes</strong><a href="viabilidade.html">Abrir viabilidades</a></div><div id="listaViabilidades"></div></div>
+        <div class="central-lista"><div class="central-lista-topo"><strong>📅 Próximos agendamentos</strong><a href="agendamentos.html">Abrir agenda</a></div><div id="listaAgendamentos"></div></div>
+        <div class="central-lista"><div class="central-lista-topo"><strong>🔧 Ordens em execução</strong><a href="painel.html">Abrir painel</a></div><div id="listaOrdens"></div></div>
+        <div class="central-lista"><div class="central-lista-topo"><strong>📧 Relatórios recentes</strong><a href="relatorios.html">Abrir relatórios</a></div><div id="listaRelatorios"></div></div>
+        <div class="central-lista"><div class="central-lista-topo"><strong>📱 Pendências do WhatsApp</strong><a href="whatsapp.html">Abrir WhatsApp</a></div><div id="listaWhatsapp"></div></div>
     </div>
 
     <div class="top-actions">
@@ -320,10 +375,28 @@ function limparFiltros(){["fBusca","fLocalidade","fResponsavel","fCanal","fPrior
 let timer;["fBusca","fLocalidade","fResponsavel","fCanal","fPrioridade","fPeriodo"].forEach(id=>document.getElementById(id).addEventListener(id==="fBusca"?"input":"change",()=>{clearTimeout(timer);timer=setTimeout(carregar,250)}));
 buscaCRM.addEventListener("input",e=>{setValor("fBusca",e.target.value);clearTimeout(timer);timer=setTimeout(carregar,250)});
 modal.addEventListener("click",e=>{if(e.target===modal)fecharModal()});
+
+function moedaBR(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
+function renderListaCentral(id,lista){
+ const el=document.getElementById(id);if(!el)return;
+ if(!Array.isArray(lista)||!lista.length){el.innerHTML='<div class="central-vazio">Nenhum registro encontrado.</div>';return}
+ el.innerHTML=lista.map(x=>`<div class="central-item"><div><b>${esc(x.nome||("Registro #"+(x.id||"")))}</b><small>${esc(x.detalhe||x.telefone||"")}${x.ordem_servico_id?` · OS #${x.ordem_servico_id}`:""}${x.data?` · ${esc(fmtData(x.data))}`:""}</small></div><div class="central-item-status">${esc(x.status||"-")}</div></div>`).join("");
+}
+async function carregarCentral(){
+ try{
+  const d=await api(API+"/central"),c=d.cards||{},i=d.indicadores||{},l=d.listas||{};
+  cSolicitacoes.textContent=c.solicitacoes_clientes||0;cViabilidades.textContent=c.viabilidades||0;cAgendamentos.textContent=c.agendamentos||0;cOrdens.textContent=c.ordens_servico||0;
+  cTecnicos.textContent=c.tecnicos_em_campo||0;cEstoque.textContent=c.estoque_reservado||0;cFinanceiro.textContent=c.financeiro_os_quantidade||0;cFinanceiroValor.textContent=moedaBR(c.financeiro_os_valor)+" vinculados";
+  cRelatorios.textContent=c.relatorios_enviados||0;cWhatsapp.textContent=c.whatsapp_pendentes||0;cCriticas.textContent=c.pendencias_criticas||0;cIndicadores.textContent=i.os_finalizadas_mes||0;
+  iLembretes.textContent=i.lembretes_hoje||0;iOSAtrasadas.textContent=i.os_atrasadas||0;iAgendaAtrasada.textContent=i.agendamentos_atrasados||0;iEstoqueCritico.textContent=i.estoque_critico||0;iFinanceiroPendente.textContent=i.financeiro_pendente||0;iOSFinalizadas.textContent=i.os_finalizadas_mes||0;
+  renderListaCentral("listaSolicitacoes",l.solicitacoes);renderListaCentral("listaViabilidades",l.viabilidades);renderListaCentral("listaAgendamentos",l.agendamentos);renderListaCentral("listaOrdens",l.ordens_servico);renderListaCentral("listaRelatorios",l.relatorios);renderListaCentral("listaWhatsapp",l.whatsapp);
+ }catch(e){console.error("Erro ao carregar Central Operacional:",e)}
+}
+
 document.addEventListener("DOMContentLoaded",async()=>{
  const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");if(s&&l&&localStorage.getItem("sidebar_recolhida")==="1"){s.classList.add("recolhida");l.src=l.dataset.logoFechada}
  await carregarUsuario();carregarUsuariosOnline();
- try{await carregarApoio();await carregar()}catch(e){console.error(e);alert("Não foi possível carregar o CRM Operacional: "+e.message)}
+ try{await carregarApoio();await Promise.all([carregar(),carregarCentral()])}catch(e){console.error(e);alert("Não foi possível carregar o CRM Operacional: "+e.message)}
 });
 </script>
 </body>
