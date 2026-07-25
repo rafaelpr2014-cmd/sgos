@@ -16,6 +16,7 @@ const escritoriosRoutesFactory = require('./routes/escritorios.routes');
 const financeiroRoutesFactory = require('./routes/financeiro.routes');
 const mapaTecnicosRoutes = require("./routes/mapa-tecnicos.routes");
 const logsAcoesRoutes = require("./routes/logs-acoes.routes");
+const crmRoutes = require("./routes/crm.routes");
 
 const viabilidadeClientesErpRoutesFactory =
     require("./routes/viabilidade-clientes-erp.routes");
@@ -402,6 +403,8 @@ app.get("/appmobile.html", (req, res) => {
         path.join(__dirname, "public", "appmobile.html")
     );
 });
+
+app.use("/api/crm", verificar Autenticação, crmRoutes);
 
 
 // ===============================
