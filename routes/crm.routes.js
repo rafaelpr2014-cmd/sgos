@@ -40,9 +40,19 @@ async function contextoUsuario(req) {
 }
 
 function tratarErro(res, erro) {
-    console.error("Erro CRM:", erro);
+    console.error("=================================");
+    console.error("ERRO COMPLETO DO CRM");
+    console.error("Mensagem:", erro.message);
+    console.error("Código:", erro.code);
+    console.error("SQL:", erro.sql);
+    console.error("SQL Message:", erro.sqlMessage);
+    console.error("Stack:", erro.stack);
+    console.error("=================================");
+
     res.status(erro.status || 500).json({
-        erro: erro.status ? erro.message : "Erro interno no CRM."
+        erro: erro.message || "Erro interno no CRM.",
+        codigo: erro.code || null,
+        sqlMessage: erro.sqlMessage || null
     });
 }
 
