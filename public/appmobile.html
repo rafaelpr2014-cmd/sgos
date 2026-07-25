@@ -1701,27 +1701,9 @@ function apiFetch(path, options = {}){
     const urlFinal = apiUrl(path);
     const opcoes = { ...options };
 
-    // Centraliza a autenticação de TODAS as chamadas do app.
-    // Isso é essencial no WKWebView/iPhone, que não reaproveita cookies
-    // entre origens da mesma forma que o Android.
-    const headers = new Headers(headersSessaoApp());
-    const headersRecebidos = new Headers(options.headers || {});
-
-    headersRecebidos.forEach((valor, chave) => {
-        headers.set(chave, valor);
-    });
-
-    // Não define Content-Type manualmente para FormData: o navegador precisa
-    // incluir automaticamente o boundary correto do multipart/form-data.
-    if(options.body instanceof FormData){
-        headers.delete("Content-Type");
-    }
-
-    opcoes.headers = headers;
-
     // O servidor remoto responde CORS com Access-Control-Allow-Origin: *.
     // Nesse cenário o navegador proíbe credentials: "include".
-    // A autenticação do SGOS é enviada pelos cabeçalhos x-usuario-id,
+    // A autenticação do SGOS já é enviada pelos cabeçalhos x-usuario-id,
     // x-log-id e x-empresa-id, então requisições entre origens usam "omit".
     try{
         const destino = new URL(urlFinal, window.location.href);
@@ -1729,11 +1711,11 @@ function apiFetch(path, options = {}){
 
         if(origemDiferente){
             opcoes.credentials = "omit";
-        }else if(!opcoes.credentials || opcoes.credentials === "include"){
+        }else if(!opcoes.credentials){
             opcoes.credentials = "same-origin";
         }
     }catch(e){
-        if(!opcoes.credentials || opcoes.credentials === "include"){
+        if(!opcoes.credentials){
             opcoes.credentials = "same-origin";
         }
     }
@@ -2363,46 +2345,16 @@ function extrairListaOrdens(payload){
 }
 
 function headersSessaoApp(){
-    let usuarioSalvo = {};
-    let sessaoApp = {};
-
-    try{
-        usuarioSalvo = JSON.parse(localStorage.getItem("usuario") || "{}");
-    }catch(e){}
-
-    try{
-        sessaoApp = JSON.parse(localStorage.getItem("sessao_app") || "{}");
-    }catch(e){}
-
-    const usuarioId =
-        user?.id ||
-        usuarioSalvo?.id ||
-        sessaoApp?.id ||
-        localStorage.getItem("usuario_id") ||
-        "";
-
-    const logId =
-        user?.log_id ||
-        usuarioSalvo?.log_id ||
-        sessaoApp?.log_id ||
-        localStorage.getItem("log_id") ||
-        "";
-
-    const empresaId =
-        user?.empresa_id ||
-        usuarioSalvo?.empresa_id ||
-        sessaoApp?.empresa_id ||
-        localStorage.getItem("empresa_id") ||
-        "";
+    const logId = user.log_id || localStorage.getItem("log_id") || "";
+    const empresaId = user.empresa_id || localStorage.getItem("empresa_id") || "";
 
     const headers = {
-        "Accept":"application/json"
+        "Accept":"application/json",
+        "x-usuario-id": String(user.id || "")
     };
 
-    if(usuarioId) headers["x-usuario-id"] = String(usuarioId);
     if(logId) headers["x-log-id"] = String(logId);
     if(empresaId) headers["x-empresa-id"] = String(empresaId);
-    headers["x-sgos-active"] = "1";
 
     return headers;
 }
@@ -4263,13 +4215,11 @@ async function enviarAcao(tipo, botao){
         const arquivo = await prepararArquivoParaEnvio();
         if(arquivo){
             const nomeArquivo = arquivo.name || `anexo-${Date.now()}`;
+
+            // As três rotas usam Multer com upload.single("foto").
+            // Enviar o mesmo arquivo também como anexo_ausente ou
+            // anexo_finalizado gera MulterError: Unexpected field.
             formData.append("foto", arquivo, nomeArquivo);
-            if(tipo === "ausente"){
-                formData.append("anexo_ausente", arquivo, nomeArquivo);
-            }
-            if(tipo === "concluir"){
-                formData.append("anexo_finalizado", arquivo, nomeArquivo);
-            }
         }
         const controller = new AbortController();
         const timer = setTimeout(()=>controller.abort(), 60000);
