@@ -977,12 +977,21 @@ button{touch-action:manipulation}
     font-weight:700;
     word-break:break-word;
 }
+
+.checkin-os-box{margin-top:12px;padding:13px;border:1px solid #bfdbfe;border-radius:14px;background:#eff6ff;color:#1e3a8a;line-height:1.55}
+.checkin-os-box.checkin-concluido{border-color:#bbf7d0;background:#f0fdf4;color:#166534}
+.checkin-os-box b{color:inherit}
+.btn-checkin{background:#075cf6 !important}
+.btn-checkin.realizado{background:#15803d !important}
+.btn-checkin:disabled{opacity:.68;cursor:not-allowed}
+
 .modal-modo-leitura .anexo-acoes,
 .modal-modo-leitura #arquivoSelecionadoInfo,
 .modal-modo-leitura #obs,
 .modal-modo-leitura #btnAusente,
 .modal-modo-leitura #btnInviabilidade,
 .modal-modo-leitura #btnConcluir,
+.modal-modo-leitura #btnCheckin,
 .modal-modo-leitura #btnEnviarLocalizacao{
     display:none !important;
 }
@@ -1604,6 +1613,7 @@ button{touch-action:manipulation}
         <button id="btnVerAnexo" type="button" class="btn-loc" onclick="verAnexo()">📎 Ver Anexo</button>
         <button id="btnAusente" type="button" class="btn-ausente" onclick="enviarAcao('ausente', this)">Cliente Ausente</button>
         <button id="btnInviabilidade" type="button" class="btn-inv" onclick="enviarAcao('inviabilidade', this)">Inviabilidade</button>
+        <button id="btnCheckin" type="button" class="btn-checkin" onclick="fazerCheckin(this)">📍 Registrar check-in</button>
         <button id="btnConcluir" type="button" class="btn-ok" onclick="enviarAcao('concluir', this)">Concluir</button>
 
         <button id="btnEnviarLocalizacao" type="button" class="btn-loc" onclick="pegarLocalizacao(this)">📍 Enviar Localização</button>
@@ -3836,6 +3846,26 @@ function equipamentosHTMLApp(os){
         </div>`).join("");
     return `<div class="equipamentos-os-app"><div class="equipamentos-os-app-title">Equipamentos vinculados</div>${itens}<div class="equipamento-os-app-item"><b>Tipo de pagamento:</b> ${valorSeguro(formaPagamentoApp(os.forma_pagamento_equipamento))}<br><b>Total:</b> ${moedaApp(os.total_equipamentos)}</div></div>`;
 }
+function formatarDuracaoAtendimento(segundos){
+    const total = Math.max(0, Number(segundos || 0));
+    if(!total) return "-";
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = Math.floor(total % 60);
+    if(h > 0) return `${h}h ${String(m).padStart(2,"0")}min`;
+    if(m > 0) return `${m}min ${String(s).padStart(2,"0")}s`;
+    return `${s}s`;
+}
+function checkinHTMLApp(os){
+    if(!os?.checkin_inicio_em) return `<div class="checkin-os-box"><b>Check-in:</b> ainda não registrado.</div>`;
+    const finalizado = !!os.checkin_fim_em;
+    return `<div class="checkin-os-box ${finalizado ? "checkin-concluido" : ""}">
+        <b>Check-in inicial:</b> ${valorSeguro(format(os.checkin_inicio_em))}<br>
+        <b>Registrado por:</b> ${valorSeguro(os.checkin_inicio_por_nome || os.checkin_inicio_por)}<br>
+        ${finalizado ? `<b>Check-in final:</b> ${valorSeguro(format(os.checkin_fim_em))}<br><b>Tempo no atendimento:</b> ${valorSeguro(formatarDuracaoAtendimento(os.tempo_atendimento_segundos))}` : `<b>Status:</b> atendimento em andamento`}
+    </div>`;
+}
+
 function resumoModalHTML(os){
     const tipo = os._tipo === "avulsa" ? "OS Avulsa" : "OS";
 
@@ -3883,6 +3913,7 @@ function resumoModalHTML(os){
             <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
             <b>Criada em:</b> ${valorSeguro(format(os.criado_em))}<br>
             ${finalizada ? blocoFinalizacao : `<div class="resumo-descricao-status" style="margin-top:10px;padding:12px;border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc;white-space:pre-wrap;overflow-wrap:anywhere;"><b>Descrição inicial:</b><br>${valorSeguro(os.descricao ?? os.descricao_inicial, "-")}</div>`}
+            ${checkinHTMLApp(os)}
             ${equipamentosHTMLApp(os)}
             ${svaHTML(os)}
         </div>`;
@@ -4090,6 +4121,14 @@ abrirModal = async function(chave){
 
     const btnAnexo = document.getElementById("btnVerAnexo");
     const btnVerLoc = document.getElementById("btnVerLocalizacao");
+    const btnCheckin = document.getElementById("btnCheckin");
+    if(btnCheckin){
+        const feito = !!os.checkin_inicio_em;
+        btnCheckin.textContent = feito ? `✓ Check-in ${format(os.checkin_inicio_em)}` : "📍 Registrar check-in";
+        btnCheckin.classList.toggle("realizado", feito);
+        btnCheckin.disabled = feito || somenteLeitura;
+        btnCheckin.style.display = somenteLeitura ? "none" : "block";
+    }
 
     if(btnAnexo){
         const temAnexo = !!obterAnexoOS(os);
@@ -4218,6 +4257,24 @@ async function enviarAcao(tipo, botao){
     let equipamentoUtilizado = "";
     let observacaoEquipamento = "";
     let statusPagamentoConfirmado = "";
+    let checkinFinal = null;
+
+    if(tipo === "concluir"){
+        if(!osAtual.checkin_inicio_em){
+            alert("Registre o check-in de chegada antes de concluir a OS.");
+            return;
+        }
+        try{
+            bloquearBotao(botao, true, "Obtendo GPS final...");
+            checkinFinal = await obterPosicaoAtual();
+        }catch(err){
+            bloquearBotao(botao, false);
+            alert(err.message || "Não foi possível registrar a localização final.");
+            return;
+        }
+        bloquearBotao(botao, false);
+    }
+
     if(tipo === "concluir" && materiaisOSApp(osAtual).length){
         const confirmacaoEquipamento = await abrirConfirmacaoEquipamento();
         if(!confirmacaoEquipamento) return;
@@ -4249,6 +4306,11 @@ async function enviarAcao(tipo, botao){
             }
             if(observacaoEquipamento) formData.append("observacao_equipamento", observacaoEquipamento);
             if(statusPagamentoConfirmado) formData.append("status_pagamento_confirmado", statusPagamentoConfirmado);
+            if(checkinFinal){
+                formData.append("checkin_fim_latitude", String(checkinFinal.latitude));
+                formData.append("checkin_fim_longitude", String(checkinFinal.longitude));
+                if(checkinFinal.precisao != null) formData.append("checkin_fim_precisao", String(checkinFinal.precisao));
+            }
         }
 
         const arquivo = await prepararArquivoParaEnvio();
@@ -4373,7 +4435,7 @@ async function obterPosicaoAtual(){
                 throw new Error("O GPS não retornou coordenadas válidas.");
             }
 
-            return {latitude, longitude};
+            return {latitude, longitude, precisao:Number(posicao?.coords?.accuracy || 0) || null};
         }
     }catch(err){
         console.warn("Geolocalização nativa falhou:", err);
@@ -4401,7 +4463,7 @@ async function obterPosicaoAtual(){
                     return;
                 }
 
-                resolve({latitude,longitude});
+                resolve({latitude,longitude,precisao:Number(pos.coords.accuracy || 0) || null});
             },
             erro=>{
                 let mensagem = "Não foi possível obter a localização.";
@@ -4426,6 +4488,46 @@ async function obterPosicaoAtual(){
         );
     });
 }
+async function fazerCheckin(botao){
+    if(!osSelecionada){ alert("Nenhuma OS selecionada"); return; }
+    const osAtual = encontrarOS(osSelecionada);
+    if(!osAtual || osAtual._tipo === "avulsa"){ alert("Check-in disponível somente para OS de clientes."); return; }
+    if(osAtual.checkin_inicio_em){ alert(`Check-in já registrado em ${format(osAtual.checkin_inicio_em)}.`); return; }
+
+    bloquearBotao(botao, true, "Obtendo GPS...");
+    try{
+        const coords = await obterPosicaoAtual();
+        bloquearBotao(botao, true, "Registrando check-in...");
+        const res = await apiFetch(`/api/ordens_servico/checkin/${osAtual.id}`, {
+            method:"POST",
+            headers:{"Content-Type":"application/json","Accept":"application/json"},
+            body:JSON.stringify({
+                latitude:coords.latitude,
+                longitude:coords.longitude,
+                precisao:coords.precisao
+            }),
+            cache:"no-store"
+        });
+        const data = await lerRespostaSegura(res);
+        if(!res.ok) throw new Error(data.erro || data.mensagem || `Erro HTTP ${res.status}`);
+        alert("Check-in registrado com horário e localização.");
+        await load();
+        const atualizado = encontrarOS(`normal-${osAtual.id}`) || encontrarOS(osAtual.id);
+        if(atualizado){
+            osSelecionada = chaveOS(atualizado);
+            const resumo = document.getElementById("resumoModalOS");
+            if(resumo) resumo.innerHTML = resumoModalHTML(atualizado);
+            const btn = document.getElementById("btnCheckin");
+            if(btn){ btn.textContent = "✓ Check-in realizado"; btn.classList.add("realizado"); btn.disabled = true; }
+        }
+    }catch(err){
+        console.error("Erro no check-in:", err);
+        alert(err.message || "Não foi possível registrar o check-in.");
+    }finally{
+        bloquearBotao(botao, false);
+    }
+}
+
 async function pegarLocalizacao(botao){
     if(!osSelecionada){
         alert("Nenhuma OS selecionada");

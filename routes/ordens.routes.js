@@ -111,6 +111,41 @@ module.exports = (db, verificarAutenticacao, io) => {
     const upload = multer({ storage });
 
 // ===============================
+// 📍 CHECK-IN DO ATENDIMENTO
+// ===============================
+async function garantirEstruturaCheckinOS(){
+    const adicionar = async (coluna, sql) => {
+        const [rows] = await db.query(`
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'ordens_servico'
+              AND COLUMN_NAME = ?
+            LIMIT 1
+        `, [coluna]);
+        if(!rows.length) await db.query(sql);
+    };
+
+    await adicionar('checkin_inicio_em', `ALTER TABLE ordens_servico ADD COLUMN checkin_inicio_em DATETIME NULL AFTER iniciado_em`);
+    await adicionar('checkin_inicio_latitude', `ALTER TABLE ordens_servico ADD COLUMN checkin_inicio_latitude DECIMAL(10,8) NULL AFTER checkin_inicio_em`);
+    await adicionar('checkin_inicio_longitude', `ALTER TABLE ordens_servico ADD COLUMN checkin_inicio_longitude DECIMAL(11,8) NULL AFTER checkin_inicio_latitude`);
+    await adicionar('checkin_inicio_precisao', `ALTER TABLE ordens_servico ADD COLUMN checkin_inicio_precisao DECIMAL(10,2) NULL AFTER checkin_inicio_longitude`);
+    await adicionar('checkin_inicio_por', `ALTER TABLE ordens_servico ADD COLUMN checkin_inicio_por INT NULL AFTER checkin_inicio_precisao`);
+    await adicionar('checkin_fim_em', `ALTER TABLE ordens_servico ADD COLUMN checkin_fim_em DATETIME NULL AFTER checkin_inicio_por`);
+    await adicionar('checkin_fim_latitude', `ALTER TABLE ordens_servico ADD COLUMN checkin_fim_latitude DECIMAL(10,8) NULL AFTER checkin_fim_em`);
+    await adicionar('checkin_fim_longitude', `ALTER TABLE ordens_servico ADD COLUMN checkin_fim_longitude DECIMAL(11,8) NULL AFTER checkin_fim_latitude`);
+    await adicionar('checkin_fim_precisao', `ALTER TABLE ordens_servico ADD COLUMN checkin_fim_precisao DECIMAL(10,2) NULL AFTER checkin_fim_longitude`);
+    await adicionar('checkin_fim_por', `ALTER TABLE ordens_servico ADD COLUMN checkin_fim_por INT NULL AFTER checkin_fim_precisao`);
+    await adicionar('tempo_atendimento_segundos', `ALTER TABLE ordens_servico ADD COLUMN tempo_atendimento_segundos INT UNSIGNED NULL AFTER checkin_fim_por`);
+}
+
+function coordenadaValida(latitude, longitude){
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+}
+
+// ===============================
 // 📦 INTEGRAÇÃO ESTOQUE x OS
 // ===============================
 async function garantirEstruturaMateriaisOS(){
@@ -841,6 +876,8 @@ router.get("/", verificarAutenticacao, async (req, res) => {
                     )
                 ) AS tecnicos_nomes,
                 (SELECT u.usuario FROM usuarios u WHERE u.id=os.equipamentos_confirmado_por AND u.empresa_id=os.empresa_id LIMIT 1) AS equipamentos_confirmado_por_nome,
+                (SELECT u.usuario FROM usuarios u WHERE u.id=os.checkin_inicio_por AND u.empresa_id=os.empresa_id LIMIT 1) AS checkin_inicio_por_nome,
+                (SELECT u.usuario FROM usuarios u WHERE u.id=os.checkin_fim_por AND u.empresa_id=os.empresa_id LIMIT 1) AS checkin_fim_por_nome,
 
                 (SELECT JSON_ARRAYAGG(JSON_OBJECT('produto_id',om.produto_id,'nome',ep.nome,'quantidade',om.quantidade,'valor_unitario',om.valor_unitario,'desconto',om.desconto,'valor_total',om.valor_total)) FROM os_materiais om LEFT JOIN estoque_produtos ep ON ep.id=om.produto_id AND ep.empresa_id=om.empresa_id WHERE om.os_id=os.id AND om.empresa_id=os.empresa_id) AS materiais_os
 
@@ -1037,7 +1074,18 @@ router.post(
                         equipamentos_utilizados = 'pendente',
                         equipamentos_confirmado_em = NULL,
                         equipamentos_confirmado_por = NULL,
-                        observacao_equipamento = NULL
+                        observacao_equipamento = NULL,
+                        checkin_inicio_em = NULL,
+                        checkin_inicio_latitude = NULL,
+                        checkin_inicio_longitude = NULL,
+                        checkin_inicio_precisao = NULL,
+                        checkin_inicio_por = NULL,
+                        checkin_fim_em = NULL,
+                        checkin_fim_latitude = NULL,
+                        checkin_fim_longitude = NULL,
+                        checkin_fim_precisao = NULL,
+                        checkin_fim_por = NULL,
+                        tempo_atendimento_segundos = NULL
                     WHERE id = ? AND empresa_id = ?
                 `, [
                     raizId, origemId, numeroReciclagem, req.usuario.id,
@@ -1451,6 +1499,89 @@ router.post(
 );
 
 // ===============================
+// 📍 CHECK-IN DE CHEGADA
+// ===============================
+router.post(
+    "/checkin/:id",
+    verificarAutenticacao,
+    async (req, res) => {
+        try {
+            await garantirEstruturaCheckinOS();
+
+            const latitude = Number(req.body?.latitude ?? req.body?.lat);
+            const longitude = Number(req.body?.longitude ?? req.body?.lng);
+            const precisao = Number(req.body?.precisao ?? req.body?.accuracy);
+
+            if(!coordenadaValida(latitude, longitude)){
+                return res.status(400).json({ erro: "Localização inválida. Ative o GPS e tente novamente." });
+            }
+
+            const [rows] = await db.query(`
+                SELECT id, nome, status, checkin_inicio_em
+                FROM ordens_servico
+                WHERE id = ? AND empresa_id = ?
+                LIMIT 1
+            `, [req.params.id, req.usuario.empresa_id]);
+
+            if(!rows.length){
+                return res.status(404).json({ erro: "OS não encontrada." });
+            }
+
+            const os = rows[0];
+            if(os.checkin_inicio_em){
+                return res.status(409).json({
+                    erro: "O check-in desta OS já foi registrado.",
+                    checkin_inicio_em: os.checkin_inicio_em
+                });
+            }
+
+            if(!['em_andamento','aberto','agendado'].includes(String(os.status || '').toLowerCase())){
+                return res.status(400).json({ erro: "O check-in não pode ser registrado no status atual da OS." });
+            }
+
+            await db.query(`
+                UPDATE ordens_servico
+                SET checkin_inicio_em = NOW(),
+                    checkin_inicio_latitude = ?,
+                    checkin_inicio_longitude = ?,
+                    checkin_inicio_precisao = ?,
+                    checkin_inicio_por = ?
+                WHERE id = ? AND empresa_id = ? AND checkin_inicio_em IS NULL
+            `, [
+                latitude,
+                longitude,
+                Number.isFinite(precisao) && precisao >= 0 ? precisao : null,
+                req.usuario.id,
+                req.params.id,
+                req.usuario.empresa_id
+            ]);
+
+            const [[registro]] = await db.query(`
+                SELECT checkin_inicio_em, checkin_inicio_latitude, checkin_inicio_longitude,
+                       checkin_inicio_precisao, checkin_inicio_por
+                FROM ordens_servico
+                WHERE id = ? AND empresa_id = ?
+                LIMIT 1
+            `, [req.params.id, req.usuario.empresa_id]);
+
+            await registrarLog(req, "CHECK-IN DE CHEGADA", "OS", req.params.id, {
+                Cliente: os.nome,
+                Horário: registro?.checkin_inicio_em,
+                Latitude: latitude,
+                Longitude: longitude,
+                "Precisão GPS (m)": Number.isFinite(precisao) ? precisao : null
+            });
+
+            io.emit("os_update");
+            return res.json({ ok: true, checkin: registro });
+        } catch (err) {
+            console.error("ERRO CHECK-IN:", err);
+            return res.status(500).json({ erro: err.message });
+        }
+    }
+);
+
+// ===============================
 // 🚫 CLIENTE AUSENTE
 // ===============================
 router.post(
@@ -1679,11 +1810,17 @@ router.post(
         try {
             // DDL e verificação estrutural nunca devem ocorrer dentro da transação da conclusão.
             await garantirEstruturaMateriaisOS();
+            await garantirEstruturaCheckinOS();
             conn = await db.getConnection();
             await conn.beginTransaction();
-            const [rows] = await conn.query(`SELECT nome,telefone,login,origem_equipamento FROM ordens_servico WHERE id=? AND empresa_id=? FOR UPDATE`,[req.params.id,req.usuario.empresa_id]);
+            const [rows] = await conn.query(`SELECT nome,telefone,login,origem_equipamento,checkin_inicio_em FROM ordens_servico WHERE id=? AND empresa_id=? FOR UPDATE`,[req.params.id,req.usuario.empresa_id]);
             if(!rows.length){ const erro=new Error('OS não encontrada.');erro.statusCode=404;throw erro; }
             const os=rows[0];
+            if(!os.checkin_inicio_em){ const erro=new Error('Registre o check-in de chegada antes de concluir a OS.');erro.statusCode=400;throw erro; }
+            const latitudeFim=Number(req.body.checkin_fim_latitude ?? req.body.latitude_final);
+            const longitudeFim=Number(req.body.checkin_fim_longitude ?? req.body.longitude_final);
+            const precisaoFim=Number(req.body.checkin_fim_precisao ?? req.body.precisao_final);
+            if(!coordenadaValida(latitudeFim,longitudeFim)){ const erro=new Error('Não foi possível registrar a localização final. Ative o GPS e tente novamente.');erro.statusCode=400;throw erro; }
             const observacaoFinalizado=req.body.observacao_finalizado ?? req.body.observacao ?? null;
             const anexoFinalizado=req.file ? "/uploads/ordens_servico/"+req.file.filename : null;
             const resultadoEquipamentos=await processarConfirmacaoEquipamentosConclusao(
@@ -1695,11 +1832,12 @@ router.post(
                 req.body.status_pagamento_confirmado,
                 req.usuario
             );
-            await conn.query(`UPDATE ordens_servico SET status='concluido',finalizado_em=NOW(),finalizado_por=?,observacao_finalizado=?,anexo_finalizado=? WHERE id=? AND empresa_id=?`,[req.usuario.id,observacaoFinalizado||null,anexoFinalizado,req.params.id,req.usuario.empresa_id]);
+            await conn.query(`UPDATE ordens_servico SET status='concluido',finalizado_em=NOW(),finalizado_por=?,observacao_finalizado=?,anexo_finalizado=?,checkin_fim_em=NOW(),checkin_fim_latitude=?,checkin_fim_longitude=?,checkin_fim_precisao=?,checkin_fim_por=?,tempo_atendimento_segundos=GREATEST(0,TIMESTAMPDIFF(SECOND,checkin_inicio_em,NOW())) WHERE id=? AND empresa_id=?`,[req.usuario.id,observacaoFinalizado||null,anexoFinalizado,latitudeFim,longitudeFim,Number.isFinite(precisaoFim)&&precisaoFim>=0?precisaoFim:null,req.usuario.id,req.params.id,req.usuario.empresa_id]);
+            const [[checkinFinal]]=await conn.query(`SELECT checkin_inicio_em,checkin_fim_em,tempo_atendimento_segundos FROM ordens_servico WHERE id=? AND empresa_id=? LIMIT 1`,[req.params.id,req.usuario.empresa_id]);
             await conn.commit();
-            await registrarLog(req,"CONCLUIU OS","OS",req.params.id,{Cliente:os.nome,Telefone:os.telefone,Login:os.login,Status:"CONCLUÍDO","Observação de conclusão":observacaoFinalizado,Anexo:req.file?"SIM":"NÃO","Equipamentos utilizados":resultadoEquipamentos.utilizado==='sim'?"SIM":resultadoEquipamentos.utilizado==='nao'?"NÃO":"SEM EQUIPAMENTO","Itens devolvidos ao estoque":resultadoEquipamentos.estoqueDevolvido,"Lançamentos financeiros estornados":resultadoEquipamentos.financeiroEstornado});
+            await registrarLog(req,"CONCLUIU OS","OS",req.params.id,{Cliente:os.nome,Telefone:os.telefone,Login:os.login,Status:"CONCLUÍDO","Observação de conclusão":observacaoFinalizado,Anexo:req.file?"SIM":"NÃO","Check-in inicial":checkinFinal?.checkin_inicio_em,"Check-in final":checkinFinal?.checkin_fim_em,"Tempo de atendimento (segundos)":checkinFinal?.tempo_atendimento_segundos,"Latitude final":latitudeFim,"Longitude final":longitudeFim,"Equipamentos utilizados":resultadoEquipamentos.utilizado==='sim'?"SIM":resultadoEquipamentos.utilizado==='nao'?"NÃO":"SEM EQUIPAMENTO","Itens devolvidos ao estoque":resultadoEquipamentos.estoqueDevolvido,"Lançamentos financeiros estornados":resultadoEquipamentos.financeiroEstornado});
             io.emit("os_update");
-            res.json({ok:true,equipamentos:resultadoEquipamentos});
+            res.json({ok:true,equipamentos:resultadoEquipamentos,checkin:checkinFinal});
         } catch (err) {
             if(conn){ try{ await conn.rollback(); }catch(_){ } }
             console.error("ERRO CONCLUIR:",err);
