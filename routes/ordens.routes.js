@@ -1816,11 +1816,20 @@ router.post(
             const [rows] = await conn.query(`SELECT nome,telefone,login,origem_equipamento,checkin_inicio_em FROM ordens_servico WHERE id=? AND empresa_id=? FOR UPDATE`,[req.params.id,req.usuario.empresa_id]);
             if(!rows.length){ const erro=new Error('OS não encontrada.');erro.statusCode=404;throw erro; }
             const os=rows[0];
-            if(!os.checkin_inicio_em){ const erro=new Error('Registre o check-in de chegada antes de concluir a OS.');erro.statusCode=400;throw erro; }
-            const latitudeFim=Number(req.body.checkin_fim_latitude ?? req.body.latitude_final);
-            const longitudeFim=Number(req.body.checkin_fim_longitude ?? req.body.longitude_final);
-            const precisaoFim=Number(req.body.checkin_fim_precisao ?? req.body.precisao_final);
-            if(!coordenadaValida(latitudeFim,longitudeFim)){ const erro=new Error('Não foi possível registrar a localização final. Ative o GPS e tente novamente.');erro.statusCode=400;throw erro; }
+            const possuiCheckin=!!os.checkin_inicio_em;
+            let latitudeFim=null;
+            let longitudeFim=null;
+            let precisaoFim=null;
+            if(possuiCheckin){
+                latitudeFim=Number(req.body.checkin_fim_latitude ?? req.body.latitude_final);
+                longitudeFim=Number(req.body.checkin_fim_longitude ?? req.body.longitude_final);
+                precisaoFim=Number(req.body.checkin_fim_precisao ?? req.body.precisao_final);
+                if(!coordenadaValida(latitudeFim,longitudeFim)){
+                    const erro=new Error('Não foi possível registrar a localização final. Ative o GPS e tente novamente.');
+                    erro.statusCode=400;
+                    throw erro;
+                }
+            }
             const observacaoFinalizado=req.body.observacao_finalizado ?? req.body.observacao ?? null;
             const anexoFinalizado=req.file ? "/uploads/ordens_servico/"+req.file.filename : null;
             const resultadoEquipamentos=await processarConfirmacaoEquipamentosConclusao(
@@ -1832,7 +1841,33 @@ router.post(
                 req.body.status_pagamento_confirmado,
                 req.usuario
             );
-            await conn.query(`UPDATE ordens_servico SET status='concluido',finalizado_em=NOW(),finalizado_por=?,observacao_finalizado=?,anexo_finalizado=?,checkin_fim_em=NOW(),checkin_fim_latitude=?,checkin_fim_longitude=?,checkin_fim_precisao=?,checkin_fim_por=?,tempo_atendimento_segundos=GREATEST(0,TIMESTAMPDIFF(SECOND,checkin_inicio_em,NOW())) WHERE id=? AND empresa_id=?`,[req.usuario.id,observacaoFinalizado||null,anexoFinalizado,latitudeFim,longitudeFim,Number.isFinite(precisaoFim)&&precisaoFim>=0?precisaoFim:null,req.usuario.id,req.params.id,req.usuario.empresa_id]);
+            await conn.query(`UPDATE ordens_servico SET
+                status='concluido',
+                finalizado_em=NOW(),
+                finalizado_por=?,
+                observacao_finalizado=?,
+                anexo_finalizado=?,
+                checkin_fim_em=CASE WHEN checkin_inicio_em IS NOT NULL THEN NOW() ELSE NULL END,
+                checkin_fim_latitude=?,
+                checkin_fim_longitude=?,
+                checkin_fim_precisao=?,
+                checkin_fim_por=CASE WHEN checkin_inicio_em IS NOT NULL THEN ? ELSE NULL END,
+                tempo_atendimento_segundos=CASE
+                    WHEN checkin_inicio_em IS NOT NULL
+                    THEN GREATEST(0,TIMESTAMPDIFF(SECOND,checkin_inicio_em,NOW()))
+                    ELSE NULL
+                END
+                WHERE id=? AND empresa_id=?`,[
+                    req.usuario.id,
+                    observacaoFinalizado||null,
+                    anexoFinalizado,
+                    latitudeFim,
+                    longitudeFim,
+                    Number.isFinite(precisaoFim)&&precisaoFim>=0?precisaoFim:null,
+                    req.usuario.id,
+                    req.params.id,
+                    req.usuario.empresa_id
+                ]);
             const [[checkinFinal]]=await conn.query(`SELECT checkin_inicio_em,checkin_fim_em,tempo_atendimento_segundos FROM ordens_servico WHERE id=? AND empresa_id=? LIMIT 1`,[req.params.id,req.usuario.empresa_id]);
             await conn.commit();
             await registrarLog(req,"CONCLUIU OS","OS",req.params.id,{Cliente:os.nome,Telefone:os.telefone,Login:os.login,Status:"CONCLUÍDO","Observação de conclusão":observacaoFinalizado,Anexo:req.file?"SIM":"NÃO","Check-in inicial":checkinFinal?.checkin_inicio_em,"Check-in final":checkinFinal?.checkin_fim_em,"Tempo de atendimento (segundos)":checkinFinal?.tempo_atendimento_segundos,"Latitude final":latitudeFim,"Longitude final":longitudeFim,"Equipamentos utilizados":resultadoEquipamentos.utilizado==='sim'?"SIM":resultadoEquipamentos.utilizado==='nao'?"NÃO":"SEM EQUIPAMENTO","Itens devolvidos ao estoque":resultadoEquipamentos.estoqueDevolvido,"Lançamentos financeiros estornados":resultadoEquipamentos.financeiroEstornado});
