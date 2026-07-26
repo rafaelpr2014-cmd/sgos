@@ -597,248 +597,553 @@ async function listarModulo(tabela, colunas, empresaId, opcoes = {}) {
 router.get("/central", async (req, res) => {
     try {
         const usuario = await contextoUsuario(req);
+        const empresaId = Number(usuario.empresa_id);
         const mapa = await obterMapaBanco();
-        const { cols, tabelaExata, tabelaPorPalavras } = mapa;
-        const empresaId = usuario.empresa_id;
+        const { tabelas, cols, tabelaExata, tabelaPorPalavras } = mapa;
 
-        const tabelas = {
-            solicitacoes: tabelaExata("crm_leads", "solicitacoes_clientes", "solicitacoes"),
-            viabilidades: tabelaExata("viabilidades", "viabilidade") || tabelaPorPalavras("viabil"),
-            agendamentos: tabelaExata("agendamentos", "ordens_agendadas") || tabelaPorPalavras("agend"),
-            ordens: tabelaExata("ordens_servico", "ordens_de_servico", "os") || tabelaPorPalavras("ordens", "servico"),
-            tecnicos: tabelaExata("tecnicos", "usuarios") || tabelaPorPalavras("tecnic"),
-            estoqueProdutos: tabelaExata("estoque_produtos", "produtos_estoque") || tabelaPorPalavras("estoque", "produto"),
-            estoqueMov: tabelaExata("estoque_movimentacoes", "movimentacoes_estoque") || tabelaPorPalavras("estoque", "mov"),
-            financeiro: tabelaExata("financeiro_lancamentos", "financeiro", "lancamentos_financeiros") || tabelaPorPalavras("financeir"),
-            relatorios: tabelaExata("relatorios_envios", "relatorios_automaticos_logs", "logs_relatorios", "relatorios_automaticos") || tabelaPorPalavras("relatorio"),
-            whatsapp: tabelaExata("whatsapp_fila", "whatsapp_mensagens", "mensagens_whatsapp", "whatsapp_envios") || tabelaPorPalavras("whatsapp")
-        };
+        const existe = nome => tabelas.includes(nome);
+        const tabelaViabilidade =
+            tabelaExata("viabilidade", "viabilidades") ||
+            tabelaPorPalavras("viabil");
 
-        const c = {};
-        for (const [k, tabela] of Object.entries(tabelas)) {
-            c[k] = tabela ? await cols(tabela) : new Set();
-        }
+        const tabelaAgendamentos =
+            tabelaExata("agendamentos", "ordens_agendadas") ||
+            tabelaPorPalavras("agend");
 
-        const statusSolic = primeiraColuna(c.solicitacoes, ["etapa", "status", "situacao"]);
-        const statusVia = primeiraColuna(c.viabilidades, ["status", "situacao"]);
-        const statusAgenda = primeiraColuna(c.agendamentos, ["status", "situacao"]);
-        const statusOS = primeiraColuna(c.ordens, ["status", "situacao"]);
-        const dataOS = primeiraColuna(c.ordens, ["finalizado_em", "atualizado_em", "updated_at", "criado_em"]);
-        const dataAgenda = primeiraColuna(c.agendamentos, ["data_agendamento", "agendado_para", "data", "inicio", "criado_em"]);
-        const retornoSolic = primeiraColuna(c.solicitacoes, ["proximo_retorno", "retorno_em", "lembrete_em"]);
-        const statusFinanceiro = primeiraColuna(c.financeiro, ["status_pagamento", "status", "situacao"]);
-        const valorFinanceiro = primeiraColuna(c.financeiro, ["valor", "valor_total", "total"]);
-        const osFinanceiro = primeiraColuna(c.financeiro, ["ordem_servico_id", "os_id", "id_os"]);
-        const statusWhatsapp = primeiraColuna(c.whatsapp, ["status", "situacao", "estado"]);
-        const dataRelatorio = primeiraColuna(c.relatorios, ["enviado_em", "criado_em", "created_at", "data_envio", "data"]);
-        const statusRelatorio = primeiraColuna(c.relatorios, ["status", "situacao", "resultado"]);
-        const qtdEstoque = primeiraColuna(c.estoqueProdutos, ["quantidade", "estoque_atual", "saldo", "qtd"]);
-        const minimoEstoque = primeiraColuna(c.estoqueProdutos, ["estoque_minimo", "quantidade_minima", "minimo"]);
-        const reservadoEstoque = primeiraColuna(c.estoqueProdutos, ["reservado", "quantidade_reservada", "qtd_reservada"]);
-        const statusMov = primeiraColuna(c.estoqueMov, ["status", "tipo", "movimento", "situacao"]);
+        const tabelaRelatorios =
+            tabelaExata(
+                "relatorios_automaticos_logs",
+                "relatorios_envios",
+                "logs_relatorios",
+                "relatorios_automaticos"
+            ) || tabelaPorPalavras("relatorio");
 
-        const condSolicAberta = statusSolic
-            ? `LOWER(${idSeguro(statusSolic)}) NOT IN ('concluido','convertido','cancelado','perdido','finalizado')`
-            : "1=1";
+        const tabelaWhatsapp =
+            tabelaExata(
+                "whatsapp_fila",
+                "whatsapp_mensagens",
+                "mensagens_whatsapp",
+                "whatsapp_envios"
+            ) || tabelaPorPalavras("whatsapp");
 
-        const condViabilidade = statusVia
-            ? `LOWER(${idSeguro(statusVia)}) NOT IN ('aprovada','reprovada','finalizada','concluida','instalado')`
-            : "1=1";
+        const cVia = tabelaViabilidade ? await cols(tabelaViabilidade) : new Set();
+        const cAgenda = tabelaAgendamentos ? await cols(tabelaAgendamentos) : new Set();
+        const cRel = tabelaRelatorios ? await cols(tabelaRelatorios) : new Set();
+        const cWhats = tabelaWhatsapp ? await cols(tabelaWhatsapp) : new Set();
 
-        const condAgenda = statusAgenda
-            ? `LOWER(${idSeguro(statusAgenda)}) NOT IN ('concluido','finalizado','cancelado','realizado')`
-            : "1=1";
+        /* =========================
+         * SOLICITAÇÕES DO CRM
+         * ========================= */
+        const [[solicitacoesResumo]] = await db.query(`
+            SELECT
+                SUM(etapa NOT IN ('concluido','cancelado')) AS abertas,
+                SUM(
+                    proximo_retorno IS NOT NULL
+                    AND DATE(proximo_retorno)=CURDATE()
+                    AND etapa NOT IN ('concluido','cancelado')
+                ) AS lembretes_hoje,
+                SUM(
+                    proximo_retorno IS NOT NULL
+                    AND proximo_retorno < NOW()
+                    AND etapa NOT IN ('concluido','cancelado')
+                ) AS atrasadas
+            FROM crm_leads
+            WHERE empresa_id=?
+        `, [empresaId]);
 
-        const condOSExecucao = statusOS
-            ? `LOWER(${idSeguro(statusOS)}) IN ('aberto','aberta','agendado','agendada','em andamento','em_andamento','em execução','em_execucao','execucao')`
-            : "1=0";
+        const [listaSolicitacoes] = await db.query(`
+            SELECT id,nome,telefone,etapa AS status,proximo_retorno AS data,
+                   endereco AS detalhe,NULL AS ordem_servico_id
+            FROM crm_leads
+            WHERE empresa_id=?
+              AND etapa NOT IN ('concluido','cancelado')
+            ORDER BY COALESCE(proximo_retorno,'9999-12-31 23:59:59'),criado_em DESC
+            LIMIT 8
+        `, [empresaId]);
 
-        const condOSFinalizadaMes = statusOS
-            ? `LOWER(${idSeguro(statusOS)}) IN ('finalizado','finalizada','concluido','concluida')
-               ${dataOS ? `AND YEAR(${idSeguro(dataOS)})=YEAR(CURDATE()) AND MONTH(${idSeguro(dataOS)})=MONTH(CURDATE())` : ""}`
-            : "1=0";
+        /* =========================
+         * VIABILIDADES REAIS
+         * ========================= */
+        let viabilidades = 0;
+        let listaViabilidades = [];
 
-        const solicitacoesAbertas = await consultaSegura(
-            () => contarTabela(tabelas.solicitacoes, c.solicitacoes, empresaId, condSolicAberta), 0
-        );
-        const viabilidadesPendentes = await consultaSegura(
-            () => contarTabela(tabelas.viabilidades, c.viabilidades, empresaId, condViabilidade), 0
-        );
-        const agendamentosPendentes = await consultaSegura(
-            () => contarTabela(tabelas.agendamentos, c.agendamentos, empresaId, condAgenda), 0
-        );
-        const ordensExecucao = await consultaSegura(
-            () => contarTabela(tabelas.ordens, c.ordens, empresaId, condOSExecucao), 0
-        );
-        const ordensFinalizadasMes = await consultaSegura(
-            () => contarTabela(tabelas.ordens, c.ordens, empresaId, condOSFinalizadaMes), 0
-        );
-
-        const lembretesHoje = retornoSolic ? await consultaSegura(
-            () => contarTabela(
-                tabelas.solicitacoes, c.solicitacoes, empresaId,
-                `DATE(${idSeguro(retornoSolic)})=CURDATE() AND ${condSolicAberta}`
-            ), 0
-        ) : 0;
-
-        let tecnicosCampo = 0;
-        const tecnicoIdOS = primeiraColuna(c.ordens, ["tecnico_id", "tecnico_responsavel_id", "usuario_tecnico_id"]);
-        const tecnicosTextoOS = primeiraColuna(c.ordens, ["tecnicos", "tecnicos_ids", "tecnico_responsavel"]);
-        if (tabelas.ordens && (tecnicoIdOS || tecnicosTextoOS)) {
-            tecnicosCampo = await consultaSegura(async () => {
-                const filtroEmpresa = sqlEmpresa(c.ordens);
-                const campo = tecnicoIdOS || tecnicosTextoOS;
-                const [rows] = await db.query(
-                    `SELECT COUNT(DISTINCT ${idSeguro(campo)}) AS total
-                       FROM ${idSeguro(tabelas.ordens)}
-                      WHERE ${filtroEmpresa}
-                        AND (${condOSExecucao})
-                        AND ${idSeguro(campo)} IS NOT NULL`,
-                    paramsEmpresa(c.ordens, empresaId)
-                );
-                return Number(rows[0]?.total || 0);
-            }, 0);
-        }
-
-        let estoqueReservado = 0;
-        if (tabelas.estoqueProdutos && reservadoEstoque) {
-            estoqueReservado = await consultaSegura(async () => {
-                const [rows] = await db.query(
-                    `SELECT COALESCE(SUM(${idSeguro(reservadoEstoque)}),0) AS total
-                       FROM ${idSeguro(tabelas.estoqueProdutos)}
-                      WHERE ${sqlEmpresa(c.estoqueProdutos)}`,
-                    paramsEmpresa(c.estoqueProdutos, empresaId)
-                );
-                return Number(rows[0]?.total || 0);
-            }, 0);
-        } else if (tabelas.estoqueMov && statusMov) {
-            estoqueReservado = await consultaSegura(
-                () => contarTabela(
-                    tabelas.estoqueMov, c.estoqueMov, empresaId,
-                    `LOWER(${idSeguro(statusMov)}) LIKE '%reserv%'`
-                ), 0
+        if (tabelaViabilidade) {
+            const statusVia = primeiraColuna(cVia, ["status", "situacao"]);
+            const statusInstalacao = primeiraColuna(
+                cVia,
+                ["status_instalacao", "instalacao_status", "instalacao"]
             );
-        }
+            const nomeVia = primeiraColuna(cVia, ["nome", "cliente", "nome_cliente"]);
+            const telefoneVia = primeiraColuna(cVia, ["telefone", "celular"]);
+            const detalheVia = primeiraColuna(cVia, ["endereco", "localidade", "referencia"]);
+            const dataVia = primeiraColuna(
+                cVia,
+                ["atualizado_em", "registrado_em", "criado_em", "created_at"]
+            );
 
-        let financeiroOS = { quantidade: 0, valor: 0, pendentes: 0 };
-        if (tabelas.financeiro && osFinanceiro) {
-            financeiroOS = await consultaSegura(async () => {
-                const [rows] = await db.query(
-                    `SELECT
-                        COUNT(*) AS quantidade,
-                        ${valorFinanceiro ? `COALESCE(SUM(${idSeguro(valorFinanceiro)}),0)` : "0"} AS valor,
-                        ${statusFinanceiro ? `SUM(LOWER(${idSeguro(statusFinanceiro)}) IN ('pendente','aberto','a receber','nao pago','não pago'))` : "0"} AS pendentes
-                     FROM ${idSeguro(tabelas.financeiro)}
-                    WHERE ${sqlEmpresa(c.financeiro)}
-                      AND ${idSeguro(osFinanceiro)} IS NOT NULL`,
-                    paramsEmpresa(c.financeiro, empresaId)
+            const filtrosVia = [];
+            const paramsVia = [];
+
+            if (cVia.has("empresa_id")) {
+                filtrosVia.push("empresa_id=?");
+                paramsVia.push(empresaId);
+            }
+
+            if (statusVia) {
+                filtrosVia.push(
+                    `UPPER(COALESCE(${idSeguro(statusVia)},'PENDENTE')) <> 'REPROVADA'`
                 );
-                return {
-                    quantidade: Number(rows[0]?.quantidade || 0),
-                    valor: Number(rows[0]?.valor || 0),
-                    pendentes: Number(rows[0]?.pendentes || 0)
-                };
-            }, { quantidade: 0, valor: 0, pendentes: 0 });
+            }
+
+            if (statusInstalacao) {
+                filtrosVia.push(
+                    `UPPER(COALESCE(${idSeguro(statusInstalacao)},'PENDENTE')) NOT IN ('INSTALADO','REALIZADA','CONCLUIDA')`
+                );
+            }
+
+            const whereVia = filtrosVia.length ? filtrosVia.join(" AND ") : "1=1";
+
+            const [[rVia]] = await db.query(
+                `SELECT COUNT(*) AS total
+                   FROM ${idSeguro(tabelaViabilidade)}
+                  WHERE ${whereVia}`,
+                paramsVia
+            );
+            viabilidades = Number(rVia?.total || 0);
+
+            [listaViabilidades] = await db.query(`
+                SELECT
+                    ${cVia.has("id") ? "id" : "NULL"} AS id,
+                    ${nomeVia ? idSeguro(nomeVia) : "'Viabilidade'"} AS nome,
+                    ${telefoneVia ? idSeguro(telefoneVia) : "NULL"} AS telefone,
+                    ${statusVia ? idSeguro(statusVia) : "'PENDENTE'"} AS status,
+                    ${dataVia ? idSeguro(dataVia) : "NULL"} AS data,
+                    ${detalheVia ? idSeguro(detalheVia) : "NULL"} AS detalhe,
+                    NULL AS ordem_servico_id
+                FROM ${idSeguro(tabelaViabilidade)}
+                WHERE ${whereVia}
+                ORDER BY ${dataVia ? idSeguro(dataVia) : (cVia.has("id") ? "id" : "1")} DESC
+                LIMIT 8
+            `, paramsVia);
         }
 
-        const relatoriosEnviados = tabelas.relatorios ? await consultaSegura(
-            () => contarTabela(
-                tabelas.relatorios, c.relatorios, empresaId,
-                `${statusRelatorio ? `LOWER(${idSeguro(statusRelatorio)}) NOT IN ('erro','falha','pendente')` : "1=1"}
-                 ${dataRelatorio ? `AND YEAR(${idSeguro(dataRelatorio)})=YEAR(CURDATE()) AND MONTH(${idSeguro(dataRelatorio)})=MONTH(CURDATE())` : ""}`
-            ), 0
-        ) : 0;
+        /* =========================
+         * ORDENS DE SERVIÇO
+         * ========================= */
+        const statusOSAtiva = `
+            LOWER(REPLACE(COALESCE(status,''),'_',' ')) IN
+            ('aberto','aberta','agendado','agendada','em andamento','em execução','execucao','cliente ausente')
+        `;
 
-        const whatsappPendentes = tabelas.whatsapp ? await consultaSegura(
-            () => contarTabela(
-                tabelas.whatsapp, c.whatsapp, empresaId,
-                statusWhatsapp
-                    ? `LOWER(${idSeguro(statusWhatsapp)}) IN ('pendente','fila','aguardando','erro','falha')`
-                    : "1=1"
-            ), 0
-        ) : 0;
+        const statusOSEmCampo = `
+            LOWER(REPLACE(COALESCE(status,''),'_',' ')) IN
+            ('em andamento','em execução','execucao')
+        `;
 
-        const estoqueCritico = tabelas.estoqueProdutos && qtdEstoque && minimoEstoque
-            ? await consultaSegura(
-                () => contarTabela(
-                    tabelas.estoqueProdutos, c.estoqueProdutos, empresaId,
-                    `${idSeguro(qtdEstoque)} <= ${idSeguro(minimoEstoque)}`
-                ), 0
-            ) : 0;
+        const [[resumoOS]] = await db.query(`
+            SELECT
+                SUM(${statusOSAtiva}) AS ativas,
+                SUM(
+                    LOWER(REPLACE(COALESCE(status,''),'_',' ')) IN
+                    ('concluido','concluida','finalizado','finalizada')
+                    AND YEAR(COALESCE(finalizado_em,atualizado_em,criado_em))=YEAR(CURDATE())
+                    AND MONTH(COALESCE(finalizado_em,atualizado_em,criado_em))=MONTH(CURDATE())
+                ) AS finalizadas_mes,
+                SUM(
+                    ${statusOSAtiva}
+                    AND COALESCE(agendamento,data_abertura,criado_em) < DATE_SUB(NOW(),INTERVAL 2 DAY)
+                ) AS atrasadas
+            FROM ordens_servico
+            WHERE empresa_id=?
+        `, [empresaId]);
 
-        const osAtrasadas = tabelas.ordens && dataOS ? await consultaSegura(
-            () => contarTabela(
-                tabelas.ordens, c.ordens, empresaId,
-                `${condOSExecucao} AND ${idSeguro(dataOS)} < DATE_SUB(NOW(), INTERVAL 2 DAY)`
-            ), 0
-        ) : 0;
+        const [listaOrdens] = await db.query(`
+            SELECT
+                id,nome,telefone,status,
+                COALESCE(atualizado_em,iniciado_em,agendamento,data_abertura,criado_em) AS data,
+                CONCAT(
+                    COALESCE(endereco,rua,''),
+                    CASE WHEN numero IS NOT NULL AND numero<>'' THEN CONCAT(', ',numero) ELSE '' END
+                ) AS detalhe,
+                id AS ordem_servico_id
+            FROM ordens_servico
+            WHERE empresa_id=?
+              AND ${statusOSAtiva}
+            ORDER BY COALESCE(atualizado_em,iniciado_em,agendamento,data_abertura,criado_em) DESC
+            LIMIT 8
+        `, [empresaId]).catch(async () => {
+            return db.query(`
+                SELECT
+                    id,nome,telefone,status,
+                    COALESCE(iniciado_em,agendamento,data_abertura,criado_em) AS data,
+                    endereco AS detalhe,
+                    id AS ordem_servico_id
+                FROM ordens_servico
+                WHERE empresa_id=?
+                  AND ${statusOSAtiva}
+                ORDER BY COALESCE(iniciado_em,agendamento,data_abertura,criado_em) DESC
+                LIMIT 8
+            `, [empresaId]);
+        });
 
-        const agendaAtrasada = tabelas.agendamentos && dataAgenda ? await consultaSegura(
-            () => contarTabela(
-                tabelas.agendamentos, c.agendamentos, empresaId,
-                `${condAgenda} AND ${idSeguro(dataAgenda)} < NOW()`
-            ), 0
-        ) : 0;
+        /* Técnicos ficam em ordens_servico.tecnico como JSON ou lista. */
+        const [osEmCampo] = await db.query(`
+            SELECT tecnico
+            FROM ordens_servico
+            WHERE empresa_id=?
+              AND ${statusOSEmCampo}
+              AND tecnico IS NOT NULL
+        `, [empresaId]);
 
-        const lembretesAtrasados = retornoSolic ? await consultaSegura(
-            () => contarTabela(
-                tabelas.solicitacoes, c.solicitacoes, empresaId,
-                `${idSeguro(retornoSolic)} < NOW() AND ${condSolicAberta}`
-            ), 0
-        ) : 0;
+        const tecnicosIds = new Set();
+        for (const item of osEmCampo) {
+            const bruto = item.tecnico;
+            let ids = [];
 
-        const pendenciasCriticas = osAtrasadas + agendaAtrasada + lembretesAtrasados + estoqueCritico + financeiroOS.pendentes + whatsappPendentes;
+            if (Array.isArray(bruto)) {
+                ids = bruto;
+            } else if (typeof bruto === "string") {
+                const texto = bruto.trim();
+                if (texto) {
+                    try {
+                        const convertido = JSON.parse(texto);
+                        ids = Array.isArray(convertido) ? convertido : [convertido];
+                    } catch {
+                        ids = texto.split(",");
+                    }
+                }
+            } else if (bruto !== null && bruto !== undefined) {
+                ids = [bruto];
+            }
 
-        const listas = {
-            solicitacoes: await consultaSegura(
-                () => listarModulo(tabelas.solicitacoes, c.solicitacoes, empresaId, { condicao: condSolicAberta }), []
-            ),
-            viabilidades: await consultaSegura(
-                () => listarModulo(tabelas.viabilidades, c.viabilidades, empresaId, { condicao: condViabilidade }), []
-            ),
-            agendamentos: await consultaSegura(
-                () => listarModulo(tabelas.agendamentos, c.agendamentos, empresaId, { condicao: condAgenda }), []
-            ),
-            ordens_servico: await consultaSegura(
-                () => listarModulo(tabelas.ordens, c.ordens, empresaId, { condicao: condOSExecucao }), []
-            ),
-            relatorios: await consultaSegura(
-                () => listarModulo(tabelas.relatorios, c.relatorios, empresaId, { limite: 6 }), []
-            ),
-            whatsapp: await consultaSegura(
-                () => listarModulo(tabelas.whatsapp, c.whatsapp, empresaId, {
-                    condicao: statusWhatsapp
-                        ? `LOWER(${idSeguro(statusWhatsapp)}) IN ('pendente','fila','aguardando','erro','falha')`
-                        : "1=1",
-                    limite: 6
-                }), []
-            )
-        };
+            for (const id of ids) {
+                const numero = Number(String(id).trim());
+                if (Number.isInteger(numero) && numero > 0) tecnicosIds.add(numero);
+            }
+        }
+        const tecnicosEmCampo = tecnicosIds.size;
+
+        /* =========================
+         * ESTOQUE RESERVADO NAS OS
+         * ========================= */
+        let estoqueReservado = 0;
+        let estoqueCritico = 0;
+
+        if (existe("os_materiais")) {
+            const [[rReservado]] = await db.query(`
+                SELECT COALESCE(SUM(om.quantidade),0) AS total
+                FROM os_materiais om
+                JOIN ordens_servico os
+                  ON os.id=om.os_id
+                 AND os.empresa_id=om.empresa_id
+                WHERE om.empresa_id=?
+                  AND os.origem_equipamento='empresa'
+                  AND ${statusOSAtiva.replaceAll("status", "os.status")}
+            `, [empresaId]);
+            estoqueReservado = Number(rReservado?.total || 0);
+        }
+
+        if (existe("estoque_produtos")) {
+            const [[rCritico]] = await db.query(`
+                SELECT COUNT(*) AS total
+                FROM estoque_produtos
+                WHERE empresa_id=?
+                  AND ativo=1
+                  AND quantidade<=estoque_minimo
+            `, [empresaId]);
+            estoqueCritico = Number(rCritico?.total || 0);
+        }
+
+        /* =========================
+         * FINANCEIRO VINCULADO ÀS OS
+         * Inclui lançamentos ativos e vendas pendentes que,
+         * pela regra do SGOS, ainda não entram no financeiro.
+         * ========================= */
+        let financeiroQuantidade = 0;
+        let financeiroValor = 0;
+        let financeiroPendente = 0;
+
+        if (existe("financeiro_movimentacoes")) {
+            const [[rFinanceiro]] = await db.query(`
+                SELECT
+                    COUNT(DISTINCT os_id) AS quantidade,
+                    COALESCE(SUM(
+                        CASE
+                            WHEN LOWER(tipo)='saida' THEN -ABS(valor)
+                            ELSE ABS(valor)
+                        END
+                    ),0) AS valor
+                FROM financeiro_movimentacoes
+                WHERE empresa_id=?
+                  AND ativo=1
+                  AND os_id IS NOT NULL
+            `, [empresaId]);
+
+            financeiroQuantidade = Number(rFinanceiro?.quantidade || 0);
+            financeiroValor = Number(rFinanceiro?.valor || 0);
+        }
+
+        const [[rPendentesFinanceiro]] = await db.query(`
+            SELECT
+                COUNT(*) AS quantidade,
+                COALESCE(SUM(total_equipamentos),0) AS valor
+            FROM ordens_servico
+            WHERE empresa_id=?
+              AND origem_equipamento='empresa'
+              AND modalidade_equipamento='vendido'
+              AND status_pagamento_equipamento='pendente'
+              AND equipamentos_utilizados=1
+        `, [empresaId]).catch(() => [[{ quantidade: 0, valor: 0 }]]);
+
+        financeiroPendente = Number(rPendentesFinanceiro?.quantidade || 0);
+        financeiroQuantidade += financeiroPendente;
+        financeiroValor += Number(rPendentesFinanceiro?.valor || 0);
+
+        /* =========================
+         * AGENDAMENTOS
+         * ========================= */
+        let agendamentos = 0;
+        let agendamentosAtrasados = 0;
+        let listaAgendamentos = [];
+
+        if (tabelaAgendamentos) {
+            const statusAgenda = primeiraColuna(cAgenda, ["status", "situacao"]);
+            const dataAgenda = primeiraColuna(
+                cAgenda,
+                ["agendamento", "data_agendamento", "agendado_para", "data", "inicio", "criado_em"]
+            );
+            const nomeAgenda = primeiraColuna(
+                cAgenda,
+                ["nome", "cliente", "cliente_nome", "titulo", "descricao"]
+            );
+            const detalheAgenda = primeiraColuna(
+                cAgenda,
+                ["endereco", "localidade", "descricao", "referencia"]
+            );
+
+            const filtrosAgenda = [];
+            const paramsAgenda = [];
+
+            if (cAgenda.has("empresa_id")) {
+                filtrosAgenda.push("empresa_id=?");
+                paramsAgenda.push(empresaId);
+            }
+            if (statusAgenda) {
+                filtrosAgenda.push(
+                    `LOWER(REPLACE(COALESCE(${idSeguro(statusAgenda)},''),'_',' ')) NOT IN ('concluido','finalizado','cancelado','realizado')`
+                );
+            }
+
+            const whereAgenda = filtrosAgenda.length ? filtrosAgenda.join(" AND ") : "1=1";
+            const [[rAgenda]] = await db.query(
+                `SELECT COUNT(*) AS total
+                   FROM ${idSeguro(tabelaAgendamentos)}
+                  WHERE ${whereAgenda}`,
+                paramsAgenda
+            );
+            agendamentos = Number(rAgenda?.total || 0);
+
+            if (dataAgenda) {
+                const [[rAgendaAtrasada]] = await db.query(
+                    `SELECT COUNT(*) AS total
+                       FROM ${idSeguro(tabelaAgendamentos)}
+                      WHERE ${whereAgenda}
+                        AND ${idSeguro(dataAgenda)} < NOW()`,
+                    paramsAgenda
+                );
+                agendamentosAtrasados = Number(rAgendaAtrasada?.total || 0);
+            }
+
+            [listaAgendamentos] = await db.query(`
+                SELECT
+                    ${cAgenda.has("id") ? "id" : "NULL"} AS id,
+                    ${nomeAgenda ? idSeguro(nomeAgenda) : "'Agendamento'"} AS nome,
+                    ${statusAgenda ? idSeguro(statusAgenda) : "'PENDENTE'"} AS status,
+                    ${dataAgenda ? idSeguro(dataAgenda) : "NULL"} AS data,
+                    ${detalheAgenda ? idSeguro(detalheAgenda) : "NULL"} AS detalhe,
+                    NULL AS telefone,
+                    NULL AS ordem_servico_id
+                FROM ${idSeguro(tabelaAgendamentos)}
+                WHERE ${whereAgenda}
+                ORDER BY ${dataAgenda ? idSeguro(dataAgenda) : (cAgenda.has("id") ? "id" : "1")} ASC
+                LIMIT 8
+            `, paramsAgenda);
+        } else {
+            /* No SGOS, muitas OS agendadas ficam na própria ordens_servico. */
+            const [[rAgendaOS]] = await db.query(`
+                SELECT COUNT(*) AS total
+                FROM ordens_servico
+                WHERE empresa_id=?
+                  AND LOWER(REPLACE(COALESCE(status,''),'_',' '))='agendado'
+            `, [empresaId]);
+            agendamentos = Number(rAgendaOS?.total || 0);
+
+            const [[rAgendaOSAtrasada]] = await db.query(`
+                SELECT COUNT(*) AS total
+                FROM ordens_servico
+                WHERE empresa_id=?
+                  AND LOWER(REPLACE(COALESCE(status,''),'_',' '))='agendado'
+                  AND agendamento<NOW()
+            `, [empresaId]);
+            agendamentosAtrasados = Number(rAgendaOSAtrasada?.total || 0);
+
+            [listaAgendamentos] = await db.query(`
+                SELECT id,nome,telefone,status,agendamento AS data,
+                       endereco AS detalhe,id AS ordem_servico_id
+                FROM ordens_servico
+                WHERE empresa_id=?
+                  AND LOWER(REPLACE(COALESCE(status,''),'_',' '))='agendado'
+                ORDER BY agendamento ASC
+                LIMIT 8
+            `, [empresaId]);
+        }
+
+        /* =========================
+         * RELATÓRIOS E WHATSAPP
+         * ========================= */
+        let relatoriosEnviados = 0;
+        let listaRelatorios = [];
+        if (tabelaRelatorios) {
+            const dataRel = primeiraColuna(
+                cRel,
+                ["enviado_em", "criado_em", "created_at", "data_envio", "data"]
+            );
+            const statusRel = primeiraColuna(cRel, ["status", "situacao", "resultado"]);
+            const nomeRel = primeiraColuna(cRel, ["nome", "titulo", "tipo", "descricao"]);
+            const filtrosRel = [];
+            const paramsRel = [];
+
+            if (cRel.has("empresa_id")) {
+                filtrosRel.push("empresa_id=?");
+                paramsRel.push(empresaId);
+            }
+            if (statusRel) {
+                filtrosRel.push(
+                    `LOWER(COALESCE(${idSeguro(statusRel)},'')) NOT IN ('erro','falha','pendente')`
+                );
+            }
+            if (dataRel) {
+                filtrosRel.push(
+                    `YEAR(${idSeguro(dataRel)})=YEAR(CURDATE()) AND MONTH(${idSeguro(dataRel)})=MONTH(CURDATE())`
+                );
+            }
+
+            const whereRel = filtrosRel.length ? filtrosRel.join(" AND ") : "1=1";
+            const [[rRel]] = await db.query(
+                `SELECT COUNT(*) AS total FROM ${idSeguro(tabelaRelatorios)} WHERE ${whereRel}`,
+                paramsRel
+            );
+            relatoriosEnviados = Number(rRel?.total || 0);
+
+            [listaRelatorios] = await db.query(`
+                SELECT
+                    ${cRel.has("id") ? "id" : "NULL"} AS id,
+                    ${nomeRel ? idSeguro(nomeRel) : "'Relatório automático'"} AS nome,
+                    ${statusRel ? idSeguro(statusRel) : "'ENVIADO'"} AS status,
+                    ${dataRel ? idSeguro(dataRel) : "NULL"} AS data,
+                    NULL AS detalhe,NULL AS telefone,NULL AS ordem_servico_id
+                FROM ${idSeguro(tabelaRelatorios)}
+                WHERE ${whereRel}
+                ORDER BY ${dataRel ? idSeguro(dataRel) : (cRel.has("id") ? "id" : "1")} DESC
+                LIMIT 6
+            `, paramsRel);
+        }
+
+        let whatsappPendentes = 0;
+        let listaWhatsapp = [];
+        if (tabelaWhatsapp) {
+            const statusWhats = primeiraColuna(cWhats, ["status", "situacao", "estado"]);
+            const dataWhats = primeiraColuna(
+                cWhats,
+                ["criado_em", "created_at", "enviado_em", "data", "atualizado_em"]
+            );
+            const nomeWhats = primeiraColuna(
+                cWhats,
+                ["nome", "destinatario", "telefone", "numero", "descricao"]
+            );
+            const filtrosWhats = [];
+            const paramsWhats = [];
+
+            if (cWhats.has("empresa_id")) {
+                filtrosWhats.push("empresa_id=?");
+                paramsWhats.push(empresaId);
+            }
+            if (statusWhats) {
+                filtrosWhats.push(
+                    `LOWER(COALESCE(${idSeguro(statusWhats)},'')) IN ('pendente','fila','aguardando','erro','falha')`
+                );
+            }
+
+            const whereWhats = filtrosWhats.length ? filtrosWhats.join(" AND ") : "1=1";
+            const [[rWhats]] = await db.query(
+                `SELECT COUNT(*) AS total FROM ${idSeguro(tabelaWhatsapp)} WHERE ${whereWhats}`,
+                paramsWhats
+            );
+            whatsappPendentes = Number(rWhats?.total || 0);
+
+            [listaWhatsapp] = await db.query(`
+                SELECT
+                    ${cWhats.has("id") ? "id" : "NULL"} AS id,
+                    ${nomeWhats ? idSeguro(nomeWhats) : "'Mensagem WhatsApp'"} AS nome,
+                    ${statusWhats ? idSeguro(statusWhats) : "'PENDENTE'"} AS status,
+                    ${dataWhats ? idSeguro(dataWhats) : "NULL"} AS data,
+                    NULL AS detalhe,NULL AS telefone,NULL AS ordem_servico_id
+                FROM ${idSeguro(tabelaWhatsapp)}
+                WHERE ${whereWhats}
+                ORDER BY ${dataWhats ? idSeguro(dataWhats) : (cWhats.has("id") ? "id" : "1")} DESC
+                LIMIT 6
+            `, paramsWhats);
+        }
+
+        const pendenciasCriticas =
+            Number(resumoOS?.atrasadas || 0) +
+            agendamentosAtrasados +
+            Number(solicitacoesResumo?.atrasadas || 0) +
+            estoqueCritico +
+            financeiroPendente +
+            whatsappPendentes;
 
         res.json({
             cards: {
-                solicitacoes_clientes: solicitacoesAbertas,
-                viabilidades: viabilidadesPendentes,
-                agendamentos: agendamentosPendentes,
-                ordens_servico: ordensExecucao,
-                tecnicos_em_campo: tecnicosCampo,
+                solicitacoes_clientes: Number(solicitacoesResumo?.abertas || 0),
+                viabilidades,
+                agendamentos,
+                ordens_servico: Number(resumoOS?.ativas || 0),
+                tecnicos_em_campo: tecnicosEmCampo,
                 estoque_reservado: estoqueReservado,
-                financeiro_os_quantidade: financeiroOS.quantidade,
-                financeiro_os_valor: financeiroOS.valor,
+                financeiro_os_quantidade: financeiroQuantidade,
+                financeiro_os_valor: financeiroValor,
                 relatorios_enviados: relatoriosEnviados,
                 whatsapp_pendentes: whatsappPendentes,
                 pendencias_criticas: pendenciasCriticas
             },
             indicadores: {
-                os_finalizadas_mes: ordensFinalizadasMes,
-                lembretes_hoje: lembretesHoje,
-                os_atrasadas: osAtrasadas,
-                agendamentos_atrasados: agendaAtrasada,
+                os_finalizadas_mes: Number(resumoOS?.finalizadas_mes || 0),
+                lembretes_hoje: Number(solicitacoesResumo?.lembretes_hoje || 0),
+                os_atrasadas: Number(resumoOS?.atrasadas || 0),
+                agendamentos_atrasados: agendamentosAtrasados,
                 estoque_critico: estoqueCritico,
-                financeiro_pendente: financeiroOS.pendentes
+                financeiro_pendente: financeiroPendente
             },
-            listas,
-            modulos_detectados: tabelas
+            listas: {
+                solicitacoes: listaSolicitacoes,
+                viabilidades: listaViabilidades,
+                agendamentos: listaAgendamentos,
+                ordens_servico: listaOrdens,
+                relatorios: listaRelatorios,
+                whatsapp: listaWhatsapp
+            },
+            modulos_detectados: {
+                solicitacoes: "crm_leads",
+                viabilidades: tabelaViabilidade,
+                agendamentos: tabelaAgendamentos || "ordens_servico",
+                ordens: "ordens_servico",
+                tecnicos: "ordens_servico.tecnico",
+                estoque_reservado: existe("os_materiais") ? "os_materiais" : null,
+                financeiro: existe("financeiro_movimentacoes") ? "financeiro_movimentacoes" : null,
+                relatorios: tabelaRelatorios,
+                whatsapp: tabelaWhatsapp
+            }
         });
     } catch (erro) {
         tratarErro(res, erro);
