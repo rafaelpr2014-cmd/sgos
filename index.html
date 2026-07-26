@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="SGOS — Sistema de Gestão Operacional e Serviços para provedores de internet." />
+  <meta name="theme-color" content="#075ff7" />
+  <title>SGOS — Gestão Operacional para Provedores</title>
+
+  <style>
+    :root {
+      --azul: #075ff7;
+      --azul-escuro: #071a38;
+      --azul-claro: #eaf2ff;
+      --texto: #07152d;
+      --cinza: #60708a;
+      --borda: #dfe8f5;
+      --fundo: #f6f9fe;
+      --verde: #16a34a;
+      --sombra: 0 18px 45px rgba(7, 26, 56, .12);
+      --raio: 24px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Inter, Arial, Helvetica, sans-serif;
+      color: var(--texto);
+      background: #fff;
+      line-height: 1.5;
+    }
+
+    img { max-width: 100%; display: block; }
+    a { color: inherit; text-decoration: none; }
+    button, input { font: inherit; }
+
+    .container {
+      width: min(1180px, calc(100% - 36px));
+      margin: 0 auto;
+    }
+
+    .topo {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255,255,255,.93);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(223,232,245,.85);
+    }
+
+    .topo-inner {
+      height: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .marca img {
+      width: 205px;
+      max-height: 62px;
+      object-fit: contain;
+      object-position: left center;
+    }
+
+    .menu {
+      display: flex;
+      align-items: center;
+      gap: 26px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .menu a:hover { color: var(--azul); }
+
+    .btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 20px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      transition: .2s ease;
+    }
+
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background: var(--azul); color: #fff; box-shadow: 0 10px 26px rgba(7,95,247,.25); }
+    .btn-outline { color: var(--azul); background: #fff; border: 1px solid #bcd0f6; }
+    .btn-whatsapp { background: #19b45b; color: #fff; }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 76px 0 58px;
+      background:
+        radial-gradient(circle at 86% 10%, rgba(7,95,247,.14), transparent 28%),
+        radial-gradient(circle at 10% 84%, rgba(0,178,255,.10), transparent 27%),
+        linear-gradient(180deg, #fff 0%, #f6f9ff 100%);
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      width: 520px;
+      height: 520px;
+      border-radius: 50%;
+      right: -280px;
+      top: -210px;
+      background: linear-gradient(145deg, rgba(7,95,247,.22), rgba(0,195,255,.04));
+      filter: blur(4px);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.08fr .92fr;
+      gap: 56px;
+      align-items: center;
+      position: relative;
+    }
+
+    .selo {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 13px;
+      border-radius: 999px;
+      background: var(--azul-claro);
+      color: var(--azul);
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: clamp(42px, 5.3vw, 70px);
+      line-height: .98;
+      margin: 0 0 24px;
+      letter-spacing: -2.7px;
+    }
+
+    h1 span { color: var(--azul); }
+
+    .hero-texto {
+      font-size: 18px;
+      color: var(--cinza);
+      max-width: 650px;
+      margin-bottom: 30px;
+    }
+
+    .hero-botoes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .hero-beneficios {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #34445f;
+    }
+
+    .hero-beneficios span::before {
+      content: "✓";
+      color: var(--verde);
+      font-weight: 900;
+      margin-right: 7px;
+    }
+
+    .form-card {
+      background: rgba(255,255,255,.98);
+      border: 1px solid var(--borda);
+      border-top: 5px solid var(--azul);
+      border-radius: 22px;
+      padding: 29px;
+      box-shadow: var(--sombra);
+    }
+
+    .form-card h2 { margin: 0 0 8px; font-size: 28px; }
+    .form-card > p { color: var(--cinza); margin: 0 0 23px; }
+
+    .campo { margin-bottom: 14px; }
+    .campo label { display: block; font-size: 13px; font-weight: 800; margin-bottom: 7px; }
+
+    .campo input {
+      width: 100%;
+      border: 1px solid #d5e0ef;
+      background: #fbfdff;
+      border-radius: 12px;
+      padding: 14px 15px;
+      outline: none;
+      transition: .2s ease;
+    }
+
+    .campo input:focus {
+      border-color: var(--azul);
+      box-shadow: 0 0 0 4px rgba(7,95,247,.10);
+      background: #fff;
+    }
+
+    .check {
+      display: flex;
+      gap: 9px;
+      align-items: flex-start;
+      color: #66758c;
+      font-size: 12px;
+      margin: 10px 0 18px;
+    }
+
+    .check input { margin-top: 3px; }
+    .form-card .btn { width: 100%; }
+
+    .mensagem-form {
+      display: none;
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .mensagem-form.sucesso { display:block; background:#eaf9ef; color:#137a38; }
+    .mensagem-form.erro { display:block; background:#fff0f0; color:#a91c1c; }
+
+    .mockup {
+      padding: 66px 0;
+      background: #fff;
+    }
+
+    .mockup-grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 34px;
+      align-items: end;
+    }
+
+    .desktop-wrap, .mobile-wrap {
+      background: #fff;
+      border-radius: 24px;
+      padding: 12px;
+      box-shadow: var(--sombra);
+      border: 1px solid var(--borda);
+    }
+
+    .desktop-wrap img, .mobile-wrap img {
+      border-radius: 15px;
+      width: 100%;
+    }
+
+    .secao { padding: 78px 0; }
+    .secao-cinza { background: var(--fundo); }
+
+    .secao-topo {
+      text-align: center;
+      max-width: 760px;
+      margin: 0 auto 40px;
+    }
+
+    .secao-topo h2 {
+      margin: 0 0 12px;
+      font-size: clamp(30px, 4vw, 46px);
+      letter-spacing: -1.3px;
+    }
+
+    .secao-topo p { margin: 0; color: var(--cinza); font-size: 17px; }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--borda);
+      border-radius: 18px;
+      padding: 24px;
+      min-height: 205px;
+      box-shadow: 0 8px 24px rgba(7,26,56,.055);
+    }
+
+    .icone {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: var(--azul-claro);
+      color: var(--azul);
+      display: grid;
+      place-items: center;
+      font-size: 23px;
+      margin-bottom: 18px;
+    }
+
+    .card h3 { margin: 0 0 10px; font-size: 18px; }
+    .card p { margin: 0; color: var(--cinza); font-size: 14px; }
+
+    .integracoes {
+      background: linear-gradient(135deg, #061a3a, #075ff7);
+      color: #fff;
+    }
+
+    .integracoes .secao-topo p { color: rgba(255,255,255,.75); }
+
+    .logos {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+
+    .logo-erp {
+      min-height: 130px;
+      background: #fff;
+      border-radius: 18px;
+      padding: 24px;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 14px 30px rgba(0,0,0,.14);
+    }
+
+    .logo-erp img {
+      max-height: 70px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .cta {
+      padding: 72px 0;
+      background: #fff;
+    }
+
+    .cta-box {
+      border-radius: 28px;
+      background: linear-gradient(135deg, #075ff7, #0643b9);
+      color: #fff;
+      padding: 46px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 30px;
+      align-items: center;
+      box-shadow: 0 22px 60px rgba(7,95,247,.24);
+    }
+
+    .cta-box h2 { margin: 0 0 8px; font-size: 34px; }
+    .cta-box p { margin: 0; color: rgba(255,255,255,.82); }
+
+    footer {
+      background: #061326;
+      color: #fff;
+      padding: 38px 0;
+    }
+
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      gap: 22px;
+      align-items: center;
+      font-size: 13px;
+      color: rgba(255,255,255,.72);
+    }
+
+    .footer-logo {
+      width: 160px;
+      filter: brightness(0) invert(1);
+      opacity: .95;
+    }
+
+    .whatsapp-float {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #1fc461;
+      color: #fff;
+      font-size: 29px;
+      box-shadow: 0 14px 35px rgba(0,0,0,.25);
+      z-index: 60;
+      transition: .2s ease;
+    }
+
+    .whatsapp-float:hover { transform: scale(1.07); }
+
+    @media (max-width: 980px) {
+      .menu a:not(.btn) { display:none; }
+      .hero-grid { grid-template-columns: 1fr; }
+      .mockup-grid { grid-template-columns: 1fr 240px; }
+      .cards { grid-template-columns: repeat(2, 1fr); }
+      .logos { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 650px) {
+      .container { width: min(100% - 24px, 1180px); }
+      .topo-inner { height: 66px; }
+      .marca img { width: 150px; }
+      .menu .btn { padding: 11px 13px; font-size: 12px; }
+      .hero { padding: 50px 0 44px; }
+      h1 { letter-spacing: -1.5px; }
+      .form-card { padding: 21px; }
+      .mockup-grid { grid-template-columns: 1fr; }
+      .mobile-wrap { width: 68%; margin: -25px auto 0; }
+      .cards, .logos { grid-template-columns: 1fr; }
+      .cta-box { grid-template-columns: 1fr; padding: 30px 22px; }
+      .footer-inner { flex-direction: column; text-align:center; }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topo">
+    <div class="container topo-inner">
+      <a class="marca" href="#inicio" aria-label="SGOS">
+        <img src="assets/logo-sgos.png" alt="SGOS — Sistema de Gestão Operacional e Serviços" />
+      </a>
+
+      <nav class="menu">
+        <a href="#recursos">Recursos</a>
+        <a href="#integracoes">Integrações</a>
+        <a href="#contato">Contato</a>
+        <a class="btn btn-whatsapp"
+           href="https://wa.me/5573999476812?text=Olá%21%20Conheci%20o%20SGOS%20pelo%20site%20e%20gostaria%20de%20saber%20mais%20sobre%20o%20sistema."
+           target="_blank" rel="noopener">
+          WhatsApp
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="inicio">
+      <div class="container hero-grid">
+        <div>
+          <div class="selo">Tecnologia para provedores de internet</div>
+          <h1>Gestão completa para provedores que <span>não podem parar.</span></h1>
+          <p class="hero-texto">
+            Controle ordens de serviço, técnicos, escalas, estoque, relatórios,
+            viabilidades e muito mais em um único sistema.
+          </p>
+
+          <div class="hero-botoes">
+            <a class="btn btn-primary" href="#contato">Solicitar demonstração</a>
+            <a class="btn btn-whatsapp"
+               href="https://wa.me/5573999476812?text=Olá%21%20Conheci%20o%20SGOS%20pelo%20site%20e%20gostaria%20de%20saber%20mais%20sobre%20o%20sistema."
+               target="_blank" rel="noopener">Falar com a Central SGOS</a>
+          </div>
+
+          <div class="hero-beneficios">
+            <span>Web e mobile</span>
+            <span>Android e iOS</span>
+            <span>Relatórios automáticos</span>
+          </div>
+        </div>
+
+        <div class="form-card" id="contato">
+          <h2>Conheça o SGOS</h2>
+          <p>Preencha seus dados e nossa equipe entrará em contato.</p>
+
+          <form id="formContato">
+            <div class="campo">
+              <label for="nome">Nome completo</label>
+              <input id="nome" name="nome" type="text" autocomplete="name" required />
+            </div>
+
+            <div class="campo">
+              <label for="telefone">Telefone / WhatsApp</label>
+              <input id="telefone" name="telefone" type="tel" autocomplete="tel" required />
+            </div>
+
+            <div class="campo">
+              <label for="email">E-mail</label>
+              <input id="email" name="email" type="email" autocomplete="email" required />
+            </div>
+
+            <div class="campo">
+              <label for="empresa">Nome da empresa</label>
+              <input id="empresa" name="empresa" type="text" autocomplete="organization" required />
+            </div>
+
+            <label class="check">
+              <input id="aceite" name="aceite" type="checkbox" required />
+              <span>Autorizo o contato da equipe SGOS pelos dados informados.</span>
+            </label>
+
+            <button class="btn btn-primary" type="submit" id="btnEnviar">
+              Quero receber uma apresentação
+            </button>
+
+            <div id="mensagemForm" class="mensagem-form" role="status" aria-live="polite"></div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="mockup">
+      <div class="container mockup-grid">
+        <div class="desktop-wrap">
+          <img src="assets/painel-web.png" alt="Painel web do SGOS" />
+        </div>
+        <div class="mobile-wrap">
+          <img src="assets/app-mobile.png" alt="Aplicativo do técnico SGOS" />
+        </div>
+      </div>
+    </section>
+
+    <section class="secao secao-cinza" id="recursos">
+      <div class="container">
+        <div class="secao-topo">
+          <h2>Tudo que você precisa em um só sistema</h2>
+          <p>Mais organização, produtividade e controle para sua operação.</p>
+        </div>
+
+        <div class="cards">
+          <article class="card"><div class="icone">▣</div><h3>Painel de Ordens de Serviço</h3><p>Acompanhe OS abertas, em execução, finalizadas e clientes ausentes.</p></article>
+          <article class="card"><div class="icone">▤</div><h3>Envio de OS agendadas</h3><p>Agende e encaminhe ordens automaticamente para sua equipe.</p></article>
+          <article class="card"><div class="icone">◫</div><h3>Relatórios completos</h3><p>Relatórios de OS, técnicos, tipos de serviços e planos.</p></article>
+          <article class="card"><div class="icone">⌖</div><h3>Mapa de técnicos</h3><p>Visualize a localização da equipe e otimize os atendimentos.</p></article>
+
+          <article class="card"><div class="icone">♟</div><h3>Gestão de escalas</h3><p>Organize equipes e jornadas de maneira simples e eficiente.</p></article>
+          <article class="card"><div class="icone">◇</div><h3>Gestão de estoque</h3><p>Controle equipamentos, materiais, movimentações e reservas.</p></article>
+          <article class="card"><div class="icone">✓</div><h3>Serviços e viabilidades</h3><p>Organize serviços, viabilidades e inviabilidades em um único fluxo.</p></article>
+          <article class="card"><div class="icone">IA</div><h3>Informativos IA</h3><p>Gere avisos com sua logo e faça envios em lote pelo WhatsApp.</p></article>
+
+          <article class="card"><div class="icone">▯</div><h3>App do técnico</h3><p>Disponível para Android e iOS, com notificações.</p></article>
+          <article class="card"><div class="icone">◎</div><h3>Versão web mobile</h3><p>Acesso para técnicos sem necessidade de instalar aplicativo.</p></article>
+          <article class="card"><div class="icone">➤</div><h3>Relatórios automáticos</h3><p>Envios diários, semanais e mensais por e-mail ou WhatsApp.</p></article>
+          <article class="card"><div class="icone">↻</div><h3>Operação centralizada</h3><p>Informações atualizadas e integradas para decisões mais rápidas.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao integracoes" id="integracoes">
+      <div class="container">
+        <div class="secao-topo">
+          <h2>Integração com os principais ERPs do mercado</h2>
+          <p>Mais agilidade no cadastro e no atendimento dos clientes do seu provedor.</p>
+        </div>
+
+        <div class="logos">
+          <div class="logo-erp"><img src="assets/mikweb.png" alt="MikWeb" /></div>
+          <div class="logo-erp"><img src="assets/hubsoft.png" alt="HubSoft" /></div>
+          <div class="logo-erp"><img src="assets/ixcsoft.png" alt="IXC Soft" /></div>
+          <div class="logo-erp"><img src="assets/sgp.png" alt="SGP" /></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <div class="container">
+        <div class="cta-box">
+          <div>
+            <h2>Transforme a gestão do seu provedor.</h2>
+            <p>Fale agora com a Central SGOS e conheça todos os recursos.</p>
+          </div>
+          <a class="btn btn-whatsapp"
+             href="https://wa.me/5573999476812?text=Olá%21%20Conheci%20o%20SGOS%20pelo%20site%20e%20gostaria%20de%20solicitar%20uma%20demonstração."
+             target="_blank" rel="noopener">
+            Falar pelo WhatsApp
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <img class="footer-logo" src="assets/logo-sgos.png" alt="SGOS" />
+      <div>© <span id="ano"></span> SGOS — Sistema de Gestão Operacional e Serviços.</div>
+      <div>Central SGOS: (73) 99947-6812</div>
+    </div>
+  </footer>
+
+  <a class="whatsapp-float"
+     href="https://wa.me/5573999476812?text=Olá%21%20Conheci%20o%20SGOS%20pelo%20site%20e%20gostaria%20de%20saber%20mais."
+     target="_blank" rel="noopener" aria-label="Falar com a Central SGOS pelo WhatsApp">✆</a>
+
+  <script>
+    document.getElementById("ano").textContent = new Date().getFullYear();
+
+    const form = document.getElementById("formContato");
+    const btn = document.getElementById("btnEnviar");
+    const mensagem = document.getElementById("mensagemForm");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      mensagem.className = "mensagem-form";
+      mensagem.textContent = "";
+      btn.disabled = true;
+      btn.textContent = "Enviando...";
+
+      const dados = {
+        nome: form.nome.value.trim(),
+        telefone: form.telefone.value.trim(),
+        email: form.email.value.trim(),
+        empresa: form.empresa.value.trim(),
+        aceite: form.aceite.checked,
+        origem: "sgos.net.br/sgos"
+      };
+
+      try {
+        const resposta = await fetch("/api/site/contato", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(dados)
+        });
+
+        const retorno = await resposta.json().catch(() => ({}));
+
+        if (!resposta.ok) {
+          throw new Error(retorno.erro || "Não foi possível enviar sua solicitação.");
+        }
+
+        form.reset();
+        mensagem.className = "mensagem-form sucesso";
+        mensagem.textContent = "Solicitação enviada com sucesso! Nossa equipe entrará em contato em breve.";
+      } catch (erro) {
+        mensagem.className = "mensagem-form erro";
+        mensagem.textContent = erro.message || "Erro ao enviar. Tente novamente ou fale conosco pelo WhatsApp.";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Quero receber uma apresentação";
+      }
+    });
+  </script>
+</body>
+</html>

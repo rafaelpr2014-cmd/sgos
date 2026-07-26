@@ -17,6 +17,7 @@ const financeiroRoutesFactory = require('./routes/financeiro.routes');
 const mapaTecnicosRoutes = require("./routes/mapa-tecnicos.routes");
 const logsAcoesRoutes = require("./routes/logs-acoes.routes");
 const crmRoutes = require("./routes/crm.routes");
+const siteContatoRoutes = require("./routes/site-contato.routes");
 
 const viabilidadeClientesErpRoutesFactory =
     require("./routes/viabilidade-clientes-erp.routes");
@@ -330,6 +331,11 @@ app.use(express.urlencoded({
     extended: true,
     limit: "100mb"
 }));
+
+// ======================================
+// SITE PÚBLICO DE VENDAS (SEM LOGIN)
+// ======================================
+app.use("/api/site", siteContatoRoutes);
 
 // ===============================
 // PUBLIC
