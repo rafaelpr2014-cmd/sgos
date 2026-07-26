@@ -4326,7 +4326,8 @@ async function confirmarReagendamento(botao){
             method:"PUT",
             headers:{"Content-Type":"application/json","Accept":"application/json","x-usuario-id":String(user.id)},
             body:JSON.stringify(payload),
-            cache:"no-store"
+            cache:"no-store",
+            credentials:"include"
         });
         const dados = await lerRespostaSegura(resposta);
         if(!resposta?.ok) throw new Error(dados.erro || dados.mensagem || `Erro HTTP ${resposta?.status || ""}`);

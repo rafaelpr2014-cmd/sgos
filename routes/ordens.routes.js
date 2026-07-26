@@ -1380,6 +1380,182 @@ router.delete(
     }
 );
 
+
+// ===============================
+// 📅 REAGENDAR OS
+// ===============================
+async function garantirEstruturaReagendamentoOS(){
+    const adicionar = async (coluna, sql) => {
+        const [rows] = await db.query(`
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'ordens_servico'
+              AND COLUMN_NAME = ?
+            LIMIT 1
+        `, [coluna]);
+
+        if(!rows.length){
+            await db.query(sql);
+        }
+    };
+
+    await adicionar(
+        'reagendado_por',
+        `ALTER TABLE ordens_servico ADD COLUMN reagendado_por INT NULL AFTER agendamento_envio`
+    );
+
+    await adicionar(
+        'reagendado_em',
+        `ALTER TABLE ordens_servico ADD COLUMN reagendado_em DATETIME NULL AFTER reagendado_por`
+    );
+
+    await adicionar(
+        'observacao_reagendamento',
+        `ALTER TABLE ordens_servico ADD COLUMN observacao_reagendamento TEXT NULL AFTER reagendado_em`
+    );
+}
+
+function normalizarDataHoraReagendamento(valor){
+    if(!valor) return null;
+
+    const texto = String(valor).trim();
+    const data = new Date(texto);
+
+    if(Number.isNaN(data.getTime())) return null;
+
+    // Grava no formato DATETIME usando o horário local do servidor.
+    const pad = numero => String(numero).padStart(2, '0');
+
+    return [
+        data.getFullYear(),
+        pad(data.getMonth() + 1),
+        pad(data.getDate())
+    ].join('-') + ' ' + [
+        pad(data.getHours()),
+        pad(data.getMinutes()),
+        pad(data.getSeconds())
+    ].join(':');
+}
+
+router.put(
+    "/reagendar/:id",
+    verificarAutenticacao,
+    async (req, res) => {
+        try {
+            await garantirEstruturaReagendamentoOS();
+
+            const osId = Number(req.params.id);
+            const empresaId = Number(req.usuario.empresa_id);
+            const usuarioId = Number(req.usuario.id);
+
+            const novaDataRaw =
+                req.body?.agendamento_envio ||
+                req.body?.agendamento ||
+                req.body?.agendado_para ||
+                req.body?.data_agendamento;
+
+            const novaData = normalizarDataHoraReagendamento(novaDataRaw);
+            const motivo = String(
+                req.body?.observacao_reagendamento ||
+                req.body?.observacao ||
+                ""
+            ).trim();
+
+            if(!osId){
+                return res.status(400).json({ erro: "OS inválida." });
+            }
+
+            if(!novaData){
+                return res.status(400).json({
+                    erro: "Informe uma data e horário válidos para o reagendamento."
+                });
+            }
+
+            const [ordens] = await db.query(`
+                SELECT id, nome, telefone, login, status, agendamento, agendamento_envio
+                FROM ordens_servico
+                WHERE id = ? AND empresa_id = ?
+                LIMIT 1
+            `, [osId, empresaId]);
+
+            if(!ordens.length){
+                return res.status(404).json({ erro: "OS não encontrada." });
+            }
+
+            const dataNova = new Date(novaData.replace(" ", "T"));
+            if(Number.isNaN(dataNova.getTime()) || dataNova.getTime() < Date.now() - 120000){
+                return res.status(400).json({
+                    erro: "O reagendamento precisa ser para uma data e hora atual ou futura."
+                });
+            }
+
+            const osAnterior = ordens[0];
+
+            await db.query(`
+                UPDATE ordens_servico
+                SET status = 'reagendado',
+                    agendamento = ?,
+                    agendamento_envio = ?,
+                    reagendado_por = ?,
+                    reagendado_em = NOW(),
+                    observacao_reagendamento = ?,
+                    iniciado_em = NULL,
+                    finalizado_em = NULL,
+                    finalizado_por = NULL
+                WHERE id = ? AND empresa_id = ?
+            `, [
+                novaData,
+                novaData,
+                usuarioId,
+                motivo || null,
+                osId,
+                empresaId
+            ]);
+
+            await registrarLog(
+                req,
+                "REAGENDOU OS",
+                "OS",
+                osId,
+                {
+                    Cliente: osAnterior.nome || "-",
+                    Data_anterior:
+                        osAnterior.agendamento_envio ||
+                        osAnterior.agendamento ||
+                        "-",
+                    Nova_data: novaData,
+                    Motivo: motivo || "-"
+                }
+            );
+
+            io.emit("os_update");
+            io.emit("os_reagendada", {
+                os_id: osId,
+                status: "reagendado",
+                agendamento: novaData,
+                reagendado_por: usuarioId
+            });
+
+            res.json({
+                ok: true,
+                sucesso: true,
+                id: osId,
+                status: "reagendado",
+                agendamento: novaData,
+                agendamento_envio: novaData
+            });
+
+        } catch (err) {
+            console.error("ERRO REAGENDAR OS:", err);
+
+            res.status(err.statusCode || 500).json({
+                erro: err.message || "Erro ao reagendar a OS."
+            });
+        }
+    }
+);
+
 // ===============================
 // 🚀 INICIAR OS
 // ===============================
@@ -2223,6 +2399,14 @@ router.get("/:id", verificarAutenticacao, async (req, res) => {
                 COALESCE(ue.usuario, 'SGOS Agendado') AS enviado_por_nome,
 
                 uf.usuario AS finalizado_por_nome,
+
+                (SELECT urg.usuario
+                   FROM usuarios urg
+                  WHERE urg.id = os.reagendado_por
+                    AND urg.empresa_id = os.empresa_id
+                  LIMIT 1) AS reagendado_por_nome,
+
+                DATE_FORMAT(os.reagendado_em, '%Y-%m-%d %H:%i:%s') AS reagendado_em,
 
                 l.nome AS localidade_nome,
                 l.vlan AS localidade_vlan,

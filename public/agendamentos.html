@@ -996,13 +996,15 @@ async function lancarAgora(id){
     if(!confirm("Deseja lançar esta OS agora?")) return;
 
     try{
-        await apiAgendamento(`/api/ordens_servico/iniciar/${id}`, {
+        await apiAgendamento(`/api/ordens_servico/lancar_agora/${id}`, {
             method:"POST"
         });
 
         if(typeof fecharResumoOS === "function") fecharResumoOS();
+
         alert("OS lançada com sucesso!");
         await carregar();
+
     }catch(err){
         console.error("Erro ao lançar OS:", err);
         alert(err.message || "Não foi possível lançar a OS. Confirme se existe pelo menos um técnico selecionado.");
@@ -1830,20 +1832,47 @@ window.abrirResumoOS = async function(id){
 
 
 
-function imprimirAgendamento(id){
+async function imprimirAgendamento(id){
     const os = (agendamentosCache || []).find(item => Number(item.id) === Number(id));
+
     if(!os){
         alert("OS não encontrada para impressão.");
         return;
     }
 
-    abrirResumoOS(id).then(function(){
+    // Abre imediatamente durante o clique para o navegador não bloquear o popup.
+    const janela = window.open("", "_blank", "width=1000,height=760");
+
+    if(!janela){
+        alert("O navegador bloqueou a janela de impressão. Libere pop-ups para o SGOS.");
+        return;
+    }
+
+    janela.document.write(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Carregando OS #${os.id}</title>
+        </head>
+        <body style="font-family:Arial,sans-serif;padding:24px">
+            Carregando dados da OS...
+        </body>
+        </html>
+    `);
+    janela.document.close();
+
+    try{
+        await abrirResumoOS(id);
+
         const box = document.querySelector("#modalResumoOS .resumo-os-box");
-        if(!box) return;
+        if(!box){
+            janela.close();
+            alert("Não foi possível montar o resumo da OS.");
+            return;
+        }
 
-        const janela = window.open("", "_blank", "width=1000,height=760");
-        if(!janela) return;
-
+        janela.document.open();
         janela.document.write(`
             <!DOCTYPE html>
             <html lang="pt-BR">
@@ -1857,8 +1886,11 @@ function imprimirAgendamento(id){
                     .resumo-card{border:1px solid #dbe3ee;border-radius:10px;padding:12px}
                     .resumo-card.full{grid-column:1/-1}
                     .resumo-linha{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:7px 0}
-                    .resumo-campo small{display:block;color:#64748b;font-weight:bold;margin-bottom:3px}
+                    .resumo-item small{display:block;color:#64748b;font-weight:bold;margin-bottom:3px}
+                    .resumo-item strong{display:block;color:#0f172a}
                     .resumo-os-actions,.resumo-fechar{display:none!important}
+                    iframe{display:none!important}
+                    img,video{max-width:100%;max-height:260px}
                     @media print{body{margin:10mm}}
                 </style>
             </head>
@@ -1867,8 +1899,16 @@ function imprimirAgendamento(id){
         `);
         janela.document.close();
         janela.focus();
-        setTimeout(() => janela.print(), 300);
-    });
+
+        setTimeout(() => {
+            janela.print();
+        }, 350);
+
+    }catch(err){
+        console.error("Erro ao imprimir OS:", err);
+        janela.close();
+        alert(err.message || "Erro ao imprimir a OS.");
+    }
 }
 
 // =====================
@@ -1882,14 +1922,18 @@ async function excluir(id){
     if(!confirm("Excluir este agendamento?")) return;
 
     try{
-        await fetchAuth(`/api/ordens_servico/${id}`, {
+        await apiAgendamento(`/api/ordens_servico/${id}`, {
             method:"DELETE"
         });
 
-        carregar();
+        if(typeof fecharResumoOS === "function") fecharResumoOS();
+
+        alert("Agendamento excluído com sucesso!");
+        await carregar();
+
     }catch(err){
-        console.error(err);
-        alert("Erro ao excluir agendamento");
+        console.error("Erro ao excluir agendamento:", err);
+        alert(err.message || "Erro ao excluir agendamento.");
     }
 }
 
@@ -1897,12 +1941,22 @@ async function excluir(id){
 // ANEXO
 // =====================
 function abrirAnexo(caminho){
+    if(!caminho){
+        alert("Esta OS não possui anexo.");
+        return;
+    }
+
+    caminho = String(caminho).trim();
+    if(!/^https?:\/\//i.test(caminho) && !caminho.startsWith("/")){
+        caminho = "/" + caminho;
+    }
+
     const conteudo = document.getElementById("conteudoAnexo");
 
-    if(caminho.match(/\.(jpg|jpeg|png|gif|webp)$/i)){
+    if(caminho.match(/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i)){
         conteudo.innerHTML = `<img src="${caminho}" style="max-width:100%;max-height:78vh;border-radius:10px;">`;
     }
-    else if(caminho.match(/\.(mp4|webm|ogg)$/i)){
+    else if(caminho.match(/\.(mp4|webm|ogg)(\?.*)?$/i)){
         conteudo.innerHTML = `
             <video controls style="max-width:100%;max-height:78vh;border-radius:10px;">
                 <source src="${caminho}">
