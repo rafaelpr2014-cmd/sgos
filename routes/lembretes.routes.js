@@ -44,6 +44,57 @@ function normalizarDataMysql(valor) {
     return texto.length === 16 ? `${texto}:00` : texto.slice(0, 19);
 }
 
+
+function normalizarDestinatarios(body, usuarioId) {
+    const recebidos = Array.isArray(body?.destinatarios_ids)
+        ? body.destinatarios_ids
+        : [body?.destinatario_id];
+
+    return [...new Set(
+        recebidos
+            .map(Number)
+            .filter(id => Number.isInteger(id) && id > 0 && id !== Number(usuarioId))
+    )];
+}
+
+async function validarDestinatarios(usuario, destinatariosIds) {
+    if (!destinatariosIds.length) return [];
+
+    const colunas = await obterColunasUsuarios();
+    const colunaCargo = primeiraColunaExistente(
+        colunas,
+        ['cargo', 'tipo', 'perfil', 'nivel', 'role', 'tipo_usuario']
+    );
+
+    if (!colunaCargo) {
+        throw new Error('A coluna de cargo/perfil não foi encontrada na tabela usuarios.');
+    }
+
+    const placeholders = destinatariosIds.map(() => '?').join(',');
+    const params = [...destinatariosIds];
+
+    let filtroEmpresa = '';
+    if (usuario.empresa_id != null) {
+        filtroEmpresa = ' AND empresa_id = ?';
+        params.push(usuario.empresa_id);
+    }
+
+    const rows = await executar(
+        `SELECT *
+           FROM usuarios
+          WHERE id IN (${placeholders})
+            ${filtroEmpresa}`,
+        params
+    );
+
+    const permitidos = rows.filter(destinatario => {
+        const perfil = String(destinatario[colunaCargo] || '').trim().toLowerCase();
+        return ['admin', 'administrador', 'atendente'].includes(perfil);
+    });
+
+    return permitidos;
+}
+
 async function limparExpirados() {
     try {
         await executar(
@@ -220,76 +271,146 @@ router.get('/historico', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
+    const conexao = await pool.getConnection();
+
     try {
         const usuarioId = obterUsuarioId(req);
         const usuario = await obterUsuario(usuarioId);
         const mensagem = String(req.body?.mensagem || '').trim();
         const tipo = String(req.body?.tipo || 'salvo').trim().toLowerCase();
-        const destinatarioId = tipo === 'enviado' ? Number(req.body?.destinatario_id) : usuarioId;
         const agendadoPara = normalizarDataMysql(req.body?.agendado_para);
 
-        if (!usuario) return res.status(401).json({ erro: 'Usuário não autenticado.' });
-        if (!mensagem) return res.status(400).json({ erro: 'Digite o lembrete.' });
-        if (mensagem.length > 2000) return res.status(400).json({ erro: 'O lembrete deve ter no máximo 2.000 caracteres.' });
-        if (!['salvo', 'enviado'].includes(tipo)) return res.status(400).json({ erro: 'Tipo de lembrete inválido.' });
-        if (req.body?.agendado_para && !agendadoPara) return res.status(400).json({ erro: 'Data de agendamento inválida.' });
+        if (!usuario) {
+            return res.status(401).json({ erro: 'Usuário não autenticado.' });
+        }
+
+        if (!mensagem) {
+            return res.status(400).json({ erro: 'Digite o lembrete.' });
+        }
+
+        if (mensagem.length > 2000) {
+            return res.status(400).json({
+                erro: 'O lembrete deve ter no máximo 2.000 caracteres.'
+            });
+        }
+
+        if (!['salvo', 'enviado'].includes(tipo)) {
+            return res.status(400).json({ erro: 'Tipo de lembrete inválido.' });
+        }
+
+        if (req.body?.agendado_para && !agendadoPara) {
+            return res.status(400).json({ erro: 'Data de agendamento inválida.' });
+        }
 
         if (agendadoPara) {
             const dataAgendada = new Date(String(req.body.agendado_para));
+
             if (dataAgendada.getTime() <= Date.now()) {
-                return res.status(400).json({ erro: 'Escolha uma data e hora futura para o agendamento.' });
+                return res.status(400).json({
+                    erro: 'Escolha uma data e hora futura para o agendamento.'
+                });
             }
         }
 
-        let destinatario = usuario;
+        let destinatarios = [usuario];
+
         if (tipo === 'enviado') {
-            if (!destinatarioId || destinatarioId === usuario.id) {
-                return res.status(400).json({ erro: 'Selecione outro usuário para receber o lembrete.' });
+            const destinatariosIds = normalizarDestinatarios(req.body, usuario.id);
+
+            if (!destinatariosIds.length) {
+                return res.status(400).json({
+                    erro: 'Selecione pelo menos um usuário destinatário.'
+                });
             }
 
-            destinatario = await obterUsuario(destinatarioId);
-            if (!destinatario) return res.status(404).json({ erro: 'Usuário destinatário não encontrado.' });
-            if (usuario.empresa_id != null && Number(destinatario.empresa_id) !== Number(usuario.empresa_id)) {
-                return res.status(403).json({ erro: 'Não é permitido enviar lembretes para outra empresa.' });
-            }
+            destinatarios = await validarDestinatarios(usuario, destinatariosIds);
 
-            const colunas = await obterColunasUsuarios();
-            const colunaCargo = primeiraColunaExistente(colunas, ['cargo', 'tipo', 'perfil', 'nivel', 'role', 'tipo_usuario']);
-            const perfil = colunaCargo ? String(destinatario[colunaCargo] || '').trim().toLowerCase() : '';
-            if (!['admin', 'administrador', 'atendente'].includes(perfil)) {
-                return res.status(403).json({ erro: 'O destinatário precisa ter cargo Atendente ou Administrador.' });
+            const encontrados = new Set(destinatarios.map(item => Number(item.id)));
+            const naoEncontrados = destinatariosIds.filter(id => !encontrados.has(Number(id)));
+
+            if (naoEncontrados.length) {
+                return res.status(400).json({
+                    erro: 'Um ou mais destinatários não foram encontrados, estão inativos, pertencem a outra empresa ou não possuem cargo permitido.',
+                    destinatarios_invalidos: naoEncontrados
+                });
             }
         }
 
-        const resultado = await executar(
-            `INSERT INTO lembretes
-                (empresa_id, criado_por_id, destinatario_id, mensagem, tipo, criado_em, agendado_para, excluir_em)
-             VALUES (?, ?, ?, ?, ?, NOW(), ?,
-                CASE
-                    WHEN ? = 'enviado' THEN DATE_ADD(COALESCE(?, NOW()), INTERVAL 30 DAY)
-                    ELSE NULL
-                END
-             )`,
-            [
-                usuario.empresa_id ?? 0,
-                usuario.id,
-                destinatario.id,
-                mensagem,
-                tipo,
-                agendadoPara,
-                tipo,
-                agendadoPara
-            ]
-        );
+        await conexao.beginTransaction();
 
-        const textoAcao = agendadoPara
-            ? (tipo === 'enviado' ? 'Lembrete agendado para envio.' : 'Lembrete pessoal agendado.')
-            : (tipo === 'enviado' ? 'Lembrete enviado com sucesso.' : 'Lembrete salvo no seu painel.');
+        const idsCriados = [];
 
-        return res.status(201).json({ ok: true, id: resultado.insertId, mensagem: textoAcao });
+        for (const destinatario of destinatarios) {
+            const [resultado] = await conexao.query(
+                `INSERT INTO lembretes
+                    (
+                        empresa_id,
+                        criado_por_id,
+                        destinatario_id,
+                        mensagem,
+                        tipo,
+                        criado_em,
+                        agendado_para,
+                        excluir_em
+                    )
+                 VALUES (
+                    ?, ?, ?, ?, ?, NOW(), ?,
+                    CASE
+                        WHEN ? = 'enviado'
+                            THEN DATE_ADD(COALESCE(?, NOW()), INTERVAL 30 DAY)
+                        ELSE NULL
+                    END
+                 )`,
+                [
+                    usuario.empresa_id ?? 0,
+                    usuario.id,
+                    destinatario.id,
+                    mensagem,
+                    tipo,
+                    agendadoPara,
+                    tipo,
+                    agendadoPara
+                ]
+            );
+
+            idsCriados.push(resultado.insertId);
+        }
+
+        await conexao.commit();
+
+        const total = idsCriados.length;
+
+        let textoAcao;
+
+        if (tipo === 'salvo') {
+            textoAcao = agendadoPara
+                ? 'Lembrete pessoal agendado.'
+                : 'Lembrete salvo no seu painel.';
+        } else {
+            textoAcao = agendadoPara
+                ? `Lembrete agendado para ${total} usuário(s).`
+                : `Lembrete enviado para ${total} usuário(s).`;
+        }
+
+        return res.status(201).json({
+            ok: true,
+            ids: idsCriados,
+            total,
+            mensagem: textoAcao
+        });
+
     } catch (erro) {
+        try {
+            await conexao.rollback();
+        } catch {}
+
         console.error('Erro ao criar lembrete:', erro);
-        return res.status(500).json({ erro: 'Erro ao salvar lembrete.' });
+
+        return res.status(500).json({
+            erro: erro.message || 'Erro ao salvar lembrete.'
+        });
+    } finally {
+        conexao.release();
     }
 });
 
