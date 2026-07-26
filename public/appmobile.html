@@ -1479,6 +1479,119 @@ button{touch-action:manipulation}
 .btn-confirmar-reagendamento{background:#7c3aed !important}
 @media(min-width:760px){.modal-reagendamento{align-items:center}.reagendamento-card{border-radius:28px}}
 
+
+
+/* ===== TEMA SGOS AZUL 2026 — CABEÇALHO BRANCO / CONTEÚDO AZUL ===== */
+body{
+    background:linear-gradient(180deg,#ffffff 0 118px,#075cf6 118px,#063fbd 100%) !important;
+}
+.mobile-topbar-app{
+    background:#fff !important;
+    border-bottom:1px solid #e7edf7 !important;
+    box-shadow:0 7px 22px rgba(15,23,42,.07) !important;
+}
+.menu-btn{
+    background:linear-gradient(145deg,#1769ff,#075cf6) !important;
+    box-shadow:0 10px 22px rgba(7,92,246,.25) !important;
+}
+.refresh-btn{background:#fff !important;border:1px solid #e4eaf3 !important;color:#075cf6 !important}
+.busca{background:transparent;padding-top:20px !important}
+.busca input,.filtro-periodo{background:#fff !important;border-color:#e4eaf3 !important}
+.cards{background:transparent !important}
+.card{
+    background:linear-gradient(145deg,#075cf6,#063fbd) !important;
+    border:1px solid rgba(255,255,255,.26) !important;
+    box-shadow:0 8px 20px rgba(2,37,109,.20) !important;
+}
+.card.active{
+    transform:none !important;
+    outline:2px solid rgba(255,255,255,.85) !important;
+    box-shadow:0 8px 20px rgba(2,37,109,.20) !important;
+}
+.resumo-tipos-servico{
+    background:linear-gradient(145deg,#075cf6,#063fbd) !important;
+    border:1px solid rgba(255,255,255,.28) !important;
+    box-shadow:none !important;
+    color:#fff !important;
+}
+.resumo-tipos-titulo{color:#fff !important;font-size:15px !important}
+.resumo-tipo-item{
+    background:rgba(255,255,255,.07) !important;
+    border:1px solid rgba(255,255,255,.28) !important;
+    color:#fff !important;
+    min-height:50px;
+}
+.resumo-tipo-item span{color:#fff !important}
+.resumo-tipo-item strong{
+    width:36px;height:36px;border-radius:50%;display:grid;place-items:center;
+    background:#fff !important;color:#075cf6 !important;font-size:14px !important;
+}
+.resumo-tipos-vazio{color:#dbeafe !important}
+.lista-cabecalho{
+    margin:0 !important;
+    padding:8px 22px 14px !important;
+    background:transparent !important;
+    border:0 !important;
+    border-radius:0 !important;
+    box-shadow:none !important;
+}
+.lista-cabecalho strong{color:#fff !important}
+.lista-cabecalho button{color:#9fd0ff !important}
+.container{
+    background:transparent !important;
+    border:0 !important;
+    border-radius:0 !important;
+    box-shadow:none !important;
+}
+.container > p{box-shadow:none !important}
+.os{
+    background:#fff !important;
+    border:1px solid rgba(255,255,255,.68) !important;
+    box-shadow:0 8px 20px rgba(2,37,109,.18) !important;
+    padding:18px 52px 18px 20px !important;
+    min-height:148px !important;
+}
+.os:before{display:block !important;width:5px !important;background:#1769ff !important}
+.os.prioridade-alta-card:before{background:#ef4444 !important}
+.os-agendamento{
+    display:flex;flex-direction:column;justify-content:center;gap:4px;
+    margin-top:13px;padding-top:11px;border-top:1px solid #e7edf6;
+    color:#36516f;font-size:12px;line-height:1.35;
+}
+.os-agendamento strong{color:#075cf6;font-size:12px}
+.os-agendamento-linha{display:flex;align-items:center;gap:7px}
+.os-sem-agendamento{color:#94a3b8}
+.resumo-agendamento-app{
+    margin-top:12px;padding:13px;border:1px solid #bfdbfe;border-radius:14px;
+    background:#eff6ff;color:#1e40af;line-height:1.55;
+}
+.resumo-agendamento-app b{color:inherit}
+/* menu atualizado no mesmo azul do símbolo */
+.side-drawer{
+    background:linear-gradient(180deg,#075cf6 0%,#064bd0 58%,#06368f 100%) !important;
+    box-shadow:18px 0 45px rgba(2,37,109,.42) !important;
+}
+.drawer-head{padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.18)}
+.drawer-head img{filter:brightness(0) invert(1);max-width:175px}
+.drawer-close{background:rgba(255,255,255,.16) !important}
+.drawer-avatar{background:#fff !important;color:#075cf6 !important;box-shadow:0 10px 25px rgba(0,0,0,.16) !important}
+.drawer-user small{color:#dbeafe !important}
+.drawer-user-logout{border-color:rgba(255,255,255,.7) !important;color:#fff !important}
+.drawer-nav{gap:7px !important}
+.drawer-nav a{color:#eff6ff !important;border:1px solid transparent}
+.drawer-nav a.active{background:#fff !important;color:#075cf6 !important;box-shadow:0 8px 20px rgba(2,37,109,.20)}
+.drawer-nav a:hover{background:rgba(255,255,255,.14) !important;color:#fff !important}
+.drawer-nav a.active .ico{background:#eaf2ff !important;color:#075cf6 !important}
+.drawer-nav .ico{background:rgba(255,255,255,.16) !important}
+.drawer-push{background:rgba(255,255,255,.14) !important;border-color:rgba(255,255,255,.22) !important}
+.drawer-push-silenciar{color:#fff !important}
+.drawer-logout{background:#ef4444 !important}
+@media(min-width:760px){body{background:linear-gradient(180deg,#fff 0 118px,#075cf6 118px,#063fbd 100%) !important}}
+@media(max-width:520px){
+    .os{padding-right:42px !important}
+    .os-agendamento{padding-right:0}
+}
+
 </style>
 
 
@@ -3763,7 +3876,7 @@ function renderizarResumoTiposServico(osPeriodo){
     lista.innerHTML = itens.map(([nome, quantidade]) => `
         <div class="resumo-tipo-item">
             <span>${escapeHTML(nome)}</span>
-            <strong>(${quantidade})</strong>
+            <strong>${quantidade}</strong>
         </div>
     `).join("");
 }
@@ -3813,8 +3926,9 @@ function render(){
             ? `<div class="os-linha"><span class="mini-ico">🛠</span><span>${valorSeguro(o.tipo_servico_nome)}</span></div>`
             : `<div class="os-linha"><span class="mini-ico">👤</span><span>Login: ${valorSeguro(o.login)}</span></div>
                <div class="os-linha"><span class="mini-ico">▦</span><span>ID: ${valorSeguro(o.id_cliente)} · VLAN: ${valorSeguro(o.vlan)}</span></div>`;
+        const prioridadeClasseCard = normalizarPrioridadeApp(o.prioridade).classe === "alta" ? " prioridade-alta-card" : "";
         return `
-        <article class="os" role="button" tabindex="0"
+        <article class="os${prioridadeClasseCard}" role="button" tabindex="0"
             onclick="abrirModal('${chave}')"
             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirModal('${chave}')}">
             <span class="os-status">${escapeHTML(statusRotulo(o.status))}</span>${o._tipo === "avulsa" ? "" : badgePrioridadeApp(o.prioridade)}
@@ -3844,6 +3958,7 @@ function render(){
                 </div>
             `}
 
+            ${o._tipo === "avulsa" ? "" : agendamentoCardHTML(o)}
             <span class="os-hora">${escapeHTML(horarioCurto(data))}</span>
             <span class="os-seta">›</span>
         </article>`;
@@ -3905,6 +4020,39 @@ function checkinHTMLApp(os){
     </div>`;
 }
 
+function dadosAgendamentoApp(os){
+    const valor = os?.agendamento || os?.agendado_para || os?.data_agendamento || os?.agendamento_envio || os?.data_agendada || "";
+    const data = parseDataApp(valor);
+    if(!data) return null;
+    return {
+        bruto: valor,
+        data: data.toLocaleDateString("pt-BR"),
+        hora: data.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}),
+        por: os?.agendado_por_nome || os?.agendamento_criado_por_nome || os?.criado_por_nome || os?.agendado_por || "-",
+        criadoEm: os?.agendamento_criado_em || os?.agendado_em || os?.criado_em || ""
+    };
+}
+function agendamentoCardHTML(os){
+    const ag = dadosAgendamentoApp(os);
+    if(!ag) return `<div class="os-agendamento os-sem-agendamento"><div class="os-agendamento-linha">📅 <span>Não agendada</span></div></div>`;
+    return `<div class="os-agendamento">
+        <strong>📅 Agendamento</strong>
+        <div class="os-agendamento-linha">▣ <span>${escapeHTML(ag.data)}</span></div>
+        <div class="os-agendamento-linha">◷ <span>${escapeHTML(ag.hora)}</span></div>
+    </div>`;
+}
+function agendamentoResumoHTML(os){
+    const ag = dadosAgendamentoApp(os);
+    if(!ag) return `<div class="resumo-agendamento-app"><b>Agendamento:</b> Não agendada</div>`;
+    return `<div class="resumo-agendamento-app">
+        <b>📅 Dados do agendamento</b><br>
+        <b>Data:</b> ${escapeHTML(ag.data)}<br>
+        <b>Horário:</b> ${escapeHTML(ag.hora)}<br>
+        <b>Agendado por:</b> ${valorSeguro(ag.por)}<br>
+        ${ag.criadoEm ? `<b>Criado em:</b> ${valorSeguro(format(ag.criadoEm))}` : ""}
+    </div>`;
+}
+
 function resumoModalHTML(os){
     const tipo = os._tipo === "avulsa" ? "OS Avulsa" : "OS";
 
@@ -3952,6 +4100,7 @@ function resumoModalHTML(os){
             <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
             <b>Criada em:</b> ${valorSeguro(format(os.criado_em))}<br>
             ${finalizada ? blocoFinalizacao : `<div class="resumo-descricao-status" style="margin-top:10px;padding:12px;border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc;white-space:pre-wrap;overflow-wrap:anywhere;"><b>Descrição inicial:</b><br>${valorSeguro(os.descricao ?? os.descricao_inicial, "-")}</div>`}
+            ${agendamentoResumoHTML(os)}
             ${checkinHTMLApp(os)}
             ${equipamentosHTMLApp(os)}
             ${svaHTML(os)}
