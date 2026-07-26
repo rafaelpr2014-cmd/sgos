@@ -995,20 +995,36 @@ async function apiAgendamento(url, options = {}){
 async function lancarAgora(id){
     if(!confirm("Deseja lançar esta OS agora?")) return;
 
-    try{
-        await apiAgendamento(`/api/ordens_servico/lancar_agora/${id}`, {
-            method:"POST"
-        });
+    let ultimoErro = null;
 
-        if(typeof fecharResumoOS === "function") fecharResumoOS();
+    const tentativas = [
+        `/api/ordens_servico/lancar_agora/${id}`,
+        `/api/ordens_servico/iniciar/${id}`
+    ];
 
-        alert("OS lançada com sucesso!");
-        await carregar();
+    for(const rota of tentativas){
+        try{
+            await apiAgendamento(rota, { method:"POST" });
 
-    }catch(err){
-        console.error("Erro ao lançar OS:", err);
-        alert(err.message || "Não foi possível lançar a OS. Confirme se existe pelo menos um técnico selecionado.");
+            if(typeof fecharResumoOS === "function"){
+                fecharResumoOS();
+            }
+
+            alert("OS lançada com sucesso!");
+            await carregar();
+            return;
+
+        }catch(err){
+            ultimoErro = err;
+            console.warn(`Falha ao lançar pela rota ${rota}:`, err);
+        }
     }
+
+    console.error("Erro ao lançar OS:", ultimoErro);
+    alert(
+        ultimoErro?.message ||
+        "Não foi possível lançar a OS. Confirme se existe pelo menos um técnico selecionado."
+    );
 }
 
 // =====================
@@ -1863,13 +1879,45 @@ async function imprimirAgendamento(id){
     janela.document.close();
 
     try{
-        await abrirResumoOS(id);
+        let conteudoResumo = "";
 
-        const box = document.querySelector("#modalResumoOS .resumo-os-box");
-        if(!box){
-            janela.close();
-            alert("Não foi possível montar o resumo da OS.");
-            return;
+        try{
+            await abrirResumoOS(id);
+            const box = document.querySelector("#modalResumoOS .resumo-os-box");
+            conteudoResumo = box ? box.innerHTML : "";
+        }catch(erroResumo){
+            console.warn("Resumo completo indisponível; usando dados da listagem:", erroResumo);
+        }
+
+        if(!conteudoResumo){
+            conteudoResumo = `
+                <div class="resumo-os-head">
+                    <h2>Ordem de Serviço #${os.id}</h2>
+                    <p><strong>Status:</strong> ${os.status || "-"}</p>
+                </div>
+                <div class="resumo-grid-cards">
+                    <div class="resumo-card">
+                        <h3>Cliente</h3>
+                        <p><strong>Nome:</strong> ${os.nome || "-"}</p>
+                        <p><strong>Telefone:</strong> ${os.telefone || "-"}</p>
+                        <p><strong>ID Cliente:</strong> ${os.id_cliente || "-"}</p>
+                        <p><strong>Login:</strong> ${os.login || "-"}</p>
+                    </div>
+                    <div class="resumo-card">
+                        <h3>Atendimento</h3>
+                        <p><strong>Serviço:</strong> ${os.tipo_servico_nome || "-"}</p>
+                        <p><strong>Técnicos:</strong> ${os.tecnicos_nomes || os.tecnico || "-"}</p>
+                        <p><strong>Agendamento:</strong> ${formatarData(os.agendamento)}</p>
+                        <p><strong>Envio:</strong> ${formatarData(os.agendamento_envio)}</p>
+                    </div>
+                    <div class="resumo-card full">
+                        <h3>Endereço</h3>
+                        <p>${os.rua || "-"}${os.n ? ", " + os.n : ""}</p>
+                        <p>${os.bairro || ""}${os.referencia ? " - " + os.referencia : ""}</p>
+                        <p><strong>Localidade:</strong> ${os.localidade_nome || "-"}</p>
+                    </div>
+                </div>
+            `;
         }
 
         janela.document.open();
@@ -1894,7 +1942,7 @@ async function imprimirAgendamento(id){
                     @media print{body{margin:10mm}}
                 </style>
             </head>
-            <body>${box.innerHTML}</body>
+            <body>${conteudoResumo}</body>
             </html>
         `);
         janela.document.close();

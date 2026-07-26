@@ -1416,6 +1416,11 @@ async function garantirEstruturaReagendamentoOS(){
     );
 }
 
+// Inicializa a estrutura de reagendamento no carregamento do módulo.
+garantirEstruturaReagendamentoOS().catch(err => {
+    console.error("ERRO AO INICIALIZAR ESTRUTURA DE REAGENDAMENTO:", err);
+});
+
 function normalizarDataHoraReagendamento(valor){
     if(!valor) return null;
 
@@ -2382,6 +2387,9 @@ router.get(
 router.get("/:id", verificarAutenticacao, async (req, res) => {
 
     try {
+
+        // As colunas de auditoria precisam existir antes do SELECT abaixo.
+        await garantirEstruturaReagendamentoOS();
 
         const [rows] = await db.query(`
 
