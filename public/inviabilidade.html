@@ -565,6 +565,35 @@ tr:hover{ background:#f8fbff; }
     .top-actions{ grid-template-columns:1fr; }
     .filtros{ grid-template-columns:1fr; }
 }
+
+
+/* ===== PADRÃO VISUAL DA PÁGINA VIABILIDADE ===== */
+.lista-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.lista-toolbar-acoes{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{border:0;padding:10px 15px;border-radius:9px;cursor:pointer;font-weight:800;color:#fff;display:inline-flex;align-items:center;gap:8px}
+.btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn-imprimir{background:#0f172a}.btn-imprimir:hover{background:#020617}.btn-imprimir:disabled{opacity:.55;cursor:not-allowed}
+.checkbox-inviabilidade{width:18px;height:18px;cursor:pointer;accent-color:#2563eb}
+.linha-inviabilidade{cursor:pointer}.linha-inviabilidade:hover{background:#eff6ff}.linha-inviabilidade td:first-child{cursor:default}
+.endereco-quebrado{width:210px;min-width:210px;max-width:210px;white-space:normal;line-height:1.4;word-break:break-word}
+.texto-limitado{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;max-height:2.6em;word-break:break-word}
+.col-observacao{width:180px;min-width:180px;max-width:180px;white-space:normal}
+.acoes{display:flex;gap:7px;align-items:center;flex-wrap:nowrap;white-space:nowrap;min-width:170px}
+.btn-acao{width:36px;height:36px;border:0;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:.18s ease;flex:0 0 36px;box-shadow:0 4px 10px rgba(15,23,42,.12)}
+.btn-acao svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.acao-resumo{background:#2563eb;color:#fff}.acao-resumo:hover{background:#1d4ed8;transform:translateY(-1px)}
+.acao-editar{background:#f59e0b;color:#fff}.acao-editar:hover{background:#d97706;transform:translateY(-1px)}
+.acao-reciclar{background:#0f8a78;color:#fff}.acao-reciclar:hover{background:#087567;transform:translateY(-1px)}
+.acao-excluir{background:#ef4444;color:#fff}.acao-excluir:hover{background:#dc2626;transform:translateY(-1px)}
+.acao-anexo{background:#64748b;color:#fff}.acao-anexo:hover{background:#475569;transform:translateY(-1px)}
+.popup-resumo{position:fixed;inset:0;background:rgba(15,23,42,.72);display:none;align-items:center;justify-content:center;padding:20px;z-index:99998}
+.popup-resumo.ativo{display:flex}.resumo-card{width:min(980px,96vw);max-height:92vh;background:#fff;border-radius:18px;box-shadow:0 28px 80px rgba(15,23,42,.35);overflow:hidden;display:flex;flex-direction:column}
+.resumo-topo{padding:20px 22px;border-bottom:1px solid var(--borda);display:flex;justify-content:space-between;align-items:flex-start;gap:15px;background:#f8fafc}.resumo-topo h2{margin:0;font-size:22px}.resumo-topo p{margin:5px 0 0;color:var(--muted);font-size:13px}
+.resumo-fechar{border:0;background:#fee2e2;color:#dc2626;width:38px;height:38px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}.resumo-fechar svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.3}
+.resumo-conteudo{padding:22px;overflow:auto}.resumo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.resumo-item{border:1px solid var(--borda);border-radius:12px;padding:13px;background:#fff;min-width:0}.resumo-item.span-2{grid-column:span 2}.resumo-item small{display:block;color:var(--muted);font-weight:800;font-size:11px;text-transform:uppercase;margin-bottom:5px}.resumo-item strong,.resumo-item div{font-size:14px;word-break:break-word;white-space:pre-line}.resumo-secao{margin-top:18px}.resumo-secao h3{font-size:15px;margin:0 0 10px}.resumo-anexos{display:flex;gap:10px;flex-wrap:wrap}.resumo-anexo{width:116px;height:90px;border-radius:12px;border:1px solid var(--borda);overflow:hidden;cursor:pointer;background:#0f172a;display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px}.resumo-anexo img{width:100%;height:100%;object-fit:cover}.resumo-acoes{padding:16px 22px;border-top:1px solid var(--borda);display:flex;justify-content:flex-end;gap:10px;background:#fff}
+@media(max-width:700px){.resumo-grid{grid-template-columns:1fr}.resumo-item.span-2{grid-column:span 1}.resumo-card{max-height:96vh}.endereco-quebrado{width:170px;min-width:170px;max-width:170px}}
+@media print{body>*{display:none!important}#areaImpressao{display:block!important}.print-page{font-family:Arial,sans-serif;padding:10mm}.print-title{font-size:18px;font-weight:800;margin-bottom:6mm}.print-item{border:1px solid #cbd5e1;border-radius:10px;padding:5mm;margin-bottom:4mm;page-break-inside:avoid}.print-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.5mm 6mm}.print-field small{display:block;font-size:8pt;font-weight:700;color:#64748b;text-transform:uppercase}.print-field div{font-size:10pt;word-break:break-word}.print-span-2{grid-column:span 2}}
+
 </style>
 </head>
 
@@ -786,14 +815,24 @@ tr:hover{ background:#f8fbff; }
         </div>
 
         <div class="card-tabela">
-            <div class="card-header">
-                <div class="titulo-card">Lista de Inviabilidades</div>
+            <div class="card-header lista-toolbar">
+                <div>
+                    <div class="titulo-card">Lista de Inviabilidades</div>
+                    <div style="font-size:13px;color:var(--muted);margin-top:4px">Clique em uma linha para visualizar o resumo completo.</div>
+                </div>
+                <div class="lista-toolbar-acoes">
+                    <button class="btn btn-imprimir" id="btnImprimirSelecionadas" type="button" onclick="imprimirSelecionadas()" disabled>
+                        <svg viewBox="0 0 24 24"><path d="M6 9V4h12v5"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>
+                        Imprimir selecionadas (<span id="totalSelecionadas">0</span>)
+                    </button>
+                </div>
             </div>
 
             <div class="table-wrap">
                 <table>
                     <thead>
                         <tr>
+                            <th><input type="checkbox" id="selecionarTodas" class="checkbox-inviabilidade" title="Selecionar todas"></th>
                             <th>ID</th>
                             <th>Cliente</th>
                             <th>Localidade</th>
@@ -815,7 +854,7 @@ tr:hover{ background:#f8fbff; }
                     </thead>
 
                     <tbody id="tabelaInviabilidades">
-                        <tr><td colspan="17">Carregando inviabilidades...</td></tr>
+                        <tr><td colspan="18">Carregando inviabilidades...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -824,7 +863,7 @@ tr:hover{ background:#f8fbff; }
     </section>
 
     <footer class="footer">
-        <span>SGOS - Sistema de Gestão Operacional e Sistemas</span>
+        <span>SGOS - Sistema de Gestão Operacional e Serviços</span>
         <span>Versão 1.0.0</span>
     </footer>
 
@@ -835,10 +874,24 @@ tr:hover{ background:#f8fbff; }
     <img id="imgPopup">
 </div>
 
+
+<div class="popup-resumo" id="popupResumo" onclick="fecharResumoFora(event)">
+  <div class="resumo-card">
+    <div class="resumo-topo">
+      <div><h2 id="resumoTitulo">Resumo da inviabilidade</h2><p id="resumoSubtitulo"></p></div>
+      <button class="resumo-fechar" type="button" onclick="fecharResumo()"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="resumo-conteudo" id="resumoConteudo"></div>
+    <div class="resumo-acoes"><button class="btn" style="background:#64748b" type="button" onclick="fecharResumo()">Fechar</button></div>
+  </div>
+</div>
+<div id="areaImpressao" style="display:none"></div>
+
 <script>
 const API = "/api/inviabilidades";
 let dados = [];
 let filtradosAtuais = [];
+const selecionadas = new Set();
 
 /* =====================
    SIDEBAR
@@ -999,7 +1052,7 @@ async function carregarInviabilidades(){
         console.error(err);
 
         document.getElementById("tabelaInviabilidades").innerHTML = `
-            <tr><td colspan="17">Erro ao carregar dados</td></tr>
+            <tr><td colspan="18">Erro ao carregar dados</td></tr>
         `;
     }
 }
@@ -1108,7 +1161,7 @@ function renderTabela(){
 
     if(!filtrados.length){
         tbody.innerHTML = `
-            <tr><td colspan="17">Nenhuma inviabilidade encontrada</td></tr>
+            <tr><td colspan="18">Nenhuma inviabilidade encontrada</td></tr>
         `;
         return;
     }
@@ -1116,64 +1169,93 @@ function renderTabela(){
     filtrados.forEach(os => {
         const imgUrl = getUrl(os.evidencia);
         const anexoOriginal = getUrl(os.anexo_path);
-
         let tecnicosFormatados = "-";
-
         if(os.tecnicos_nomes){
             tecnicosFormatados = formatarTecnicos(os.tecnicos_nomes);
         }else if(Array.isArray(os.tecnicos)){
-            tecnicosFormatados = os.tecnicos
-                .map(t => typeof t === "object" ? (t.nome || t.usuario || "-") : "-")
-                .join("<br>");
+            tecnicosFormatados = os.tecnicos.map(t => typeof t === "object" ? (t.nome || t.usuario || "-") : "-").join("<br>");
         }
-
-        tbody.innerHTML += `
-        <tr>
-            <td>${os.id || "-"}</td>
-
-            <td><strong>${os.nome || "-"}</strong></td>
-
-            <td>${os.localidade_nome || os.localidade || "-"}</td>
-
-            <td>${formatarEndereco(os)}</td>
-
+        const marcado = selecionadas.has(String(os.id));
+        tbody.insertAdjacentHTML("beforeend", `
+        <tr class="linha-inviabilidade" onclick="abrirResumo(${os.id})">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="checkbox-inviabilidade checkbox-item" value="${os.id}" ${marcado ? "checked" : ""} onchange="alternarSelecao(this)"></td>
+            <td>${esc(os.id || "-")}</td>
+            <td><strong>${esc(os.nome || "-")}</strong></td>
+            <td>${esc(os.localidade_nome || os.localidade || "-")}</td>
+            <td class="endereco-quebrado"><div class="texto-limitado" title="${escAttr(formatarEnderecoTexto(os))}">${esc(formatarEnderecoTexto(os))}</div></td>
             <td>${tecnicosFormatados}</td>
-
-            <td>${os.tipo_servico_nome || os.tipo_servico || "-"}</td>
-
-            <td>${os.plano_nome || os.plano || "-"}</td>
-
-            <td>${os.id_cliente || "-"}</td>
-
-            <td>${os.login || "-"}</td>
-
-            <td>${os.vlan || os.localidade_vlan || "-"}</td>
-
-            <td>${os.telefone || "-"}</td>
-
-            <td>${os.observacao || os.observacoes || "-"}</td>
-
+            <td>${esc(os.tipo_servico_nome || os.tipo_servico || "-")}</td>
+            <td>${esc(os.plano_nome || os.plano || "-")}</td>
+            <td>${esc(os.id_cliente || "-")}</td>
+            <td>${esc(os.login || "-")}</td>
+            <td>${esc(os.vlan || os.localidade_vlan || "-")}</td>
+            <td>${esc(os.telefone || "-")}</td>
+            <td class="col-observacao"><div class="texto-limitado" title="${escAttr(os.observacao || os.observacoes || os.descricao || "")}">${esc(os.observacao || os.observacoes || os.descricao || "-")}</div></td>
             <td>${formatarData(os.finalizado_em)}</td>
-
-            <td>${os.finalizado_por_nome || "-"}</td>
-
+            <td>${esc(os.finalizado_por_nome || "-")}</td>
             <td><span class="status-box status-inviabilidade">INVIABILIDADE</span></td>
-
-            <td>
-                ${imgUrl ? `<img src="${imgUrl}" class="preview" onclick="abrirImagem('${imgUrl}')">` : "-"}
-            </td>
-
-            <td>
-                <div class="acoes">
-                    <span class="icone-acao" title="Editar" onclick="editarOS(${os.id})">✏️</span>
-                    <span class="icone-acao" title="Excluir" onclick="excluirOS(${os.id})">🗑️</span>
-                    <span class="icone-acao" title="Reciclar" onclick="reciclarOS(${os.id})">♻️</span>
-                    ${anexoOriginal ? `<span class="icone-acao" title="Ver anexo original" onclick="abrirImagem('${anexoOriginal}')">📎</span>` : ""}
-                </div>
-            </td>
-        </tr>`;
+            <td onclick="event.stopPropagation()">${imgUrl ? `<img src="${escAttr(imgUrl)}" class="preview" onclick="abrirImagem('${jsString(imgUrl)}')">` : "-"}</td>
+            <td onclick="event.stopPropagation()"><div class="acoes">
+                <button class="btn-acao acao-resumo" title="Ver resumo" onclick="abrirResumo(${os.id})"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                <button class="btn-acao acao-editar" title="Editar" onclick="editarOS(${os.id})"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/></svg></button>
+                <button class="btn-acao acao-reciclar" title="Reciclar OS" onclick="reciclarOS(${os.id})"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-4M4 4v6h6"/><path d="M4 13a8 8 0 0 0 14.9 4M20 20v-6h-6"/></svg></button>
+                <button class="btn-acao acao-excluir" title="Excluir" onclick="excluirOS(${os.id})"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5"/></svg></button>
+                ${anexoOriginal ? `<button class="btn-acao acao-anexo" title="Ver anexo original" onclick="abrirImagem('${jsString(anexoOriginal)}')"><svg viewBox="0 0 24 24"><path d="M21.4 11.6l-8.9 8.9a6 6 0 0 1-8.5-8.5l9.6-9.6a4 4 0 0 1 5.7 5.7l-9.6 9.6a2 2 0 1 1-2.8-2.8l8.9-8.9"/></svg></button>` : ""}
+            </div></td>
+        </tr>`);
     });
+    atualizarEstadoSelecao();
 }
+
+
+function esc(valor){
+    return String(valor ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+function escAttr(valor){ return esc(valor).replace(/`/g,"&#096;"); }
+function jsString(valor){ return String(valor ?? "").replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/\r?\n/g," "); }
+function formatarEnderecoTexto(os){
+    return [os.rua, os.numero].filter(Boolean).join(", ") + (os.bairro ? ` - ${os.bairro}` : "") + (os.referencia ? `\nReferência: ${os.referencia}` : "") || "-";
+}
+function alternarSelecao(input){
+    const id=String(input.value); input.checked ? selecionadas.add(id) : selecionadas.delete(id); atualizarEstadoSelecao();
+}
+function atualizarEstadoSelecao(){
+    const visiveis=filtradosAtuais.map(o=>String(o.id));
+    const marcadasVisiveis=visiveis.filter(id=>selecionadas.has(id)).length;
+    const geral=document.getElementById("selecionarTodas");
+    if(geral){geral.checked=visiveis.length>0 && marcadasVisiveis===visiveis.length;geral.indeterminate=marcadasVisiveis>0 && marcadasVisiveis<visiveis.length;}
+    document.getElementById("totalSelecionadas").textContent=selecionadas.size;
+    document.getElementById("btnImprimirSelecionadas").disabled=selecionadas.size===0;
+}
+function abrirResumo(id){
+    const os=dados.find(x=>String(x.id)===String(id)); if(!os) return;
+    document.getElementById("resumoTitulo").textContent=`Inviabilidade OS #${os.id}`;
+    document.getElementById("resumoSubtitulo").textContent=os.nome || "Cliente não informado";
+    const anexos=[getUrl(os.evidencia),getUrl(os.anexo_path)].filter(Boolean);
+    document.getElementById("resumoConteudo").innerHTML=`
+      <div class="resumo-grid">
+        ${resumoItem("Cliente",os.nome)}${resumoItem("Telefone",os.telefone)}
+        ${resumoItem("Localidade",os.localidade_nome||os.localidade)}${resumoItem("Técnicos",os.tecnicos_nomes)}
+        ${resumoItem("Endereço",formatarEnderecoTexto(os),true)}
+        ${resumoItem("Tipo de serviço",os.tipo_servico_nome||os.tipo_servico)}${resumoItem("Plano",os.plano_nome||os.plano)}
+        ${resumoItem("ID cliente",os.id_cliente)}${resumoItem("Login",os.login)}
+        ${resumoItem("VLAN",os.vlan||os.localidade_vlan)}${resumoItem("Finalizado em",formatarData(os.finalizado_em))}
+        ${resumoItem("Finalizado por",os.finalizado_por_nome)}${resumoItem("Status","INVIABILIDADE")}
+        ${resumoItem("Observação",os.observacao||os.observacoes||os.descricao,true)}
+      </div>
+      ${anexos.length?`<div class="resumo-secao"><h3>Anexos e evidências</h3><div class="resumo-anexos">${anexos.map((u,i)=>`<div class="resumo-anexo" onclick="abrirImagem('${jsString(u)}')"><img src="${escAttr(u)}" alt="Anexo ${i+1}"></div>`).join("")}</div></div>`:""}`;
+    document.getElementById("popupResumo").classList.add("ativo"); document.body.style.overflow="hidden";
+}
+function resumoItem(rotulo,valor,span=false){return `<div class="resumo-item ${span?"span-2":""}"><small>${esc(rotulo)}</small><div>${esc(valor||"-")}</div></div>`}
+function fecharResumo(){document.getElementById("popupResumo").classList.remove("ativo");document.body.style.overflow=""}
+function fecharResumoFora(e){if(e.target.id==="popupResumo") fecharResumo()}
+function imprimirSelecionadas(){
+    const lista=dados.filter(o=>selecionadas.has(String(o.id))); if(!lista.length) return;
+    const area=document.getElementById("areaImpressao");
+    area.innerHTML=`<div class="print-page"><div class="print-title">SGOS — Inviabilidades selecionadas (${lista.length})</div>${lista.map(os=>`<div class="print-item"><div class="print-grid">${printField("OS",os.id)}${printField("Cliente",os.nome)}${printField("Localidade",os.localidade_nome||os.localidade)}${printField("Telefone",os.telefone)}${printField("Endereço",formatarEnderecoTexto(os),true)}${printField("Técnicos",os.tecnicos_nomes)}${printField("Serviço",os.tipo_servico_nome||os.tipo_servico)}${printField("Plano",os.plano_nome||os.plano)}${printField("Finalizado em",formatarData(os.finalizado_em))}${printField("Finalizado por",os.finalizado_por_nome)}${printField("Observação",os.observacao||os.observacoes||os.descricao,true)}</div></div>`).join("")}</div>`;
+    window.print();
+}
+function printField(rotulo,valor,span=false){return `<div class="print-field ${span?"print-span-2":""}"><small>${esc(rotulo)}</small><div>${esc(valor||"-")}</div></div>`}
 
 /* =====================
    AÇÕES
@@ -1352,6 +1434,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const busca = document.getElementById("buscaInviabilidade");
     const filtroCliente = document.getElementById("filtroCliente");
+
+    const selecionarTodas = document.getElementById("selecionarTodas");
+    if(selecionarTodas){
+        selecionarTodas.addEventListener("change", function(){
+            filtradosAtuais.forEach(os => this.checked ? selecionadas.add(String(os.id)) : selecionadas.delete(String(os.id)));
+            document.querySelectorAll(".checkbox-item").forEach(cb => cb.checked = this.checked);
+            atualizarEstadoSelecao();
+        });
+    }
+
+    document.addEventListener("keydown", e => { if(e.key === "Escape"){ fecharResumo(); fecharPopup(); } });
 
     if(busca && filtroCliente){
         busca.addEventListener("keyup", function(){
