@@ -92,7 +92,7 @@ module.exports = (db, io) => {
                 LEFT JOIN tipos_servico ts
                     ON ts.id = os.tipo_servico
                 WHERE
-                    os.status = 'agendado'
+                    os.status IN ('agendado', 'reagendado')
                     AND os.agendamento_envio IS NOT NULL
                     AND os.agendamento_envio <= NOW()
             `);
@@ -118,7 +118,7 @@ module.exports = (db, io) => {
                 io.emit("os_andamento", {
                     os_id: os.id,
                     titulo: "🚀 Agendamento em andamento",
-                    mensagem: `A OS agendada #${os.id} entrou em andamento${os.nome ? " - " + os.nome : ""}`,
+                    mensagem: `A OS agendada/reagendada #${os.id} entrou em andamento${os.nome ? " - " + os.nome : ""}`,
                     cliente: os.nome || ""
                 });
 

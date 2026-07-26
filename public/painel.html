@@ -11,7 +11,7 @@ TYPE html>
 
 <script src="/js/auth.js" defer></script>
 <script src="/js/init.js" defer></script>
-<script src="/js/painel.js?v=20260726-equipamento-popup" defer></script>
+<script src="/js/painel.js?v=20260726-status-reagendado" defer></script>
 
 <style>
 :root{
@@ -697,6 +697,7 @@ tr:hover{ background:#f8fbff; }
 .status-andamento{ background:#ffedd5; color:#f59e0b; }
 .status-finalizado{ background:#dcfce7; color:#15803d; }
 .status-agendado{ background:#ede9fe; color:#7c3aed; }
+.status-reagendado{ background:#dbeafe; color:#1d4ed8; }
 .status-ausente{ background:#fee2e2; color:#dc2626; }
 
 .prioridade-box{
@@ -3515,6 +3516,26 @@ function modoTV() {
 
     document.addEventListener("DOMContentLoaded", liberarValidadoresConhecidos);
     setInterval(liberarValidadoresConhecidos, 1000);
+})();
+</script>
+
+
+<script>
+// Compatibilidade visual para o novo status retornado pelo backend.
+(function observarStatusReagendado(){
+    const aplicar = () => {
+        document.querySelectorAll('.status-box, .badge, td').forEach(el => {
+            const texto = String(el.textContent || '').trim().toLowerCase();
+            if(texto === 'reagendado'){
+                el.classList.add('status-reagendado');
+                if(el.classList.contains('status-box') || el.classList.contains('badge')){
+                    el.textContent = 'Reagendado';
+                }
+            }
+        });
+    };
+    document.addEventListener('DOMContentLoaded', aplicar);
+    new MutationObserver(aplicar).observe(document.documentElement, {childList:true, subtree:true});
 })();
 </script>
 

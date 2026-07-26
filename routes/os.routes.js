@@ -56,5 +56,21 @@ module.exports = (db, io) => {
         }
     });
 
+
+    // ===============================
+    // 📅 REAGENDAR OS
+    // ===============================
+    router.put("/reagendar/:id", verificarAutenticacao, async (req, res) => {
+        try {
+            const result = await osService.reagendarOS(req.params.id, req.usuario, req.body);
+            await logService.registrarLog(req, "REAGENDOU OS", "OS", req.params.id, req.body);
+            io.emit("os_update");
+            res.json(result);
+        } catch (err) {
+            console.error(err);
+            res.status(400).json({ erro: err.message || "Erro ao reagendar OS" });
+        }
+    });
+
     return router;
 };

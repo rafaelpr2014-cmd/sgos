@@ -532,3 +532,34 @@ exports.concluirOS = async (id, usuario) => {
 
     return { ok: true };
 };
+
+// ===============================
+// 📅 REAGENDAR OS
+// ===============================
+exports.reagendarOS = async (id, usuario, dados = {}) => {
+    const valor = dados.agendamento || dados.agendado_para || dados.data_agendamento;
+    validarDataHoraAtualOuFutura(valor, "Nova data do reagendamento");
+    const novaData = parseDataHoraLocal(valor);
+    const motivo = String(dados.observacao_reagendamento || dados.observacao || "").trim();
+
+    const [result] = await db.query(`
+        UPDATE ordens_servico
+        SET status='reagendado',
+            agendamento=?,
+            agendamento_envio=?,
+            iniciado_em=NULL,
+            enviado_por=NULL,
+            observacao=CASE
+                WHEN ? <> '' THEN CONCAT(
+                    COALESCE(NULLIF(observacao, ''), ''),
+                    CASE WHEN COALESCE(NULLIF(observacao, ''), '') <> '' THEN '\\n' ELSE '' END,
+                    '[REAGENDAMENTO] ', ?
+                )
+                ELSE observacao
+            END
+        WHERE id=? AND empresa_id=?
+    `, [novaData, novaData, motivo, motivo, id, usuario.empresa_id]);
+
+    if(!result.affectedRows) throw new Error("OS não encontrada.");
+    return { sucesso:true, status:"reagendado", agendamento:novaData };
+};

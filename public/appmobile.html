@@ -991,6 +991,7 @@ button{touch-action:manipulation}
 .modal-modo-leitura #btnAusente,
 .modal-modo-leitura #btnInviabilidade,
 .modal-modo-leitura #btnConcluir,
+.modal-modo-leitura #btnReagendar,
 .modal-modo-leitura #btnCheckin,
 .modal-modo-leitura #btnEnviarLocalizacao{
     display:none !important;
@@ -1459,6 +1460,25 @@ button{touch-action:manipulation}
 @media(max-width:759px){.topbar-title strong{font-size:17px !important}}
 @media(max-width:390px){.topbar-title strong{font-size:16px !important}}
 
+
+
+/* ===== REAGENDAMENTO DE OS ===== */
+.btn-reagendar{background:#7c3aed !important}
+.modal-reagendamento{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;padding:16px;background:rgba(6,20,38,.72);z-index:12020}
+.modal-reagendamento.ativo{display:flex}
+.reagendamento-card{width:100%;max-width:480px;background:#fff;border-radius:26px 26px 20px 20px;padding:22px;box-shadow:0 28px 70px rgba(0,0,0,.32)}
+.reagendamento-card h3{margin:0 0 8px;text-align:center;color:#0f172a;font-size:20px}
+.reagendamento-card p{margin:0 0 15px;text-align:center;color:#64748b;font-size:13px;line-height:1.5}
+.reagendamento-card label{display:block;margin-bottom:7px;color:#334155;font-size:13px;font-weight:900}
+.reagendamento-card input,.reagendamento-card textarea{width:100%;margin:0 0 12px;padding:13px;border:1px solid #dbe3ef;border-radius:14px;background:#f8fafc;color:#0f172a;font-size:14px;outline:none}
+.reagendamento-card textarea{min-height:88px;resize:vertical}
+.reagendamento-info{margin:2px 0 14px;padding:11px 12px;border:1px solid #bfdbfe;border-radius:13px;background:#eff6ff;color:#1e40af;font-size:12px;line-height:1.5}
+.reagendamento-acoes{display:grid;grid-template-columns:1fr 1.35fr;gap:10px}
+.reagendamento-acoes button{width:100%;min-height:50px;margin:0;border:0;border-radius:14px;font-weight:900;color:#fff}
+.btn-cancelar-reagendamento{background:#64748b !important}
+.btn-confirmar-reagendamento{background:#7c3aed !important}
+@media(min-width:760px){.modal-reagendamento{align-items:center}.reagendamento-card{border-radius:28px}}
+
 </style>
 
 
@@ -1613,6 +1633,7 @@ button{touch-action:manipulation}
         <button id="btnVerAnexo" type="button" class="btn-loc" onclick="verAnexo()">📎 Ver Anexo</button>
         <button id="btnAusente" type="button" class="btn-ausente" onclick="enviarAcao('ausente', this)">Cliente Ausente</button>
         <button id="btnInviabilidade" type="button" class="btn-inv" onclick="enviarAcao('inviabilidade', this)">Inviabilidade</button>
+        <button id="btnReagendar" type="button" class="btn-reagendar" onclick="abrirReagendamento()">📅 Reagendar</button>
         <button id="btnCheckin" type="button" class="btn-checkin" onclick="fazerCheckin(this)">📍 Registrar check-in</button>
         <button id="btnConcluir" type="button" class="btn-ok" onclick="enviarAcao('concluir', this)">Concluir</button>
 
@@ -1657,6 +1678,23 @@ button{touch-action:manipulation}
       <button type="button" class="pendente" onclick="resolverConfirmacaoPagamento('pendente')">⌛ Não, manter pendente</button>
     </div>
     <button type="button" class="confirmacao-pagamento-cancelar" onclick="cancelarConfirmacaoPagamento()">Cancelar</button>
+  </div>
+</div>
+
+
+<div class="modal-reagendamento" id="modalReagendamento" aria-hidden="true" inert>
+  <div class="reagendamento-card" role="dialog" aria-modal="true" aria-labelledby="tituloReagendamento">
+    <h3 id="tituloReagendamento">Reagendar ordem de serviço</h3>
+    <p>Escolha a nova data e horário para esta OS.</p>
+    <label for="novaDataReagendamento">Nova data e horário</label>
+    <input type="datetime-local" id="novaDataReagendamento">
+    <label for="motivoReagendamento">Motivo ou observação</label>
+    <textarea id="motivoReagendamento" maxlength="1000" placeholder="Ex.: cliente solicitou alteração de horário..."></textarea>
+    <div class="reagendamento-info">Se a nova data for hoje, a OS continuará no painel inicial. Para outra data, ela ficará na página de Agendamentos.</div>
+    <div class="reagendamento-acoes">
+      <button type="button" class="btn-cancelar-reagendamento" onclick="fecharReagendamento()">Cancelar</button>
+      <button type="button" id="btnConfirmarReagendamento" class="btn-confirmar-reagendamento" onclick="confirmarReagendamento(this)">Confirmar reagendamento</button>
+    </div>
   </div>
 </div>
 
@@ -1949,6 +1987,7 @@ function normalizarStatusApp(status){
     if(s.includes("concl") || s.includes("final")) return "concluido";
     if(s.includes("ausente")) return "cliente_ausente";
     if(s.includes("abert")) return "aberto";
+    if(s.includes("reagend")) return "reagendado";
     if(s.includes("agend")) return "agendado";
 
     return s.replace(/\s+/g, "_");
@@ -3742,14 +3781,14 @@ function render(){
         const matchBusca = !busca || texto.includes(busca);
         const st = norm(o.status);
         const matchStatus =
-            (tab === "andamento" && st.includes("andamento")) ||
+            (tab === "andamento" && (st.includes("andamento") || st.includes("reagend"))) ||
             (tab === "concluido" && st.includes("concluido")) ||
             (tab === "ausente" && st.includes("ausente"));
         return matchBusca && matchStatus && dentroDoPeriodo(o);
     });
 
     const osPeriodo = OS.filter(dentroDoPeriodo);
-    document.getElementById("cA").innerText = osPeriodo.filter(o => norm(o.status).includes("andamento")).length;
+    document.getElementById("cA").innerText = osPeriodo.filter(o => { const st=norm(o.status); return st.includes("andamento") || st.includes("reagend"); }).length;
     document.getElementById("cC").innerText = osPeriodo.filter(o => norm(o.status).includes("concluido")).length;
     document.getElementById("cX").innerText = osPeriodo.filter(o => norm(o.status).includes("ausente")).length;
     renderizarResumoTiposServico(osPeriodo);
@@ -4121,7 +4160,12 @@ abrirModal = async function(chave){
 
     const btnAnexo = document.getElementById("btnVerAnexo");
     const btnVerLoc = document.getElementById("btnVerLocalizacao");
+    const btnReagendar = document.getElementById("btnReagendar");
     const btnCheckin = document.getElementById("btnCheckin");
+    if(btnReagendar){
+        btnReagendar.style.display = (!somenteLeitura && os._tipo !== "avulsa") ? "block" : "none";
+        btnReagendar.disabled = somenteLeitura || os._tipo === "avulsa";
+    }
     if(btnCheckin){
         const feito = !!os.checkin_inicio_em;
         btnCheckin.textContent = feito ? `✓ Check-in ${format(os.checkin_inicio_em)}` : "📍 Registrar check-in";
@@ -4223,6 +4267,81 @@ function osExigeConfirmacaoPagamento(os){
   return String(os?.origem_equipamento||'').toLowerCase()==='empresa'
     && String(os?.modalidade_equipamento||'').toLowerCase()==='vendido'
     && String(os?.status_pagamento_equipamento||'pendente').toLowerCase()==='pendente';
+}
+
+
+function dataLocalInput(valor){
+    const d = valor ? new Date(valor) : new Date();
+    if(Number.isNaN(d.getTime())) return "";
+    const pad = n => String(n).padStart(2,"0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function abrirReagendamento(){
+    const osAtual = encontrarOS(osSelecionada);
+    if(!osAtual){ alert("OS não encontrada"); return; }
+    if(osAtual._tipo === "avulsa"){ alert("Reagendamento disponível somente para OS de clientes."); return; }
+    const campoData = document.getElementById("novaDataReagendamento");
+    const agora = new Date();
+    agora.setMinutes(agora.getMinutes() + 30);
+    if(campoData){
+        campoData.min = dataLocalInput(new Date());
+        campoData.value = dataLocalInput(osAtual.agendamento || osAtual.agendado_para || agora);
+    }
+    const motivo = document.getElementById("motivoReagendamento");
+    if(motivo) motivo.value = "";
+    const modal = document.getElementById("modalReagendamento");
+    if(modal){ modal.removeAttribute("inert"); modal.classList.add("ativo"); modal.setAttribute("aria-hidden","false"); }
+    setTimeout(()=>campoData?.focus(),80);
+}
+function fecharReagendamento(){
+    if(document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    const modal = document.getElementById("modalReagendamento");
+    if(modal){ modal.classList.remove("ativo"); modal.setAttribute("aria-hidden","true"); modal.setAttribute("inert",""); }
+}
+function mesmaDataLocal(a,b){
+    return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+}
+async function confirmarReagendamento(botao){
+    const osAtual = encontrarOS(osSelecionada);
+    if(!osAtual){ alert("OS não encontrada"); return; }
+    const valor = String(document.getElementById("novaDataReagendamento")?.value || "").trim();
+    const motivo = String(document.getElementById("motivoReagendamento")?.value || "").trim();
+    if(!valor){ alert("Selecione a nova data e horário."); document.getElementById("novaDataReagendamento")?.focus(); return; }
+    const novaData = new Date(valor);
+    if(Number.isNaN(novaData.getTime())){ alert("Data de reagendamento inválida."); return; }
+    if(novaData.getTime() < Date.now() - 60000){ alert("Selecione uma data e horário atuais ou futuros."); return; }
+
+    bloquearBotao(botao,true,"Reagendando...");
+    try{
+        const payload = {
+            status:"reagendado",
+            agendamento:novaData.toISOString(),
+            agendamento_envio:novaData.toISOString(),
+            agendado_para:novaData.toISOString(),
+            data_agendamento:novaData.toISOString(),
+            observacao:motivo,
+            observacao_reagendamento:motivo
+        };
+        const resposta = await apiFetch(`/api/ordens_servico/reagendar/${osAtual.id}`,{
+            method:"PUT",
+            headers:{"Content-Type":"application/json","Accept":"application/json","x-usuario-id":String(user.id)},
+            body:JSON.stringify(payload),
+            cache:"no-store"
+        });
+        const dados = await lerRespostaSegura(resposta);
+        if(!resposta?.ok) throw new Error(dados.erro || dados.mensagem || `Erro HTTP ${resposta?.status || ""}`);
+
+        const ficaNoPainel = mesmaDataLocal(novaData,new Date());
+        alert(ficaNoPainel
+            ? "OS reagendada para hoje e mantida no painel inicial."
+            : "OS reagendada e enviada para a página de Agendamentos.");
+        fecharReagendamento();
+        fecharModal();
+        await load();
+    }catch(err){
+        console.error("Falha ao reagendar OS:",err);
+        alert(err.message || "Não foi possível reagendar a OS.");
+    }finally{ bloquearBotao(botao,false); }
 }
 
 async function enviarAcao(tipo, botao){
