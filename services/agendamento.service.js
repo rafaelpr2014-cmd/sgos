@@ -132,6 +132,38 @@ module.exports = (db, io) => {
         }
     }
 
+
+    // ===============================
+    // 🔄 RETORNO AUTOMÁTICO DE CLIENTES AUSENTES
+    // Às 18:30, OS marcadas como ausente no dia voltam para aberto.
+    // ===============================
+    async function verificarRetornoClientesAusentes() {
+        try {
+            const [resultado] = await db.query(`
+                UPDATE ordens_servico
+                SET
+                    status = 'aberto',
+                    finalizado_em = NULL,
+                    finalizado_por = NULL
+                WHERE status = 'cliente_ausente'
+                  AND finalizado_em IS NOT NULL
+                  AND DATE(finalizado_em) = CURDATE()
+                  AND CURTIME() >= '18:30:00'
+            `);
+
+            if (resultado.affectedRows > 0) {
+                console.log(`🔄 ${resultado.affectedRows} OS ausente(s) retornaram para aberto às 18:30.`);
+                io.emit("os_update");
+            }
+        } catch (err) {
+            console.error("ERRO AO RETORNAR CLIENTES AUSENTES:", err);
+        }
+    }
+
+    verificarAgendamentos();
+    verificarRetornoClientesAusentes();
+
     setInterval(verificarAgendamentos, 30000);
+    setInterval(verificarRetornoClientesAusentes, 30000);
 
 };

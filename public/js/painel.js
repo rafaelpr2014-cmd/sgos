@@ -153,7 +153,7 @@ function renderResumoTopo(tecnicos, localidades, tipos){
     const el = document.getElementById("resumo-topo");
     if(!el) return;
 
-    const abertas = ordens.filter(o => o.status === "aberto").length;
+    const abertas = ordens.filter(o => o.status === "aberto" || (o.status === "reagendado" && agendamentoEhHoje(o))).length;
     const andamento = ordens.filter(o => o.status === "em_andamento").length;
     const ausentes = ordens.filter(o => o.status === "cliente_ausente").length;
     const concluidas = ordens.filter(o => o.status === "concluido").length;
@@ -222,7 +222,8 @@ const STATUS_MAP = {
     "em_andamento": ["status-andamento","Em execução"],
     "cliente_ausente": ["status-ausente","Cliente Ausente"],
     "concluido": ["status-finalizado","Finalizado"],
-    "agendado": ["status-agendado","Agendado"]
+    "agendado": ["status-agendado","Agendado"],
+    "reagendado": ["status-reagendado","Reagendado"]
 };
 
 function normalizarStatus(status) {
@@ -735,10 +736,30 @@ function atualizarCards() {
     const osAvulsasEl = document.getElementById("osAvulsas");
 
     if (osAvulsasEl) osAvulsasEl.innerText = osAvulsas.length + osAvulsasConcluidas.length;
-    if (abertasEl) abertasEl.innerText = ordens.filter(o => o.status === "aberto").length;
+    if (abertasEl) abertasEl.innerText = ordens.filter(o => o.status === "aberto" || (o.status === "reagendado" && agendamentoEhHoje(o))).length;
     if (andamentoEl) andamentoEl.innerText = ordens.filter(o => o.status === "em_andamento").length;
     if (finalizadasEl) finalizadasEl.innerText = ordens.filter(o => o.status === "concluido").length;
     if (ausentesEl) ausentesEl.innerText = ordens.filter(o => o.status === "cliente_ausente").length;
+}
+
+// ===============================
+// REAGENDAMENTO NO PAINEL
+// ===============================
+function obterDataReagendamento(os) {
+    return os?.agendamento || os?.agendamento_envio || os?.reagendado_para || null;
+}
+
+function agendamentoEhHoje(os) {
+    const valor = obterDataReagendamento(os);
+    if (!valor) return false;
+
+    const data = new Date(valor);
+    if (Number.isNaN(data.getTime())) return false;
+
+    const hoje = new Date();
+    return data.getFullYear() === hoje.getFullYear()
+        && data.getMonth() === hoje.getMonth()
+        && data.getDate() === hoje.getDate();
 }
 
 // ===============================
@@ -817,6 +838,11 @@ function popularTabelas() {
             // 🔥 COM AGENDAMENTO:
             // RESPEITA FILTRO
             return dentroPeriodo(o.agendamento);
+        }
+
+        // 🔁 REAGENDADAS PARA HOJE
+        if (o.status === "reagendado") {
+            return agendamentoEhHoje(o);
         }
 
         // 🔥 AGENDADAS
@@ -1196,7 +1222,7 @@ function popularTabela(id, dados) {
 
         // 🔥 BOTÃO LANÇAR AGORA
         if (
-            ["aberto", "cliente_ausente", "agendado"]
+            ["aberto", "cliente_ausente", "agendado", "reagendado"]
             .includes(os.status)
         ) {
 
@@ -1803,7 +1829,7 @@ window.abrirResumoOS = async function(id){
 
     const acoes = document.getElementById("resumoOSAcoes");
 
-    const podeLancar = ["aberto", "cliente_ausente", "agendado"].includes(os.status);
+    const podeLancar = ["aberto", "cliente_ausente", "agendado", "reagendado"].includes(os.status);
 
     acoes.innerHTML = `
         <button class="btn-resumo azul" onclick="editarOS(${os.id})">✏️ Editar</button>
