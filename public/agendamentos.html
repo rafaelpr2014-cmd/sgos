@@ -667,6 +667,32 @@ tr:hover{ background:#f8fbff; }
     .content{ padding:20px; }
     .top-actions{ grid-template-columns:1fr; }
 }
+
+/* ===== AÇÕES NO MESMO MODELO DO PAINEL ===== */
+.btn-acao-localizacao{ background:#2563eb; }
+.btn-acao-lancar{ background:#16a34a; }
+.btn-acao-imprimir{ background:#0f9f8f; }
+.btn-acao-agendamento svg{ width:18px; height:18px; }
+
+.reagendado{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:7px 12px;
+    border:1px solid #93c5fd;
+    background:linear-gradient(135deg,#dbeafe,#eff6ff);
+    color:#1d4ed8;
+    box-shadow:0 3px 9px rgba(37,99,235,.12);
+}
+.reagendado::before{
+    content:"";
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:#2563eb;
+    box-shadow:0 0 0 3px rgba(37,99,235,.12);
+}
+
 </style>
 </head>
 
@@ -921,21 +947,6 @@ function abrirLocalizacao(latitude, longitude){
         return;
     }
     window.open(`https://www.google.com/maps?q=${latitude},${longitude}`, "_blank");
-}
-
-async function lancarAgora(id){
-    if(!confirm("Deseja iniciar essa OS agora?")) return;
-
-    try{
-        await fetchAuth(`/api/ordens_servico/iniciar/${id}`, {
-            method:"POST"
-        });
-
-        fecharResumoOS();
-        carregar();
-    }catch(err){
-        alert(err.message || "Erro ao lançar OS. Verifique se existe técnico selecionado.");
-    }
 }
 
 let agendamentosCache = [];
@@ -1313,45 +1324,53 @@ ${String(o.status || "").toLowerCase() === "reagendado"
 
 <td>
 <div class="acoes" onclick="event.stopPropagation()">
-    <button
-        type="button"
+    <button type="button"
         class="btn-acao-agendamento btn-acao-editar"
-        title="Editar agendamento"
-        aria-label="Editar agendamento"
-        onclick="event.stopPropagation(); editar(${o.id})"
-    >
+        title="Editar OS"
+        aria-label="Editar OS"
+        onclick="event.stopPropagation(); editar(${o.id})">
         <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/></svg>
     </button>
 
-    <button
-        type="button"
+    <button type="button"
+        class="btn-acao-agendamento btn-acao-localizacao"
+        title="Abrir localização"
+        aria-label="Abrir localização"
+        onclick="event.stopPropagation(); abrirLocalizacao('${o.latitude || ""}', '${o.longitude || ""}')">
+        <svg viewBox="0 0 24 24"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0z"/><circle cx="12" cy="10" r="2.5"/></svg>
+    </button>
+
+    <button type="button"
         class="btn-acao-agendamento btn-acao-lancar"
         title="Lançar OS agora"
         aria-label="Lançar OS agora"
-        onclick="event.stopPropagation(); lancarAgora(${o.id})"
-    >
-        <svg viewBox="0 0 24 24"><path d="M14 5l5 5"/><path d="M13 6l-7.5 7.5a2.1 2.1 0 0 0-.5 1L4 20l5.5-1a2.1 2.1 0 0 0 1-.5L18 11"/><path d="M9 15l-1 4"/></svg>
+        onclick="event.stopPropagation(); lancarAgora(${o.id})">
+        <svg viewBox="0 0 24 24"><path d="M4 13l5 5 11-11"/><path d="M14 5h5v5"/></svg>
+    </button>
+
+    <button type="button"
+        class="btn-acao-agendamento btn-acao-imprimir"
+        title="Imprimir OS"
+        aria-label="Imprimir OS"
+        onclick="event.stopPropagation(); imprimirAgendamento(${o.id})">
+        <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>
     </button>
 
     ${o.anexo_path
-        ? `<button
-                type="button"
+        ? `<button type="button"
                 class="btn-acao-agendamento btn-acao-anexo"
                 title="Visualizar anexo"
                 aria-label="Visualizar anexo"
-                onclick="event.stopPropagation(); abrirAnexo('${o.anexo_path}')"
-           >
+                onclick="event.stopPropagation(); abrirAnexo('${o.anexo_path}')">
                 <svg viewBox="0 0 24 24"><path d="M21.4 11.6l-8.9 8.9a6 6 0 0 1-8.5-8.5l9.6-9.6a4 4 0 0 1 5.7 5.7l-9.6 9.6a2 2 0 0 1-2.8-2.8l8.9-8.9"/></svg>
            </button>`
         : ""}
 
-    <button
-        type="button"
+    <button type="button"
         class="btn-acao-agendamento btn-acao-excluir"
-        title="Excluir agendamento"
-        aria-label="Excluir agendamento"
-        onclick="event.stopPropagation(); excluir(${o.id})"
-    >
+        title="Excluir OS"
+        aria-label="Excluir OS"
+        onclick="event.stopPropagation(); excluir(${o.id})">
         <svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
     </button>
 </div>
@@ -1711,14 +1730,26 @@ window.fecharResumoOS = function(){
     if(modal) modal.style.display = "none";
 };
 
-window.abrirResumoOS = function(id){
+window.abrirResumoOS = async function(id){
     garantirModalResumoOS();
 
-    const os = (agendamentosCache || []).find(o => Number(o.id) === Number(id));
+    let os = (agendamentosCache || []).find(o => Number(o.id) === Number(id));
 
     if(!os){
-        alert("OS não encontrada no painel.");
+        alert("OS não encontrada nos agendamentos.");
         return;
+    }
+
+    try{
+        let detalhe = await apiAgendamento(`/api/ordens_servico/${id}`);
+        detalhe = detalhe?.os || detalhe?.ordem || detalhe?.data || detalhe;
+        if(detalhe && typeof detalhe === "object"){
+            os = {...os, ...detalhe};
+            const indice = agendamentosCache.findIndex(item => Number(item.id) === Number(id));
+            if(indice >= 0) agendamentosCache[indice] = os;
+        }
+    }catch(erro){
+        console.warn("Não foi possível carregar os detalhes completos da OS agendada:", erro);
     }
 
     const [classeStatus, textoStatus] = STATUS_MAP[os.status] || STATUS_MAP["aberto"];
@@ -1746,6 +1777,7 @@ window.abrirResumoOS = function(id){
                 ${linhaResumo("Tipo de Serviço", os.tipo_servico_nome, "Status", textoStatus)}
                 ${linhaResumo("Técnicos", formatarTecnicosAgendamento(os).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(), "Criado por", os.criado_por_nome)}
                 ${linhaResumo("Criado em", formatarData(os.criado_em || os.data_abertura), "Agendamento", formatarData(os.agendamento))}
+                ${String(os.status || "").toLowerCase() === "reagendado" ? linhaResumo("Reagendado por", os.reagendado_por_nome || os.reagendado_por_usuario || os.usuario_reagendamento_nome || os.reagendado_por || os.atualizado_por_nome || "-", "Reagendado em", formatarData(os.reagendado_em || os.data_reagendamento || os.atualizado_em)) : ""}
             </div>
 
             <div class="resumo-card">
@@ -1786,14 +1818,58 @@ window.abrirResumoOS = function(id){
     const podeLancar = ["aberto", "cliente_ausente", "agendado", "reagendado"].includes(os.status);
 
     acoes.innerHTML = `
-        <button class="btn-resumo azul" onclick="editarOS(${os.id})">✏️ Editar</button>
+        <button class="btn-resumo azul" onclick="editar(${os.id})">✏️ Editar</button>
+        <button class="btn-resumo cinza" onclick="abrirLocalizacao('${os.latitude || ""}', '${os.longitude || ""}')">📍 Localização</button>
         ${podeLancar ? `<button class="btn-resumo verde" onclick="lancarAgora(${os.id})">🚀 Lançar Agora</button>` : ""}
-        <button class="btn-resumo vermelho" onclick="excluirOS(${os.id})">🗑️ Excluir</button>
+        <button class="btn-resumo azul" onclick="imprimirAgendamento(${os.id})">🖨️ Imprimir</button>
+        <button class="btn-resumo vermelho" onclick="excluir(${os.id})">🗑️ Excluir</button>
     `;
 
     document.getElementById("modalResumoOS").style.display = "flex";
 };
 
+
+
+function imprimirAgendamento(id){
+    const os = (agendamentosCache || []).find(item => Number(item.id) === Number(id));
+    if(!os){
+        alert("OS não encontrada para impressão.");
+        return;
+    }
+
+    abrirResumoOS(id).then(function(){
+        const box = document.querySelector("#modalResumoOS .resumo-os-box");
+        if(!box) return;
+
+        const janela = window.open("", "_blank", "width=1000,height=760");
+        if(!janela) return;
+
+        janela.document.write(`
+            <!DOCTYPE html>
+            <html lang="pt-BR">
+            <head>
+                <meta charset="UTF-8">
+                <title>OS #${os.id}</title>
+                <style>
+                    body{font-family:Arial,sans-serif;margin:24px;color:#0f172a}
+                    .resumo-os-head{border-bottom:2px solid #2563eb;padding-bottom:12px;margin-bottom:16px}
+                    .resumo-grid-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+                    .resumo-card{border:1px solid #dbe3ee;border-radius:10px;padding:12px}
+                    .resumo-card.full{grid-column:1/-1}
+                    .resumo-linha{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:7px 0}
+                    .resumo-campo small{display:block;color:#64748b;font-weight:bold;margin-bottom:3px}
+                    .resumo-os-actions,.resumo-fechar{display:none!important}
+                    @media print{body{margin:10mm}}
+                </style>
+            </head>
+            <body>${box.innerHTML}</body>
+            </html>
+        `);
+        janela.document.close();
+        janela.focus();
+        setTimeout(() => janela.print(), 300);
+    });
+}
 
 // =====================
 // EDITAR / EXCLUIR

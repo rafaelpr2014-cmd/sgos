@@ -827,7 +827,6 @@ router.get("/", verificarAutenticacao, async (req, res) => {
                 filtroPeriodo = `
                     AND os.status IN ('agendado', 'reagendado')
                     AND os.agendamento IS NOT NULL
-                    AND os.agendamento >= CURDATE() + INTERVAL 1 DAY
                 `;
                 break;
 
@@ -840,7 +839,7 @@ router.get("/", verificarAutenticacao, async (req, res) => {
                     AND (
                         (
                             os.agendamento IS NULL
-                            AND os.status IN ('aberto', 'cliente_ausente', 'reagendado')
+                            AND os.status IN ('aberto', 'cliente_ausente')
                         )
 
                         OR
@@ -1382,101 +1381,6 @@ router.delete(
 );
 
 // ===============================
-// 📅 REAGENDAR OS
-// ===============================
-router.put(
-    "/reagendar/:id",
-    verificarAutenticacao,
-    async (req, res) => {
-        try {
-            const osId = Number(req.params.id);
-            const empresaId = Number(req.usuario.empresa_id);
-            const usuarioId = Number(req.usuario.id);
-            const novaDataRaw = req.body.agendamento || req.body.agendado_para || req.body.data_agendamento;
-            const motivo = String(req.body.observacao_reagendamento || req.body.observacao || "").trim();
-
-            if(!osId || !empresaId){
-                return res.status(400).json({ erro: "OS inválida." });
-            }
-
-            try{
-                validarDataHoraAtualOuFutura(novaDataRaw, "Nova data do reagendamento");
-            }catch(dataErr){
-                return res.status(400).json({ erro: dataErr.message });
-            }
-
-            const novaData = parseDataHoraLocal(novaDataRaw);
-            const pad = n => String(n).padStart(2, "0");
-            const novaDataSQL = `${novaData.getFullYear()}-${pad(novaData.getMonth()+1)}-${pad(novaData.getDate())} ${pad(novaData.getHours())}:${pad(novaData.getMinutes())}:${pad(novaData.getSeconds())}`;
-
-            const [rows] = await db.query(`
-                SELECT id, nome, telefone, login, status, agendamento, agendamento_envio
-                FROM ordens_servico
-                WHERE id = ? AND empresa_id = ?
-                LIMIT 1
-            `, [osId, empresaId]);
-
-            if(!rows.length){
-                return res.status(404).json({ erro: "OS não encontrada." });
-            }
-
-            const osAnterior = rows[0];
-            if(['concluido','inviabilidade'].includes(String(osAnterior.status || '').toLowerCase())){
-                return res.status(400).json({ erro: "Não é possível reagendar uma OS finalizada ou inviabilizada." });
-            }
-
-            // agendamento = data de realização; agendamento_envio = momento em que entrará em andamento.
-            await db.query(`
-                UPDATE ordens_servico
-                SET status = 'reagendado',
-                    agendamento = ?,
-                    agendamento_envio = ?,
-                    iniciado_em = NULL,
-                    enviado_por = NULL,
-                    observacao = CASE
-                        WHEN ? <> '' THEN CONCAT(
-                            COALESCE(NULLIF(observacao, ''), ''),
-                            CASE WHEN COALESCE(NULLIF(observacao, ''), '') <> '' THEN '\\n' ELSE '' END,
-                            '[REAGENDAMENTO] ', ?
-                        )
-                        ELSE observacao
-                    END
-                WHERE id = ? AND empresa_id = ?
-            `, [novaDataSQL, novaDataSQL, motivo, motivo, osId, empresaId]);
-
-            try{
-                await registrarLog(req, "REAGENDOU OS", "OS", osId, {
-                    Cliente: osAnterior.nome,
-                    Status_anterior: osAnterior.status,
-                    Data_anterior: osAnterior.agendamento,
-                    Nova_data: novaDataSQL,
-                    Motivo: motivo || "Não informado"
-                });
-            }catch(logErr){
-                console.error("Erro ao registrar log de reagendamento:", logErr);
-            }
-
-            io.emit("os_update");
-
-            const hoje = new Date();
-            const mesmoDia = novaData.getFullYear() === hoje.getFullYear()
-                && novaData.getMonth() === hoje.getMonth()
-                && novaData.getDate() === hoje.getDate();
-
-            return res.json({
-                sucesso: true,
-                status: "reagendado",
-                agendamento: novaDataSQL,
-                destino: mesmoDia ? "painel" : "agendamentos"
-            });
-        } catch (err) {
-            console.error("ERRO REAGENDAR OS:", err);
-            return res.status(err.statusCode || 500).json({ erro: err.message || "Erro ao reagendar OS." });
-        }
-    }
-);
-
-// ===============================
 // 🚀 INICIAR OS
 // ===============================
 router.post(
@@ -1631,7 +1535,7 @@ router.post(
                 });
             }
 
-            if(!['em_andamento','aberto','agendado','reagendado'].includes(String(os.status || '').toLowerCase())){
+            if(!['em_andamento','aberto','agendado'].includes(String(os.status || '').toLowerCase())){
                 return res.status(400).json({ erro: "O check-in não pode ser registrado no status atual da OS." });
             }
 

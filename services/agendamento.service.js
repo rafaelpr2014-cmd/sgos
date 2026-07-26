@@ -118,7 +118,7 @@ module.exports = (db, io) => {
                 io.emit("os_andamento", {
                     os_id: os.id,
                     titulo: "🚀 Agendamento em andamento",
-                    mensagem: `A OS agendada/reagendada #${os.id} entrou em andamento${os.nome ? " - " + os.nome : ""}`,
+                    mensagem: `A OS agendada #${os.id} entrou em andamento${os.nome ? " - " + os.nome : ""}`,
                     cliente: os.nome || ""
                 });
 
@@ -133,16 +133,16 @@ module.exports = (db, io) => {
     }
 
 
+
     // ===============================
-    // 🔄 RETORNO AUTOMÁTICO DE CLIENTES AUSENTES
-    // Às 18:30, OS marcadas como ausente no dia voltam para aberto.
+    // RETORNO AUTOMÁTICO DE CLIENTES AUSENTES
+    // Após 18:30, ausências registradas hoje retornam para aberto.
     // ===============================
     async function verificarRetornoClientesAusentes() {
         try {
             const [resultado] = await db.query(`
                 UPDATE ordens_servico
-                SET
-                    status = 'aberto',
+                SET status = 'aberto',
                     finalizado_em = NULL,
                     finalizado_por = NULL
                 WHERE status = 'cliente_ausente'
@@ -152,7 +152,7 @@ module.exports = (db, io) => {
             `);
 
             if (resultado.affectedRows > 0) {
-                console.log(`🔄 ${resultado.affectedRows} OS ausente(s) retornaram para aberto às 18:30.`);
+                console.log(`🔄 ${resultado.affectedRows} OS ausente(s) retornaram para aberto após 18:30.`);
                 io.emit("os_update");
             }
         } catch (err) {

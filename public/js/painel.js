@@ -153,7 +153,7 @@ function renderResumoTopo(tecnicos, localidades, tipos){
     const el = document.getElementById("resumo-topo");
     if(!el) return;
 
-    const abertas = ordens.filter(o => o.status === "aberto" || (o.status === "reagendado" && agendamentoEhHoje(o))).length;
+    const abertas = ordens.filter(o => o.status === "aberto" || (o.status === "reagendado" && reagendamentoEhHoje(o))).length;
     const andamento = ordens.filter(o => o.status === "em_andamento").length;
     const ausentes = ordens.filter(o => o.status === "cliente_ausente").length;
     const concluidas = ordens.filter(o => o.status === "concluido").length;
@@ -736,7 +736,7 @@ function atualizarCards() {
     const osAvulsasEl = document.getElementById("osAvulsas");
 
     if (osAvulsasEl) osAvulsasEl.innerText = osAvulsas.length + osAvulsasConcluidas.length;
-    if (abertasEl) abertasEl.innerText = ordens.filter(o => o.status === "aberto" || (o.status === "reagendado" && agendamentoEhHoje(o))).length;
+    if (abertasEl) abertasEl.innerText = ordens.filter(o => o.status === "aberto" || (o.status === "reagendado" && reagendamentoEhHoje(o))).length;
     if (andamentoEl) andamentoEl.innerText = ordens.filter(o => o.status === "em_andamento").length;
     if (finalizadasEl) finalizadasEl.innerText = ordens.filter(o => o.status === "concluido").length;
     if (ausentesEl) ausentesEl.innerText = ordens.filter(o => o.status === "cliente_ausente").length;
@@ -745,17 +745,23 @@ function atualizarCards() {
 // ===============================
 // REAGENDAMENTO NO PAINEL
 // ===============================
-function obterDataReagendamento(os) {
-    return os?.agendamento || os?.agendamento_envio || os?.reagendado_para || null;
+function dataOSLocal(valor) {
+    if (!valor) return null;
+    const texto = String(valor).trim();
+    const match = texto.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (match) {
+        return new Date(
+            Number(match[1]), Number(match[2]) - 1, Number(match[3]),
+            Number(match[4]), Number(match[5]), Number(match[6] || 0)
+        );
+    }
+    const data = new Date(texto);
+    return Number.isNaN(data.getTime()) ? null : data;
 }
 
-function agendamentoEhHoje(os) {
-    const valor = obterDataReagendamento(os);
-    if (!valor) return false;
-
-    const data = new Date(valor);
-    if (Number.isNaN(data.getTime())) return false;
-
+function reagendamentoEhHoje(os) {
+    const data = dataOSLocal(os?.agendamento || os?.agendamento_envio);
+    if (!data) return false;
     const hoje = new Date();
     return data.getFullYear() === hoje.getFullYear()
         && data.getMonth() === hoje.getMonth()
@@ -842,7 +848,7 @@ function popularTabelas() {
 
         // 🔁 REAGENDADAS PARA HOJE
         if (o.status === "reagendado") {
-            return agendamentoEhHoje(o);
+            return reagendamentoEhHoje(o);
         }
 
         // 🔥 AGENDADAS
