@@ -6,7 +6,9 @@
         "estoque.html",
         "relatorios.html",
         "informativos-ia.html",
-        "informativos_ia.html"
+        "informativos_ia.html",
+        "integracoes.html",
+        "whatsapp-cliente.html"
     ]);
 
     const PAGINAS_SOMENTE_LEITURA = new Set([
@@ -18,8 +20,6 @@
         "tipos_servicos.html",
         "tipos-servicos.html",
         "svas.html",
-        "integracoes.html",
-        "whatsapp-cliente.html",
         "whatsapp.html",
         "logs_acesso.html",
         "logs-acoes.html",
@@ -32,7 +32,9 @@
         "estoque.html",
         "relatorios.html",
         "informativos-ia.html",
-        "informativos_ia.html"
+        "informativos_ia.html",
+        "integracoes.html",
+        "whatsapp-cliente.html"
     ];
 
     function normalizarCargo(valor) {

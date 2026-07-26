@@ -200,6 +200,8 @@ async function apiFetch(url, options = {}) {
         headers: {
             "Content-Type": "application/json",
             "x-usuario-id": usuario.id,
+            "x-log-id": localStorage.getItem("log_id") || "",
+            "x-sgos-active": "1",
             ...(options.headers || {})
         }
     });

@@ -832,7 +832,7 @@ tr:hover{ background:#f8fbff; }
                         </tr>
                     </thead>
                     <tbody id="tbodyHistorico">
-                        <tr><td colspan="12">Carregando histórico...</td></tr>
+                        <tr><td colspan="11">Carregando histórico...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -847,7 +847,7 @@ tr:hover{ background:#f8fbff; }
     </section>
 
     <footer class="footer">
-        <span>SGOS - Sistema de Gestão Operacional e Sistemas</span>
+        <span>SGOS - Sistema de Gestão Operacional e Serviços</span>
         <span>Versão 1.0.0</span>
     </footer>
 
@@ -857,6 +857,64 @@ tr:hover{ background:#f8fbff; }
 let paginaAtual = 1;
 let totalPaginas = 1;
 let dados = [];
+
+function obterSessaoSGOS(){
+    const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+    const logId = localStorage.getItem("log_id") || usuario.log_id || "";
+
+    if(!usuario?.id || !logId){
+        alert("Sessão inválida ou expirada.");
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = "login.html";
+        return null;
+    }
+
+    return { usuario, logId };
+}
+
+async function apiFetch(url, options = {}){
+    const sessao = obterSessaoSGOS();
+    if(!sessao) throw new Error("Sessão inválida");
+
+    const headers = {
+        "x-usuario-id": String(sessao.usuario.id),
+        "x-log-id": String(sessao.logId),
+        "x-sgos-active": "1",
+        ...(options.headers || {})
+    };
+
+    if(options.body && !(options.body instanceof FormData) && !headers["Content-Type"]){
+        headers["Content-Type"] = "application/json";
+    }
+
+    const resposta = await fetch(url, {
+        ...options,
+        headers
+    });
+
+    if(resposta.status === 401){
+        localStorage.clear();
+        sessionStorage.clear();
+        alert("Sua sessão foi encerrada. Faça login novamente.");
+        window.location.href = "login.html";
+        throw new Error("Sessão encerrada");
+    }
+
+    if(!resposta.ok){
+        let mensagem = "Erro ao acessar o servidor.";
+        try{
+            const erro = await resposta.json();
+            mensagem = erro.erro || erro.mensagem || mensagem;
+        }catch{
+            const texto = await resposta.text();
+            if(texto) mensagem = texto;
+        }
+        throw new Error(mensagem);
+    }
+
+    return resposta;
+}
 
 // =====================
 // SIDEBAR
@@ -913,10 +971,7 @@ async function carregarUsuario() {
         const userEmpresaEl = document.getElementById("userEmpresa");
         const empresaLogadaEl = document.getElementById("empresaLogada");
 
-        const res = await fetch("/api/me", {
-            headers: { "x-usuario-id": userLocal.id }
-        });
-
+        const res = await apiFetch("/api/me");
         const data = await res.json();
 
         if (data?.usuario) {
@@ -946,7 +1001,7 @@ async function carregarUsuario() {
 
 async function carregarUsuariosOnline() {
     try {
-        const res = await fetch("/api/logs");
+        const res = await apiFetch("/api/logs");
         const logs = await res.json();
 
         const online = logs
@@ -976,9 +1031,16 @@ function logout() {
     const logId = localStorage.getItem("log_id");
 
     if (logId) {
+        const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+
         fetch("/api/logout", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "x-usuario-id": String(usuario.id || ""),
+                "x-log-id": String(logId),
+                "x-sgos-active": "1"
+            },
             body: JSON.stringify({ log_id: logId })
         }).catch(console.error);
     }
@@ -1070,28 +1132,41 @@ function atualizarCards(filtrados = dados){
 // HISTÓRICO
 // ===============================
 async function carregarHistorico(){
+    const tbody = document.getElementById("tbodyHistorico");
 
-    const usuario =
-        JSON.parse(localStorage.getItem("usuario"));
-
-    const res = await fetch(
-        `/api/ordens_servico/historico?page=${paginaAtual}`,
-        {
-            headers:{
-                "x-usuario-id": usuario.id
-            }
+    try{
+        if(tbody){
+            tbody.innerHTML = `<tr><td colspan="11">Carregando histórico...</td></tr>`;
         }
-    );
 
-    const data = await res.json();
+        const res = await apiFetch(
+            `/api/ordens_servico/historico?page=${paginaAtual}`
+        );
 
-    dados = data.dados || [];
+        const data = await res.json();
+
+        dados = Array.isArray(data.dados) ? data.dados : [];
     totalPaginas = data.totalPaginas || 1;
 
     document.getElementById("paginaInfo").innerText =
         `Página ${data.pagina || paginaAtual} de ${totalPaginas}`;
 
-    renderTabelaHistorico();
+        renderTabelaHistorico();
+    }catch(err){
+        console.error("Erro ao carregar histórico:", err);
+        dados = [];
+        totalPaginas = 1;
+
+        if(tbody){
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="11">${err.message || "Não foi possível carregar o histórico."}</td>
+                </tr>
+            `;
+        }
+
+        atualizarCards([]);
+    }
 }
 
 function renderTabelaHistorico(){
@@ -1152,7 +1227,7 @@ function renderTabelaHistorico(){
     if(!filtrados.length){
         tbody.innerHTML = `
             <tr>
-                <td colspan="12">Nenhuma OS encontrada</td>
+                <td colspan="11">Nenhuma OS encontrada</td>
             </tr>
         `;
         return;
@@ -1261,10 +1336,9 @@ setInterval(async () => {
     const logId = localStorage.getItem("log_id");
 
     if (logId) {
-        await fetch("/api/ping", {
+        await apiFetch("/api/ping", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ log_id: logId })
+            body: JSON.stringify({ log_id: logId, ativo: true })
         }).catch(console.error);
     }
 
