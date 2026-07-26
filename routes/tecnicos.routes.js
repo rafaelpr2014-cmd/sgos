@@ -10,11 +10,16 @@ const router = express.Router();
 router.get("/", verificarAutenticacao, async (req, res) => {
     try {
         const cargo = String(req.usuario.cargo || "").trim().toLowerCase();
+
         let sql = `
-            SELECT t.id, t.nome, t.ativo
+            SELECT
+                t.id,
+                t.nome,
+                t.ativo
             FROM tecnicos t
             WHERE t.empresa_id = ?
         `;
+
         const params = [req.usuario.empresa_id];
 
         if (cargo !== "administrador") {
@@ -31,16 +36,14 @@ router.get("/", verificarAutenticacao, async (req, res) => {
         }
 
         sql += " ORDER BY t.nome ASC";
+
         const [rows] = await db.query(sql, params);
         res.json(rows);
+
     } catch (err) {
         console.error("ERRO AO LISTAR TÉCNICOS:", err);
         res.status(500).json({ erro: err.message });
     }
-});
-
-    }
-
 });
 
 // ==========================

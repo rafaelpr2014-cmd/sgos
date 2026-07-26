@@ -9,13 +9,18 @@ module.exports = (db, verificarAutenticacao) => {
     router.get("/", verificarAutenticacao, async (req, res) => {
         try {
             const cargo = String(req.usuario.cargo || "").trim().toLowerCase();
+    
             let sql = `
-                SELECT l.id, l.nome, l.vlan
+                SELECT
+                    l.id,
+                    l.nome,
+                    l.vlan
                 FROM localidades l
                 WHERE l.empresa_id = ?
             `;
+    
             const params = [req.usuario.empresa_id];
-
+    
             if (cargo !== "administrador") {
                 sql += `
                     AND EXISTS (
@@ -28,18 +33,16 @@ module.exports = (db, verificarAutenticacao) => {
                 `;
                 params.push(req.usuario.id);
             }
-
+    
             sql += " ORDER BY l.nome ASC";
+    
             const [rows] = await db.query(sql, params);
             res.json(rows);
+    
         } catch (err) {
             console.error("ERRO AO LISTAR LOCALIDADES:", err);
             res.status(500).json({ erro: err.message });
         }
-    });
-
-        }
-
     });
 
     // ==========================
