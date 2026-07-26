@@ -11,7 +11,7 @@ TYPE html>
 
 <script src="/js/auth.js" defer></script>
 <script src="/js/init.js" defer></script>
-<script src="/js/painel.js?v=20260726-ausentes-1830" defer></script>
+<script src="/js/painel.js?v=20260719-estoque-os" defer></script>
 
 <style>
 :root{
@@ -1669,42 +1669,6 @@ tr:hover{ background:#f8fbff; }
     .lembretes-area{height:230px !important;max-height:230px !important}
 }
 @media(max-width:760px){.lista-destinatarios{grid-template-columns:1fr}}
-
-
-/* ===== STATUS REAGENDADO PERSONALIZADO ===== */
-.status-reagendado{
-    display:inline-flex !important;
-    align-items:center;
-    gap:6px;
-    padding:7px 12px !important;
-    border-radius:999px !important;
-    border:1px solid #93c5fd !important;
-    background:linear-gradient(135deg,#dbeafe,#eff6ff) !important;
-    color:#1d4ed8 !important;
-    font-weight:900 !important;
-    letter-spacing:.1px;
-    box-shadow:0 3px 9px rgba(37,99,235,.12);
-    white-space:nowrap;
-}
-.status-reagendado::before{
-    content:"";
-    width:7px;
-    height:7px;
-    border-radius:50%;
-    background:#2563eb;
-    box-shadow:0 0 0 3px rgba(37,99,235,.12);
-}
-.resumo-reagendamento-info{
-    margin-top:10px;
-    padding:10px 12px;
-    border:1px solid #bfdbfe;
-    border-radius:10px;
-    background:#eff6ff;
-    color:#1e3a8a;
-    font-size:13px;
-    line-height:1.45;
-}
-.resumo-reagendamento-info strong{ color:#0f172a; }
 
 </style>
 </head>
@@ -3551,140 +3515,6 @@ function modoTV() {
 
     document.addEventListener("DOMContentLoaded", liberarValidadoresConhecidos);
     setInterval(liberarValidadoresConhecidos, 1000);
-})();
-</script>
-
-
-<script>
-(function atualizarAusentesApos1830(){
-    let ultimaAtualizacaoAusentes = "";
-
-    async function verificarAtualizacaoAusentes(){
-        const agora = new Date();
-        const minutos = agora.getHours() * 60 + agora.getMinutes();
-        const chaveHoje = agora.toISOString().slice(0, 10);
-
-        if (minutos < (18 * 60 + 30)) return;
-        if (ultimaAtualizacaoAusentes === chaveHoje) return;
-
-        try {
-            if (typeof window.carregarOS === "function") {
-                await window.carregarOS();
-                ultimaAtualizacaoAusentes = chaveHoje;
-            }
-        } catch (erro) {
-            console.error("Erro ao atualizar OS ausentes após 18:30:", erro);
-        }
-    }
-
-    document.addEventListener("DOMContentLoaded", function(){
-        setTimeout(verificarAtualizacaoAusentes, 2500);
-        setInterval(verificarAtualizacaoAusentes, 30000);
-    });
-})();
-</script>
-
-
-<script>
-/* Complemento visual e de auditoria do reagendamento, sem alterar o painel.js. */
-(function configurarReagendamentoPainel(){
-    function aplicarBadgeReagendado(){
-        document.querySelectorAll(".status-box, .badge").forEach(function(el){
-            const texto = String(el.textContent || "").trim().toLowerCase();
-            if(texto === "reagendado"){
-                el.classList.add("status-reagendado");
-                el.textContent = "Reagendado";
-            }
-        });
-    }
-
-    function nomeReagendador(os){
-        const valor =
-            os?.reagendado_por_nome ??
-            os?.reagendado_por_usuario ??
-            os?.usuario_reagendamento_nome ??
-            os?.reagendado_por ??
-            os?.atualizado_por_nome ??
-            "-";
-        return String(valor || "-");
-    }
-
-    function dataReagendamento(os){
-        return os?.reagendado_em ?? os?.data_reagendamento ?? os?.atualizado_em ?? null;
-    }
-
-    function adicionarReagendadoPor(os){
-        const conteudo = document.getElementById("resumoOSConteudo");
-        if(!conteudo || !os) return;
-
-        conteudo.querySelectorAll(".resumo-reagendamento-info").forEach(el => el.remove());
-
-        const status = String(os.status || "").trim().toLowerCase();
-        const possuiAuditoria =
-            status === "reagendado" ||
-            os.reagendado_por_nome ||
-            os.reagendado_por_usuario ||
-            os.usuario_reagendamento_nome ||
-            os.reagendado_por;
-
-        if(!possuiAuditoria) return;
-
-        const cards = [...conteudo.querySelectorAll(".resumo-card")];
-        const cardAtendimento = cards.find(card =>
-            String(card.querySelector("h3")?.textContent || "").toLowerCase().includes("atendimento")
-        ) || cards[0];
-
-        if(!cardAtendimento) return;
-
-        const box = document.createElement("div");
-        box.className = "resumo-reagendamento-info";
-
-        const data = dataReagendamento(os);
-        let dataTexto = "-";
-        if(data){
-            const d = new Date(data);
-            dataTexto = isNaN(d.getTime()) ? String(data) : d.toLocaleString("pt-BR");
-        }
-
-        box.innerHTML =
-            "<strong>Reagendado por:</strong> " +
-            nomeReagendador(os).replace(/</g,"&lt;").replace(/>/g,"&gt;") +
-            "<br><strong>Reagendado em:</strong> " +
-            dataTexto.replace(/</g,"&lt;").replace(/>/g,"&gt;");
-
-        cardAtendimento.appendChild(box);
-    }
-
-    function instalar(){
-        aplicarBadgeReagendado();
-
-        const original = window.abrirResumoOS;
-        if(typeof original === "function" && !original.__sgosReagendamento){
-            const novo = async function(id){
-                const resultado = await original.apply(this, arguments);
-
-                let os = null;
-                try{
-                    if(typeof ordens !== "undefined" && Array.isArray(ordens)){
-                        os = ordens.find(item => Number(item.id) === Number(id));
-                    }
-                }catch(_){}
-
-                adicionarReagendadoPor(os);
-                aplicarBadgeReagendado();
-                return resultado;
-            };
-            novo.__sgosReagendamento = true;
-            window.abrirResumoOS = novo;
-        }
-    }
-
-    document.addEventListener("DOMContentLoaded", function(){
-        setTimeout(instalar, 800);
-    });
-
-    new MutationObserver(aplicarBadgeReagendado)
-        .observe(document.documentElement, {childList:true, subtree:true});
 })();
 </script>
 
