@@ -2119,13 +2119,12 @@ router.get(
                           AND ut.empresa_id = os.empresa_id
                           AND FIND_IN_SET(
                               CAST(ut.tecnico_id AS CHAR),
-                              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                              REPLACE(REPLACE(REPLACE(REPLACE(
                                   COALESCE(os.tecnico, ''),
                                   '[', ''),
                                   ']', ''),
                                   '"', ''),
-                                  ' ', ''),
-                                  '\\', '')
+                                  ' ', '')
                           ) > 0
                     )
                 `;
@@ -2160,13 +2159,12 @@ router.get(
                         WHERE t.empresa_id = os.empresa_id
                           AND FIND_IN_SET(
                               CAST(t.id AS CHAR),
-                              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                              REPLACE(REPLACE(REPLACE(REPLACE(
                                   COALESCE(os.tecnico, ''),
                                   '[', ''),
                                   ']', ''),
                                   '"', ''),
-                                  ' ', ''),
-                                  '\\', '')
+                                  ' ', '')
                           ) > 0
                     ) AS tecnicos_nomes
                 FROM ordens_servico os
