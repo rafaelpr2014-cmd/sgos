@@ -30,7 +30,12 @@ async function apiFetch(url, options = {}) {
     if (!res.ok) {
         const text = await res.text();
         console.error("Erro API:", text);
-        throw new Error("Erro API");
+        let mensagem = text || "Erro API";
+        try {
+            const json = JSON.parse(text);
+            mensagem = json.erro || json.mensagem || mensagem;
+        } catch (_) {}
+        throw new Error(mensagem);
     }
 
     return res.json();
@@ -1878,15 +1883,180 @@ window.lancarAgora = async (id) => {
     }
 };
 
-window.finalizarOS = async (id) => {
+function normalizarMateriaisConclusao(os){
+    let materiais = os?.materiais_os || [];
+    if(typeof materiais === "string"){
+        try{ materiais = JSON.parse(materiais); }catch{ materiais = []; }
+    }
+    return Array.isArray(materiais) ? materiais : [];
+}
 
-    if (!confirm("Finalizar essa OS?")) return;
+function escaparConclusao(valor){
+    return String(valor ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
 
-    await apiFetch(`/api/ordens_servico/concluir/${id}`, {
-        method: "POST"
+function abrirConfirmacaoEquipamentoPainel(os){
+    const materiais = normalizarMateriaisConclusao(os);
+
+    // Sem equipamento/material vinculado: mantém apenas a confirmação simples.
+    if(!materiais.length){
+        return Promise.resolve(confirm("Finalizar essa OS?") ? {
+            equipamento_utilizado: null,
+            observacao_equipamento: null,
+            status_pagamento_confirmado: null
+        } : null);
+    }
+
+    const vendido = String(os?.origem_equipamento || "").toLowerCase() === "empresa" &&
+        String(os?.modalidade_equipamento || "").toLowerCase() === "vendido";
+    const pagamentoPendente = vendido &&
+        String(os?.status_pagamento_equipamento || "pendente").toLowerCase() === "pendente";
+
+    return new Promise(resolve => {
+        document.getElementById("sgosModalEquipamentoConclusao")?.remove();
+
+        const overlay = document.createElement("div");
+        overlay.id = "sgosModalEquipamentoConclusao";
+        overlay.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:30000;display:flex;align-items:center;justify-content:center;padding:20px";
+
+        const itens = materiais.map(item => `
+            <div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #e5e7eb">
+                <strong>${escaparConclusao(item.nome || "Equipamento")}</strong>
+                <span>${Number(item.quantidade || 1)} un.</span>
+            </div>
+        `).join("");
+
+        overlay.innerHTML = `
+            <div style="width:min(590px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:18px;padding:22px;box-shadow:0 25px 70px rgba(15,23,42,.35);font-family:Arial,sans-serif">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:15px">
+                    <div>
+                        <h3 style="margin:0;color:#0f172a;font-size:20px">Confirmar utilização do equipamento</h3>
+                        <small style="color:#64748b">OS #${Number(os?.id || 0)} — ${escaparConclusao(os?.nome || "Cliente")}</small>
+                    </div>
+                    <button type="button" id="sgosCancelarX" style="border:0;background:#f1f5f9;width:36px;height:36px;border-radius:10px;cursor:pointer;font-size:21px">×</button>
+                </div>
+
+                <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:15px">
+                    ${itens}
+                </div>
+
+                <div style="font-weight:800;color:#0f172a;margin-bottom:9px">O equipamento vinculado foi utilizado?</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+                    <label style="border:1px solid #bbf7d0;background:#f0fdf4;border-radius:11px;padding:12px;cursor:pointer;font-weight:800;color:#166534">
+                        <input type="radio" name="sgosEquipUsado" value="sim"> Sim, foi utilizado
+                    </label>
+                    <label style="border:1px solid #fecaca;background:#fff1f2;border-radius:11px;padding:12px;cursor:pointer;font-weight:800;color:#991b1b">
+                        <input type="radio" name="sgosEquipUsado" value="nao"> Não foi utilizado
+                    </label>
+                </div>
+
+                <div id="sgosMotivoNaoUsado" style="display:none;margin-bottom:14px">
+                    <label style="display:block;font-size:13px;font-weight:800;color:#334155;margin-bottom:6px">Motivo da não utilização</label>
+                    <textarea id="sgosObservacaoEquipamento" style="width:100%;min-height:90px;border:1px solid #cbd5e1;border-radius:10px;padding:11px;resize:vertical" placeholder="Informe por que o equipamento não foi utilizado"></textarea>
+                </div>
+
+                ${pagamentoPendente ? `
+                    <div id="sgosConfirmacaoPagamento" style="display:none;margin-bottom:14px">
+                        <div style="font-weight:800;color:#0f172a;margin-bottom:8px">O equipamento vendido foi pago?</div>
+                        <select id="sgosStatusPagamento" style="width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:11px;background:#fff">
+                            <option value="">Selecione</option>
+                            <option value="pago">Sim, pagamento realizado</option>
+                            <option value="pendente">Não, manter pagamento pendente</option>
+                        </select>
+                    </div>
+                ` : ""}
+
+                <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">
+                    <button type="button" id="sgosCancelarEquip" style="border:0;background:#e2e8f0;color:#334155;border-radius:10px;padding:11px 16px;font-weight:800;cursor:pointer">Cancelar</button>
+                    <button type="button" id="sgosConfirmarEquip" style="border:0;background:#16a34a;color:#fff;border-radius:10px;padding:11px 16px;font-weight:800;cursor:pointer">Confirmar e finalizar</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const fechar = resultado => {
+            overlay.remove();
+            resolve(resultado);
+        };
+
+        overlay.querySelector("#sgosCancelarX").onclick = () => fechar(null);
+        overlay.querySelector("#sgosCancelarEquip").onclick = () => fechar(null);
+        overlay.addEventListener("click", e => { if(e.target === overlay) fechar(null); });
+
+        overlay.querySelectorAll('input[name="sgosEquipUsado"]').forEach(radio => {
+            radio.addEventListener("change", () => {
+                const valor = overlay.querySelector('input[name="sgosEquipUsado"]:checked')?.value;
+                overlay.querySelector("#sgosMotivoNaoUsado").style.display = valor === "nao" ? "block" : "none";
+                const pagamento = overlay.querySelector("#sgosConfirmacaoPagamento");
+                if(pagamento) pagamento.style.display = valor === "sim" ? "block" : "none";
+            });
+        });
+
+        overlay.querySelector("#sgosConfirmarEquip").onclick = () => {
+            const utilizado = overlay.querySelector('input[name="sgosEquipUsado"]:checked')?.value || "";
+            const observacao = overlay.querySelector("#sgosObservacaoEquipamento")?.value.trim() || "";
+            const statusPagamento = overlay.querySelector("#sgosStatusPagamento")?.value || "";
+
+            if(!utilizado){
+                alert("Confirme se o equipamento vinculado foi utilizado.");
+                return;
+            }
+            if(utilizado === "nao" && !observacao){
+                alert("Informe o motivo pelo qual o equipamento não foi utilizado.");
+                overlay.querySelector("#sgosObservacaoEquipamento")?.focus();
+                return;
+            }
+            if(utilizado === "sim" && pagamentoPendente && !statusPagamento){
+                alert("Confirme se o pagamento do equipamento foi realizado.");
+                overlay.querySelector("#sgosStatusPagamento")?.focus();
+                return;
+            }
+
+            fechar({
+                equipamento_utilizado: utilizado,
+                observacao_equipamento: utilizado === "nao" ? observacao : null,
+                status_pagamento_confirmado: utilizado === "sim" && pagamentoPendente ? statusPagamento : null
+            });
+        };
     });
+}
 
-    carregarOS();
+window.finalizarOS = async (id) => {
+    try{
+        let os = (ordens || []).find(item => Number(item.id) === Number(id));
+
+        // Garante os dados completos de equipamentos, mesmo se a lista do painel
+        // estiver usando uma resposta resumida.
+        if(!os || !normalizarMateriaisConclusao(os).length){
+            try{
+                const detalhe = await apiFetch(`/api/ordens_servico/${id}`);
+                if(detalhe && typeof detalhe === "object") os = detalhe;
+            }catch(err){
+                console.warn("Não foi possível consultar os detalhes da OS antes da conclusão:", err);
+            }
+        }
+
+        os = os || { id };
+        const confirmacao = await abrirConfirmacaoEquipamentoPainel(os);
+        if(!confirmacao) return;
+
+        await apiFetch(`/api/ordens_servico/concluir/${id}`, {
+            method: "POST",
+            body: JSON.stringify(confirmacao)
+        });
+
+        fecharResumoOS?.();
+        await carregarOS();
+        alert("OS finalizada com sucesso.");
+    }catch(err){
+        alert(err.message || "Não foi possível finalizar a OS.");
+    }
 };
 
 window.excluirOS = async (id) => {

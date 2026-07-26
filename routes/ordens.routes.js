@@ -645,63 +645,6 @@ function possuiTecnicoObrigatorio(tecnicoRaw){
     }
 
 
-
-function usuarioAdministrador(usuario){
-    return String(usuario?.cargo || "").trim().toLowerCase() === "administrador";
-}
-
-async function obterEscopoOperacional(usuario){
-    if(usuarioAdministrador(usuario)){
-        return { administrador:true, localidades:[], tecnicos:[] };
-    }
-
-    const [locs] = await db.query(`
-        SELECT localidade_id
-        FROM usuario_localidades
-        WHERE usuario_id = ?
-          AND empresa_id = ?
-    `, [usuario.id, usuario.empresa_id]);
-
-    const [tecs] = await db.query(`
-        SELECT tecnico_id
-        FROM usuario_tecnicos
-        WHERE usuario_id = ?
-          AND empresa_id = ?
-    `, [usuario.id, usuario.empresa_id]);
-
-    return {
-        administrador:false,
-        localidades:locs.map(r => Number(r.localidade_id)).filter(Boolean),
-        tecnicos:tecs.map(r => Number(r.tecnico_id)).filter(Boolean)
-    };
-}
-
-async function validarEscopoOS(usuario, dados){
-    if(usuarioAdministrador(usuario)) return;
-
-    const escopo = await obterEscopoOperacional(usuario);
-    const localidadeId = Number(dados.localidade || dados.localidade_id || 0);
-    const tecnicoIds = normalizarTecnicos(dados.tecnico ?? dados.tecnicos);
-
-    const localidadePermitida =
-        localidadeId > 0 && escopo.localidades.includes(localidadeId);
-
-    const tecnicosInvalidos =
-        tecnicoIds.filter(id => !escopo.tecnicos.includes(Number(id)));
-
-    if(!localidadePermitida){
-        const erro = new Error("A localidade selecionada não está vinculada ao seu usuário.");
-        erro.status = 403;
-        throw erro;
-    }
-
-    if(tecnicosInvalidos.length){
-        const erro = new Error("Um ou mais técnicos selecionados não estão vinculados ao seu usuário.");
-        erro.status = 403;
-        throw erro;
-    }
-}
-
 function normalizarPrioridadeOS(valor){
     const texto = String(valor || "").trim().toLowerCase();
 
@@ -956,30 +899,23 @@ router.get("/", verificarAutenticacao, async (req, res) => {
         `;
 
         let params = [empresa_id];
-        // 🔒 ESCOPO OPERACIONAL: localidade vinculada OU técnico vinculado
+
+        // 🔒 FILTRO POR TÉCNICO
         if (cargo !== "administrador") {
-            query += `
-                AND (
-                    EXISTS (
-                        SELECT 1
-                        FROM usuario_localidades ul
-                        WHERE ul.usuario_id = ?
-                          AND ul.empresa_id = os.empresa_id
-                          AND ul.localidade_id = os.localidade
-                    )
-                    OR EXISTS (
-                        SELECT 1
-                        FROM usuario_tecnicos ut
-                        WHERE ut.usuario_id = ?
-                          AND ut.empresa_id = os.empresa_id
-                          AND FIND_IN_SET(
-                              CAST(ut.tecnico_id AS CHAR),
-                              REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(os.tecnico,''), '[',''), ']',''), '"',''), ' ','')
-                          ) > 0
-                    )
-                )
-            `;
-            params.push(userId, userId);
+
+            const [tecs] = await db.query(
+                "SELECT tecnico_id FROM usuario_tecnicos WHERE usuario_id=?",
+                [userId]
+            );
+
+            const tecIds = tecs.map(t => t.tecnico_id);
+
+            if (!tecIds.length) {
+                return res.json([]);
+            }
+
+            query += ` AND JSON_OVERLAPS(os.tecnico, ?) `;
+            params.push(JSON.stringify(tecIds));
         }
 
         query += " ORDER BY os.data_abertura DESC";
@@ -1010,21 +946,10 @@ router.get("/", verificarAutenticacao, async (req, res) => {
     // ===============================
     router.get("/localidades", verificarAutenticacao, async (req, res) => {
         try {
-            let sql = "SELECT l.id, l.nome, l.vlan FROM localidades l WHERE l.empresa_id = ?";
-            const params = [req.usuario.empresa_id];
-
-            if(!usuarioAdministrador(req.usuario)){
-                sql += ` AND EXISTS (
-                    SELECT 1 FROM usuario_localidades ul
-                    WHERE ul.usuario_id = ?
-                      AND ul.empresa_id = l.empresa_id
-                      AND ul.localidade_id = l.id
-                )`;
-                params.push(req.usuario.id);
-            }
-
-            sql += " ORDER BY l.nome";
-            const [result] = await db.query(sql, params);
+            const [result] = await db.query(
+                "SELECT id, nome, vlan FROM localidades WHERE empresa_id=?",
+                [req.usuario.empresa_id]
+            );
             res.json(result);
         } catch (err) {
             res.status(500).json({ erro: err.message });
@@ -1036,21 +961,10 @@ router.get("/", verificarAutenticacao, async (req, res) => {
     // ===============================
     router.get("/tecnicos", verificarAutenticacao, async (req, res) => {
         try {
-            let sql = "SELECT t.id, t.nome FROM tecnicos t WHERE t.empresa_id = ? AND (t.ativo = 1 OR t.ativo IS NULL)";
-            const params = [req.usuario.empresa_id];
-
-            if(!usuarioAdministrador(req.usuario)){
-                sql += ` AND EXISTS (
-                    SELECT 1 FROM usuario_tecnicos ut
-                    WHERE ut.usuario_id = ?
-                      AND ut.empresa_id = t.empresa_id
-                      AND ut.tecnico_id = t.id
-                )`;
-                params.push(req.usuario.id);
-            }
-
-            sql += " ORDER BY t.nome";
-            const [result] = await db.query(sql, params);
+            const [result] = await db.query(
+                "SELECT id, nome FROM tecnicos WHERE empresa_id=?",
+                [req.usuario.empresa_id]
+            );
             res.json(result);
         } catch (err) {
             res.status(500).json({ erro: err.message });
@@ -1079,7 +993,6 @@ router.post(
             // CRIA OS
             // ===============================
             validarSelecaoEquipamentosOS(dados);
-            await validarEscopoOS(req.usuario, dados);
 
             const resultado =
                 await osService.criar(
@@ -2166,103 +2079,124 @@ router.get(
 
 // ===============================
 // 📚 HISTÓRICO DE OS
+// Atendentes e técnicos: exige match simultâneo de localidade E técnico.
+// Administradores: visualizam todas as OS concluídas da empresa.
 // ===============================
 router.get(
     "/historico",
     verificarAutenticacao,
     async (req, res) => {
-
         try {
-
-            const pagina =
-                parseInt(req.query.page) || 1;
-
+            const pagina = Math.max(1, parseInt(req.query.page, 10) || 1);
             const limite = 20;
+            const offset = (pagina - 1) * limite;
 
-            const offset =
-                (pagina - 1) * limite;
+            const cargo = String(req.usuario?.cargo || "").trim().toLowerCase();
+            const administrador = cargo === "administrador";
+            const empresaId = Number(req.usuario.empresa_id);
+            const usuarioId = Number(req.usuario.id);
 
-            const [totalRows] =
-                await db.query(`
-                    SELECT COUNT(*) total
-                    FROM ordens_servico
-                    WHERE empresa_id = ?
-                    AND status = 'concluido'
-                `,
-                [req.usuario.empresa_id]);
+            let filtroEscopo = "";
+            const parametrosBase = [empresaId];
 
-            const total =
-                totalRows[0].total;
+            if (!administrador) {
+                // Regra estrita:
+                // 1) a localidade da OS precisa estar em usuario_localidades;
+                // 2) pelo menos um técnico da OS precisa estar em usuario_tecnicos.
+                // O tratamento por FIND_IN_SET suporta os IDs armazenados em JSON/texto.
+                filtroEscopo = `
+                    AND EXISTS (
+                        SELECT 1
+                        FROM usuario_localidades ul
+                        WHERE ul.usuario_id = ?
+                          AND ul.empresa_id = os.empresa_id
+                          AND ul.localidade_id = os.localidade
+                    )
+                    AND EXISTS (
+                        SELECT 1
+                        FROM usuario_tecnicos ut
+                        WHERE ut.usuario_id = ?
+                          AND ut.empresa_id = os.empresa_id
+                          AND FIND_IN_SET(
+                              CAST(ut.tecnico_id AS CHAR),
+                              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                                  COALESCE(os.tecnico, ''),
+                                  '[', ''),
+                                  ']', ''),
+                                  '"', ''),
+                                  ' ', ''),
+                                  '\\', '')
+                          ) > 0
+                    )
+                `;
+                parametrosBase.push(usuarioId, usuarioId);
+            }
 
-            const totalPaginas =
-                Math.ceil(total / limite);
+            const [totalRows] = await db.query(`
+                SELECT COUNT(*) AS total
+                FROM ordens_servico os
+                WHERE os.empresa_id = ?
+                  AND os.status = 'concluido'
+                  ${filtroEscopo}
+            `, parametrosBase);
 
-            const [dados] =
-                await db.query(`
+            const total = Number(totalRows[0]?.total || 0);
+            const totalPaginas = Math.max(1, Math.ceil(total / limite));
+            const paginaValida = Math.min(pagina, totalPaginas);
+            const offsetValido = (paginaValida - 1) * limite;
 
-                    SELECT
-                        os.*,
+            const parametrosDados = [...parametrosBase, limite, offsetValido];
 
-                        l.nome AS localidade_nome,
-                        ts.nome AS tipo_servico_nome,
+            const [dados] = await db.query(`
+                SELECT
+                    os.*,
+                    l.nome AS localidade_nome,
+                    ts.nome AS tipo_servico_nome,
+                    uf.usuario AS finalizado_por_nome,
+                    ue.usuario AS enviado_por_nome,
+                    (
+                        SELECT GROUP_CONCAT(t.nome ORDER BY t.nome SEPARATOR ', ')
+                        FROM tecnicos t
+                        WHERE t.empresa_id = os.empresa_id
+                          AND FIND_IN_SET(
+                              CAST(t.id AS CHAR),
+                              REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                                  COALESCE(os.tecnico, ''),
+                                  '[', ''),
+                                  ']', ''),
+                                  '"', ''),
+                                  ' ', ''),
+                                  '\\', '')
+                          ) > 0
+                    ) AS tecnicos_nomes
+                FROM ordens_servico os
+                LEFT JOIN localidades l
+                    ON l.id = os.localidade
+                   AND l.empresa_id = os.empresa_id
+                LEFT JOIN tipos_servico ts
+                    ON ts.id = os.tipo_servico
+                LEFT JOIN usuarios uf
+                    ON uf.id = os.finalizado_por
+                   AND uf.empresa_id = os.empresa_id
+                LEFT JOIN usuarios ue
+                    ON ue.id = os.enviado_por
+                   AND ue.empresa_id = os.empresa_id
+                WHERE os.empresa_id = ?
+                  AND os.status = 'concluido'
+                  ${filtroEscopo}
+                ORDER BY os.finalizado_em DESC, os.id DESC
+                LIMIT ? OFFSET ?
+            `, parametrosDados);
 
-                        uf.usuario AS finalizado_por_nome,
-                        ue.usuario AS enviado_por_nome,
-
-                        (
-                            SELECT GROUP_CONCAT(t.nome SEPARATOR ', ')
-                            FROM tecnicos t
-                            WHERE FIND_IN_SET(
-                                t.id,
-                                REPLACE(REPLACE(os.tecnico,'[',''),']','')
-                            )
-                        ) AS tecnicos_nomes
-
-                    FROM ordens_servico os
-
-                    LEFT JOIN localidades l
-                        ON l.id = os.localidade
-
-                    LEFT JOIN tipos_servico ts
-                        ON ts.id = os.tipo_servico
-
-                    LEFT JOIN usuarios uf
-                        ON uf.id = os.finalizado_por
-
-                    LEFT JOIN usuarios ue
-                        ON ue.id = os.enviado_por
-
-                    WHERE os.empresa_id = ?
-                    AND os.status = 'concluido'
-
-                    ORDER BY os.finalizado_em DESC
-
-                    LIMIT ?
-                    OFFSET ?
-
-                `,[
-
-                    req.usuario.empresa_id,
-                    limite,
-                    offset
-
-                ]);
-
-            res.json({
-
-                pagina,
+            return res.json({
+                pagina: paginaValida,
                 totalPaginas,
+                total,
                 dados
-
             });
-
-        } catch(err){
-
-            console.error(err);
-
-            res.status(500).json({
-                erro: err.message
-            });
+        } catch (err) {
+            console.error("ERRO HISTÓRICO DE OS:", err);
+            return res.status(500).json({ erro: err.message });
         }
     }
 );
