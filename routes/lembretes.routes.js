@@ -315,7 +315,13 @@ router.patch('/:id', async (req, res) => {
             return res.status(404).json({ erro: 'Lembrete não encontrado ou você não pode editá-lo.' });
         }
         if (atual.tipo === 'enviado' && atual.lido_em) {
-            return res.status(409).json({ erro: 'Um lembrete já lido não pode ser editado.' });
+            return res.status(409).json({ erro: 'Este lembrete já foi lido e não pode mais ser editado.' });
+        }
+
+        // Somente quem enviou/criou pode editar. Lembretes enviados ficam editáveis
+        // até o primeiro registro de leitura pelo destinatário.
+        if (Number(atual.criado_por_id) !== Number(usuario.id)) {
+            return res.status(403).json({ erro: 'Somente o remetente pode editar este lembrete.' });
         }
 
         let destinatario = usuario;

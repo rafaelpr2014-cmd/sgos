@@ -61,7 +61,61 @@
 function usuarioLocal(){try{return JSON.parse(localStorage.getItem('usuario')||'{}')}catch{return{}}}
 function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
 function dataHora(v){if(!v)return'-';const d=new Date(v);return Number.isNaN(d.getTime())?v:d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
-function linha(item,uid){let tipo='Salvo',classe='salvo';if(item.tipo==='enviado'&&Number(item.destinatario_id)===Number(uid)){tipo='Recebido';classe='recebido'}else if(item.tipo==='enviado'){tipo='Enviado';classe='enviado'}let status='Ativo',statusClasse='salvo';const futuro=item.agendado_para&&new Date(item.agendado_para).getTime()>Date.now();if(item.removido_em){status='Removido';statusClasse='removido'}else if(futuro){status='Agendado';statusClasse='enviado'}else if(item.tipo==='enviado'&&!item.lido_em){status='Não lido';statusClasse='nao-lido'}else if(item.tipo==='enviado'&&item.lido_em){status=`Lido em ${dataHora(item.lido_em)}`;statusClasse='lido'}const exclusao=item.excluir_em?dataHora(item.excluir_em):(item.tipo==='salvo'?'Sem expiração enquanto ativo':'-');const criador=Number(item.criado_por_id)===Number(uid);const podeEditar=criador&&!item.removido_em&&(item.tipo==='salvo'||!item.lido_em);const acoes=criador&&!item.removido_em?`<div class="acoes">${podeEditar?`<button class="btn-acao btn-editar" onclick="editar(${Number(item.id)})">Editar</button>`:''}<button class="btn-acao btn-excluir" onclick="excluir(${Number(item.id)})">Excluir</button></div>`:'-';return `<tr><td><span class="badge ${classe}">${tipo}</span></td><td class="mensagem">${esc(item.mensagem)}</td><td>${esc(item.criado_por_nome)}</td><td>${esc(item.destinatario_nome)}</td><td>${esc(dataHora(item.criado_em))}</td><td>${esc(dataHora(item.agendado_para))}</td><td><span class="badge ${statusClasse}">${esc(status)}</span></td><td>${esc(exclusao)}</td><td>${acoes}</td></tr>`}
+function linha(item,uid){
+    let tipo='Salvo',classe='salvo';
+    if(item.tipo==='enviado'&&Number(item.destinatario_id)===Number(uid)){
+        tipo='Recebido';classe='recebido';
+    }else if(item.tipo==='enviado'){
+        tipo='Enviado';classe='enviado';
+    }
+
+    let status='Ativo',statusClasse='salvo';
+    const futuro=item.agendado_para&&new Date(item.agendado_para).getTime()>Date.now();
+
+    if(item.removido_em){
+        status='Removido';statusClasse='removido';
+    }else if(futuro){
+        status='Agendado';statusClasse='enviado';
+    }else if(item.tipo==='enviado'&&!item.lido_em){
+        status='Não lido';statusClasse='nao-lido';
+    }else if(item.tipo==='enviado'&&item.lido_em){
+        status=`Lido em ${dataHora(item.lido_em)}`;statusClasse='lido';
+    }
+
+    const exclusao=item.excluir_em
+        ? dataHora(item.excluir_em)
+        : (item.tipo==='salvo'?'Sem expiração enquanto ativo':'-');
+
+    const criador=Number(item.criado_por_id)===Number(uid);
+    const enviadoNaoLido=item.tipo==='enviado'&&!item.lido_em;
+    const salvoAtivo=item.tipo==='salvo';
+    const podeEditar=criador&&!item.removido_em&&(enviadoNaoLido||salvoAtivo);
+    const podeExcluir=criador&&!item.removido_em;
+
+    let acoes='-';
+    if(podeEditar||podeExcluir){
+        acoes='<div class="acoes">';
+        if(podeEditar){
+            acoes+=`<button class="btn-acao btn-editar" type="button" title="Editar lembrete antes da leitura" onclick="editar(${Number(item.id)})">Editar</button>`;
+        }
+        if(podeExcluir){
+            acoes+=`<button class="btn-acao btn-excluir" type="button" onclick="excluir(${Number(item.id)})">Excluir</button>`;
+        }
+        acoes+='</div>';
+    }
+
+    return `<tr>
+        <td><span class="badge ${classe}">${tipo}</span></td>
+        <td class="mensagem">${esc(item.mensagem)}</td>
+        <td>${esc(item.criado_por_nome)}</td>
+        <td>${esc(item.destinatario_nome)}</td>
+        <td>${esc(dataHora(item.criado_em))}</td>
+        <td>${esc(dataHora(item.agendado_para))}</td>
+        <td><span class="badge ${statusClasse}">${esc(status)}</span></td>
+        <td>${esc(exclusao)}</td>
+        <td>${acoes}</td>
+    </tr>`;
+}
 let cache=new Map(),categoriaAtual='todos';
 let editandoId=null, usuariosEdicao=[];
 async function carregarUsuariosEdicao(){

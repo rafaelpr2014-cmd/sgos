@@ -1605,39 +1605,43 @@ tr:hover{ background:#f8fbff; }
 }
 
 
-/* ===== PAINEL SUPERIOR COMPACTO / LEMBRETES AMPLIADOS ===== */
+/* ===== PAINEL SUPERIOR: TAMANHOS ORIGINAIS E LEMBRETES COMPACTOS ===== */
 .painel-topo-grid{
-    grid-template-columns:minmax(0,1fr) minmax(410px,34vw) !important;
-    gap:12px !important;
+    grid-template-columns:minmax(0,1fr) 360px !important;
+    gap:16px !important;
 }
 .top-row{
-    grid-template-columns:170px repeat(4,minmax(125px,1fr)) !important;
-    gap:10px !important;
+    grid-template-columns:216px repeat(4,minmax(145px,1fr)) !important;
+    gap:16px !important;
 }
-.quick-actions{gap:10px !important}
+.quick-actions{gap:16px !important}
 .action-card{
-    height:61px !important;
-    padding:0 15px !important;
-    font-size:13px !important;
-    gap:10px !important;
+    height:84px !important;
+    padding:0 22px !important;
+    font-size:15px !important;
+    gap:14px !important;
 }
-.action-card span{width:28px !important;height:28px !important}
+.action-card span{width:32px !important;height:32px !important}
 .card-indicador{
-    min-height:132px !important;
-    padding:15px 16px 12px !important;
+    min-height:184px !important;
+    padding:26px 24px 18px !important;
 }
-.icon-box{width:44px !important;height:44px !important;border-radius:14px !important}
-.icon-box svg{width:24px !important;height:24px !important}
-.card-info strong{font-size:28px !important;margin:3px 0 !important}
-.card-info span{font-size:11px !important}
-.sparkline{height:28px !important;margin-top:8px !important}
+.icon-box{width:58px !important;height:58px !important;border-radius:20px !important}
+.icon-box svg{width:31px !important;height:31px !important}
+.card-info strong{font-size:34px !important;margin:6px 0 !important}
+.card-info span{font-size:13px !important}
+.sparkline{height:42px !important;margin-top:18px !important}
 .lembretes-area{
-    height:203px !important;
-    max-height:203px !important;
-    padding:12px !important;
+    height:184px !important;
+    max-height:184px !important;
+    padding:14px !important;
 }
-.filtro-periodo{margin-top:8px !important}
-.filtro-box{padding:9px 11px !important}
+.filtro-periodo{margin-top:12px !important}
+.filtro-box{padding:12px 14px !important}
+@media(max-width:1450px){
+    .painel-topo-grid{grid-template-columns:1fr !important}
+    .lembretes-area{height:184px !important;max-height:184px !important}
+}
 .destinatarios-box{
     border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc;padding:10px;
 }
