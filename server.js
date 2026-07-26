@@ -334,6 +334,38 @@ app.use(express.urlencoded({
 // ===============================
 // PUBLIC
 // ===============================
+// Injeta o controle visual de permissões em todas as páginas HTML.
+// A segurança real continua nas APIs protegidas abaixo.
+app.use((req, res, next) => {
+    if (req.method !== "GET") return next();
+
+    const caminhoUrl = String(req.path || "/");
+    if (!caminhoUrl.toLowerCase().endsWith(".html")) return next();
+
+    const caminhoRelativo = caminhoUrl.replace(/^\/+/, "");
+    const arquivoHtml = path.join(__dirname, "public", caminhoRelativo);
+    const raizPublica = path.join(__dirname, "public");
+
+    if (!arquivoHtml.startsWith(raizPublica)) return next();
+    if (!fs.existsSync(arquivoHtml) || !fs.statSync(arquivoHtml).isFile()) return next();
+
+    try {
+        let html = fs.readFileSync(arquivoHtml, "utf8");
+        const script = '<script src="/js/permissoes-cargos.js" defer></script>';
+
+        if (!html.includes('/js/permissoes-cargos.js')) {
+            html = html.includes("</head>")
+                ? html.replace("</head>", `${script}\n</head>`)
+                : `${script}\n${html}`;
+        }
+
+        res.type("html").send(html);
+    } catch (erro) {
+        console.error("ERRO AO INJETAR PERMISSÕES NA PÁGINA:", erro.message);
+        next();
+    }
+});
+
 app.use(express.static(
     path.join(__dirname, "public")
 ));
@@ -355,21 +387,25 @@ app.use(
 // ===============================
 // ROTAS
 // ===============================
-app.use("/api/whatsapp", whatsappRoutes);
+// Reserva e protege a API dos Informativos IA, inclusive para futuras rotas.
+app.use("/api/informativos-ia", verificarAutenticacao, somenteAdministrador);
+
+
+app.use("/api/whatsapp", verificarAutenticacao, somenteLeituraParaNaoAdministrador, whatsappRoutes);
 app.use("/api/empresa", empresaRoutes);
 app.use("/api/escalas", escalaRoutes);
 app.use("/api/os-avulsas", osAvulsasRoutes(pool));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use("/api/integracoes", verificarAutenticacao, integracoesRoutes);
+app.use("/api/integracoes", verificarAutenticacao, somenteLeituraParaNaoAdministrador, integracoesRoutes);
 app.use("/api/push", pushRoutes(pool, verificarAutenticacao));
 app.use("/api/servicos-pendentes", servicosPendentesRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/inviabilidades", inviabilidadeRoutes);
 app.use("/api", viabilidadeRoutes(pool, verificarAutenticacao));
-app.use('/api/relatorios-automaticos', relatoriosAutomaticosRoutes(pool, verificarAutenticacao));
-app.use("/api/svas", svasRoutes);
+app.use('/api/relatorios-automaticos', verificarAutenticacao, somenteAdministrador, relatoriosAutomaticosRoutes(pool, verificarAutenticacao));
+app.use("/api/svas", verificarAutenticacao, somenteLeituraParaNaoAdministrador, svasRoutes);
 app.use("/api/lembretes", lembretesRoutes);
-app.use('/api/estoque', estoqueRoutes);
+app.use('/api/estoque', verificarAutenticacao, somenteAdministrador, estoqueRoutes);
 const usuariosOnlineRoutes =
     require('./routes/usuarios-online.routes')(
         pool,
@@ -506,6 +542,70 @@ async function verificarAutenticacao(req, res, next) {
         console.error("ERRO AUTH:", err);
         res.status(500).json({ erro: err.message });
     }
+}
+
+
+// ===============================
+// PERMISSÕES CENTRALIZADAS POR CARGO
+// ===============================
+function normalizarCargoPermissao(valor) {
+    return String(valor || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .toLowerCase();
+}
+
+function usuarioEhAdministrador(req) {
+    return normalizarCargoPermissao(req.usuario?.cargo) === "administrador";
+}
+
+function somenteAdministrador(req, res, next) {
+    if (!req.usuario) {
+        return res.status(401).json({ erro: "Não autenticado." });
+    }
+
+    if (!usuarioEhAdministrador(req)) {
+        return res.status(403).json({
+            erro: "Acesso não autorizado. Este módulo é exclusivo para administradores.",
+            codigo: "ACESSO_SOMENTE_ADMINISTRADOR"
+        });
+    }
+
+    next();
+}
+
+function somenteLeituraParaNaoAdministrador(req, res, next) {
+    if (!req.usuario) {
+        return res.status(401).json({ erro: "Não autenticado." });
+    }
+
+    if (usuarioEhAdministrador(req)) {
+        return next();
+    }
+
+    if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+        return next();
+    }
+
+    return res.status(403).json({
+        erro: "Acesso somente para visualização. Apenas administradores podem cadastrar, editar ou excluir.",
+        codigo: "ACESSO_SOMENTE_LEITURA"
+    });
+}
+
+function protegerRotasDeRelatorios(req, res, next) {
+    const caminho = String(req.path || "").toLowerCase();
+
+    if (
+        caminho === "/relatorios" ||
+        caminho.startsWith("/relatorios/") ||
+        caminho.startsWith("/relatorio-")
+    ) {
+        return somenteAdministrador(req, res, next);
+    }
+
+    next();
 }
 
 async function obterEmpresaPorSubdominio(req) {
@@ -957,12 +1057,12 @@ const relatoriosRoutes =
     );
 
 app.use("/api/ordens_servico", ordensRoutes);
-app.use("/api/tecnicos", tecnicosRoutes);
-app.use("/api/localidades", localidadesRoutes);
-app.use("/api/planos", planosRoutes);
-app.use("/api/tipos-servico", tiposRoutes);
-app.use("/api/usuarios", usuariosRoutes);
-app.use("/api", relatoriosRoutes);
+app.use("/api/tecnicos", verificarAutenticacao, somenteLeituraParaNaoAdministrador, tecnicosRoutes);
+app.use("/api/localidades", verificarAutenticacao, somenteLeituraParaNaoAdministrador, localidadesRoutes);
+app.use("/api/planos", verificarAutenticacao, somenteLeituraParaNaoAdministrador, planosRoutes);
+app.use("/api/tipos-servico", verificarAutenticacao, somenteLeituraParaNaoAdministrador, tiposRoutes);
+app.use("/api/usuarios", verificarAutenticacao, somenteLeituraParaNaoAdministrador, usuariosRoutes);
+app.use("/api", verificarAutenticacao, protegerRotasDeRelatorios, relatoriosRoutes);
 
 const escritoriosRoutes =
     escritoriosRoutesFactory(pool, verificarAutenticacao);
@@ -970,11 +1070,13 @@ const escritoriosRoutes =
 const financeiroRoutes =
     financeiroRoutesFactory(pool, verificarAutenticacao);
 
-app.use("/api/escritorios", escritoriosRoutes);
-app.use("/api/financeiro", financeiroRoutes);
+app.use("/api/escritorios", verificarAutenticacao, somenteLeituraParaNaoAdministrador, escritoriosRoutes);
+app.use("/api/financeiro", verificarAutenticacao, somenteAdministrador, financeiroRoutes);
 
 app.use(
     "/api/logs_acoes",
+    verificarAutenticacao,
+    somenteLeituraParaNaoAdministrador,
     logsAcoesRoutes(pool, verificarAutenticacao)
 );
 
