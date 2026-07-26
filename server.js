@@ -729,20 +729,54 @@ app.post("/api/login", async (req, res) => {
 
         await garantirColunaSessaoApp();
 
-        // ===============================
-        // 🔥 LIMPA SESSÃO ANTIGA (EVITA FANTASMAS)
-        // ===============================
+        // ======================================================
+        // LIMPA SOMENTE SESSÕES WEB EXPIRADAS DESTE USUÁRIO
+        // Não encerra sessões válidas abertas em outros aparelhos.
+        // ======================================================
         await pool.query(
             `
             UPDATE log_acessos
-            SET logout = NOW(),
-                status = 'logout'
-            WHERE usuario = ?
+            SET
+                logout = NOW(),
+                status = 'logout',
+                motivo_logout = 'inatividade_8h'
+            WHERE usuario_id = ?
               AND empresa_id = ?
               AND logout IS NULL
+              AND COALESCE(app_mobile, 0) = 0
+              AND ultimo_ping IS NOT NULL
+              AND ultimo_ping <= DATE_SUB(NOW(), INTERVAL ? HOUR)
             `,
-            [usuario, user.empresa_id]
+            [
+                user.id,
+                user.empresa_id,
+                LOGOUT_AUTOMATICO_HORAS
+            ]
         );
+
+        // ======================================================
+        // LIMITE DE ATÉ 3 SESSÕES SIMULTÂNEAS POR USUÁRIO
+        // Cada navegador ou aparelho mantém seu próprio log_id.
+        // ======================================================
+        const [sessoesAtivas] = await pool.query(
+            `
+            SELECT id
+            FROM log_acessos
+            WHERE usuario_id = ?
+              AND empresa_id = ?
+              AND logout IS NULL
+            ORDER BY login ASC
+            `,
+            [user.id, user.empresa_id]
+        );
+
+        if (sessoesAtivas.length >= 3) {
+            return res.status(409).json({
+                erro: "Este usuário já possui 3 sessões conectadas.",
+                motivo: "limite_sessoes",
+                limite: 3
+            });
+        }
 
         // ===============================
         // IP + PORTA
