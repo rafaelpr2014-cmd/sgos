@@ -746,8 +746,8 @@ router.get("/central", async (req, res) => {
                 SUM(
                     LOWER(REPLACE(COALESCE(status,''),'_',' ')) IN
                     ('concluido','concluida','finalizado','finalizada')
-                    AND YEAR(COALESCE(finalizado_em,atualizado_em,criado_em))=YEAR(CURDATE())
-                    AND MONTH(COALESCE(finalizado_em,atualizado_em,criado_em))=MONTH(CURDATE())
+                    AND YEAR(COALESCE(finalizado_em,iniciado_em,agendamento,data_abertura,criado_em))=YEAR(CURDATE())
+                    AND MONTH(COALESCE(finalizado_em,iniciado_em,agendamento,data_abertura,criado_em))=MONTH(CURDATE())
                 ) AS finalizadas_mes,
                 SUM(
                     ${statusOSAtiva}
@@ -760,7 +760,7 @@ router.get("/central", async (req, res) => {
         const [listaOrdens] = await db.query(`
             SELECT
                 id,nome,telefone,status,
-                COALESCE(atualizado_em,iniciado_em,agendamento,data_abertura,criado_em) AS data,
+                COALESCE(iniciado_em,agendamento,data_abertura,criado_em) AS data,
                 CONCAT(
                     COALESCE(endereco,rua,''),
                     CASE WHEN numero IS NOT NULL AND numero<>'' THEN CONCAT(', ',numero) ELSE '' END
@@ -769,7 +769,7 @@ router.get("/central", async (req, res) => {
             FROM ordens_servico
             WHERE empresa_id=?
               AND ${statusOSAtiva}
-            ORDER BY COALESCE(atualizado_em,iniciado_em,agendamento,data_abertura,criado_em) DESC
+            ORDER BY COALESCE(iniciado_em,agendamento,data_abertura,criado_em) DESC
             LIMIT 8
         `, [empresaId]).catch(async () => {
             return db.query(`
