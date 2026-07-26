@@ -16,13 +16,18 @@ router.post("/contato", async (req, res) => {
       return res.status(400).json({ erro: "Informe um e-mail válido." });
     }
 
+    const smtpPort = Number(process.env.SMTP_PORT || 587);
+
     const transporter = nodemailer.createTransport({
-      host: process.env.SITE_SMTP_HOST,
-      port: Number(process.env.SITE_SMTP_PORT || 587),
-      secure: String(process.env.SITE_SMTP_SECURE).toLowerCase() === "true",
+      host: process.env.SMTP_HOST,
+      port: smtpPort,
+      secure: smtpPort === 465,
       auth: {
-        user: process.env.SITE_SMTP_USER,
-        pass: process.env.SITE_SMTP_PASS
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      },
+      tls: {
+        rejectUnauthorized: false
       }
     });
 
@@ -31,7 +36,7 @@ router.post("/contato", async (req, res) => {
     });
 
     await transporter.sendMail({
-      from: `"Site SGOS" <${process.env.SITE_SMTP_USER}>`,
+      from: `"Site SGOS" <${process.env.SMTP_USER}>`,
       to: "suporte.sgos@uol.com.br",
       replyTo: email,
       subject: `Novo contato pelo site — ${empresa}`,
