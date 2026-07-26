@@ -8,6 +8,13 @@
 <script src="/js/auth.js" defer></script>
 <style>
 :root{--azul:#2563eb;--azul2:#1d4ed8;--texto:#0f172a;--muted:#64748b;--borda:#e5e7eb;--fundo:#f5f7fb;--verde:#16a34a;--laranja:#f59e0b;--vermelho:#ef4444}*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);color:var(--texto)}.sidebar{position:fixed;inset:0 auto 0 0;width:230px;background:linear-gradient(180deg,#081a31,#061426);padding:18px;color:#fff}.logo{width:185px;margin-bottom:28px}.sidebar a{display:flex;color:#dbeafe;text-decoration:none;padding:12px 13px;border-radius:9px;margin:3px 0;font-size:14px}.sidebar a:hover,.sidebar a.ativo{background:var(--azul);color:#fff}.main{margin-left:230px;min-height:100vh}.header{height:86px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;justify-content:space-between;padding:0 30px}.header h1{font-size:21px;margin:0}.header a{color:var(--azul);font-weight:800;text-decoration:none}.content{padding:26px}.hero{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border-radius:16px;padding:24px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:16px}.hero h2{margin:0 0 6px;font-size:22px}.hero p{margin:0;color:#dbeafe}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.tab{border:1px solid var(--borda);background:#fff;padding:10px 15px;border-radius:10px;font-weight:800;cursor:pointer;color:#334155}.tab.ativo{background:var(--azul);border-color:var(--azul);color:#fff}.card{background:#fff;border:1px solid var(--borda);border-radius:15px;box-shadow:0 8px 20px rgba(15,23,42,.04);overflow:hidden}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:1050px}th{background:#f8fafc;text-align:left;padding:13px;font-size:12px;border-bottom:1px solid var(--borda)}td{padding:14px 13px;border-bottom:1px solid #eef2f7;font-size:13px;vertical-align:top}.mensagem{max-width:420px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45}.badge{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800}.salvo{background:#dbeafe;color:#1d4ed8}.recebido{background:#ede9fe;color:#7c3aed}.enviado{background:#ffedd5;color:#c2410c}.nao-lido{background:#fee2e2;color:#dc2626}.lido{background:#dcfce7;color:#15803d}.removido{background:#e2e8f0;color:#475569}.vazio{text-align:center;padding:55px 20px;color:var(--muted)}.rodape-info{margin-top:14px;color:#64748b;font-size:12px}.loading{padding:45px;text-align:center;color:#64748b}.acoes{display:flex;gap:6px;white-space:nowrap}.btn-acao{border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:800;cursor:pointer}.btn-editar{background:#ffedd5;color:#c2410c}.btn-excluir{background:#fee2e2;color:#dc2626}@media(max-width:900px){.sidebar{display:none}.main{margin-left:0}.header{padding:0 18px}.content{padding:16px}.hero{align-items:flex-start;flex-direction:column}}
+
+.modal-edicao{position:fixed;inset:0;background:rgba(15,23,42,.62);display:none;align-items:center;justify-content:center;padding:18px;z-index:9999}
+.modal-edicao.ativo{display:flex}.modal-edicao-card{width:min(650px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:16px;padding:20px;box-shadow:0 24px 70px rgba(15,23,42,.3)}
+.modal-edicao-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.modal-edicao-topo h3{margin:0}.modal-edicao-fechar{border:0;width:36px;height:36px;border-radius:9px;cursor:pointer;font-size:21px}
+.modal-edicao label{display:block;font-size:13px;font-weight:800;margin:12px 0 6px}.modal-edicao textarea,.modal-edicao select,.modal-edicao input{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:10px}
+.modal-edicao textarea{min-height:130px;resize:vertical}.modal-edicao-acoes{display:flex;justify-content:flex-end;gap:9px;margin-top:16px}
+
 </style>
 </head>
 <body>
@@ -33,13 +40,60 @@
 <div class="rodape-info">A limpeza é realizada gradativamente pelo sistema. Lembretes enviados expiram em até 30 dias; lembretes salvos removidos ficam no histórico por mais 30 dias.</div>
 </section>
 </main>
+
+<div class="modal-edicao" id="modalEditarLembrete">
+ <div class="modal-edicao-card">
+  <div class="modal-edicao-topo"><h3>Editar lembrete</h3><button class="modal-edicao-fechar" type="button" onclick="fecharEdicao()">×</button></div>
+  <label for="editarDestinatario">Alterar usuário destinatário</label>
+  <select id="editarDestinatario"><option value="">Carregando usuários...</option></select>
+  <label for="editarAgendamento">Agendado para</label>
+  <input type="datetime-local" id="editarAgendamento">
+  <label for="editarMensagem">Lembrete</label>
+  <textarea id="editarMensagem" maxlength="2000"></textarea>
+  <div class="modal-edicao-acoes">
+   <button class="btn-acao" type="button" onclick="fecharEdicao()">Cancelar</button>
+   <button class="btn-acao btn-editar" type="button" onclick="salvarEdicao()">Salvar alterações</button>
+  </div>
+ </div>
+</div>
+
 <script>
 function usuarioLocal(){try{return JSON.parse(localStorage.getItem('usuario')||'{}')}catch{return{}}}
 function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
 function dataHora(v){if(!v)return'-';const d=new Date(v);return Number.isNaN(d.getTime())?v:d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
 function linha(item,uid){let tipo='Salvo',classe='salvo';if(item.tipo==='enviado'&&Number(item.destinatario_id)===Number(uid)){tipo='Recebido';classe='recebido'}else if(item.tipo==='enviado'){tipo='Enviado';classe='enviado'}let status='Ativo',statusClasse='salvo';const futuro=item.agendado_para&&new Date(item.agendado_para).getTime()>Date.now();if(item.removido_em){status='Removido';statusClasse='removido'}else if(futuro){status='Agendado';statusClasse='enviado'}else if(item.tipo==='enviado'&&!item.lido_em){status='Não lido';statusClasse='nao-lido'}else if(item.tipo==='enviado'&&item.lido_em){status=`Lido em ${dataHora(item.lido_em)}`;statusClasse='lido'}const exclusao=item.excluir_em?dataHora(item.excluir_em):(item.tipo==='salvo'?'Sem expiração enquanto ativo':'-');const criador=Number(item.criado_por_id)===Number(uid);const podeEditar=criador&&!item.removido_em&&(item.tipo==='salvo'||!item.lido_em);const acoes=criador&&!item.removido_em?`<div class="acoes">${podeEditar?`<button class="btn-acao btn-editar" onclick="editar(${Number(item.id)})">Editar</button>`:''}<button class="btn-acao btn-excluir" onclick="excluir(${Number(item.id)})">Excluir</button></div>`:'-';return `<tr><td><span class="badge ${classe}">${tipo}</span></td><td class="mensagem">${esc(item.mensagem)}</td><td>${esc(item.criado_por_nome)}</td><td>${esc(item.destinatario_nome)}</td><td>${esc(dataHora(item.criado_em))}</td><td>${esc(dataHora(item.agendado_para))}</td><td><span class="badge ${statusClasse}">${esc(status)}</span></td><td>${esc(exclusao)}</td><td>${acoes}</td></tr>`}
 let cache=new Map(),categoriaAtual='todos';
-async function editar(id){const u=usuarioLocal(),item=cache.get(Number(id));if(!item)return;const mensagem=prompt('Edite o lembrete:',item.mensagem||'');if(mensagem===null)return;const nova=mensagem.trim();if(!nova)return alert('O lembrete não pode ficar vazio.');try{const r=await fetch(`/api/lembretes/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json','x-usuario-id':u.id},body:JSON.stringify({tipo:item.tipo,destinatario_id:item.tipo==='enviado'?item.destinatario_id:null,mensagem:nova,agendado_para:item.agendado_para||null})}),d=await r.json();if(!r.ok)throw new Error(d.erro||`HTTP ${r.status}`);await carregar(categoriaAtual)}catch(e){alert(e.message||'Erro ao editar lembrete.')}}
+let editandoId=null, usuariosEdicao=[];
+async function carregarUsuariosEdicao(){
+ const u=usuarioLocal(),r=await fetch('/api/lembretes/usuarios',{headers:{'x-usuario-id':u.id}}),d=await r.json();
+ if(!r.ok) throw new Error(d.erro||`HTTP ${r.status}`);
+ usuariosEdicao=d.usuarios||[];
+}
+async function editar(id){
+ const item=cache.get(Number(id));if(!item)return;editandoId=Number(id);
+ try{
+  await carregarUsuariosEdicao();
+  const s=document.getElementById('editarDestinatario');
+  s.innerHTML='<option value="">Salvar para o próprio usuário</option>'+usuariosEdicao.map(x=>`<option value="${Number(x.id)}">${esc(x.nome)} — ${esc(x.tipo_usuario||x.cargo||'usuário')}</option>`).join('');
+  s.value=item.tipo==='enviado'?String(item.destinatario_id||''):'';
+  document.getElementById('editarMensagem').value=item.mensagem||'';
+  document.getElementById('editarAgendamento').value=item.agendado_para?new Date(new Date(item.agendado_para).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';
+  document.getElementById('modalEditarLembrete').classList.add('ativo');
+ }catch(e){alert(e.message||'Erro ao preparar edição.')}
+}
+function fecharEdicao(){document.getElementById('modalEditarLembrete').classList.remove('ativo');editandoId=null}
+async function salvarEdicao(){
+ const u=usuarioLocal(),item=cache.get(Number(editandoId));if(!item)return;
+ const destinatarioId=Number(document.getElementById('editarDestinatario').value||0);
+ const mensagem=document.getElementById('editarMensagem').value.trim();
+ const agendado=document.getElementById('editarAgendamento').value||null;
+ if(!mensagem)return alert('O lembrete não pode ficar vazio.');
+ try{
+  const r=await fetch(`/api/lembretes/${editandoId}`,{method:'PATCH',headers:{'Content-Type':'application/json','x-usuario-id':u.id},body:JSON.stringify({tipo:destinatarioId?'enviado':'salvo',destinatario_id:destinatarioId||null,destinatarios_ids:destinatarioId?[destinatarioId]:[],mensagem,agendado_para:agendado})}),d=await r.json();
+  if(!r.ok)throw new Error(d.erro||`HTTP ${r.status}`);
+  fecharEdicao();await carregar(categoriaAtual);
+ }catch(e){alert(e.message||'Erro ao editar lembrete.')}
+}
 async function excluir(id){const u=usuarioLocal();if(!confirm('Excluir este lembrete?'))return;try{const r=await fetch(`/api/lembretes/${id}`,{method:'DELETE',headers:{'x-usuario-id':u.id}}),d=await r.json();if(!r.ok)throw new Error(d.erro||`HTTP ${r.status}`);await carregar(categoriaAtual)}catch(e){alert(e.message||'Erro ao excluir lembrete.')}}
 async function carregar(categoria='todos'){categoriaAtual=categoria;const tbody=document.getElementById('tabelaLembretes'),u=usuarioLocal();if(!u.id){location.href='login.html';return}tbody.innerHTML='<tr><td colspan="9" class="loading">Carregando lembretes...</td></tr>';try{const r=await fetch(`/api/lembretes/historico?categoria=${encodeURIComponent(categoria)}`,{headers:{'x-usuario-id':u.id}}),d=await r.json();if(!r.ok)throw new Error(d.erro||`HTTP ${r.status}`);const lista=d.lembretes||[];cache=new Map(lista.map(i=>[Number(i.id),i]));tbody.innerHTML=lista.length?lista.map(i=>linha(i,d.usuario_id||u.id)).join(''):'<tr><td colspan="9" class="vazio">Nenhum lembrete encontrado nesta categoria.</td></tr>'}catch(e){tbody.innerHTML=`<tr><td colspan="9" class="vazio">${esc(e.message||'Erro ao carregar lembretes.')}</td></tr>`}}
 document.addEventListener('DOMContentLoaded',()=>{carregar();document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(b=>b.classList.remove('ativo'));btn.classList.add('ativo');carregar(btn.dataset.categoria)}))})
