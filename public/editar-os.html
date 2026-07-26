@@ -2727,7 +2727,7 @@ async function carregarOS(){
     referencia.value = os.referencia || "";
     latitude.value = os.latitude || "";
     longitude.value = os.longitude || "";
-    descricao.value = os.descricao || "";
+    descricao.value = modoReciclagem ? "" : (os.descricao || "");
     document.getElementById("prioridade").value = os.prioridade || "Média";
     status.value = modoReciclagem ? "aberto" : (os.status || "aberto");
 
@@ -2965,7 +2965,7 @@ async function salvarOS(
                 longitude.value.trim(),
 
             descricao:
-                (document.getElementById("descricao")?.value || "").trim(),
+                modoReciclagem ? "" : (document.getElementById("descricao")?.value || "").trim(),
 
             status:
                 statusAtual ||

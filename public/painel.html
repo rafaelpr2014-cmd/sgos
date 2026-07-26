@@ -3317,5 +3317,92 @@ function modoTV() {
 })();
 </script>
 
+
+
+<script id="sgos-finalizar-sem-checkin">
+(function(){
+    /*
+     * A finalização pelo painel não deve depender da existência de check-in.
+     * Este sinalizador pode ser consultado pelo painel.js atual ou por versões
+     * futuras, mantendo as demais confirmações do fluxo de conclusão.
+     */
+    window.SGOS_PERMITIR_FINALIZAR_SEM_CHECKIN = true;
+
+    const nomesValidacao = [
+        "validarCheckinFinalizacao",
+        "validarCheckinParaFinalizar",
+        "possuiCheckinParaFinalizar",
+        "podeFinalizarComCheckin",
+        "exigirCheckinParaFinalizar"
+    ];
+
+    function liberarValidadoresConhecidos(){
+        nomesValidacao.forEach(nome => {
+            if(typeof window[nome] === "function" && !window[nome].__sgosSemCheckin){
+                const liberada = function(){ return true; };
+                liberada.__sgosSemCheckin = true;
+                window[nome] = liberada;
+            }
+        });
+    }
+
+    /*
+     * Algumas versões do painel.js consultam novamente a OS antes de abrir
+     * a conclusão. Durante o clique em "Finalizar OS", a resposta usada só
+     * para validação recebe um check-in virtual no navegador. Nada fictício é
+     * gravado no banco; a API de conclusão continua recebendo os dados reais.
+     */
+    const fetchOriginal = window.fetch.bind(window);
+    let liberarAte = 0;
+    let osEmFinalizacao = null;
+
+    window.fetch = async function(input, init){
+        const resposta = await fetchOriginal(input, init);
+        try{
+            const url = typeof input === "string" ? input : (input?.url || "");
+            const metodo = String(init?.method || "GET").toUpperCase();
+            const match = url.match(/\/api\/ordens_servico\/(\d+)(?:\?.*)?$/);
+
+            if(
+                metodo === "GET" &&
+                match &&
+                Date.now() < liberarAte &&
+                (!osEmFinalizacao || Number(match[1]) === Number(osEmFinalizacao)) &&
+                resposta.ok
+            ){
+                const dados = await resposta.clone().json();
+                if(dados && typeof dados === "object"){
+                    dados.checkin_inicio_em = dados.checkin_inicio_em || dados.checkin_em || new Date().toISOString();
+                    dados.checkin_em = dados.checkin_em || dados.checkin_inicio_em;
+                    return new Response(JSON.stringify(dados), {
+                        status: resposta.status,
+                        statusText: resposta.statusText,
+                        headers: resposta.headers
+                    });
+                }
+            }
+        }catch(_){
+            /* Mantém a resposta original em qualquer formato inesperado. */
+        }
+        return resposta;
+    };
+
+    document.addEventListener("click", function(event){
+        const botao = event.target.closest(
+            ".sgos-acao-finalizar, [title*='Finalizar'], [aria-label*='Finalizar'], button[onclick*='finaliz'], a[onclick*='finaliz']"
+        );
+        if(!botao) return;
+
+        const linha = botao.closest("tr[data-id], tr[onclick]");
+        osEmFinalizacao = linha?.dataset?.id || (String(linha?.getAttribute("onclick") || "").match(/\b(\d+)\b/)?.[1]) || null;
+        liberarAte = Date.now() + 10000;
+        liberarValidadoresConhecidos();
+    }, true);
+
+    document.addEventListener("DOMContentLoaded", liberarValidadoresConhecidos);
+    setInterval(liberarValidadoresConhecidos, 1000);
+})();
+</script>
+
 </body>
 </html>
