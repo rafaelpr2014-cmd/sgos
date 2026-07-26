@@ -645,6 +645,63 @@ function possuiTecnicoObrigatorio(tecnicoRaw){
     }
 
 
+
+function usuarioAdministrador(usuario){
+    return String(usuario?.cargo || "").trim().toLowerCase() === "administrador";
+}
+
+async function obterEscopoOperacional(usuario){
+    if(usuarioAdministrador(usuario)){
+        return { administrador:true, localidades:[], tecnicos:[] };
+    }
+
+    const [locs] = await db.query(`
+        SELECT localidade_id
+        FROM usuario_localidades
+        WHERE usuario_id = ?
+          AND empresa_id = ?
+    `, [usuario.id, usuario.empresa_id]);
+
+    const [tecs] = await db.query(`
+        SELECT tecnico_id
+        FROM usuario_tecnicos
+        WHERE usuario_id = ?
+          AND empresa_id = ?
+    `, [usuario.id, usuario.empresa_id]);
+
+    return {
+        administrador:false,
+        localidades:locs.map(r => Number(r.localidade_id)).filter(Boolean),
+        tecnicos:tecs.map(r => Number(r.tecnico_id)).filter(Boolean)
+    };
+}
+
+async function validarEscopoOS(usuario, dados){
+    if(usuarioAdministrador(usuario)) return;
+
+    const escopo = await obterEscopoOperacional(usuario);
+    const localidadeId = Number(dados.localidade || dados.localidade_id || 0);
+    const tecnicoIds = normalizarTecnicos(dados.tecnico ?? dados.tecnicos);
+
+    const localidadePermitida =
+        localidadeId > 0 && escopo.localidades.includes(localidadeId);
+
+    const tecnicosInvalidos =
+        tecnicoIds.filter(id => !escopo.tecnicos.includes(Number(id)));
+
+    if(!localidadePermitida){
+        const erro = new Error("A localidade selecionada não está vinculada ao seu usuário.");
+        erro.status = 403;
+        throw erro;
+    }
+
+    if(tecnicosInvalidos.length){
+        const erro = new Error("Um ou mais técnicos selecionados não estão vinculados ao seu usuário.");
+        erro.status = 403;
+        throw erro;
+    }
+}
+
 function normalizarPrioridadeOS(valor){
     const texto = String(valor || "").trim().toLowerCase();
 
@@ -899,23 +956,30 @@ router.get("/", verificarAutenticacao, async (req, res) => {
         `;
 
         let params = [empresa_id];
-
-        // 🔒 FILTRO POR TÉCNICO
+        // 🔒 ESCOPO OPERACIONAL: localidade vinculada OU técnico vinculado
         if (cargo !== "administrador") {
-
-            const [tecs] = await db.query(
-                "SELECT tecnico_id FROM usuario_tecnicos WHERE usuario_id=?",
-                [userId]
-            );
-
-            const tecIds = tecs.map(t => t.tecnico_id);
-
-            if (!tecIds.length) {
-                return res.json([]);
-            }
-
-            query += ` AND JSON_OVERLAPS(os.tecnico, ?) `;
-            params.push(JSON.stringify(tecIds));
+            query += `
+                AND (
+                    EXISTS (
+                        SELECT 1
+                        FROM usuario_localidades ul
+                        WHERE ul.usuario_id = ?
+                          AND ul.empresa_id = os.empresa_id
+                          AND ul.localidade_id = os.localidade
+                    )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM usuario_tecnicos ut
+                        WHERE ut.usuario_id = ?
+                          AND ut.empresa_id = os.empresa_id
+                          AND FIND_IN_SET(
+                              CAST(ut.tecnico_id AS CHAR),
+                              REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(os.tecnico,''), '[',''), ']',''), '"',''), ' ','')
+                          ) > 0
+                    )
+                )
+            `;
+            params.push(userId, userId);
         }
 
         query += " ORDER BY os.data_abertura DESC";
@@ -946,10 +1010,21 @@ router.get("/", verificarAutenticacao, async (req, res) => {
     // ===============================
     router.get("/localidades", verificarAutenticacao, async (req, res) => {
         try {
-            const [result] = await db.query(
-                "SELECT id, nome, vlan FROM localidades WHERE empresa_id=?",
-                [req.usuario.empresa_id]
-            );
+            let sql = "SELECT l.id, l.nome, l.vlan FROM localidades l WHERE l.empresa_id = ?";
+            const params = [req.usuario.empresa_id];
+
+            if(!usuarioAdministrador(req.usuario)){
+                sql += ` AND EXISTS (
+                    SELECT 1 FROM usuario_localidades ul
+                    WHERE ul.usuario_id = ?
+                      AND ul.empresa_id = l.empresa_id
+                      AND ul.localidade_id = l.id
+                )`;
+                params.push(req.usuario.id);
+            }
+
+            sql += " ORDER BY l.nome";
+            const [result] = await db.query(sql, params);
             res.json(result);
         } catch (err) {
             res.status(500).json({ erro: err.message });
@@ -961,10 +1036,21 @@ router.get("/", verificarAutenticacao, async (req, res) => {
     // ===============================
     router.get("/tecnicos", verificarAutenticacao, async (req, res) => {
         try {
-            const [result] = await db.query(
-                "SELECT id, nome FROM tecnicos WHERE empresa_id=?",
-                [req.usuario.empresa_id]
-            );
+            let sql = "SELECT t.id, t.nome FROM tecnicos t WHERE t.empresa_id = ? AND (t.ativo = 1 OR t.ativo IS NULL)";
+            const params = [req.usuario.empresa_id];
+
+            if(!usuarioAdministrador(req.usuario)){
+                sql += ` AND EXISTS (
+                    SELECT 1 FROM usuario_tecnicos ut
+                    WHERE ut.usuario_id = ?
+                      AND ut.empresa_id = t.empresa_id
+                      AND ut.tecnico_id = t.id
+                )`;
+                params.push(req.usuario.id);
+            }
+
+            sql += " ORDER BY t.nome";
+            const [result] = await db.query(sql, params);
             res.json(result);
         } catch (err) {
             res.status(500).json({ erro: err.message });
@@ -993,6 +1079,7 @@ router.post(
             // CRIA OS
             // ===============================
             validarSelecaoEquipamentosOS(dados);
+            await validarEscopoOS(req.usuario, dados);
 
             const resultado =
                 await osService.criar(

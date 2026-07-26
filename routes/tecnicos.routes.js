@@ -8,28 +8,36 @@ const router = express.Router();
 // LISTAR TÉCNICOS
 // ==========================
 router.get("/", verificarAutenticacao, async (req, res) => {
-
     try {
+        const cargo = String(req.usuario.cargo || "").trim().toLowerCase();
+        let sql = `
+            SELECT t.id, t.nome, t.ativo
+            FROM tecnicos t
+            WHERE t.empresa_id = ?
+        `;
+        const params = [req.usuario.empresa_id];
 
-        const [rows] = await db.query(`
-            SELECT
-                id,
-                nome,
-                ativo
-            FROM tecnicos
-            WHERE empresa_id = ?
-            ORDER BY nome ASC
-        `, [req.usuario.empresa_id]);
+        if (cargo !== "administrador") {
+            sql += `
+                AND EXISTS (
+                    SELECT 1
+                    FROM usuario_tecnicos ut
+                    WHERE ut.usuario_id = ?
+                      AND ut.empresa_id = t.empresa_id
+                      AND ut.tecnico_id = t.id
+                )
+            `;
+            params.push(req.usuario.id);
+        }
 
+        sql += " ORDER BY t.nome ASC";
+        const [rows] = await db.query(sql, params);
         res.json(rows);
-
     } catch (err) {
-
         console.error("ERRO AO LISTAR TÉCNICOS:", err);
-
-        res.status(500).json({
-            erro: err.message
-        });
+        res.status(500).json({ erro: err.message });
+    }
+});
 
     }
 

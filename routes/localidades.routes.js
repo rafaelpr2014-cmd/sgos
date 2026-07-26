@@ -7,28 +7,36 @@ module.exports = (db, verificarAutenticacao) => {
     // LISTAR LOCALIDADES
     // ==========================
     router.get("/", verificarAutenticacao, async (req, res) => {
-
         try {
+            const cargo = String(req.usuario.cargo || "").trim().toLowerCase();
+            let sql = `
+                SELECT l.id, l.nome, l.vlan
+                FROM localidades l
+                WHERE l.empresa_id = ?
+            `;
+            const params = [req.usuario.empresa_id];
 
-            const [rows] = await db.query(`
-                SELECT
-                    id,
-                    nome,
-                    vlan
-                FROM localidades
-                WHERE empresa_id = ?
-                ORDER BY nome ASC
-            `, [req.usuario.empresa_id]);
+            if (cargo !== "administrador") {
+                sql += `
+                    AND EXISTS (
+                        SELECT 1
+                        FROM usuario_localidades ul
+                        WHERE ul.usuario_id = ?
+                          AND ul.empresa_id = l.empresa_id
+                          AND ul.localidade_id = l.id
+                    )
+                `;
+                params.push(req.usuario.id);
+            }
 
+            sql += " ORDER BY l.nome ASC";
+            const [rows] = await db.query(sql, params);
             res.json(rows);
-
         } catch (err) {
-
             console.error("ERRO AO LISTAR LOCALIDADES:", err);
-
-            res.status(500).json({
-                erro: err.message
-            });
+            res.status(500).json({ erro: err.message });
+        }
+    });
 
         }
 

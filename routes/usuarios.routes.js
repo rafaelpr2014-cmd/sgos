@@ -4,213 +4,286 @@ module.exports = (db, verificarAutenticacao) => {
   const bcrypt = require("bcryptjs");
   const SALT_ROUNDS = 10;
 
-  // ===============================
-  // 🔹 USUÁRIO LOGADO
-  // ===============================
+  function isAdmin(usuario) {
+    return String(usuario?.cargo || "").trim().toLowerCase() === "administrador";
+  }
+
+  function idsValidos(lista) {
+    return [...new Set((Array.isArray(lista) ? lista : [])
+      .map(Number)
+      .filter(id => Number.isInteger(id) && id > 0))];
+  }
+
+  async function validarIdsEmpresa(conn, tabela, ids, empresaId) {
+    if (!ids.length) return [];
+    const [rows] = await conn.query(
+      `SELECT id FROM ${tabela} WHERE empresa_id = ? AND id IN (?)`,
+      [empresaId, ids]
+    );
+    const encontrados = rows.map(r => Number(r.id));
+    if (encontrados.length !== ids.length) {
+      const set = new Set(encontrados);
+      const invalidos = ids.filter(id => !set.has(id));
+      const erro = new Error(`Existem vínculos inválidos para esta empresa: ${invalidos.join(", ")}`);
+      erro.status = 400;
+      throw erro;
+    }
+    return encontrados;
+  }
+
+  async function salvarVinculos(conn, usuarioId, empresaId, localidades, tecnicos) {
+    const locIds = idsValidos(localidades);
+    const tecIds = idsValidos(tecnicos);
+
+    await validarIdsEmpresa(conn, "localidades", locIds, empresaId);
+    await validarIdsEmpresa(conn, "tecnicos", tecIds, empresaId);
+
+    await conn.query(
+      "DELETE FROM usuario_localidades WHERE usuario_id = ? AND (empresa_id = ? OR empresa_id IS NULL)",
+      [usuarioId, empresaId]
+    );
+    await conn.query(
+      "DELETE FROM usuario_tecnicos WHERE usuario_id = ? AND (empresa_id = ? OR empresa_id IS NULL)",
+      [usuarioId, empresaId]
+    );
+
+    if (locIds.length) {
+      const valores = locIds.map(id => [usuarioId, empresaId, id]);
+      await conn.query(
+        "INSERT INTO usuario_localidades (usuario_id, empresa_id, localidade_id) VALUES ?",
+        [valores]
+      );
+    }
+
+    if (tecIds.length) {
+      const valores = tecIds.map(id => [usuarioId, empresaId, id]);
+      await conn.query(
+        "INSERT INTO usuario_tecnicos (usuario_id, empresa_id, tecnico_id) VALUES ?",
+        [valores]
+      );
+    }
+  }
+
   router.get("/me", verificarAutenticacao, (req, res) => {
     res.json(req.usuario);
   });
 
-  // ===============================
-  // 🔹 LISTAR USUÁRIOS
-  // ===============================
   router.get("/", verificarAutenticacao, async (req, res) => {
     try {
-      const { id: userId, cargo, empresa_id } = req.usuario;
+      const { id: userId, empresa_id } = req.usuario;
 
-      let query = `SELECT id, usuario, cargo, telefone, email, ativo 
-                   FROM usuarios WHERE empresa_id = ?`;
-      let params = [empresa_id];
+      let where = "u.empresa_id = ?";
+      const params = [empresa_id];
 
-      // 🔹 Se não for administrador, aplica filtros por localidades e técnicos
-      if (cargo.toLowerCase() !== "administrador") {
-        const [locs] = await db.query(
-          "SELECT localidade_id FROM usuario_localidades WHERE usuario_id=?",
-          [userId]
-        );
-        const [tecs] = await db.query(
-          "SELECT tecnico_id FROM usuario_tecnicos WHERE usuario_id=?",
-          [userId]
-        );
-
-        const locIds = locs.map(l => l.localidade_id);
-        const tecIds = tecs.map(t => t.tecnico_id);
-
-        if (locIds.length || tecIds.length) {
-          query += `
-            AND (id IN (SELECT usuario_id FROM usuario_localidades WHERE localidade_id IN (?))
-                 OR id IN (SELECT usuario_id FROM usuario_tecnicos WHERE tecnico_id IN (?)))`;
-          params.push(locIds.length ? locIds : [0]);
-          params.push(tecIds.length ? tecIds : [0]);
-        } else {
-          return res.json([]); // nenhum acesso permitido
-        }
+      if (!isAdmin(req.usuario)) {
+        where += ` AND (
+          u.id = ?
+          OR EXISTS (
+            SELECT 1 FROM usuario_localidades ul_alvo
+            INNER JOIN usuario_localidades ul_logado
+              ON ul_logado.localidade_id = ul_alvo.localidade_id
+             AND ul_logado.empresa_id = ul_alvo.empresa_id
+            WHERE ul_alvo.usuario_id = u.id
+              AND ul_alvo.empresa_id = ?
+              AND ul_logado.usuario_id = ?
+          )
+          OR EXISTS (
+            SELECT 1 FROM usuario_tecnicos ut_alvo
+            INNER JOIN usuario_tecnicos ut_logado
+              ON ut_logado.tecnico_id = ut_alvo.tecnico_id
+             AND ut_logado.empresa_id = ut_alvo.empresa_id
+            WHERE ut_alvo.usuario_id = u.id
+              AND ut_alvo.empresa_id = ?
+              AND ut_logado.usuario_id = ?
+          )
+        )`;
+        params.push(userId, empresa_id, userId, empresa_id, userId);
       }
 
-      query += " ORDER BY usuario";
-      const [usuarios] = await db.query(query, params);
-      res.json(usuarios);
+      const [usuarios] = await db.query(
+        `SELECT
+           u.id, u.usuario, u.cargo, u.telefone, u.email, u.ativo,
+           COALESCE((
+             SELECT JSON_ARRAYAGG(ul.localidade_id)
+             FROM usuario_localidades ul
+             WHERE ul.usuario_id = u.id AND ul.empresa_id = u.empresa_id
+           ), JSON_ARRAY()) AS localidades,
+           COALESCE((
+             SELECT JSON_ARRAYAGG(ut.tecnico_id)
+             FROM usuario_tecnicos ut
+             WHERE ut.usuario_id = u.id AND ut.empresa_id = u.empresa_id
+           ), JSON_ARRAY()) AS tecnicos
+         FROM usuarios u
+         WHERE ${where}
+         ORDER BY u.usuario`,
+        params
+      );
 
+      const normalizados = usuarios.map(u => ({
+        ...u,
+        localidades: typeof u.localidades === "string" ? JSON.parse(u.localidades || "[]") : (u.localidades || []),
+        tecnicos: typeof u.tecnicos === "string" ? JSON.parse(u.tecnicos || "[]") : (u.tecnicos || [])
+      }));
+
+      res.json(normalizados);
     } catch (err) {
       console.error("ERRO LISTAR USUÁRIOS:", err);
       res.status(500).json({ erro: err.message });
     }
   });
 
-  // ===============================
-  // 🔹 LISTAR TÉCNICOS
-  // ===============================
   router.get("/tecnicos", verificarAutenticacao, async (req, res) => {
     try {
-      const { cargo, id: userId, empresa_id } = req.usuario;
-      let query = "SELECT id, usuario AS nome, cargo FROM tecnicos WHERE empresa_id=?";
-      let params = [empresa_id];
+      let sql = `SELECT t.id, t.nome, t.ativo
+                 FROM tecnicos t
+                 WHERE t.empresa_id = ?`;
+      const params = [req.usuario.empresa_id];
 
-      if (cargo.toLowerCase() !== "administrador") {
-        const [tecs] = await db.query(
-          "SELECT tecnico_id FROM usuario_tecnicos WHERE usuario_id=?",
-          [userId]
-        );
-        const tecIds = tecs.map(t => t.tecnico_id);
-        if (tecIds.length) {
-          query += " AND id IN (?)";
-          params.push(tecIds);
-        } else return res.json([]);
+      if (!isAdmin(req.usuario)) {
+        sql += ` AND EXISTS (
+          SELECT 1 FROM usuario_tecnicos ut
+          WHERE ut.usuario_id = ?
+            AND ut.empresa_id = t.empresa_id
+            AND ut.tecnico_id = t.id
+        )`;
+        params.push(req.usuario.id);
       }
 
-      query += " ORDER BY usuario";
-      const [rows] = await db.query(query, params);
+      sql += " ORDER BY t.nome";
+      const [rows] = await db.query(sql, params);
       res.json(rows);
-
     } catch (err) {
-      console.error("ERRO TECNICOS:", err);
+      console.error("ERRO TÉCNICOS:", err);
       res.status(500).json({ erro: err.message });
     }
   });
 
-  // ===============================
-  // 🔹 LISTAR LOCALIDADES
-  // ===============================
   router.get("/localidades", verificarAutenticacao, async (req, res) => {
     try {
-      const { cargo, id: userId, empresa_id } = req.usuario;
-      let query = "SELECT id, nome FROM localidades WHERE empresa_id=?";
-      let params = [empresa_id];
+      let sql = `SELECT l.id, l.nome, l.vlan
+                 FROM localidades l
+                 WHERE l.empresa_id = ?`;
+      const params = [req.usuario.empresa_id];
 
-      if (cargo.toLowerCase() !== "administrador") {
-        const [locs] = await db.query(
-          "SELECT localidade_id FROM usuario_localidades WHERE usuario_id=?",
-          [userId]
-        );
-        const locIds = locs.map(l => l.localidade_id);
-        if (locIds.length) {
-          query += " AND id IN (?)";
-          params.push(locIds);
-        } else return res.json([]);
+      if (!isAdmin(req.usuario)) {
+        sql += ` AND EXISTS (
+          SELECT 1 FROM usuario_localidades ul
+          WHERE ul.usuario_id = ?
+            AND ul.empresa_id = l.empresa_id
+            AND ul.localidade_id = l.id
+        )`;
+        params.push(req.usuario.id);
       }
 
-      query += " ORDER BY nome";
-      const [rows] = await db.query(query, params);
+      sql += " ORDER BY l.nome";
+      const [rows] = await db.query(sql, params);
       res.json(rows);
-
     } catch (err) {
-      console.error("ERRO LISTAR LOCALIDADES:", err);
+      console.error("ERRO LOCALIDADES:", err);
       res.status(500).json({ erro: err.message });
     }
   });
 
-  // ===============================
-  // 🔹 CRIAR USUÁRIO
-  // ===============================
   router.post("/", verificarAutenticacao, async (req, res) => {
-    const { usuario, senha, cargo, telefone, email, localidades = [], tecnicos = [] } = req.body;
+    if (!isAdmin(req.usuario)) return res.status(403).json({ erro: "Acesso negado" });
 
+    const { usuario, senha, cargo, telefone, email, localidades = [], tecnicos = [] } = req.body;
     if (!usuario || !senha) return res.status(400).json({ erro: "Usuário e senha obrigatórios" });
 
+    const conn = await db.getConnection();
     try {
-      const hashSenha = await bcrypt.hash(senha, SALT_ROUNDS);
+      await conn.beginTransaction();
+      const hashSenha = await bcrypt.hash(String(senha), SALT_ROUNDS);
 
-      const [result] = await db.query(
-        `INSERT INTO usuarios 
-          (usuario, senha, cargo, telefone, email, ativo, empresa_id) 
+      const [result] = await conn.query(
+        `INSERT INTO usuarios
+          (usuario, senha, cargo, telefone, email, ativo, empresa_id)
          VALUES (?, ?, ?, ?, ?, 1, ?)`,
-        [usuario, hashSenha, cargo, telefone, email, req.usuario.empresa_id]
+        [String(usuario).trim(), hashSenha, cargo, telefone || null, email || null, req.usuario.empresa_id]
       );
 
-      const userId = result.insertId;
+      await salvarVinculos(
+        conn,
+        result.insertId,
+        req.usuario.empresa_id,
+        localidades,
+        tecnicos
+      );
 
-      // 🔹 VÍNCULOS (Atendente ou Técnicos)
-      if (localidades.length) {
-        const locValues = localidades.map(loc => [userId, loc]);
-        await db.query(
-          "INSERT INTO usuario_localidades (usuario_id, localidade_id) VALUES ?",
-          [locValues]
-        );
-      }
-      if (tecnicos.length) {
-        const tecValues = tecnicos.map(tec => [userId, tec]);
-        await db.query(
-          "INSERT INTO usuario_tecnicos (usuario_id, tecnico_id) VALUES ?",
-          [tecValues]
-        );
-      }
-
-      res.json({ sucesso: true });
-
+      await conn.commit();
+      res.json({ sucesso: true, id: result.insertId });
     } catch (err) {
+      await conn.rollback();
       console.error("ERRO CRIAR USUÁRIO:", err);
-      res.status(500).json({ erro: err.message });
+      res.status(err.status || 500).json({ erro: err.message });
+    } finally {
+      conn.release();
     }
   });
 
-  // ===============================
-  // 🔹 ATUALIZAR USUÁRIO
-  // ===============================
   router.put("/:id", verificarAutenticacao, async (req, res) => {
-    const { id } = req.params;
-    const { cargo } = req.usuario;
+    if (!isAdmin(req.usuario)) return res.status(403).json({ erro: "Acesso negado" });
 
+    const id = Number(req.params.id);
+    const { usuario, senha, cargo, telefone, email, localidades = [], tecnicos = [] } = req.body;
+    if (!id || !usuario) return res.status(400).json({ erro: "Dados do usuário inválidos" });
+
+    const conn = await db.getConnection();
     try {
-      if (cargo.toLowerCase() !== "administrador") {
-        return res.status(403).json({ erro: "Acesso negado" });
+      await conn.beginTransaction();
+
+      const [existente] = await conn.query(
+        "SELECT id FROM usuarios WHERE id = ? AND empresa_id = ? LIMIT 1",
+        [id, req.usuario.empresa_id]
+      );
+      if (!existente.length) {
+        const erro = new Error("Usuário não encontrado.");
+        erro.status = 404;
+        throw erro;
       }
 
-      await db.query(
-        `UPDATE usuarios 
-         SET usuario=?, cargo=?, telefone=?, email=? 
-         WHERE id=? AND empresa_id=?`,
-        [
-          req.body.usuario,
-          req.body.cargo,
-          req.body.telefone,
-          req.body.email,
-          id,
-          req.usuario.empresa_id
-        ]
-      );
+      if (senha && String(senha).trim()) {
+        const hashSenha = await bcrypt.hash(String(senha), SALT_ROUNDS);
+        await conn.query(
+          `UPDATE usuarios
+           SET usuario = ?, senha = ?, cargo = ?, telefone = ?, email = ?
+           WHERE id = ? AND empresa_id = ?`,
+          [String(usuario).trim(), hashSenha, cargo, telefone || null, email || null, id, req.usuario.empresa_id]
+        );
+      } else {
+        await conn.query(
+          `UPDATE usuarios
+           SET usuario = ?, cargo = ?, telefone = ?, email = ?
+           WHERE id = ? AND empresa_id = ?`,
+          [String(usuario).trim(), cargo, telefone || null, email || null, id, req.usuario.empresa_id]
+        );
+      }
 
+      await salvarVinculos(conn, id, req.usuario.empresa_id, localidades, tecnicos);
+
+      await conn.commit();
       res.json({ sucesso: true });
-
     } catch (err) {
+      await conn.rollback();
       console.error("ERRO UPDATE USUÁRIO:", err);
-      res.status(500).json({ erro: err.message });
+      res.status(err.status || 500).json({ erro: err.message });
+    } finally {
+      conn.release();
     }
   });
 
-  // ===============================
-  // 🔹 RESETAR SENHA
-  // ===============================
   router.post("/resetar-senha/:id", verificarAutenticacao, async (req, res) => {
-    const { id } = req.params;
     const { senha } = req.body;
-    const { cargo, empresa_id } = req.usuario;
-
     if (!senha) return res.status(400).json({ erro: "Senha obrigatória" });
-    if (cargo.toLowerCase() !== "administrador") return res.status(403).json({ erro: "Acesso negado" });
+    if (!isAdmin(req.usuario)) return res.status(403).json({ erro: "Acesso negado" });
 
     try {
-      const hashSenha = await bcrypt.hash(senha, SALT_ROUNDS);
-      await db.query("UPDATE usuarios SET senha=? WHERE id=? AND empresa_id=?", [hashSenha, id, empresa_id]);
+      const hashSenha = await bcrypt.hash(String(senha), SALT_ROUNDS);
+      const [resultado] = await db.query(
+        "UPDATE usuarios SET senha = ? WHERE id = ? AND empresa_id = ?",
+        [hashSenha, req.params.id, req.usuario.empresa_id]
+      );
+      if (!resultado.affectedRows) return res.status(404).json({ erro: "Usuário não encontrado." });
       res.json({ sucesso: true });
     } catch (err) {
       console.error("ERRO RESET SENHA:", err);
@@ -218,45 +291,56 @@ module.exports = (db, verificarAutenticacao) => {
     }
   });
 
-  // ===============================
-  // 🔹 ATIVAR / DESATIVAR USUÁRIO
-  // ===============================
   router.post("/toggle/:id", verificarAutenticacao, async (req, res) => {
-    const { id } = req.params;
-    const { cargo, empresa_id } = req.usuario;
-
-    if (cargo.toLowerCase() !== "administrador") return res.status(403).json({ erro: "Acesso negado" });
+    if (!isAdmin(req.usuario)) return res.status(403).json({ erro: "Acesso negado" });
 
     try {
-      const [user] = await db.query("SELECT ativo FROM usuarios WHERE id=? AND empresa_id=?", [id, empresa_id]);
-      if (!user.length) return res.status(404).json({ erro: "Usuário não encontrado" });
+      const [rows] = await db.query(
+        "SELECT ativo FROM usuarios WHERE id = ? AND empresa_id = ? LIMIT 1",
+        [req.params.id, req.usuario.empresa_id]
+      );
+      if (!rows.length) return res.status(404).json({ erro: "Usuário não encontrado" });
 
-      const novoStatus = user[0].ativo ? 0 : 1;
-      await db.query("UPDATE usuarios SET ativo=? WHERE id=? AND empresa_id=?", [novoStatus, id, empresa_id]);
+      await db.query(
+        "UPDATE usuarios SET ativo = ? WHERE id = ? AND empresa_id = ?",
+        [rows[0].ativo ? 0 : 1, req.params.id, req.usuario.empresa_id]
+      );
       res.json({ sucesso: true });
-
     } catch (err) {
-      console.error("ERRO TOGGLE USUÁRIO:", err);
       res.status(500).json({ erro: err.message });
     }
   });
 
-  // ===============================
-  // 🔹 DELETAR USUÁRIO
-  // ===============================
   router.delete("/:id", verificarAutenticacao, async (req, res) => {
-    const { id } = req.params;
-    const { cargo, empresa_id } = req.usuario;
+    if (!isAdmin(req.usuario)) return res.status(403).json({ erro: "Acesso negado" });
 
-    if (cargo.toLowerCase() !== "administrador") return res.status(403).json({ erro: "Acesso negado" });
-
+    const conn = await db.getConnection();
     try {
-      const [result] = await db.query("DELETE FROM usuarios WHERE id=? AND empresa_id=?", [id, empresa_id]);
-      if (result.affectedRows === 0) return res.status(404).json({ erro: "Usuário não encontrado" });
+      await conn.beginTransaction();
+      await conn.query(
+        "DELETE FROM usuario_localidades WHERE usuario_id = ? AND (empresa_id = ? OR empresa_id IS NULL)",
+        [req.params.id, req.usuario.empresa_id]
+      );
+      await conn.query(
+        "DELETE FROM usuario_tecnicos WHERE usuario_id = ? AND (empresa_id = ? OR empresa_id IS NULL)",
+        [req.params.id, req.usuario.empresa_id]
+      );
+      const [resultado] = await conn.query(
+        "DELETE FROM usuarios WHERE id = ? AND empresa_id = ?",
+        [req.params.id, req.usuario.empresa_id]
+      );
+      if (!resultado.affectedRows) {
+        const erro = new Error("Usuário não encontrado.");
+        erro.status = 404;
+        throw erro;
+      }
+      await conn.commit();
       res.json({ sucesso: true });
     } catch (err) {
-      console.error("ERRO DELETE USUÁRIO:", err);
-      res.status(500).json({ erro: err.message });
+      await conn.rollback();
+      res.status(err.status || 500).json({ erro: err.message });
+    } finally {
+      conn.release();
     }
   });
 
