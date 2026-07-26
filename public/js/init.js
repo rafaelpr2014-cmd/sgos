@@ -35,6 +35,10 @@ async function fetchAuth(url, opcoes = {}) {
         headers["x-usuario-id"] = usuario.id;
         headers["x-usuario-nome"] = usuario.usuario || usuario.nome;
         headers["x-usuario-cargo"] = usuario.cargo;
+        headers["x-empresa-id"] = usuario.empresa_id || "";
+
+        const logId = localStorage.getItem("log_id");
+        if (logId) headers["x-log-id"] = logId;
     }
 
     const res = await fetch(url, {
