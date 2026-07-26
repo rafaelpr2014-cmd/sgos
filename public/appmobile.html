@@ -1592,6 +1592,71 @@ body{
     .os-agendamento{padding-right:0}
 }
 
+
+
+/* ===== LAYOUT FINAL FIEL AO MOCKUP SGOS ===== */
+body{
+    background:linear-gradient(180deg,#fff 0 118px,#075cf6 118px,#0649cc 100%) !important;
+}
+.busca{padding:20px 20px 14px !important}
+.cards{padding:8px 20px 14px !important;gap:16px !important}
+.card{
+    min-height:202px !important;
+    padding:22px 22px 18px !important;
+    border-radius:18px !important;
+    position:relative !important;
+    overflow:hidden !important;
+    align-items:flex-start !important;
+    background:linear-gradient(145deg,#075cf6,#063cae) !important;
+    border:1px solid rgba(255,255,255,.32) !important;
+}
+.card-conteudo{gap:8px !important;z-index:2}
+.card span{font-size:52px !important}
+.card small{font-size:21px !important}
+.card-subtitle{font-size:15px;color:#dbeafe;font-weight:700;z-index:2}
+.card-icon{position:absolute !important;right:20px;top:48px;width:52px !important;height:52px !important;flex-basis:52px !important;border-radius:50% !important;background:rgba(255,255,255,.13) !important;z-index:2}
+.card-icon svg{width:25px !important;height:25px !important}
+.card-trafego{position:absolute;left:0;right:0;bottom:0;height:58px;opacity:.95;pointer-events:none}
+.card-trafego svg{width:100%;height:100%;display:block}
+.card.andamento .card-trafego path{stroke:#38a3ff}
+.card.ausente .card-trafego path{stroke:#ffb000}
+.card.concluido .card-trafego path{stroke:#35d45b}
+.resumo-tipos-servico{margin:0 20px 18px !important;padding:18px 20px !important;border-radius:18px !important}
+.resumo-tipos-titulo{font-size:20px !important;margin-bottom:16px !important}
+.resumo-tipos-lista{gap:12px !important}
+.resumo-tipo-item{min-height:68px !important;padding:11px 16px !important;border-radius:14px !important;font-size:14px !important}
+.resumo-tipo-item:before{content:'🔧';width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.12);font-size:21px;flex:0 0 42px}
+.resumo-tipo-item strong{width:44px !important;height:44px !important;font-size:17px !important}
+.lista-cabecalho{padding:8px 26px 14px !important}.lista-cabecalho strong{font-size:21px !important}
+.container{padding:0 22px 28px !important}
+.os{
+    display:grid !important;
+    grid-template-columns:minmax(0,1.65fr) minmax(210px,.9fr) !important;
+    column-gap:24px !important;
+    padding:22px 28px 18px 28px !important;
+    min-height:205px !important;
+    border-radius:18px !important;
+    overflow:visible !important;
+}
+.os-main{min-width:0}.os-side{border-left:1px solid #dce5f0;padding-left:22px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.os-top-badges{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.os .prioridade-app{margin-left:0 !important}.os .os-tipo-servico{font-size:11px !important}
+.os-cliente-nome{font-size:20px !important}.os-endereco{font-size:14px !important;margin-top:10px !important}
+.os-meta-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-top:14px;padding-top:13px;border-top:1px solid #e5ebf3}
+.os-meta-item{min-width:0;color:#52627a;font-size:11px;line-height:1.25}.os-meta-item b{display:block;color:#41516b;font-size:11px;margin-bottom:2px}.os-meta-item span,.os-meta-item a{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#152744;text-decoration:none}
+.os-agendamento{margin:0 !important;padding:0 !important;border:0 !important;font-size:14px !important;gap:7px !important}.os-agendamento strong{font-size:14px !important}.os-agendamento-linha{font-size:14px !important}
+.os-status{right:24px !important;top:20px !important}.os-seta{right:20px !important}.os-hora{right:24px !important;bottom:18px !important}
+.os-acoes-share{position:absolute;right:70px;bottom:14px;display:flex;gap:8px;z-index:3}
+.btn-compartilhar-whatsapp,.btn-compartilhar-nativo{width:38px;height:38px;border-radius:11px;border:1px solid #dbe4ef;background:#fff;display:grid;place-items:center;box-shadow:0 5px 12px rgba(15,23,42,.10);font-size:20px;cursor:pointer}
+.btn-compartilhar-whatsapp{color:#18b957}.btn-compartilhar-nativo{color:#075cf6}
+@media(max-width:759px){
+  .busca{padding:16px 12px 12px !important}.cards{padding:6px 12px 13px !important;gap:7px !important}.card{min-height:126px !important;padding:14px 10px 10px !important;border-radius:15px !important}.card span{font-size:31px !important}.card small{font-size:12px !important}.card-subtitle{font-size:10px}.card-icon{right:10px;top:36px;width:35px !important;height:35px !important;flex-basis:35px !important}.card-icon svg{width:18px !important;height:18px !important}.card-trafego{height:38px}
+  .resumo-tipos-servico{margin:0 12px 14px !important;padding:13px 14px !important}.resumo-tipos-titulo{font-size:14px !important;margin-bottom:10px !important}.resumo-tipo-item{min-height:50px !important;font-size:10px !important;padding:8px 9px !important}.resumo-tipo-item:before{width:30px;height:30px;flex-basis:30px;font-size:15px}.resumo-tipo-item strong{width:34px !important;height:34px !important;font-size:13px !important}
+  .lista-cabecalho{padding:8px 16px 12px !important}.lista-cabecalho strong{font-size:17px !important}.container{padding:0 12px 24px !important}
+  .os{grid-template-columns:1fr !important;padding:18px 18px 70px 20px !important;min-height:230px !important;row-gap:10px !important}.os-side{border-left:0;border-top:1px solid #e5ebf3;padding:10px 0 0 !important;display:block}.os-meta-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}.os-meta-item{font-size:9px}.os-meta-item b{font-size:9px}.os-meta-item span,.os-meta-item a{font-size:10px}.os-cliente-nome{font-size:16px !important}.os-endereco{font-size:12px !important}.os-status{right:14px !important;top:16px !important}.os-seta{right:13px !important}.os-hora{right:15px !important;bottom:16px !important}.os-acoes-share{right:58px;bottom:10px}.btn-compartilhar-whatsapp,.btn-compartilhar-nativo{width:34px;height:34px;font-size:18px}
+}
+@media(max-width:430px){.os-meta-grid{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:10px}.os{padding-bottom:76px !important}}
+
 </style>
 
 
@@ -1675,6 +1740,7 @@ body{
         <div class="card-conteudo">
             <span id="cA">0</span>
             <small>Em andamento</small>
+            <div class="card-subtitle">OS ativas agora</div>
         </div>
 
         <div class="card-icon" aria-hidden="true">
@@ -1682,12 +1748,14 @@ body{
                 <path d="M8 5v14l11-7z"></path>
             </svg>
         </div>
+        <div class="card-trafego" aria-hidden="true"><svg viewBox="0 0 300 60" preserveAspectRatio="none"><path d="M0 45 C28 52,48 41,70 45 S112 49,132 37 S165 55,188 35 S222 20,244 35 S276 31,300 17" fill="none" stroke-width="2"/></svg></div>
     </div>
 
     <div class="card ausente" onclick="setTab('ausente')" role="button" tabindex="0">
         <div class="card-conteudo">
             <span id="cX">0</span>
             <small>Ausentes</small>
+            <div class="card-subtitle">Aguardando retorno</div>
         </div>
 
         <div class="card-icon" aria-hidden="true">
@@ -1696,12 +1764,14 @@ body{
                 <rect x="14" y="5" width="4" height="14" rx="1"></rect>
             </svg>
         </div>
+        <div class="card-trafego" aria-hidden="true"><svg viewBox="0 0 300 60" preserveAspectRatio="none"><path d="M0 45 C28 52,48 41,70 45 S112 49,132 37 S165 55,188 35 S222 20,244 35 S276 31,300 17" fill="none" stroke-width="2"/></svg></div>
     </div>
 
     <div class="card concluido" onclick="setTab('concluido')" role="button" tabindex="0">
         <div class="card-conteudo">
             <span id="cC">0</span>
             <small>Finalizadas</small>
+            <div class="card-subtitle">Concluídas hoje</div>
         </div>
 
         <div class="card-icon" aria-hidden="true">
@@ -1709,6 +1779,7 @@ body{
                 <path d="M9.2 16.2 4.8 11.8 3.4 13.2 9.2 19 21 7.2 19.6 5.8z"></path>
             </svg>
         </div>
+        <div class="card-trafego" aria-hidden="true"><svg viewBox="0 0 300 60" preserveAspectRatio="none"><path d="M0 45 C28 52,48 41,70 45 S112 49,132 37 S165 55,188 35 S222 20,244 35 S276 31,300 17" fill="none" stroke-width="2"/></svg></div>
     </div>
 
 </div>
@@ -2907,44 +2978,26 @@ function format(d){
 }
 
 /* ================= WHATS ================= */
+function mensagemCompartilhamentoOS(os){
+    const ag = dadosAgendamentoApp(os);
+    return os._tipo === "avulsa" ? `🧾 *OS AVULSA #${os.id}*\n\n📍 Localidade: ${os.localidade_nome || '-'}\n🛠️ Tipo: ${os.tipo_servico_nome || '-'}\n🏠 Endereço: ${enderecoAvulsaLimpo(os)}\n📝 Descrição: ${descricaoAvulsaLimpa(os)}\n👨‍🔧 Técnicos: ${os.tecnicos_nomes || '-'}` : `🧾 *OS #${os.id}*\n\n👤 Cliente: ${nomeClienteOS(os) || '-'}\n🛠️ Tipo: ${os.tipo_servico_nome || os.tipo_servico || '-'}\n🏠 Endereço: ${enderecoNormal(os)}\n🔐 Login: ${os.login || '-'}\n🆔 ID: ${os.id_cliente || os.cliente_id || '-'}\n📞 Telefone: ${formatarTelefoneApp(os.telefone)}\n🌐 VLAN: ${os.vlan || '-'}\n👨‍🔧 Técnicos: ${os.tecnicos_nomes || '-'}${ag ? `\n📅 Agendamento: ${ag.data} às ${ag.hora}` : '\n📅 Agendamento: não agendada'}\n📌 Status: ${statusRotulo(os.status)}`;
+}
 function compartilhar(e, id){
-
-    e.stopPropagation();
-
-    const os = encontrarOS(id);
-    if(!os) return;
-
-    const svaMsg = (os.aplicativo || os.url || os.usuario || os.senha)
-        ? `\n\n📺 Serviço de TV / SVA\nAplicativo: ${os.aplicativo || '-'}\nURL: ${os.url || '-'}\nUsuário: ${os.usuario || '-'}\nSenha: ${os.senha || '-'}`
-        : "";
-
-    const msg = os._tipo === "avulsa"
-        ? `
-🧾 OS AVULSA #${os.id}
-
-📍 Localidade: ${os.localidade_nome || '-'}
-🛠️ Tipo: ${os.tipo_servico_nome || '-'}
-
-🏠 Endereço: ${enderecoAvulsaLimpo(os)}
-📝 Descrição: ${descricaoAvulsaLimpa(os)}
-👨‍🔧 Técnicos: ${os.tecnicos_nomes || '-'}
-`.trim()
-        : `
-🧾 OS #${os.id}
-
-👤 Cliente: ${os.nome || '-'}
-📍 Localidade: ${os.localidade_nome || '-'}
-🛠️ Tipo: ${os.tipo_servico_nome || '-'}
-📦 Plano: ${os.plano_nome || '-'}
-
-🏠 Endereço: ${enderecoNormal(os)}
-
-🔐 Login: ${os.login || '-'}
-🆔 ID: ${os.id_cliente || '-'}
-📞 Telefone: ${os.telefone || '-'}${svaMsg}
-`.trim();
-
-    window.open("https://wa.me/?text=" + encodeURIComponent(msg));
+    e?.stopPropagation();
+    const os = encontrarOS(id); if(!os) return;
+    const msg = mensagemCompartilhamentoOS(os);
+    const url = "https://wa.me/?text=" + encodeURIComponent(msg);
+    const nova = window.open(url, "_blank");
+    if(!nova) window.location.href = url;
+}
+async function compartilharNativo(e,id){
+    e?.stopPropagation();
+    const os=encontrarOS(id); if(!os) return;
+    const text=mensagemCompartilhamentoOS(os);
+    try{
+      if(navigator.share){ await navigator.share({title:`OS #${os.id}`,text}); return; }
+    }catch(err){ if(err?.name === 'AbortError') return; }
+    compartilhar(e,id);
 }
 
 
@@ -3885,82 +3938,48 @@ function render(){
     const inputBusca = document.getElementById("busca");
     const busca = (inputBusca?.value || "").toLowerCase().trim();
     const norm = s => String(s || "").toLowerCase();
-
     const filtrado = OS.filter(o => {
-        const texto = [
-            o.id,nomeClienteOS(o),o.login,o.id_cliente,o.vlan,o.localidade_nome,
-            o.rua,o.bairro,o.tipo_servico_nome,o.tecnicos_nomes
-        ].join(" ").toLowerCase();
-        const matchBusca = !busca || texto.includes(busca);
+        const texto = [o.id,nomeClienteOS(o),o.login,o.id_cliente,o.vlan,o.localidade_nome,o.rua,o.bairro,o.tipo_servico_nome,o.tecnicos_nomes].join(" ").toLowerCase();
         const st = norm(o.status);
-        const matchStatus =
-            (tab === "andamento" && (st.includes("andamento") || st.includes("reagend"))) ||
-            (tab === "concluido" && st.includes("concluido")) ||
-            (tab === "ausente" && st.includes("ausente"));
-        return matchBusca && matchStatus && dentroDoPeriodo(o);
+        return (!busca || texto.includes(busca)) && ((tab === "andamento" && (st.includes("andamento") || st.includes("reagend"))) || (tab === "concluido" && st.includes("concluido")) || (tab === "ausente" && st.includes("ausente"))) && dentroDoPeriodo(o);
     });
-
     const osPeriodo = OS.filter(dentroDoPeriodo);
     document.getElementById("cA").innerText = osPeriodo.filter(o => { const st=norm(o.status); return st.includes("andamento") || st.includes("reagend"); }).length;
     document.getElementById("cC").innerText = osPeriodo.filter(o => norm(o.status).includes("concluido")).length;
     document.getElementById("cX").innerText = osPeriodo.filter(o => norm(o.status).includes("ausente")).length;
     renderizarResumoTiposServico(osPeriodo);
-
     document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
     document.querySelector("." + tab)?.classList.add("active");
-    const titulo = document.getElementById("tituloLista");
-    if(titulo) titulo.textContent = tituloStatusAtual();
-
+    const titulo = document.getElementById("tituloLista"); if(titulo) titulo.textContent = tituloStatusAtual();
     const el = document.getElementById("lista");
-    if(!filtrado.length){
-        el.innerHTML = "<p>Nenhuma OS encontrada</p>";
-        return;
-    }
-
+    if(!filtrado.length){ el.innerHTML = "<p>Nenhuma OS encontrada</p>"; return; }
     el.innerHTML = filtrado.map(o => {
         const chave = escapeHTML(chaveOS(o));
-        const tituloOS = o._tipo === "avulsa" ? `OS AVULSA #${o.id}` : `OS #${o.id}`;
         const endereco = o._tipo === "avulsa" ? enderecoAvulsaLimpo(o) : enderecoNormal(o);
         const data = tab === "concluido" ? o.finalizado_em : (o.iniciado_em || o.agendamento);
-        const subtipo = o._tipo === "avulsa"
-            ? `<div class="os-linha"><span class="mini-ico">🛠</span><span>${valorSeguro(o.tipo_servico_nome)}</span></div>`
-            : `<div class="os-linha"><span class="mini-ico">👤</span><span>Login: ${valorSeguro(o.login)}</span></div>
-               <div class="os-linha"><span class="mini-ico">▦</span><span>ID: ${valorSeguro(o.id_cliente)} · VLAN: ${valorSeguro(o.vlan)}</span></div>`;
-        const prioridadeClasseCard = normalizarPrioridadeApp(o.prioridade).classe === "alta" ? " prioridade-alta-card" : "";
-        return `
-        <article class="os${prioridadeClasseCard}" role="button" tabindex="0"
-            onclick="abrirModal('${chave}')"
-            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirModal('${chave}')}">
-            <span class="os-status">${escapeHTML(statusRotulo(o.status))}</span>${o._tipo === "avulsa" ? "" : badgePrioridadeApp(o.prioridade)}
-
-            ${o._tipo === "avulsa" ? `
-                <div class="os-cliente-linha">
-                    <strong class="os-cliente-nome">${valorSeguro(o.localidade_nome || "OS Avulsa")}</strong>
-                    <span class="os-tipo-servico">${valorSeguro(o.tipo_servico_nome || "OS Avulsa")}</span>
-                </div>
-                <div class="os-endereco">⌖ ${valorSeguro(endereco)}</div>
-                <div class="os-dados-rodape">
-                    <span>👨‍🔧 ${valorSeguro(o.tecnicos_nomes)}</span>
-                </div>
-            ` : `
-                <div class="os-cliente-linha">
-                    <strong class="os-cliente-nome">${valorSeguro(nomeClienteOS(o))}</strong>
-                    <span class="os-tipo-servico">${valorSeguro(o.tipo_servico_nome || o.tipo_servico)}</span>
-                </div>
-                <div class="os-endereco">⌖ ${valorSeguro(endereco)}</div>
-                <div class="os-dados-rodape">
-                    <span>👤 Login: ${valorSeguro(o.login)}</span>
-                    <span>🆔 ID: ${valorSeguro(o.id_cliente || o.cliente_id)}</span>
-                    ${telefoneHref(o.telefone)
-                        ? `<a class="os-telefone" href="${telefoneHref(o.telefone)}" onclick="event.stopPropagation()">📞 ${valorSeguro(formatarTelefoneApp(o.telefone))}</a>`
-                        : `<span>📞 ${valorSeguro(formatarTelefoneApp(o.telefone))}</span>`
-                    }
-                </div>
-            `}
-
-            ${o._tipo === "avulsa" ? "" : agendamentoCardHTML(o)}
-            <span class="os-hora">${escapeHTML(horarioCurto(data))}</span>
-            <span class="os-seta">›</span>
+        const alta = normalizarPrioridadeApp(o.prioridade).classe === "alta";
+        const tel = formatarTelefoneApp(o.telefone);
+        const href = telefoneHref(o.telefone);
+        const tecnico = o.tecnicos_nomes || o.tecnico_nome || o.tecnico || "-";
+        return `<article class="os${alta ? " prioridade-alta-card" : ""}" role="button" tabindex="0" onclick="abrirModal('${chave}')">
+          <div class="os-main">
+            <div class="os-top-badges">${o._tipo === "avulsa" ? "" : badgePrioridadeApp(o.prioridade)}<span class="os-tipo-servico">${valorSeguro(o.tipo_servico_nome || o.tipo_servico || "OS Avulsa")}</span></div>
+            <div class="os-cliente-linha"><strong class="os-cliente-nome">${valorSeguro(o._tipo === "avulsa" ? (o.localidade_nome || "OS Avulsa") : nomeClienteOS(o))}</strong></div>
+            <div class="os-endereco">⌖ ${valorSeguro(endereco)}</div>
+            <div class="os-meta-grid">
+              <div class="os-meta-item"><b>♙ Login</b><span>${valorSeguro(o.login)}</span></div>
+              <div class="os-meta-item"><b>▣ ID</b><span>${valorSeguro(o.id_cliente || o.cliente_id)}</span></div>
+              <div class="os-meta-item"><b>☎ Telefone</b>${href ? `<a href="${href}" onclick="event.stopPropagation()">${valorSeguro(tel)}</a>` : `<span>${valorSeguro(tel)}</span>`}</div>
+              <div class="os-meta-item"><b>◉ VLAN</b><span>${valorSeguro(o.vlan)}</span></div>
+              <div class="os-meta-item"><b>♙ Técnico</b><span>${valorSeguro(tecnico)}</span></div>
+            </div>
+          </div>
+          <div class="os-side">${o._tipo === "avulsa" ? `<strong style="color:#075cf6">OS Avulsa</strong>` : agendamentoCardHTML(o)}</div>
+          <span class="os-status">${escapeHTML(statusRotulo(o.status))}</span><span class="os-hora">${escapeHTML(horarioCurto(data))}</span><span class="os-seta">›</span>
+          <div class="os-acoes-share">
+            <button class="btn-compartilhar-whatsapp" type="button" title="Compartilhar no WhatsApp" onclick="compartilhar(event,'${chave}')">◉</button>
+            <button class="btn-compartilhar-nativo" type="button" title="Compartilhar OS" onclick="compartilharNativo(event,'${chave}')">⌯</button>
+          </div>
         </article>`;
     }).join("");
 }
