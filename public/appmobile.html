@@ -1657,6 +1657,134 @@ body{
 }
 @media(max-width:430px){.os-meta-grid{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:10px}.os{padding-bottom:76px !important}}
 
+
+
+/* ===== AJUSTE APP MOBILE — AZUL CONTÍNUO / CARDS COMPACTOS / FILTRO POR TIPO ===== */
+body{
+    background:#075cf6 !important;
+}
+.mobile-topbar-app{
+    background:#fff !important;
+}
+.busca{
+    background:#075cf6 !important;
+    margin-top:0 !important;
+    padding-top:14px !important;
+}
+.resumo-tipo-item{
+    cursor:pointer;
+    user-select:none;
+    transition:.18s ease;
+}
+.resumo-tipo-item:active{transform:scale(.985)}
+.resumo-tipo-item.tipo-ativo{
+    background:#fff !important;
+    color:#075cf6 !important;
+    border-color:#fff !important;
+    box-shadow:0 7px 16px rgba(2,37,109,.18);
+}
+.resumo-tipo-item.tipo-ativo span{color:#075cf6 !important}
+.resumo-tipo-item.tipo-ativo:before{background:#eaf2ff !important}
+.resumo-tipo-item.tipo-ativo strong{background:#075cf6 !important;color:#fff !important}
+
+@media(max-width:759px){
+    .mobile-topbar-app{
+        min-height:76px !important;
+        padding-top:calc(env(safe-area-inset-top) + 10px) !important;
+        padding-bottom:10px !important;
+    }
+    .busca{
+        padding:12px 10px 10px !important;
+        gap:8px !important;
+    }
+    .busca input{
+        height:50px !important;
+        padding-top:12px !important;
+        padding-bottom:12px !important;
+        font-size:14px !important;
+    }
+    .filtro-periodo{
+        height:50px !important;
+        min-width:92px !important;
+    }
+    .cards{
+        padding:4px 10px 10px !important;
+        gap:6px !important;
+    }
+    .card{
+        min-height:104px !important;
+        padding:10px 8px 8px !important;
+        border-radius:14px !important;
+    }
+    .card-conteudo{
+        gap:3px !important;
+        padding-right:28px;
+    }
+    .card span{
+        font-size:29px !important;
+    }
+    .card small{
+        font-size:11px !important;
+        line-height:1.05 !important;
+    }
+    .card-subtitle{
+        font-size:9px !important;
+        line-height:1.15 !important;
+        max-width:78px;
+    }
+    .card-icon{
+        top:12px !important;
+        right:8px !important;
+        width:31px !important;
+        height:31px !important;
+        flex-basis:31px !important;
+    }
+    .card-icon svg{
+        width:16px !important;
+        height:16px !important;
+    }
+    .card-trafego{
+        height:28px !important;
+    }
+    .resumo-tipos-servico{
+        margin:0 10px 12px !important;
+        padding:11px 11px !important;
+    }
+    .resumo-tipos-titulo{
+        font-size:13px !important;
+        margin-bottom:8px !important;
+    }
+    .resumo-tipos-lista{
+        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+        gap:6px !important;
+    }
+    .resumo-tipo-item{
+        min-height:42px !important;
+        padding:6px 7px !important;
+        font-size:8.5px !important;
+        line-height:1.05 !important;
+        border-radius:11px !important;
+    }
+    .resumo-tipo-item:before{
+        width:25px !important;
+        height:25px !important;
+        flex-basis:25px !important;
+        font-size:12px !important;
+    }
+    .resumo-tipo-item strong{
+        width:29px !important;
+        height:29px !important;
+        font-size:11px !important;
+    }
+}
+@media(max-width:390px){
+    .card{min-height:98px !important}
+    .card span{font-size:27px !important}
+    .card small{font-size:10px !important}
+    .card-subtitle{font-size:8px !important;max-width:65px}
+    .resumo-tipo-item{font-size:8px !important}
+}
+
 </style>
 
 
@@ -2152,6 +2280,7 @@ let user = {};
 let OS = [];
 let tab = "andamento";
 let periodoSelecionado = "hoje";
+let tipoServicoSelecionado = "";
 localStorage.setItem("app_periodo_os", periodoSelecionado);
 function setTab(novaTab){
 
@@ -3704,6 +3833,7 @@ setTab = function(novaTab){
 function mostrarTodas(){
     const busca = document.getElementById("busca");
     if(busca) busca.value = "";
+    tipoServicoSelecionado = "";
     render();
 }
 function alternarFiltros(){
@@ -3926,12 +4056,27 @@ function renderizarResumoTiposServico(osPeriodo){
         return;
     }
 
-    lista.innerHTML = itens.map(([nome, quantidade]) => `
-        <div class="resumo-tipo-item">
+    lista.innerHTML = itens.map(([nome, quantidade]) => {
+        const ativo = tipoServicoSelecionado && nome.toLowerCase() === tipoServicoSelecionado.toLowerCase();
+        return `
+        <div class="resumo-tipo-item${ativo ? " tipo-ativo" : ""}" role="button" tabindex="0"
+             onclick="filtrarPorTipoServico('${escapeHTML(nome).replace(/'/g, "&#39;")}')"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();filtrarPorTipoServico('${escapeHTML(nome).replace(/'/g, "&#39;")}')}">
             <span>${escapeHTML(nome)}</span>
             <strong>${quantidade}</strong>
-        </div>
-    `).join("");
+        </div>`;
+    }).join("");
+}
+
+function filtrarPorTipoServico(nome){
+    const selecionado = String(nome || "").trim();
+    tipoServicoSelecionado = tipoServicoSelecionado.toLowerCase() === selecionado.toLowerCase() ? "" : selecionado;
+    tab = "andamento";
+    const titulo = document.getElementById("tituloLista");
+    if(titulo){
+        titulo.textContent = tipoServicoSelecionado ? `OS — ${tipoServicoSelecionado}` : tituloStatusAtual();
+    }
+    render();
 }
 
 function render(){
@@ -3941,7 +4086,9 @@ function render(){
     const filtrado = OS.filter(o => {
         const texto = [o.id,nomeClienteOS(o),o.login,o.id_cliente,o.vlan,o.localidade_nome,o.rua,o.bairro,o.tipo_servico_nome,o.tecnicos_nomes].join(" ").toLowerCase();
         const st = norm(o.status);
-        return (!busca || texto.includes(busca)) && ((tab === "andamento" && (st.includes("andamento") || st.includes("reagend"))) || (tab === "concluido" && st.includes("concluido")) || (tab === "ausente" && st.includes("ausente"))) && dentroDoPeriodo(o);
+        const tipoAtual = String(o.tipo_servico_nome || o.tipo_servico || "Não informado").trim().toLowerCase();
+        const matchTipo = !tipoServicoSelecionado || tipoAtual === tipoServicoSelecionado.toLowerCase();
+        return (!busca || texto.includes(busca)) && matchTipo && ((tab === "andamento" && (st.includes("andamento") || st.includes("reagend"))) || (tab === "concluido" && st.includes("concluido")) || (tab === "ausente" && st.includes("ausente"))) && dentroDoPeriodo(o);
     });
     const osPeriodo = OS.filter(dentroDoPeriodo);
     document.getElementById("cA").innerText = osPeriodo.filter(o => { const st=norm(o.status); return st.includes("andamento") || st.includes("reagend"); }).length;
@@ -3950,7 +4097,7 @@ function render(){
     renderizarResumoTiposServico(osPeriodo);
     document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
     document.querySelector("." + tab)?.classList.add("active");
-    const titulo = document.getElementById("tituloLista"); if(titulo) titulo.textContent = tituloStatusAtual();
+    const titulo = document.getElementById("tituloLista"); if(titulo) titulo.textContent = tipoServicoSelecionado ? `OS — ${tipoServicoSelecionado}` : tituloStatusAtual();
     const el = document.getElementById("lista");
     if(!filtrado.length){ el.innerHTML = "<p>Nenhuma OS encontrada</p>"; return; }
     el.innerHTML = filtrado.map(o => {
