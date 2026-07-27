@@ -231,8 +231,33 @@ function apiUrl(path){
     return base + (path.startsWith("/") ? path : "/" + path);
 }
 
-function apiFetch(path, options = {}){
-    return fetch(apiUrl(path), options);
+function headersSessaoApp(){
+ const u=getUsuarioLocal();
+ const headers={
+  "Accept":"application/json",
+  "x-usuario-id":String(u.id||localStorage.getItem("usuario_id")||""),
+  "x-sgos-app":"1",
+  "x-sgos-active":"1"
+ };
+ const logId=u.log_id||localStorage.getItem("log_id")||"";
+ const empresaId=u.empresa_id||localStorage.getItem("empresa_id")||"";
+ const token=localStorage.getItem("token")||localStorage.getItem("auth_token")||u.token||"";
+ if(logId)headers["x-log-id"]=String(logId);
+ if(empresaId)headers["x-empresa-id"]=String(empresaId);
+ if(token)headers["Authorization"]=`Bearer ${token}`;
+ return headers;
+}
+function apiFetch(path,opt={}){
+ const urlFinal=apiUrl(path);
+ const opcoes={...opt};
+ const headers=new Headers(opcoes.headers||{});
+ Object.entries(headersSessaoApp()).forEach(([k,v])=>{if(v!==""&&!headers.has(k))headers.set(k,v)});
+ opcoes.headers=headers;
+ try{
+  const destino=new URL(urlFinal,window.location.href);
+  opcoes.credentials=destino.origin===window.location.origin?(opcoes.credentials||"same-origin"):"omit";
+ }catch(e){opcoes.credentials=opcoes.credentials||"same-origin"}
+ return fetch(urlFinal,opcoes);
 }
 
 function resolverUrlArquivo(url){

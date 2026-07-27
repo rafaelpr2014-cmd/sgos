@@ -367,7 +367,34 @@ function getApiBase(){
  if(location.protocol.startsWith("http"))return location.origin;return "";
 }
 function apiUrl(path){if(!path)return getApiBase();if(/^https?:\/\//i.test(path))return path;const b=getApiBase();return b?b+(path.startsWith("/")?path:"/"+path):path}
-function apiFetch(path,opt={}){return fetch(apiUrl(path),opt)}
+function headersSessaoApp(){
+ const u=getUsuarioLocal();
+ const headers={
+  "Accept":"application/json",
+  "x-usuario-id":String(u.id||localStorage.getItem("usuario_id")||""),
+  "x-sgos-app":"1",
+  "x-sgos-active":"1"
+ };
+ const logId=u.log_id||localStorage.getItem("log_id")||"";
+ const empresaId=u.empresa_id||localStorage.getItem("empresa_id")||"";
+ const token=localStorage.getItem("token")||localStorage.getItem("auth_token")||u.token||"";
+ if(logId)headers["x-log-id"]=String(logId);
+ if(empresaId)headers["x-empresa-id"]=String(empresaId);
+ if(token)headers["Authorization"]=`Bearer ${token}`;
+ return headers;
+}
+function apiFetch(path,opt={}){
+ const urlFinal=apiUrl(path);
+ const opcoes={...opt};
+ const headers=new Headers(opcoes.headers||{});
+ Object.entries(headersSessaoApp()).forEach(([k,v])=>{if(v!==""&&!headers.has(k))headers.set(k,v)});
+ opcoes.headers=headers;
+ try{
+  const destino=new URL(urlFinal,window.location.href);
+  opcoes.credentials=destino.origin===window.location.origin?(opcoes.credentials||"same-origin"):"omit";
+ }catch(e){opcoes.credentials=opcoes.credentials||"same-origin"}
+ return fetch(urlFinal,opcoes);
+}
 function resolverUrlArquivo(url){if(!url)return"";if(/^https?:\/\//i.test(url))return url;return apiUrl(url.startsWith("/")?url:"/"+url)}
 function getUsuarioLocal(){try{return JSON.parse(localStorage.getItem("usuario")||"{}")}catch{return{}}}
 function authHeaders(){const u=getUsuarioLocal();return{"x-usuario-id":u.id||"","x-usuario-nome":u.usuario||u.nome||"","x-usuario-cargo":u.cargo||""}}
