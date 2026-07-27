@@ -2037,6 +2037,158 @@ body{
     }
 }
 
+
+/* ===== MODELO FINAL DO PRINT — DUAS FILEIRAS E AÇÕES NO TOPO ===== */
+.os{
+    padding:16px 18px 16px 20px !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+}
+.os-main{
+    min-width:0;
+}
+.os-top-badges{
+    padding-right:94px;
+    margin-bottom:9px !important;
+}
+.os-cliente-linha{
+    padding-right:94px;
+    margin-top:5px !important;
+}
+.os-cliente-nome{
+    font-size:18px !important;
+}
+.os-localidade{
+    margin-top:5px !important;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:13px !important;
+}
+.os-endereco{
+    margin-top:2px !important;
+    padding-right:78px;
+    font-size:12px !important;
+}
+.os-meta-grid{
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:0 !important;
+    margin-top:11px !important;
+    padding-top:0 !important;
+    border-top:1px solid #dfe6f0 !important;
+    border-bottom:1px solid #dfe6f0 !important;
+}
+.os-meta-item{
+    min-width:0;
+    padding:10px 10px 9px !important;
+    border-right:1px solid #e3e9f1;
+}
+.os-meta-item:nth-child(3n){
+    border-right:0;
+}
+.os-meta-item:nth-child(n+4){
+    border-top:1px solid #e3e9f1;
+}
+.os-meta-item b,
+.os-meta-agendamento .agendamento-titulo{
+    font-size:11px !important;
+    margin-bottom:2px !important;
+}
+.os-meta-item span,
+.os-meta-item a,
+.os-meta-agendamento .agendamento-dados{
+    font-size:12px !important;
+    line-height:1.25 !important;
+}
+.os-meta-agendamento{
+    grid-column:auto !important;
+    padding:10px 10px 9px !important;
+    border-left:0 !important;
+    border-top:1px solid #e3e9f1 !important;
+}
+.os-meta-agendamento .agendamento-dados span{
+    display:block !important;
+}
+.meta-svg{
+    width:17px !important;
+    height:17px !important;
+    flex-basis:17px !important;
+    color:#314b73;
+}
+.os-acoes-share{
+    position:absolute !important;
+    right:17px !important;
+    top:15px !important;
+    bottom:auto !important;
+}
+.btn-compartilhar-whatsapp{
+    width:42px !important;
+    height:42px !important;
+    border-radius:12px !important;
+    box-shadow:0 5px 14px rgba(15,23,42,.12) !important;
+}
+.btn-compartilhar-whatsapp svg{
+    width:24px !important;
+    height:24px !important;
+}
+.os-hora{
+    position:absolute !important;
+    right:18px !important;
+    top:63px !important;
+    bottom:auto !important;
+    font-size:13px !important;
+    color:#536987 !important;
+}
+.os-seta{
+    display:none !important;
+}
+
+@media(max-width:430px){
+    .os{
+        padding:15px 14px 15px 19px !important;
+    }
+    .os-top-badges,
+    .os-cliente-linha{
+        padding-right:82px;
+    }
+    .os-endereco{
+        padding-right:60px;
+    }
+    .os-meta-item,
+    .os-meta-agendamento{
+        padding:9px 7px 8px !important;
+    }
+    .os-meta-item b,
+    .os-meta-agendamento .agendamento-titulo{
+        font-size:10px !important;
+        gap:4px !important;
+    }
+    .os-meta-item span,
+    .os-meta-item a,
+    .os-meta-agendamento .agendamento-dados{
+        font-size:11px !important;
+    }
+    .meta-svg{
+        width:15px !important;
+        height:15px !important;
+        flex-basis:15px !important;
+    }
+    .os-acoes-share{
+        right:13px !important;
+        top:13px !important;
+    }
+    .btn-compartilhar-whatsapp{
+        width:39px !important;
+        height:39px !important;
+    }
+    .os-hora{
+        right:14px !important;
+        top:58px !important;
+        font-size:12px !important;
+    }
+}
+
 </style>
 
 
@@ -4391,8 +4543,8 @@ function render(){
             <div class="os-meta-grid">
               <div class="os-meta-item"><b class="meta-titulo">${iconeMetaOS("login")} Login</b><span>${valorSeguro(o.login)}</span></div>
               <div class="os-meta-item"><b class="meta-titulo">${iconeMetaOS("id")} ID</b><span>${valorSeguro(o.id_cliente || o.cliente_id)}</span></div>
-              <div class="os-meta-item"><b class="meta-titulo">${iconeMetaOS("telefone")} Telefone</b>${href ? `<a href="${href}" onclick="event.stopPropagation()">${valorSeguro(tel)}</a>` : `<span>${valorSeguro(tel)}</span>`}</div>
               <div class="os-meta-item"><b class="meta-titulo">${iconeMetaOS("vlan")} VLAN</b><span>${valorSeguro(o.vlan)}</span></div>
+              <div class="os-meta-item"><b class="meta-titulo">${iconeMetaOS("telefone")} Telefone</b>${href ? `<a href="${href}" onclick="event.stopPropagation()">${valorSeguro(tel)}</a>` : `<span>${valorSeguro(tel)}</span>`}</div>
               <div class="os-meta-item"><b class="meta-titulo">${iconeMetaOS("tecnico")} Técnico</b><span>${valorSeguro(tecnico)}</span></div>
               ${o._tipo === "avulsa" ? "" : agendamentoMetaHTML(o)}
             </div>
