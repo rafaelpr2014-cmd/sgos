@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>SGOS • Diagnóstico de Rede</title>
+<style>
+:root{
+  --azul:#075cf6;
+  --azul2:#063fbd;
+  --azul3:#1769ff;
+  --branco:#fff;
+  --texto:#0f172a;
+  --muted:#64748b;
+  --linha:#e2e8f0;
+  --verde:#16a34a;
+  --amarelo:#f59e0b;
+  --vermelho:#ef4444;
+  --card:#ffffff;
+  --shadow:0 12px 28px rgba(2,37,109,.16);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--azul);color:var(--texto)}
+body{padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+button,input{font:inherit}
+.topbar{
+  position:sticky;top:0;z-index:50;
+  min-height:84px;
+  padding:calc(10px + env(safe-area-inset-top)) 18px 10px;
+  background:#fff;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:0 6px 22px rgba(15,23,42,.08)
+}
+.menu-btn,.refresh-btn{
+  width:46px;height:46px;border:0;border-radius:15px;
+  display:grid;place-items:center;cursor:pointer
+}
+.menu-btn{background:linear-gradient(145deg,var(--azul3),var(--azul));color:#fff;box-shadow:0 8px 20px rgba(7,92,246,.25)}
+.menu-btn span{width:21px;height:2px;background:#fff;position:relative;border-radius:99px}
+.menu-btn span:before,.menu-btn span:after{content:"";position:absolute;left:0;width:21px;height:2px;background:#fff;border-radius:99px}
+.menu-btn span:before{top:-7px}.menu-btn span:after{top:7px}
+.refresh-btn{background:#fff;color:var(--azul);border:1px solid #e6ebf2;font-size:26px}
+.refresh-btn.loading{animation:girar .8s linear infinite}
+@keyframes girar{to{transform:rotate(360deg)}}
+.title{flex:1;min-width:0}
+.title strong{display:block;font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.title small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.logo{width:118px;max-height:48px;object-fit:contain}
+
+.hero{padding:18px 14px 10px}
+.hero-card{
+  background:linear-gradient(145deg,#0a65ff,#043cae);
+  border:1px solid rgba(255,255,255,.28);
+  border-radius:22px;padding:18px;color:#fff;
+  box-shadow:0 10px 24px rgba(2,37,109,.22)
+}
+.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.hero h1{font-size:20px;margin:0 0 5px}
+.hero p{margin:0;color:#dbeafe;font-size:13px;line-height:1.45}
+.status-pill{
+  flex:0 0 auto;padding:7px 10px;border-radius:999px;
+  background:rgba(255,255,255,.14);font-size:11px;font-weight:900
+}
+.hero-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.hero-actions button{
+  border:1px solid rgba(255,255,255,.28);border-radius:14px;padding:12px 10px;
+  background:rgba(255,255,255,.10);color:#fff;font-weight:900
+}
+
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 14px 12px}
+.metric{
+  background:#fff;border-radius:18px;padding:15px;min-height:126px;
+  box-shadow:var(--shadow);position:relative;overflow:hidden
+}
+.metric:after{content:"";position:absolute;width:78px;height:78px;border-radius:50%;right:-28px;top:-28px;background:#eef4ff}
+.metric .ico{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#eaf2ff;color:var(--azul);margin-bottom:12px;position:relative;z-index:1}
+.metric .ico svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.metric label{display:block;color:var(--muted);font-size:11px;font-weight:800;margin-bottom:4px}
+.metric strong{display:block;font-size:18px;line-height:1.25;word-break:break-word}
+.metric small{display:block;color:var(--muted);font-size:10px;margin-top:5px;line-height:1.35}
+
+.section{padding:0 14px 12px}
+.panel{background:#fff;border-radius:20px;padding:16px;box-shadow:var(--shadow)}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}
+.panel-head h2{margin:0;font-size:16px}
+.panel-head span{font-size:11px;color:var(--muted)}
+.ping-box{display:grid;grid-template-columns:1fr auto;gap:8px}
+.ping-box input{width:100%;border:1px solid var(--linha);border-radius:13px;padding:12px 13px;outline:none}
+.ping-box button{border:0;border-radius:13px;background:var(--azul);color:#fff;font-weight:900;padding:0 15px}
+.result{
+  margin-top:12px;border:1px solid var(--linha);border-radius:14px;padding:12px;
+  background:#f8fafc;color:#334155;font-size:13px;line-height:1.5
+}
+.result.ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+.result.warn{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+.result.err{background:#fff1f2;border-color:#fecdd3;color:#b91c1c}
+
+.devices{display:flex;flex-direction:column;gap:8px}
+.device{
+  display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--linha);
+  border-radius:14px;background:#fff
+}
+.device .dot{width:10px;height:10px;border-radius:50%;background:var(--verde)}
+.device strong{display:block;font-size:13px}
+.device small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.device .ip{margin-left:auto;color:#334155;font-size:11px;font-weight:800}
+
+.notice{
+  margin:0 14px 14px;padding:13px 14px;border-radius:16px;
+  background:rgba(255,255,255,.12);color:#eaf2ff;border:1px solid rgba(255,255,255,.18);
+  font-size:11px;line-height:1.5
+}
+
+.drawer-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:98;opacity:0;pointer-events:none;transition:.2s}
+.drawer-overlay.show{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;left:0;top:0;bottom:0;width:290px;max-width:84vw;z-index:99;
+  transform:translateX(-100%);transition:.22s;background:linear-gradient(180deg,#075cf6,#06368f);
+  color:#fff;padding:calc(18px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;box-shadow:18px 0 45px rgba(0,0,0,.3)
+}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.drawer-head img{width:160px;filter:brightness(0) invert(1)}
+.drawer-close{width:40px;height:40px;border:0;border-radius:12px;background:rgba(255,255,255,.14);color:#fff;font-size:23px}
+.drawer nav{display:flex;flex-direction:column;gap:7px}
+.drawer a{color:#fff;text-decoration:none;padding:13px;border-radius:14px;font-weight:900}
+.drawer a.active{background:#fff;color:var(--azul)}
+.drawer-footer{margin-top:auto;color:#dbeafe;font-size:11px;line-height:1.5}
+
+@media(min-width:760px){
+  body{max-width:760px;margin:0 auto}
+  .grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+
+/* ===== IDENTIDADE VISUAL SGOS MOBILE — PADRÃO UNIFICADO ===== */
+:root{
+  --azul:#075cf6 !important;
+  --azul-dark:#063fbd !important;
+  --fundo:#075cf6 !important;
+  --card:#ffffff !important;
+  --texto:#0f172a !important;
+  --muted:#64748b !important;
+  --borda:#e4eaf3 !important;
+}
+html,body{
+  background:#075cf6 !important;
+  font-family:Inter,Arial,Helvetica,sans-serif !important;
+}
+body{
+  padding-bottom:calc(env(safe-area-inset-bottom) + 18px);
+}
+.mobile-shell{
+  max-width:980px !important;
+  background:#075cf6 !important;
+  min-height:100dvh !important;
+}
+.mobile-topbar,
+.mobile-topbar-app,
+.topbar{
+  min-height:84px !important;
+  background:#fff !important;
+  border-bottom:1px solid #e7edf7 !important;
+  box-shadow:0 7px 22px rgba(15,23,42,.08) !important;
+}
+.menu-btn{
+  width:46px !important;
+  height:46px !important;
+  border-radius:15px !important;
+  background:linear-gradient(145deg,#1769ff,#075cf6) !important;
+  box-shadow:0 10px 22px rgba(7,92,246,.25) !important;
+}
+.top-title strong,
+.topbar-title strong,
+.title strong{
+  color:#0f172a !important;
+  font-size:19px !important;
+  font-weight:900 !important;
+}
+.top-title small,
+.topbar-title small,
+.title small{
+  color:#64748b !important;
+}
+.top-logo,
+.topbar-brand,
+.logo{
+  object-fit:contain !important;
+}
+.top-user{
+  background:#fff !important;
+  border:1px solid #e4eaf3 !important;
+  color:#075cf6 !important;
+  box-shadow:0 7px 18px rgba(15,23,42,.06) !important;
+}
+.content{
+  padding:16px 12px 28px !important;
+  background:#075cf6 !important;
+}
+.card-box,
+.list-card,
+.mini-card,
+.empty,
+.panel,
+.metric{
+  background:#fff !important;
+  border-color:#e4eaf3 !important;
+  box-shadow:0 9px 22px rgba(2,37,109,.18) !important;
+}
+.card-box,
+.list-card,
+.empty{
+  border-radius:18px !important;
+}
+.list-card{
+  overflow:hidden !important;
+}
+.list-card:before{
+  background:#1769ff !important;
+  width:5px !important;
+}
+.section-title{
+  color:#0f172a !important;
+}
+.input,.select,.textarea,
+input,select,textarea{
+  border-color:#dfe6f0 !important;
+}
+.input:focus,.select:focus,.textarea:focus,
+input:focus,select:focus,textarea:focus{
+  border-color:#75a8ff !important;
+  box-shadow:0 0 0 3px rgba(7,92,246,.12) !important;
+}
+.btn:not(.btn-red):not(.btn-green):not(.btn-light):not(.btn-roxo),
+button.btn:not(.btn-red):not(.btn-green):not(.btn-light):not(.btn-roxo){
+  background:#075cf6 !important;
+}
+.side-drawer,
+.drawer{
+  background:linear-gradient(180deg,#075cf6 0%,#064bd0 58%,#06368f 100%) !important;
+  box-shadow:18px 0 45px rgba(2,37,109,.42) !important;
+}
+.drawer-head{
+  padding-bottom:14px !important;
+  border-bottom:1px solid rgba(255,255,255,.18) !important;
+}
+.drawer-head img{
+  filter:brightness(0) invert(1) !important;
+  max-width:174px !important;
+}
+.drawer-close{
+  background:rgba(255,255,255,.16) !important;
+}
+.drawer-user{
+  background:rgba(255,255,255,.10) !important;
+  border:1px solid rgba(255,255,255,.14) !important;
+  border-radius:17px !important;
+}
+.drawer-user small{
+  color:#dbeafe !important;
+}
+.drawer-nav{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:7px !important;
+}
+.drawer-nav a{
+  color:#eff6ff !important;
+  border:1px solid transparent !important;
+  border-radius:15px !important;
+  padding:13px 12px !important;
+  font-size:14px !important;
+  font-weight:900 !important;
+}
+.drawer-nav a.active{
+  background:#fff !important;
+  color:#075cf6 !important;
+  box-shadow:0 8px 20px rgba(2,37,109,.20) !important;
+}
+.drawer-nav a:hover{
+  background:rgba(255,255,255,.14) !important;
+  color:#fff !important;
+}
+.drawer-nav .ico{
+  width:30px !important;
+  height:30px !important;
+  flex:0 0 30px !important;
+  border-radius:10px !important;
+  background:rgba(255,255,255,.16) !important;
+  color:#fff !important;
+  display:grid !important;
+  place-items:center !important;
+  font-size:18px !important;
+}
+.drawer-nav a.active .ico{
+  background:#eaf2ff !important;
+  color:#075cf6 !important;
+}
+.drawer-logout{
+  background:#ef4444 !important;
+}
+@media(min-width:760px){
+  body{
+    max-width:980px !important;
+    margin:0 auto !important;
+    background:#e5e7eb !important;
+  }
+  .mobile-shell{
+    margin:0 auto !important;
+    border-radius:0 !important;
+    box-shadow:none !important;
+  }
+}
+@media(max-width:430px){
+  .mobile-topbar,
+  .mobile-topbar-app,
+  .topbar{
+    padding-left:14px !important;
+    padding-right:14px !important;
+  }
+  .top-title strong,
+  .topbar-title strong,
+  .title strong{
+    font-size:17px !important;
+  }
+  .drawer-nav a{
+    font-size:13px !important;
+    padding:12px 10px !important;
+  }
+}
+
+</style>
+</head>
+<body>
+
+<div class="drawer-overlay" id="drawerOverlay" onclick="fecharMenu()"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <img src="https://iili.io/C5XGAnp.png" alt="SGOS">
+    <button class="drawer-close" onclick="fecharMenu()">×</button>
+  </div>
+  <nav class="drawer-nav">
+  <a data-page="os" href="appmobile.html"><span class="ico">▤</span>Ordens de Serviço</a>
+  <a data-page="rede" href="app-rede-local.html" class="active"><span class="ico">⌁</span>Diagnóstico de Rede</a>
+  <a data-page="escala" href="app-escala.html"><span class="ico">□</span>Escala</a>
+  <a data-page="viabilidades" href="app-viabilidades.html"><span class="ico">⌖</span>Viabilidades</a>
+  <a data-page="planos" href="app-planos.html"><span class="ico">▣</span>Planos</a>
+  <a data-page="historico" href="app-historico-os.html"><span class="ico">◷</span>Histórico de OS</a>
+ </nav>
+  <div class="drawer-footer">
+    O diagnóstico completo de equipamentos conectados exige integração nativa no aplicativo ou uma rota do servidor SGOS.
+  </div>
+</aside>
+
+<header class="topbar">
+  <button class="menu-btn" onclick="abrirMenu()" aria-label="Abrir menu"><span></span></button>
+  <div class="title">
+    <strong>Diagnóstico de Rede</strong>
+    <small>Wi‑Fi e conectividade local</small>
+  </div>
+  <button class="refresh-btn" id="btnAtualizar" onclick="executarDiagnostico(this)" aria-label="Atualizar">↻</button>
+  <img class="logo" id="logoEmpresa" src="https://iili.io/C5XGAnp.png" alt="SGOS">
+</header>
+
+<section class="hero">
+  <div class="hero-card">
+    <div class="hero-top">
+      <div>
+        <h1>Descoberta da rede local</h1>
+        <p>Visualize os principais dados da conexão usada pelo técnico.</p>
+      </div>
+      <div class="status-pill" id="statusConexao">Verificando...</div>
+    </div>
+    <div class="hero-actions">
+      <button onclick="executarDiagnostico()">Executar diagnóstico</button>
+      <button onclick="testarGatewayAutomatico()">Testar roteador</button>
+    </div>
+  </div>
+</section>
+
+<section class="grid">
+  <article class="metric">
+    <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 12a12 12 0 0 1 16 0M7 15a8 8 0 0 1 10 0M10 18a4 4 0 0 1 4 0"/><circle cx="12" cy="21" r="1"/></svg></div>
+    <label>IP local do aparelho</label>
+    <strong id="ipLocal">Não disponível</strong>
+    <small>Depende da permissão do navegador ou integração nativa.</small>
+  </article>
+
+  <article class="metric">
+    <div class="ico"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="10" rx="2"/><path d="M8 17v3M16 17v3M7 11h.01M11 11h.01M15 11h2"/></svg></div>
+    <label>IP do roteador</label>
+    <strong id="ipRoteador">Não detectado</strong>
+    <small id="gatewayDetalhe">Tentativa por gateways comuns.</small>
+  </article>
+
+  <article class="metric">
+    <div class="ico"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c.6-4 2.6-6 5-6s4.4 2 5 6M13 19c.5-2.8 1.9-4.3 4-4.3 2.1 0 3.5 1.5 4 4.3"/></svg></div>
+    <label>Aparelhos conectados</label>
+    <strong id="qtdAparelhos">Indisponível</strong>
+    <small>Exige consulta ao roteador ou agente nativo.</small>
+  </article>
+
+  <article class="metric">
+    <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg></div>
+    <label>IP público</label>
+    <strong id="ipPublico">Carregando...</strong>
+    <small>Endereço externo usado pelo técnico.</small>
+  </article>
+</section>
+
+<section class="section">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Teste de latência</h2>
+      <span>HTTP, não ICMP</span>
+    </div>
+    <div class="ping-box">
+      <input id="hostPing" value="192.168.1.1" placeholder="IP ou endereço">
+      <button onclick="testarPingManual()">Testar</button>
+    </div>
+    <div class="result" id="resultadoPing">Informe um IP local ou use a detecção automática do roteador.</div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Dispositivos encontrados</h2>
+      <span id="origemDispositivos">Aguardando integração</span>
+    </div>
+    <div class="devices" id="listaDispositivos">
+      <div class="device">
+        <span class="dot" style="background:#94a3b8"></span>
+        <div><strong>Nenhum dispositivo listado</strong><small>O navegador não consegue consultar a tabela de clientes do roteador sozinho.</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="notice">
+  Em páginas web comuns, o navegador não permite descobrir automaticamente todos os aparelhos do Wi‑Fi nem executar ping ICMP. Esta página já está preparada para receber os dados por uma ponte nativa do aplicativo (`window.SGOSNetwork`) ou pela rota `/api/rede-local/diagnostico`.
+</div>
+
+<script>
+function abrirMenu(){
+  document.getElementById("drawer").classList.add("open");
+  document.getElementById("drawerOverlay").classList.add("show");
+}
+function fecharMenu(){
+  document.getElementById("drawer").classList.remove("open");
+  document.getElementById("drawerOverlay").classList.remove("show");
+}
+function apiBase(){
+  const salvo=localStorage.getItem("api_base");
+  if(salvo) return salvo.replace(/\/$/,"");
+  const provedor=localStorage.getItem("provedor");
+  if(provedor) return `https://${provedor}.sgos.net.br`;
+  return location.protocol.startsWith("http") ? location.origin : "";
+}
+function headersSessao(){
+  const h={};
+  const token=localStorage.getItem("token")||localStorage.getItem("auth_token");
+  const usuario=localStorage.getItem("usuario_id")||localStorage.getItem("user_id");
+  const empresa=localStorage.getItem("empresa_id");
+  if(token) h.Authorization=`Bearer ${token}`;
+  if(usuario) h["x-usuario-id"]=usuario;
+  if(empresa) h["x-empresa-id"]=empresa;
+  return h;
+}
+function setStatus(texto, tipo=""){
+  const el=document.getElementById("statusConexao");
+  el.textContent=texto;
+  el.style.background=tipo==="ok"?"rgba(34,197,94,.24)":tipo==="erro"?"rgba(239,68,68,.24)":"rgba(255,255,255,.14)";
+}
+async function buscarIpPublico(){
+  try{
+    const r=await fetch("https://api.ipify.org?format=json",{cache:"no-store"});
+    if(!r.ok) throw new Error("Falha");
+    const d=await r.json();
+    document.getElementById("ipPublico").textContent=d.ip||"Não informado";
+  }catch(e){
+    document.getElementById("ipPublico").textContent="Não disponível";
+  }
+}
+function infoConexao(){
+  const c=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+  if(!navigator.onLine){setStatus("Sem internet","erro");return}
+  const detalhe=c?.effectiveType?`Online • ${c.effectiveType.toUpperCase()}`:"Online";
+  setStatus(detalhe,"ok");
+}
+async function carregarViaIntegracao(){
+  try{
+    if(window.SGOSNetwork && typeof window.SGOSNetwork.getDiagnostics==="function"){
+      const dados=await window.SGOSNetwork.getDiagnostics();
+      aplicarDiagnostico(dados,"Aplicativo nativo");
+      return true;
+    }
+  }catch(e){console.warn("Ponte nativa:",e)}
+  try{
+    const r=await fetch(apiBase()+"/api/rede-local/diagnostico",{headers:headersSessao(),cache:"no-store"});
+    if(r.ok){
+      const dados=await r.json();
+      aplicarDiagnostico(dados,"Servidor SGOS");
+      return true;
+    }
+  }catch(e){console.warn("Rota SGOS:",e)}
+  return false;
+}
+function aplicarDiagnostico(dados, origem){
+  if(!dados||typeof dados!=="object") return;
+  if(dados.ip_local) document.getElementById("ipLocal").textContent=dados.ip_local;
+  if(dados.gateway||dados.ip_roteador){
+    document.getElementById("ipRoteador").textContent=dados.gateway||dados.ip_roteador;
+    document.getElementById("hostPing").value=dados.gateway||dados.ip_roteador;
+    document.getElementById("gatewayDetalhe").textContent=`Detectado por ${origem}.`;
+  }
+  const dispositivos=Array.isArray(dados.dispositivos)?dados.dispositivos:[];
+  if(Number.isFinite(Number(dados.quantidade_aparelhos))) document.getElementById("qtdAparelhos").textContent=String(dados.quantidade_aparelhos);
+  else if(dispositivos.length) document.getElementById("qtdAparelhos").textContent=String(dispositivos.length);
+  if(dispositivos.length) renderDispositivos(dispositivos,origem);
+}
+function renderDispositivos(lista,origem){
+  const box=document.getElementById("listaDispositivos");
+  box.innerHTML=lista.map(d=>`
+    <div class="device">
+      <span class="dot"></span>
+      <div><strong>${escapeHtml(d.nome||d.hostname||d.mac||"Dispositivo")}</strong><small>${escapeHtml(d.mac||d.fabricante||"")}</small></div>
+      <div class="ip">${escapeHtml(d.ip||"-")}</div>
+    </div>`).join("");
+  document.getElementById("origemDispositivos").textContent=origem;
+}
+function escapeHtml(v){
+  return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+}
+async function testeHttp(host,timeout=1800){
+  const alvo=/^https?:\/\//i.test(host)?host:`http://${host}`;
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeout);
+  const inicio=performance.now();
+  try{
+    await fetch(alvo,{mode:"no-cors",cache:"no-store",signal:controller.signal});
+    return {ok:true,ms:Math.round(performance.now()-inicio),host};
+  }catch(e){
+    return {ok:false,ms:Math.round(performance.now()-inicio),host,erro:e.name==="AbortError"?"Tempo esgotado":"Sem resposta HTTP"};
+  }finally{clearTimeout(timer)}
+}
+async function testarPingManual(){
+  const host=document.getElementById("hostPing").value.trim();
+  const box=document.getElementById("resultadoPing");
+  if(!host){box.className="result warn";box.textContent="Informe um IP ou endereço.";return}
+  box.className="result";box.textContent="Testando...";
+  const r=await testeHttp(host,2500);
+  if(r.ok){box.className="result ok";box.innerHTML=`Resposta HTTP detectada em <b>${r.ms} ms</b> para ${escapeHtml(host)}.`}
+  else{box.className="result err";box.innerHTML=`Sem resposta HTTP de ${escapeHtml(host)} após <b>${r.ms} ms</b>. Isso não confirma que o equipamento está desligado, pois muitos roteadores bloqueiam acesso web.`}
+}
+async function testarGatewayAutomatico(){
+  const candidatos=["192.168.1.1","192.168.0.1","10.0.0.1","10.0.1.1","192.168.100.1"];
+  const box=document.getElementById("resultadoPing");
+  box.className="result";box.textContent="Procurando gateway em endereços comuns...";
+  for(const host of candidatos){
+    const r=await testeHttp(host,900);
+    if(r.ok){
+      document.getElementById("ipRoteador").textContent=host;
+      document.getElementById("hostPing").value=host;
+      document.getElementById("gatewayDetalhe").textContent=`Resposta HTTP em ${r.ms} ms.`;
+      box.className="result ok";box.innerHTML=`Possível roteador encontrado em <b>${host}</b>, resposta HTTP em <b>${r.ms} ms</b>.`;
+      return;
+    }
+  }
+  box.className="result warn";
+  box.textContent="Nenhum gateway comum respondeu por HTTP. Para detecção confiável, use a integração nativa ou a rota do servidor.";
+}
+async function executarDiagnostico(botao){
+  const btn=botao||document.getElementById("btnAtualizar");
+  btn?.classList.add("loading");
+  infoConexao();
+  await Promise.all([buscarIpPublico(),carregarViaIntegracao()]);
+  btn?.classList.remove("loading");
+}
+window.addEventListener("online",infoConexao);
+window.addEventListener("offline",infoConexao);
+document.addEventListener("DOMContentLoaded",()=>executarDiagnostico());
+</script>
+</body>
+</html>

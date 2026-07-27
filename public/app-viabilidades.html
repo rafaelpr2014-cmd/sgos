@@ -45,6 +45,203 @@ button,input,textarea,select{font:inherit}
 .modal{position:fixed;inset:0;background:rgba(15,23,42,.66);display:none;align-items:flex-end;justify-content:center;z-index:3000}.modal.show{display:flex}.modal-card{width:100%;max-width:520px;max-height:92dvh;overflow:auto;background:#f8fafc;border-radius:24px 24px 0 0;padding:16px 12px calc(env(safe-area-inset-bottom) + 20px);box-shadow:0 -20px 60px rgba(0,0,0,.3)}.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.modal-head h2{font-size:18px;margin:0}.modal-close{width:38px;height:38px;border:none;border-radius:12px;background:#e2e8f0;font-size:22px}
 .loading-overlay{position:fixed;inset:0;background:rgba(15,23,42,.7);display:none;align-items:center;justify-content:center;z-index:5000;color:#fff;font-weight:900}.loading-overlay.show{display:flex}
 @media(min-width:760px){body{background:#e5e7eb}.mobile-shell{margin:10px auto;border-radius:24px;overflow:hidden;box-shadow:0 18px 60px rgba(15,23,42,.18)}.modal{align-items:center}.modal-card{border-radius:24px;max-height:88vh}}
+
+/* ===== IDENTIDADE VISUAL SGOS MOBILE — PADRÃO UNIFICADO ===== */
+:root{
+  --azul:#075cf6 !important;
+  --azul-dark:#063fbd !important;
+  --fundo:#075cf6 !important;
+  --card:#ffffff !important;
+  --texto:#0f172a !important;
+  --muted:#64748b !important;
+  --borda:#e4eaf3 !important;
+}
+html,body{
+  background:#075cf6 !important;
+  font-family:Inter,Arial,Helvetica,sans-serif !important;
+}
+body{
+  padding-bottom:calc(env(safe-area-inset-bottom) + 18px);
+}
+.mobile-shell{
+  max-width:980px !important;
+  background:#075cf6 !important;
+  min-height:100dvh !important;
+}
+.mobile-topbar,
+.mobile-topbar-app,
+.topbar{
+  min-height:84px !important;
+  background:#fff !important;
+  border-bottom:1px solid #e7edf7 !important;
+  box-shadow:0 7px 22px rgba(15,23,42,.08) !important;
+}
+.menu-btn{
+  width:46px !important;
+  height:46px !important;
+  border-radius:15px !important;
+  background:linear-gradient(145deg,#1769ff,#075cf6) !important;
+  box-shadow:0 10px 22px rgba(7,92,246,.25) !important;
+}
+.top-title strong,
+.topbar-title strong,
+.title strong{
+  color:#0f172a !important;
+  font-size:19px !important;
+  font-weight:900 !important;
+}
+.top-title small,
+.topbar-title small,
+.title small{
+  color:#64748b !important;
+}
+.top-logo,
+.topbar-brand,
+.logo{
+  object-fit:contain !important;
+}
+.top-user{
+  background:#fff !important;
+  border:1px solid #e4eaf3 !important;
+  color:#075cf6 !important;
+  box-shadow:0 7px 18px rgba(15,23,42,.06) !important;
+}
+.content{
+  padding:16px 12px 28px !important;
+  background:#075cf6 !important;
+}
+.card-box,
+.list-card,
+.mini-card,
+.empty,
+.panel,
+.metric{
+  background:#fff !important;
+  border-color:#e4eaf3 !important;
+  box-shadow:0 9px 22px rgba(2,37,109,.18) !important;
+}
+.card-box,
+.list-card,
+.empty{
+  border-radius:18px !important;
+}
+.list-card{
+  overflow:hidden !important;
+}
+.list-card:before{
+  background:#1769ff !important;
+  width:5px !important;
+}
+.section-title{
+  color:#0f172a !important;
+}
+.input,.select,.textarea,
+input,select,textarea{
+  border-color:#dfe6f0 !important;
+}
+.input:focus,.select:focus,.textarea:focus,
+input:focus,select:focus,textarea:focus{
+  border-color:#75a8ff !important;
+  box-shadow:0 0 0 3px rgba(7,92,246,.12) !important;
+}
+.btn:not(.btn-red):not(.btn-green):not(.btn-light):not(.btn-roxo),
+button.btn:not(.btn-red):not(.btn-green):not(.btn-light):not(.btn-roxo){
+  background:#075cf6 !important;
+}
+.side-drawer,
+.drawer{
+  background:linear-gradient(180deg,#075cf6 0%,#064bd0 58%,#06368f 100%) !important;
+  box-shadow:18px 0 45px rgba(2,37,109,.42) !important;
+}
+.drawer-head{
+  padding-bottom:14px !important;
+  border-bottom:1px solid rgba(255,255,255,.18) !important;
+}
+.drawer-head img{
+  filter:brightness(0) invert(1) !important;
+  max-width:174px !important;
+}
+.drawer-close{
+  background:rgba(255,255,255,.16) !important;
+}
+.drawer-user{
+  background:rgba(255,255,255,.10) !important;
+  border:1px solid rgba(255,255,255,.14) !important;
+  border-radius:17px !important;
+}
+.drawer-user small{
+  color:#dbeafe !important;
+}
+.drawer-nav{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:7px !important;
+}
+.drawer-nav a{
+  color:#eff6ff !important;
+  border:1px solid transparent !important;
+  border-radius:15px !important;
+  padding:13px 12px !important;
+  font-size:14px !important;
+  font-weight:900 !important;
+}
+.drawer-nav a.active{
+  background:#fff !important;
+  color:#075cf6 !important;
+  box-shadow:0 8px 20px rgba(2,37,109,.20) !important;
+}
+.drawer-nav a:hover{
+  background:rgba(255,255,255,.14) !important;
+  color:#fff !important;
+}
+.drawer-nav .ico{
+  width:30px !important;
+  height:30px !important;
+  flex:0 0 30px !important;
+  border-radius:10px !important;
+  background:rgba(255,255,255,.16) !important;
+  color:#fff !important;
+  display:grid !important;
+  place-items:center !important;
+  font-size:18px !important;
+}
+.drawer-nav a.active .ico{
+  background:#eaf2ff !important;
+  color:#075cf6 !important;
+}
+.drawer-logout{
+  background:#ef4444 !important;
+}
+@media(min-width:760px){
+  body{
+    max-width:980px !important;
+    margin:0 auto !important;
+    background:#e5e7eb !important;
+  }
+  .mobile-shell{
+    margin:0 auto !important;
+    border-radius:0 !important;
+    box-shadow:none !important;
+  }
+}
+@media(max-width:430px){
+  .mobile-topbar,
+  .mobile-topbar-app,
+  .topbar{
+    padding-left:14px !important;
+    padding-right:14px !important;
+  }
+  .top-title strong,
+  .topbar-title strong,
+  .title strong{
+    font-size:17px !important;
+  }
+  .drawer-nav a{
+    font-size:13px !important;
+    padding:12px 10px !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -54,11 +251,12 @@ button,input,textarea,select{font:inherit}
  <div class="drawer-head"><img id="drawerLogo" src="https://iili.io/C5XGAnp.png" alt="SGOS"><button class="drawer-close" onclick="fecharMenu()">×</button></div>
  <div class="drawer-user"><strong id="drawerUser">Carregando...</strong><small id="drawerEmpresa">Empresa</small></div>
  <nav class="drawer-nav">
-  <a data-page="os" href="appmobile.html"><span class="ico">🧾</span>Ordens de Serviço</a>
-  <a data-page="viabilidades" href="app-viabilidades.html" class="active"><span class="ico">📍</span>Viabilidades</a>
-  <a data-page="escala" href="app-escala.html"><span class="ico">📅</span>Escala</a>
-  <a data-page="planos" href="app-planos.html"><span class="ico">📦</span>Planos</a>
-  <a data-page="historico" href="app-historico-os.html"><span class="ico">🕘</span>Histórico de OS</a>
+  <a data-page="os" href="appmobile.html"><span class="ico">▤</span>Ordens de Serviço</a>
+  <a data-page="rede" href="app-rede-local.html"><span class="ico">⌁</span>Diagnóstico de Rede</a>
+  <a data-page="escala" href="app-escala.html"><span class="ico">□</span>Escala</a>
+  <a data-page="viabilidades" href="app-viabilidades.html" class="active"><span class="ico">⌖</span>Viabilidades</a>
+  <a data-page="planos" href="app-planos.html"><span class="ico">▣</span>Planos</a>
+  <a data-page="historico" href="app-historico-os.html"><span class="ico">◷</span>Histórico de OS</a>
  </nav>
  <div class="drawer-footer"><button class="drawer-logout" onclick="logout()">Sair</button></div>
 </aside>
