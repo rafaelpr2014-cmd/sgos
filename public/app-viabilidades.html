@@ -276,7 +276,7 @@ button.btn:not(.btn-red):not(.btn-green):not(.btn-light):not(.btn-roxo){
  </div>
 
  <div class="card-box">
-  <h2 class="section-title">Minhas viabilidades</h2>
+  <h2 class="section-title" id="tituloViabilidades">Minhas viabilidades</h2>
   <input class="input" id="busca" placeholder="Buscar cliente ou endereço">
   <div class="grid-2" style="margin-top:10px">
    <select class="select" id="filtroStatus">
@@ -398,20 +398,35 @@ function visualizarLocalizacaoModal(){
  const base=localizacaoAtual||viabilidadeAtual;if(!coordenadasValidas(base)){alert("Localização ainda não disponível.");return}
  const box=document.getElementById("mapaModal");box.innerHTML=htmlMapa(Number(base.latitude),Number(base.longitude));box.classList.toggle("show");
 }
-function nomeTecnicoUsuario(u){return String(u.tecnico_nome||u.nome||u.usuario||"").trim().toLowerCase()}
-function idTecnicoUsuario(u){return String(u.tecnico_id||u.tecnicoId||u.id_tecnico||u.idTecnico||u.id||"")}
+function normalizarTextoAcesso(v){return String(v??"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
+function ehAdministrador(u){
+ const acesso=normalizarTextoAcesso([u?.cargo,u?.perfil,u?.tipo,u?.nivel,u?.funcao,u?.role].filter(Boolean).join(" "));
+ return /(^|\s)(admin|administrador|administradora|master|superadmin)(\s|$)/.test(acesso)||u?.is_admin===true||Number(u?.administrador)===1;
+}
+function nomeTecnicoUsuario(u){return normalizarTextoAcesso(u?.tecnico_nome||u?.nome||u?.usuario||"")}
+function idTecnicoUsuario(u){return String(u?.tecnico_id||u?.tecnicoId||u?.id_tecnico||u?.idTecnico||u?.id||"").trim()}
+function achatarResponsaveis(valor,saida=[]){
+ if(valor===null||valor===undefined||valor==="")return saida;
+ if(Array.isArray(valor)){valor.forEach(x=>achatarResponsaveis(x,saida));return saida}
+ if(typeof valor==="object"){
+  [valor.id,valor.tecnico_id,valor.id_tecnico,valor.nome,valor.usuario].forEach(x=>achatarResponsaveis(x,saida));return saida;
+ }
+ const txt=String(valor).trim();
+ if(!txt)return saida;
+ if((txt.startsWith("[")&&txt.endsWith("]"))||(txt.startsWith("{")&&txt.endsWith("}"))){try{return achatarResponsaveis(JSON.parse(txt),saida)}catch(e){}}
+ txt.split(/[,;|]/).map(x=>x.trim()).filter(Boolean).forEach(x=>saida.push(x));
+ return saida;
+}
 function pertenceAoTecnico(v,u){
- const bruto=v.tecnico_responsavel??v.tecnicos??v.tecnicos_nomes??"";
- let responsaveis=[];
- if(Array.isArray(bruto))responsaveis=bruto;
- else if(typeof bruto==="string"){
-  const txt=bruto.trim();
-  if(txt.startsWith("[")){try{const j=JSON.parse(txt);responsaveis=Array.isArray(j)?j:[txt]}catch{responsaveis=txt.split(/[,;|]/)}}
-  else responsaveis=txt.split(/[,;|]/);
- }else if(bruto)responsaveis=[bruto];
- responsaveis=responsaveis.map(x=>typeof x==="object"?(x.nome||x.usuario||x.id||""):x).map(x=>String(x).trim().toLowerCase()).filter(Boolean);
- const nome=nomeTecnicoUsuario(u),id=idTecnicoUsuario(u).toLowerCase();
- return responsaveis.some(r=>r===id||(nome&&(r===nome||r.includes(nome)||nome.includes(r))));
+ const valores=[v.tecnico_responsavel,v.tecnicos,v.tecnicos_nomes,v.tecnico_ids,v.tecnicos_ids,v.tecnico_id,v.id_tecnico];
+ const responsaveis=valores.flatMap(x=>achatarResponsaveis(x,[]));
+ const id=idTecnicoUsuario(u),nome=nomeTecnicoUsuario(u);
+ return responsaveis.some(item=>{
+  const bruto=String(item).trim();
+  const texto=normalizarTextoAcesso(bruto);
+  if(id&&(/^\d+$/.test(bruto))&&bruto===id)return true;
+  return !!nome&&(texto===nome||texto.includes(nome)||nome.includes(texto));
+ });
 }
 function anexosCategoria(v,categoria){return (Array.isArray(v.anexos)?v.anexos:[]).filter(a=>String(a.categoria||"ANALISE").toUpperCase()===categoria)}
 function ehVideo(a){return String(a.tipo||"").startsWith("video/")||/\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(a.url||a.caminho||a.arquivo||"")}
@@ -435,7 +450,10 @@ async function carregarViabilidades(){
   const r=await apiFetch(API_VIABILIDADE,{headers:authHeaders()});const d=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(d.erro||`Erro ${r.status}`);
   const todas=Array.isArray(d)?d:(d.viabilidades||d.dados||[]);
-  viabilidades=todas.filter(v=>pertenceAoTecnico(v,usuarioAtual));
+  const admin=ehAdministrador(usuarioAtual);
+  viabilidades=admin?todas:todas.filter(v=>pertenceAoTecnico(v,usuarioAtual));
+  const titulo=document.getElementById("tituloViabilidades");
+  if(titulo)titulo.textContent=admin?"Todas as viabilidades":"Minhas viabilidades";
   renderLista();
  }catch(e){console.error(e);box.innerHTML=`<div class="empty">Erro ao carregar viabilidades.<br><small>${escapar(e.message)}</small></div>`}
 }
@@ -452,7 +470,7 @@ function renderLista(){
  document.getElementById("cardAprovadas").innerText=viabilidades.filter(v=>normalizarStatus(v.status)==="APROVADA").length;
  document.getElementById("cardInstalacoes").innerText=viabilidades.filter(v=>normalizarStatus(v.status)==="APROVADA").length;
  const box=document.getElementById("listaViabilidades");
- if(!lista.length){box.innerHTML='<div class="empty">Nenhuma viabilidade atribuída a este técnico.</div>';return}
+ if(!lista.length){box.innerHTML=`<div class="empty">${ehAdministrador(usuarioAtual)?"Nenhuma viabilidade encontrada.":"Nenhuma viabilidade atribuída a este técnico."}</div>`;return}
  box.innerHTML=lista.map(v=>{
   const analise=anexosCategoria(v,"ANALISE"),visita=anexosCategoria(v,"COMPROVACAO_VISITA");
   const telefone2=v.telefone2||v.telefone_secundario||"";
