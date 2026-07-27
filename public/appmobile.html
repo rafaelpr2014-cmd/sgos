@@ -1936,6 +1936,107 @@ body{
     }
 }
 
+
+/* ===== AJUSTE FINAL — LOCALIDADE / GRID COMPACTO / ÍCONES SVG ===== */
+.os-localidade{
+    margin-top:8px;
+    color:#263b59;
+    font-size:14px;
+    font-weight:900;
+    line-height:1.25;
+}
+.os-endereco{
+    margin-top:3px !important;
+    display:flex;
+    align-items:flex-start;
+    gap:7px;
+}
+.os-endereco .meta-svg{
+    margin-top:2px;
+    flex:0 0 16px;
+}
+.meta-titulo{
+    display:flex !important;
+    align-items:center;
+    gap:6px;
+    color:#41516b !important;
+}
+.meta-svg{
+    width:16px;
+    height:16px;
+    display:inline-block;
+    flex:0 0 16px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+.os-meta-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:10px 12px !important;
+}
+.os-meta-item b{
+    margin-bottom:3px !important;
+}
+.os-meta-agendamento{
+    grid-column:auto !important;
+    padding-left:0 !important;
+    border-left:0 !important;
+    border-top:0 !important;
+}
+.os-meta-agendamento .agendamento-titulo{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    color:#41516b !important;
+    font-size:13px;
+    margin-bottom:3px;
+}
+.os-meta-agendamento .agendamento-dados{
+    display:block !important;
+    color:#152744;
+    font-size:13px !important;
+    line-height:1.35;
+}
+.os-meta-agendamento .agendamento-dados span{
+    display:block !important;
+}
+.os{
+    padding-bottom:60px !important;
+}
+@media(max-width:759px){
+    .os-meta-grid{
+        grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+        gap:10px 9px !important;
+    }
+    .os-meta-item b,
+    .os-meta-agendamento .agendamento-titulo{
+        font-size:11px !important;
+    }
+    .os-meta-item span,
+    .os-meta-item a,
+    .os-meta-agendamento .agendamento-dados{
+        font-size:12px !important;
+    }
+    .meta-svg{
+        width:14px;
+        height:14px;
+        flex-basis:14px;
+    }
+    .os-localidade{
+        font-size:13px;
+    }
+}
+@media(max-width:370px){
+    .os-meta-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    }
+    .os-meta-agendamento{
+        grid-column:span 1 !important;
+    }
+}
+
 </style>
 
 
@@ -2991,6 +3092,20 @@ async function load(){
 }
 
 /* ================= RENDER ================= */
+
+function iconeMetaOS(tipo){
+    const icones = {
+        login: `<svg class="meta-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5.5 20c.6-4 3-6 6.5-6s5.9 2 6.5 6"></path></svg>`,
+        id: `<svg class="meta-svg" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5"></rect><circle cx="8.5" cy="11" r="2"></circle><path d="M6 16c.6-1.7 1.5-2.5 2.5-2.5S10.4 14.3 11 16M14 9h4M14 13h4"></path></svg>`,
+        telefone: `<svg class="meta-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 3.8 10 7.2 8.2 9.6c1.2 2.5 3.2 4.5 5.7 5.7l2.4-1.8 3.4 2.8-.7 3.1c-.2.8-.9 1.3-1.7 1.3C9.6 20.7 3.3 14.4 3.3 6.7c0-.8.5-1.5 1.3-1.7l2.6-.7Z"></path></svg>`,
+        vlan: `<svg class="meta-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.5"></circle><circle cx="18" cy="6" r="2.5"></circle><circle cx="18" cy="18" r="2.5"></circle><path d="m8.3 10.9 7.4-3.8M8.3 13.1l7.4 3.8"></path></svg>`,
+        tecnico: `<svg class="meta-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7.5" r="3"></circle><path d="M3.8 19c.5-3.5 2.3-5.3 5.2-5.3 1.4 0 2.5.4 3.4 1.1"></path><path d="m15.2 14.2 4.6 4.6M18.7 13.1l2.2 2.2-5.6 5.6-2.2-2.2z"></path></svg>`,
+        calendario: `<svg class="meta-svg" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"></rect><path d="M7.5 3.5v4M16.5 3.5v4M3.5 10h17"></path></svg>`,
+        localidade: `<svg class="meta-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11Z"></path><circle cx="12" cy="10" r="2.2"></circle></svg>`
+    };
+    return icones[tipo] || "";
+}
+
 function render(){
 
     const inputBusca = document.getElementById("busca");
@@ -4271,13 +4386,14 @@ function render(){
           <div class="os-main">
             <div class="os-top-badges">${o._tipo === "avulsa" ? "" : badgePrioridadeApp(o.prioridade)}<span class="os-tipo-servico">${valorSeguro(o.tipo_servico_nome || o.tipo_servico || "OS Avulsa")}</span></div>
             <div class="os-cliente-linha"><strong class="os-cliente-nome">${valorSeguro(o._tipo === "avulsa" ? (o.localidade_nome || "OS Avulsa") : nomeClienteOS(o))}</strong></div>
-            <div class="os-endereco">⌖ ${valorSeguro(endereco)}</div>
+            <div class="os-localidade">${valorSeguro(o.localidade_nome || o.localidade || "Localidade não informada")}</div>
+            <div class="os-endereco">${iconeMetaOS("localidade")}<span>${valorSeguro(endereco)}</span></div>
             <div class="os-meta-grid">
-              <div class="os-meta-item"><b>♙ Login</b><span>${valorSeguro(o.login)}</span></div>
-              <div class="os-meta-item"><b>▣ ID</b><span>${valorSeguro(o.id_cliente || o.cliente_id)}</span></div>
-              <div class="os-meta-item"><b>☎ Telefone</b>${href ? `<a href="${href}" onclick="event.stopPropagation()">${valorSeguro(tel)}</a>` : `<span>${valorSeguro(tel)}</span>`}</div>
-              <div class="os-meta-item"><b>◉ VLAN</b><span>${valorSeguro(o.vlan)}</span></div>
-              <div class="os-meta-item"><b>♙ Técnico</b><span>${valorSeguro(tecnico)}</span></div>
+              <div class="os-meta-item"><b class="meta-titulo">${iconeMetaOS("login")} Login</b><span>${valorSeguro(o.login)}</span></div>
+              <div class="os-meta-item"><b class="meta-titulo">${iconeMetaOS("id")} ID</b><span>${valorSeguro(o.id_cliente || o.cliente_id)}</span></div>
+              <div class="os-meta-item"><b class="meta-titulo">${iconeMetaOS("telefone")} Telefone</b>${href ? `<a href="${href}" onclick="event.stopPropagation()">${valorSeguro(tel)}</a>` : `<span>${valorSeguro(tel)}</span>`}</div>
+              <div class="os-meta-item"><b class="meta-titulo">${iconeMetaOS("vlan")} VLAN</b><span>${valorSeguro(o.vlan)}</span></div>
+              <div class="os-meta-item"><b class="meta-titulo">${iconeMetaOS("tecnico")} Técnico</b><span>${valorSeguro(tecnico)}</span></div>
               ${o._tipo === "avulsa" ? "" : agendamentoMetaHTML(o)}
             </div>
           </div>
@@ -4385,10 +4501,10 @@ function agendamentoMetaHTML(os){
     const ag = dadosAgendamentoApp(os);
     if(!ag) return "";
     return `<div class="os-meta-item os-meta-agendamento">
-        <div class="agendamento-titulo">📅 Agendamento</div>
+        <div class="agendamento-titulo">${iconeMetaOS("calendario")} Agendamento</div>
         <div class="agendamento-dados">
-            <span>▣ ${escapeHTML(ag.data)}</span>
-            <span>◷ ${escapeHTML(ag.hora)}</span>
+            <span>${escapeHTML(ag.data)}</span>
+            <span>${escapeHTML(ag.hora)}</span>
         </div>
     </div>`;
 }
