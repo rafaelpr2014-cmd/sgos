@@ -1785,6 +1785,30 @@ body{
     .resumo-tipo-item{font-size:8px !important}
 }
 
+
+/* ===== AJUSTES 26/07 — AGENDAMENTO REAL / META LEGÍVEL / WHATSAPP ===== */
+.os-meta-item{font-size:13px !important;line-height:1.35 !important}
+.os-meta-item b{font-size:13px !important;margin-bottom:4px !important}
+.os-meta-item span,.os-meta-item a{font-size:14px !important}
+.os-acoes-share{right:18px !important;bottom:14px !important}
+.btn-compartilhar-nativo{display:none !important}
+.btn-compartilhar-whatsapp{
+    width:42px !important;height:42px !important;border-radius:12px !important;
+    color:#25D366 !important;background:#fff !important;border:1px solid #dbe4ef !important;
+}
+.btn-compartilhar-whatsapp svg{width:23px;height:23px;display:block;fill:currentColor}
+.os-sem-agendamento{display:none !important}
+.os-status{display:none !important}
+@media(max-width:759px){
+  .os-meta-item{font-size:12px !important}.os-meta-item b{font-size:12px !important}.os-meta-item span,.os-meta-item a{font-size:13px !important}
+  .os-acoes-share{right:15px !important;bottom:12px !important}
+  .btn-compartilhar-whatsapp{width:40px !important;height:40px !important}
+}
+@media(max-width:430px){
+  .os-meta-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:12px 14px !important}
+  .os{padding-bottom:70px !important}
+}
+
 </style>
 
 
@@ -2862,6 +2886,14 @@ function render(){
     });
 
     // CONTADORES DO PERÍODO SELECIONADO
+    filtrado.sort((a,b) => {
+        const da = dataReferenciaOS(a);
+        const db = dataReferenciaOS(b);
+        const ta = da ? da.getTime() : 0;
+        const tb = db ? db.getTime() : 0;
+        if(tb !== ta) return tb - ta;
+        return Number(b.id || 0) - Number(a.id || 0);
+    });
     const osPeriodo = OS.filter(dentroDoPeriodo);
 
     document.getElementById("cA").innerText =
@@ -4103,7 +4135,7 @@ function render(){
     el.innerHTML = filtrado.map(o => {
         const chave = escapeHTML(chaveOS(o));
         const endereco = o._tipo === "avulsa" ? enderecoAvulsaLimpo(o) : enderecoNormal(o);
-        const data = tab === "concluido" ? o.finalizado_em : (o.iniciado_em || o.agendamento);
+        const data = tab === "concluido" ? o.finalizado_em : (o.iniciado_em || o.criado_em || o.updated_at);
         const alta = normalizarPrioridadeApp(o.prioridade).classe === "alta";
         const tel = formatarTelefoneApp(o.telefone);
         const href = telefoneHref(o.telefone);
@@ -4122,10 +4154,11 @@ function render(){
             </div>
           </div>
           <div class="os-side">${o._tipo === "avulsa" ? `<strong style="color:#075cf6">OS Avulsa</strong>` : agendamentoCardHTML(o)}</div>
-          <span class="os-status">${escapeHTML(statusRotulo(o.status))}</span><span class="os-hora">${escapeHTML(horarioCurto(data))}</span><span class="os-seta">›</span>
+          <span class="os-hora">${escapeHTML(horarioCurto(data))}</span><span class="os-seta">›</span>
           <div class="os-acoes-share">
-            <button class="btn-compartilhar-whatsapp" type="button" title="Compartilhar no WhatsApp" onclick="compartilhar(event,'${chave}')">◉</button>
-            <button class="btn-compartilhar-nativo" type="button" title="Compartilhar OS" onclick="compartilharNativo(event,'${chave}')">⌯</button>
+            <button class="btn-compartilhar-whatsapp" type="button" aria-label="Compartilhar no WhatsApp" title="Compartilhar no WhatsApp" onclick="compartilhar(event,'${chave}')">
+              <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M19.11 17.49c-.26-.13-1.54-.76-1.78-.85-.24-.09-.41-.13-.59.13-.17.26-.67.85-.83 1.02-.15.17-.3.2-.56.07-.26-.13-1.1-.4-2.09-1.29-.77-.69-1.29-1.54-1.44-1.8-.15-.26-.02-.4.11-.53.12-.12.26-.3.39-.46.13-.15.17-.26.26-.43.09-.17.04-.33-.02-.46-.07-.13-.59-1.41-.8-1.93-.21-.51-.43-.44-.59-.45h-.5c-.17 0-.46.07-.7.33-.24.26-.91.89-.91 2.17 0 1.28.93 2.52 1.06 2.69.13.17 1.83 2.8 4.44 3.93.62.27 1.1.43 1.48.55.62.2 1.19.17 1.64.1.5-.07 1.54-.63 1.76-1.24.22-.61.22-1.13.15-1.24-.06-.11-.24-.17-.5-.3z"/><path d="M16.03 3C8.86 3 3.03 8.82 3.03 15.98c0 2.29.6 4.54 1.75 6.52L3 29l6.69-1.75a12.96 12.96 0 0 0 6.33 1.61h.01C23.2 28.86 29 23.04 29 15.98 29 8.82 23.2 3 16.03 3zm0 23.67h-.01a10.78 10.78 0 0 1-5.49-1.5l-.39-.23-3.97 1.04 1.06-3.87-.25-.4a10.77 10.77 0 0 1-1.65-5.73c0-5.95 4.85-10.79 10.8-10.79 2.88 0 5.59 1.12 7.63 3.16a10.72 10.72 0 0 1 3.16 7.63c0 5.95-4.84 10.79-10.79 10.79z"/></svg>
+            </button>
           </div>
         </article>`;
     }).join("");
@@ -4187,20 +4220,40 @@ function checkinHTMLApp(os){
 }
 
 function dadosAgendamentoApp(os){
-    const valor = os?.agendamento || os?.agendado_para || os?.data_agendamento || os?.agendamento_envio || os?.data_agendada || "";
-    const data = parseDataApp(valor);
+    // Exibe somente datas realmente registradas como agendamento/reagendamento.
+    // Nunca usa criado_em ou iniciado_em como substituto.
+    const candidatos = [
+        os?.reagendado_para,
+        os?.novo_agendamento,
+        os?.agendado_para,
+        os?.data_agendamento,
+        os?.agendamento,
+        os?.agendamento_envio,
+        os?.data_agendada
+    ];
+
+    let valor = "";
+    let data = null;
+    for(const item of candidatos){
+        const texto = String(item ?? "").trim();
+        if(!texto || texto === "0000-00-00 00:00:00") continue;
+        const tentativa = parseDataApp(texto);
+        if(tentativa){ valor = texto; data = tentativa; break; }
+    }
+
     if(!data) return null;
+
     return {
         bruto: valor,
         data: data.toLocaleDateString("pt-BR"),
         hora: data.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}),
-        por: os?.agendado_por_nome || os?.agendamento_criado_por_nome || os?.criado_por_nome || os?.agendado_por || "-",
-        criadoEm: os?.agendamento_criado_em || os?.agendado_em || os?.criado_em || ""
+        por: os?.reagendado_por_nome || os?.agendado_por_nome || os?.agendamento_criado_por_nome || os?.agendado_por || "-",
+        criadoEm: os?.reagendado_em || os?.agendamento_criado_em || os?.agendado_em || ""
     };
 }
 function agendamentoCardHTML(os){
     const ag = dadosAgendamentoApp(os);
-    if(!ag) return `<div class="os-agendamento os-sem-agendamento"><div class="os-agendamento-linha">📅 <span>Não agendada</span></div></div>`;
+    if(!ag) return "";
     return `<div class="os-agendamento">
         <strong>📅 Agendamento</strong>
         <div class="os-agendamento-linha">▣ <span>${escapeHTML(ag.data)}</span></div>
@@ -4209,7 +4262,7 @@ function agendamentoCardHTML(os){
 }
 function agendamentoResumoHTML(os){
     const ag = dadosAgendamentoApp(os);
-    if(!ag) return `<div class="resumo-agendamento-app"><b>Agendamento:</b> Não agendada</div>`;
+    if(!ag) return "";
     return `<div class="resumo-agendamento-app">
         <b>📅 Dados do agendamento</b><br>
         <b>Data:</b> ${escapeHTML(ag.data)}<br>
