@@ -1809,6 +1809,133 @@ body{
   .os{padding-bottom:70px !important}
 }
 
+
+/* ===== AJUSTE FINAL — QUADRO ÚNICO / FAIXA INTERNA / NOMES COMPLETOS ===== */
+.resumo-tipo-item{
+    align-items:center !important;
+}
+.resumo-tipo-item span{
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+    line-height:1.12 !important;
+    overflow-wrap:anywhere !important;
+    word-break:normal !important;
+    display:-webkit-box !important;
+    -webkit-box-orient:vertical !important;
+    -webkit-line-clamp:2 !important;
+}
+
+.os{
+    overflow:hidden !important;
+    grid-template-columns:1fr !important;
+    min-height:0 !important;
+    padding:18px 18px 62px 20px !important;
+}
+.os:before{
+    left:0 !important;
+    top:0 !important;
+    bottom:0 !important;
+    height:auto !important;
+    border-radius:18px 0 0 18px !important;
+}
+.os-main{
+    min-width:0 !important;
+}
+.os-side{
+    display:none !important;
+}
+.os-meta-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:10px 14px !important;
+    margin-top:12px !important;
+    padding-top:12px !important;
+}
+.os-meta-item{
+    min-width:0 !important;
+}
+.os-meta-item b{
+    white-space:normal !important;
+}
+.os-meta-item span,
+.os-meta-item a{
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+    overflow-wrap:anywhere !important;
+}
+.os-meta-agendamento{
+    grid-column:span 2;
+    padding-left:12px;
+    border-left:1px solid #e3eaf3;
+}
+.os-meta-agendamento .agendamento-titulo{
+    color:#075cf6;
+    font-weight:900;
+    margin-bottom:4px;
+}
+.os-meta-agendamento .agendamento-dados{
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px 12px;
+    color:#152744;
+    font-size:14px;
+}
+.os-acoes-share{
+    right:16px !important;
+    bottom:12px !important;
+}
+.btn-compartilhar-whatsapp{
+    width:42px !important;
+    height:42px !important;
+    padding:0 !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    border-radius:12px !important;
+    line-height:0 !important;
+}
+.btn-compartilhar-whatsapp svg{
+    width:25px !important;
+    height:25px !important;
+    display:block !important;
+    margin:0 !important;
+    transform:none !important;
+    fill:#25D366 !important;
+}
+.os-hora{
+    right:68px !important;
+    bottom:23px !important;
+}
+
+@media(max-width:759px){
+    .os{
+        padding:16px 16px 64px 20px !important;
+        border-radius:18px !important;
+    }
+    .os-meta-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+        gap:10px 14px !important;
+    }
+    .os-meta-agendamento{
+        grid-column:1/-1;
+        border-left:0;
+        border-top:1px solid #e3eaf3;
+        padding:10px 0 0;
+    }
+    .os-meta-agendamento .agendamento-dados{
+        font-size:13px;
+    }
+    .btn-compartilhar-whatsapp{
+        width:40px !important;
+        height:40px !important;
+    }
+    .btn-compartilhar-whatsapp svg{
+        width:24px !important;
+        height:24px !important;
+    }
+}
+
 </style>
 
 
@@ -4151,13 +4278,15 @@ function render(){
               <div class="os-meta-item"><b>☎ Telefone</b>${href ? `<a href="${href}" onclick="event.stopPropagation()">${valorSeguro(tel)}</a>` : `<span>${valorSeguro(tel)}</span>`}</div>
               <div class="os-meta-item"><b>◉ VLAN</b><span>${valorSeguro(o.vlan)}</span></div>
               <div class="os-meta-item"><b>♙ Técnico</b><span>${valorSeguro(tecnico)}</span></div>
+              ${o._tipo === "avulsa" ? "" : agendamentoMetaHTML(o)}
             </div>
           </div>
-          <div class="os-side">${o._tipo === "avulsa" ? `<strong style="color:#075cf6">OS Avulsa</strong>` : agendamentoCardHTML(o)}</div>
           <span class="os-hora">${escapeHTML(horarioCurto(data))}</span><span class="os-seta">›</span>
           <div class="os-acoes-share">
             <button class="btn-compartilhar-whatsapp" type="button" aria-label="Compartilhar no WhatsApp" title="Compartilhar no WhatsApp" onclick="compartilhar(event,'${chave}')">
-              <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M19.11 17.49c-.26-.13-1.54-.76-1.78-.85-.24-.09-.41-.13-.59.13-.17.26-.67.85-.83 1.02-.15.17-.3.2-.56.07-.26-.13-1.1-.4-2.09-1.29-.77-.69-1.29-1.54-1.44-1.8-.15-.26-.02-.4.11-.53.12-.12.26-.3.39-.46.13-.15.17-.26.26-.43.09-.17.04-.33-.02-.46-.07-.13-.59-1.41-.8-1.93-.21-.51-.43-.44-.59-.45h-.5c-.17 0-.46.07-.7.33-.24.26-.91.89-.91 2.17 0 1.28.93 2.52 1.06 2.69.13.17 1.83 2.8 4.44 3.93.62.27 1.1.43 1.48.55.62.2 1.19.17 1.64.1.5-.07 1.54-.63 1.76-1.24.22-.61.22-1.13.15-1.24-.06-.11-.24-.17-.5-.3z"/><path d="M16.03 3C8.86 3 3.03 8.82 3.03 15.98c0 2.29.6 4.54 1.75 6.52L3 29l6.69-1.75a12.96 12.96 0 0 0 6.33 1.61h.01C23.2 28.86 29 23.04 29 15.98 29 8.82 23.2 3 16.03 3zm0 23.67h-.01a10.78 10.78 0 0 1-5.49-1.5l-.39-.23-3.97 1.04 1.06-3.87-.25-.4a10.77 10.77 0 0 1-1.65-5.73c0-5.95 4.85-10.79 10.8-10.79 2.88 0 5.59 1.12 7.63 3.16a10.72 10.72 0 0 1 3.16 7.63c0 5.95-4.84 10.79-10.79 10.79z"/></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12.04 2a9.84 9.84 0 0 0-8.43 14.91L2 22l5.22-1.56A9.99 9.99 0 1 0 12.04 2Zm0 17.95a8.1 8.1 0 0 1-4.13-1.13l-.3-.18-3.1.93.96-3.02-.2-.31A8.03 8.03 0 1 1 12.04 19.95Zm4.42-6.05c-.24-.12-1.43-.7-1.65-.78-.22-.08-.38-.12-.54.12-.16.24-.62.78-.76.94-.14.16-.28.18-.52.06-.24-.12-1.02-.37-1.94-1.19-.72-.64-1.2-1.43-1.34-1.67-.14-.24-.02-.37.1-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.41-.54-.42h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2 0 1.18.86 2.32.98 2.48.12.16 1.69 2.58 4.1 3.62.57.25 1.02.4 1.36.51.57.18 1.1.16 1.51.1.46-.07 1.43-.58 1.63-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28Z"/>
+              </svg>
             </button>
           </div>
         </article>`;
@@ -4251,6 +4380,19 @@ function dadosAgendamentoApp(os){
         criadoEm: os?.reagendado_em || os?.agendamento_criado_em || os?.agendado_em || ""
     };
 }
+
+function agendamentoMetaHTML(os){
+    const ag = dadosAgendamentoApp(os);
+    if(!ag) return "";
+    return `<div class="os-meta-item os-meta-agendamento">
+        <div class="agendamento-titulo">📅 Agendamento</div>
+        <div class="agendamento-dados">
+            <span>▣ ${escapeHTML(ag.data)}</span>
+            <span>◷ ${escapeHTML(ag.hora)}</span>
+        </div>
+    </div>`;
+}
+
 function agendamentoCardHTML(os){
     const ag = dadosAgendamentoApp(os);
     if(!ag) return "";
