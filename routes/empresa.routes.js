@@ -17,6 +17,11 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+const uploadLogos = upload.fields([
+    { name: "logo", maxCount: 1 },
+    { name: "logo_alternativa", maxCount: 1 }
+]);
+
 function inteiroOuNull(valor) {
     if (valor === undefined || valor === null || valor === "") return null;
     const numero = Number(valor);
@@ -114,7 +119,8 @@ router.get("/", async (req, res) => {
                 endereco,
                 cidade,
                 estado,
-                logo
+                logo,
+                logo_alternativa
             FROM empresa
             WHERE id = ?
             LIMIT 1
@@ -172,7 +178,7 @@ router.get("/:id", somenteEmpresaAdministradora, async (req, res) => {
     }
 });
 
-router.post("/", somenteEmpresaAdministradora, upload.single("logo"), async (req, res) => {
+router.post("/", somenteEmpresaAdministradora, uploadLogos, async (req, res) => {
     try {
         const periodicidades = normalizarPeriodicidades(req.body.relatorio_periodicidades);
         const relatorioAtivo = booleanoBanco(req.body.relatorio_ativo);
@@ -186,7 +192,8 @@ router.post("/", somenteEmpresaAdministradora, upload.single("logo"), async (req
             return res.status(400).json({ erro: "Método de envio inválido." });
         }
 
-        const logo = req.file ? req.file.filename : null;
+        const logo = req.files?.logo?.[0]?.filename || null;
+        const logoAlternativa = req.files?.logo_alternativa?.[0]?.filename || null;
 
         const [result] = await pool.query(`
             INSERT INTO empresa (
@@ -196,13 +203,13 @@ router.post("/", somenteEmpresaAdministradora, upload.single("logo"), async (req
                 email, telefone,
                 cep, cidade, estado, endereco,
                 subdominio, plano_empresa,
-                vencimento, prazo, ativo, logo,
+                vencimento, prazo, ativo, logo, logo_alternativa,
                 relatorio_envio_tipo, relatorio_email, relatorio_telefone,
                 relatorio_usar_email_cadastrado,
                 relatorio_usar_telefone_cadastrado,
                 relatorio_dia_semana, relatorio_dia_mes,
                 relatorio_ativo, relatorio_periodicidades, relatorio_horario
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         `, [
             textoOuNull(req.body.cpf),
             textoOuNull(req.body.nome_completo),
@@ -224,6 +231,7 @@ router.post("/", somenteEmpresaAdministradora, upload.single("logo"), async (req
             textoOuNull(req.body.prazo),
             booleanoBanco(req.body.ativo, 1),
             logo,
+            logoAlternativa,
             metodo,
             textoOuNull(req.body.relatorio_email),
             textoOuNull(req.body.relatorio_telefone),
@@ -243,7 +251,7 @@ router.post("/", somenteEmpresaAdministradora, upload.single("logo"), async (req
     }
 });
 
-router.put("/:id", somenteEmpresaAdministradora, upload.single("logo"), async (req, res) => {
+router.put("/:id", somenteEmpresaAdministradora, uploadLogos, async (req, res) => {
     try {
         const { id } = req.params;
         const periodicidades = normalizarPeriodicidades(req.body.relatorio_periodicidades);
@@ -259,14 +267,18 @@ router.put("/:id", somenteEmpresaAdministradora, upload.single("logo"), async (r
         }
 
         const [rows] = await pool.query(
-            "SELECT logo FROM empresa WHERE id = ? LIMIT 1",
+            "SELECT logo, logo_alternativa FROM empresa WHERE id = ? LIMIT 1",
             [id]
         );
 
         if (!rows.length) return res.status(404).json({ erro: "Empresa não encontrada." });
 
         const logoAntiga = rows[0].logo;
-        const novaLogo = req.file ? req.file.filename : logoAntiga;
+        const logoAlternativaAntiga = rows[0].logo_alternativa;
+
+        const novaLogo = req.files?.logo?.[0]?.filename || logoAntiga;
+        const novaLogoAlternativa =
+            req.files?.logo_alternativa?.[0]?.filename || logoAlternativaAntiga;
 
         const [result] = await pool.query(`
             UPDATE empresa SET
@@ -276,7 +288,7 @@ router.put("/:id", somenteEmpresaAdministradora, upload.single("logo"), async (r
                 email=?, telefone=?,
                 cep=?, cidade=?, estado=?, endereco=?,
                 subdominio=?, plano_empresa=?,
-                vencimento=?, prazo=?, ativo=?, logo=?,
+                vencimento=?, prazo=?, ativo=?, logo=?, logo_alternativa=?,
                 relatorio_envio_tipo=?, relatorio_email=?, relatorio_telefone=?,
                 relatorio_usar_email_cadastrado=?,
                 relatorio_usar_telefone_cadastrado=?,
@@ -304,6 +316,7 @@ router.put("/:id", somenteEmpresaAdministradora, upload.single("logo"), async (r
             textoOuNull(req.body.prazo),
             booleanoBanco(req.body.ativo, 1),
             novaLogo,
+            novaLogoAlternativa,
             metodo,
             textoOuNull(req.body.relatorio_email),
             textoOuNull(req.body.relatorio_telefone),
@@ -321,11 +334,31 @@ router.put("/:id", somenteEmpresaAdministradora, upload.single("logo"), async (r
             return res.status(404).json({ erro: "Empresa não encontrada." });
         }
 
-        if (req.file && logoAntiga && logoAntiga !== novaLogo) {
+        if (req.files?.logo?.[0] && logoAntiga && logoAntiga !== novaLogo) {
             const caminhoAntigo = path.join(__dirname, "../uploads/logos", logoAntiga);
             if (fs.existsSync(caminhoAntigo)) {
                 fs.unlink(caminhoAntigo, err => {
                     if (err) console.error("Erro ao remover logo antiga:", err);
+                });
+            }
+        }
+
+
+
+        if (
+            req.files?.logo_alternativa?.[0] &&
+            logoAlternativaAntiga &&
+            logoAlternativaAntiga !== novaLogoAlternativa
+        ) {
+            const caminhoAlternativoAntigo = path.join(
+                __dirname,
+                "../uploads/logos",
+                logoAlternativaAntiga
+            );
+
+            if (fs.existsSync(caminhoAlternativoAntigo)) {
+                fs.unlink(caminhoAlternativoAntigo, err => {
+                    if (err) console.error("Erro ao remover logo alternativa antiga:", err);
                 });
             }
         }
@@ -347,7 +380,7 @@ router.delete("/:id", somenteEmpresaAdministradora, async (req, res) => {
         }
 
         const [rows] = await pool.query(
-            "SELECT logo FROM empresa WHERE id = ? LIMIT 1",
+            "SELECT logo, logo_alternativa FROM empresa WHERE id = ? LIMIT 1",
             [id]
         );
 
@@ -362,6 +395,21 @@ router.delete("/:id", somenteEmpresaAdministradora, async (req, res) => {
             if (fs.existsSync(caminho)) {
                 fs.unlink(caminho, err => {
                     if (err) console.error("Erro ao remover logo:", err);
+                });
+            }
+        }
+
+        const logoAlternativa = rows[0].logo_alternativa;
+        if (logoAlternativa) {
+            const caminhoAlternativo = path.join(
+                __dirname,
+                "../uploads/logos",
+                logoAlternativa
+            );
+
+            if (fs.existsSync(caminhoAlternativo)) {
+                fs.unlink(caminhoAlternativo, err => {
+                    if (err) console.error("Erro ao remover logo alternativa:", err);
                 });
             }
         }
