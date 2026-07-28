@@ -212,6 +212,168 @@ module.exports = (pool) => {
         };
     }
 
+
+    function montarPayloadStatusOS({
+        osId,
+        cliente,
+        acao,
+        autorNome
+    }) {
+        const acaoFinal = String(acao || "").toLowerCase() === "ausente"
+            ? "ausente"
+            : "finalizada";
+
+        const autor = String(autorNome || "USUÁRIO").trim().toUpperCase();
+        const clienteFinal = String(cliente || `#${osId}`).trim();
+
+        const title = acaoFinal === "ausente"
+            ? "⚠️ CLIENTE AUSENTE"
+            : "✅ OS FINALIZADA";
+
+        const body = acaoFinal === "ausente"
+            ? `${autor} MARCOU A OS DO CLIENTE ${clienteFinal} COMO AUSENTE.`
+            : `${autor} FINALIZOU A OS DO CLIENTE ${clienteFinal}.`;
+
+        const data = {
+            tipo: acaoFinal === "ausente" ? "os_ausente" : "os_finalizada",
+            acao: acaoFinal,
+            os_id: String(osId),
+            id: String(osId),
+            url: `/appmobile.html?app=1&os_id=${osId}`,
+            click_action: "OPEN_OS"
+        };
+
+        return {
+            title,
+            body,
+            data,
+            fcm: {
+                notification: { title, body },
+                data,
+                android: {
+                    priority: "high",
+                    notification: {
+                        channelId: "sgos_os_channel",
+                        sound: "default",
+                        icon: "ic_stat_sgos",
+                        color: acaoFinal === "ausente" ? "#ef4444" : "#16a34a",
+                        clickAction: "OPEN_OS"
+                    }
+                }
+            }
+        };
+    }
+
+    async function buscarDestinatariosStatusOS({
+        osId,
+        empresaId,
+        autorUsuarioId
+    }) {
+        const [ordens] = await pool.query(`
+            SELECT tecnico
+            FROM ordens_servico
+            WHERE id = ?
+              AND empresa_id = ?
+            LIMIT 1
+        `, [osId, empresaId]);
+
+        if (!ordens.length) {
+            return [];
+        }
+
+        let tecnicoIds = [];
+        const tecnicoRaw = ordens[0].tecnico;
+
+        try {
+            if (Array.isArray(tecnicoRaw)) {
+                tecnicoIds = tecnicoRaw;
+            } else if (typeof tecnicoRaw === "string") {
+                const texto = tecnicoRaw.trim();
+                if (texto.startsWith("[") && texto.endsWith("]")) {
+                    tecnicoIds = JSON.parse(texto);
+                } else if (texto) {
+                    tecnicoIds = texto.split(",");
+                }
+            }
+        } catch (_) {
+            tecnicoIds = [];
+        }
+
+        tecnicoIds = tecnicoIds
+            .map((id) => Number(id))
+            .filter((id) => Number.isInteger(id) && id > 0);
+
+        const parametros = [empresaId, Number(autorUsuarioId || 0)];
+        let filtroTecnicos = "";
+
+        if (tecnicoIds.length) {
+            filtroTecnicos = `
+                OR u.id IN (
+                    SELECT DISTINCT ut.usuario_id
+                    FROM usuario_tecnicos ut
+                    WHERE ut.empresa_id = ?
+                      AND ut.tecnico_id IN (?)
+                )
+            `;
+            parametros.push(empresaId, tecnicoIds);
+        }
+
+        const [usuarios] = await pool.query(`
+            SELECT DISTINCT u.id
+            FROM usuarios u
+            WHERE u.empresa_id = ?
+              AND u.ativo = 1
+              AND u.id <> ?
+              AND (
+                    LOWER(TRIM(u.cargo)) = 'administrador'
+                    ${filtroTecnicos}
+              )
+        `, parametros);
+
+        return usuarios.map((u) => Number(u.id)).filter(Boolean);
+    }
+
+    async function enviarPushStatusOS({
+        empresaId,
+        osId,
+        cliente,
+        acao,
+        autorUsuarioId,
+        autorNome
+    }) {
+        const destinatarios = await buscarDestinatariosStatusOS({
+            osId,
+            empresaId,
+            autorUsuarioId
+        });
+
+        const payload = montarPayloadStatusOS({
+            osId,
+            cliente,
+            acao,
+            autorNome
+        });
+
+        const resultados = [];
+        let enviados = 0;
+        let falhas = 0;
+
+        for (const usuarioId of destinatarios) {
+            const tokens = await buscarTokens(usuarioId, empresaId);
+            const resultado = await enviarParaTokens(tokens, payload);
+            enviados += Number(resultado.enviados || 0);
+            falhas += Number(resultado.falhas || 0);
+            resultados.push({ usuario_id: usuarioId, ...resultado });
+        }
+
+        return {
+            destinatarios: destinatarios.length,
+            enviados,
+            falhas,
+            resultados
+        };
+    }
+
     async function enviarFcm(item, payload) {
         const admin = iniciarFirebase();
 
@@ -510,6 +672,7 @@ module.exports = (pool) => {
         buscarTokensEmpresa,
         enviarPushOSAndamento,
         enviarPushOSEmpresa,
+        enviarPushStatusOS,
         enviarPushNovaOS:
             enviarPushOSAndamento,
         encerrarApns

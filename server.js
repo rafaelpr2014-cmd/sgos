@@ -1053,6 +1053,75 @@ app.get("/api/logs", verificarAutenticacao, async (req, res) => {
 // ===============================
 // ROTAS PRINCIPAIS
 // ===============================
+// ======================================================
+// NOTIFICAÇÕES DE STATUS DA OS
+// Dispara após as rotas de ausente/concluir responderem com sucesso.
+// Funciona tanto no app quanto no painel administrativo.
+// ======================================================
+app.use("/api/ordens_servico", verificarAutenticacao, (req, res, next) => {
+    const caminho = String(req.path || "").toLowerCase();
+    const match = caminho.match(/^\/(ausente|concluir)\/(\d+)\/?$/);
+
+    if (req.method !== "POST" || !match) {
+        return next();
+    }
+
+    const acao = match[1] === "ausente" ? "ausente" : "finalizada";
+    const osId = Number(match[2]);
+    let disparado = false;
+
+    res.on("finish", () => {
+        if (disparado || res.statusCode < 200 || res.statusCode >= 300) {
+            return;
+        }
+
+        disparado = true;
+
+        setImmediate(async () => {
+            try {
+                const [rows] = await pool.query(`
+                    SELECT id, nome, empresa_id
+                    FROM ordens_servico
+                    WHERE id = ?
+                      AND empresa_id = ?
+                    LIMIT 1
+                `, [osId, req.usuario.empresa_id]);
+
+                if (!rows.length) {
+                    return;
+                }
+
+                const servicoPush = req.app.get("pushService");
+
+                if (!servicoPush?.enviarPushStatusOS) {
+                    console.warn("Push de status da OS indisponível");
+                    return;
+                }
+
+                const resultado = await servicoPush.enviarPushStatusOS({
+                    empresaId: req.usuario.empresa_id,
+                    osId,
+                    cliente: rows[0].nome,
+                    acao,
+                    autorUsuarioId: req.usuario.id,
+                    autorNome: req.usuario.usuario
+                });
+
+                console.log("🔔 Push de status da OS:", {
+                    os_id: osId,
+                    acao,
+                    autor_usuario_id: req.usuario.id,
+                    resultado
+                });
+            } catch (erroPushStatus) {
+                console.error("Erro ao enviar push de status da OS:", erroPushStatus);
+            }
+        });
+    });
+
+    next();
+});
+
 const ordensRoutes =
     require("./routes/ordens.routes")(
         pool,
