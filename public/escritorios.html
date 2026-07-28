@@ -8,5 +8,337 @@
 .filtros{display:grid;grid-template-columns:2fr repeat(4,1fr);gap:12px;margin-bottom:16px}.table-wrap{width:100%;overflow:auto}table{width:100%;border-collapse:collapse;min-width:1180px}th{background:#f8fafc;padding:13px 11px;text-align:left;font-size:12px;border-bottom:1px solid var(--borda);white-space:nowrap}td{padding:12px 11px;border-bottom:1px solid var(--borda);font-size:13px;color:#1e293b;vertical-align:middle}tr:hover{background:#f8fbff}.pill{padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800;display:inline-block}.pill-entrada{background:#dcfce7;color:#15803d}.pill-saida{background:#fee2e2;color:#dc2626}.pill-adicionado{background:#dbeafe;color:#1d4ed8}.pill-editado{background:#fef3c7;color:#92400e}.pill-excluido{background:#fee2e2;color:#b91c1c}.valor-entrada{color:#15803d;font-weight:900}.valor-saida{color:#dc2626;font-weight:900}.relatorio-cabecalho{display:none}.relatorio-resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}.relatorio-resumo div{border:1px solid var(--borda);padding:10px;border-radius:8px}.relatorio-resumo strong{display:block;font-size:18px}.secao-tabela{margin-top:22px}.empty{text-align:center;padding:28px;color:var(--muted)}.footer{display:flex;justify-content:space-between;padding:20px 34px;color:#475569;font-size:12px;border-top:1px solid var(--borda)}.toast{position:fixed;right:22px;bottom:22px;z-index:2000;background:#0f172a;color:#fff;padding:14px 18px;border-radius:12px;box-shadow:0 14px 35px rgba(15,23,42,.25);display:none}.toast.ativo{display:block}.toast.erro{background:#b91c1c}
 @media(max-width:1400px){.top-actions{grid-template-columns:1fr 1fr 1fr}.form-grid{grid-template-columns:repeat(2,1fr)}.filtros{grid-template-columns:repeat(3,1fr)}}@media(max-width:900px){.sidebar{display:none}.main{margin-left:0;width:100%}.header{height:auto;padding:18px;align-items:flex-start;flex-direction:column}.content{padding:18px}.top-actions,.form-grid,.filtros{grid-template-columns:1fr}.campo.span-2,.campo.span-4{grid-column:span 1}.footer{padding:18px;flex-direction:column;gap:6px}}
 @media print{.sidebar,.header,.top-actions,.tabs,.filtros,.filter-actions,.form-actions,.btn-icon,.footer,.nao-imprimir{display:none!important}.main{margin:0;width:100%}.content{padding:0}.card{border:0;box-shadow:none;padding:0}.painel-tab{display:none!important}#tabRelatorios{display:block!important}.relatorio-cabecalho{display:flex!important;align-items:center;justify-content:space-between;border-bottom:2px solid #1d4ed8;padding:0 0 12px;margin-bottom:12px}.relatorio-cabecalho img{max-height:62px;max-width:180px;object-fit:contain}.relatorio-titulo{text-align:center;flex:1}.relatorio-titulo h1{font-size:20px;margin:0 0 4px}.relatorio-titulo p{font-size:11px;margin:2px 0}.relatorio-emissao{text-align:right;font-size:10px;min-width:190px}.relatorio-resumo{display:grid!important;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 14px}.relatorio-resumo div{padding:7px;border:1px solid #cbd5e1}.relatorio-resumo span{font-size:9px}.relatorio-resumo strong{font-size:15px}table{min-width:0!important;font-size:9px}th,td{padding:6px 5px!important;white-space:normal!important}.table-wrap{overflow:visible}@page{size:A4 landscape;margin:10mm}}
-</style></head><body><aside class="sidebar"><div class="sidebar-logo"><img src="https://iili.io/CujQzXa.png"></div><a href="painel.html"><span>⌂</span><span>Painel Inicial</span></a><a href="financeiro.html"><span>▣</span><span>Caixa</span></a><a href="escritorios.html" class="ativo"><span>▤</span><span>Escritórios</span></a><a href="usuarios.html"><span>○</span><span>Usuários</span></a></aside><main class="main"><header class="header"><div class="header-left"><div class="header-logo"><img id="logo" src="/img/logo-default.png"></div><div class="divisor"></div><div class="header-title">Escritórios e grupos de usuários</div></div><div class="usuario-info"><strong id="user">Carregando...</strong><small id="empresa">Empresa</small></div></header><section class="content"><div class="card"><div class="tabs"><button class="tab ativo" data-tab="lista" onclick="tab('lista')">Escritórios</button><button class="tab" data-tab="cadastro" onclick="tab('cadastro');limpar()">Cadastrar / Editar</button></div><div id="tabLista" class="painel-tab ativo"><div class="card-header"><div><div class="titulo-card">Escritórios cadastrados</div><div class="sub-card">Cada escritório forma um grupo com os usuários responsáveis.</div></div><button class="btn-primary" onclick="carregar()">Atualizar</button></div><div class="table-wrap"><table><thead><tr><th>Escritório</th><th>Descrição</th><th>Responsáveis</th><th>Situação</th><th>Cadastrado por</th><th>Ações</th></tr></thead><tbody id="tb"></tbody></table></div></div><div id="tabCadastro" class="painel-tab"><input type="hidden" id="id"><div class="form-grid"><div class="campo span-2"><label>Nome *</label><input id="nome"></div><div class="campo"><label>Situação</label><select id="ativo"><option value="1">Ativo</option><option value="0">Inativo</option></select></div><div class="campo span-4"><label>Descrição</label><textarea id="descricao"></textarea></div><div class="campo span-4"><label>Usuários responsáveis *</label><select id="responsaveis" multiple style="height:180px"></select><div class="hint">Use Ctrl para selecionar vários usuários no computador.</div></div></div><div class="form-actions"><button class="btn-primary" onclick="salvar()">Salvar escritório</button><button class="btn-light" onclick="limpar()">Limpar</button></div></div></div></section></main><div id="toast" class="toast"></div><script>
-let dados=[],users=[];const $=i=>document.getElementById(i),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));async function req(u,o={}){return fetchAuth(u,{...o,headers:{'Content-Type':'application/json',...(o.headers||{})}})}function toast(t,e=false){$('toast').textContent=t;$('toast').className='toast ativo'+(e?' erro':'');setTimeout(()=>$('toast').className='toast',3000)}function tab(n){document.querySelectorAll('.painel-tab,.tab').forEach(x=>x.classList.remove('ativo'));$('tab'+n[0].toUpperCase()+n.slice(1)).classList.add('ativo');document.querySelector(`[data-tab="${n}"]`).classList.add('ativo')}async function carregar(){dados=await req('/api/escritorios');$('tb').innerHTML=dados.length?dados.map(x=>`<tr><td><strong>${esc(x.nome)}</strong></td><td>${esc(x.descricao||'-')}</td><td>${esc(x.responsaveis_nomes||'Nenhum responsável')}</td><td><span class="pill ${x.ativo?'pill-entrada':'pill-saida'}">${x.ativo?'Ativo':'Inativo'}</span></td><td>${esc(x.cadastrado_por_nome||'-')}</td><td><button class="btn-warning btn-icon" onclick="editar(${x.id})">✎</button> <button class="btn-danger btn-icon" onclick="excluir(${x.id})">×</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">Nenhum escritório cadastrado.</td></tr>'}async function carregarUsuarios(){users=await req('/api/escritorios/usuarios');$('responsaveis').innerHTML=users.map(x=>`<option value="${x.id}">${esc(x.usuario)} · ${esc(x.cargo||'')}</option>`).join('')}function limpar(){$('id').value='';$('nome').value='';$('descricao').value='';$('ativo').value='1';[...$('responsaveis').options].forEach(o=>o.selected=false)}async function editar(id){const x=await req('/api/escritorios/'+id);$('id').value=x.id;$('nome').value=x.nome;$('descricao').value=x.descricao||'';$('ativo').value=x.ativo?'1':'0';const ids=new Set((x.responsaveis||[]).map(r=>Number(r.usuario_id)));[...$('responsaveis').options].forEach(o=>o.selected=ids.has(Number(o.value)));tab('cadastro')}async function salvar(){const id=$('id').value,b={nome:$('nome').value,descricao:$('descricao').value,ativo:$('ativo').value==='1',responsaveis:[...$('responsaveis').selectedOptions].map(o=>Number(o.value))};try{await req('/api/escritorios'+(id?'/'+id:''),{method:id?'PUT':'POST',body:JSON.stringify(b)});toast('Escritório salvo.');limpar();await carregar();tab('lista')}catch(e){toast(e.message||'Erro ao salvar.',true)}}async function excluir(id){if(!confirm('Excluir ou inativar este escritório?'))return;try{const r=await req('/api/escritorios/'+id,{method:'DELETE'});toast(r.inativado?'Escritório inativado porque possui movimentações.':'Escritório excluído.');carregar()}catch(e){toast(e.message,true)}}document.addEventListener('DOMContentLoaded',async()=>{try{const me=await fetchAuth('/api/me');const cargo=String(me.cargo||'').toLowerCase();if(!['admin','administrador'].includes(cargo)){alert('Apenas administradores podem gerenciar escritórios.');location.href='financeiro.html';return}$('user').textContent=me.usuario;$('empresa').textContent=me.empresa_nome||'Empresa';$('logo').src=me.empresa_logo?(me.empresa_logo.startsWith('/')?me.empresa_logo:'/'+me.empresa_logo):'/img/logo-default.png';await carregarUsuarios();await carregar();limpar()}catch(e){alert('Não foi possível carregar escritórios.')}})</script></body></html>
+</style>
+<style id="sgos-sidebar-completa-v2">
+/* Menu SGOS unificado: logo fixa, links com rolagem e rodapé sempre visível */
+.sidebar{
+    position:fixed !important;
+    left:0 !important;
+    top:0 !important;
+    width:230px !important;
+    height:100vh !important;
+    padding:12px 12px 14px !important;
+    display:flex !important;
+    flex-direction:column !important;
+    overflow:hidden !important;
+    background:linear-gradient(180deg,#081a31,#061426) !important;
+    color:#fff !important;
+    z-index:1000 !important;
+    transition:width .25s ease !important;
+}
+.sidebar-logo{
+    flex:0 0 auto !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    min-height:62px !important;
+    padding:0 6px 8px !important;
+    margin:0 0 4px !important;
+}
+.sidebar-logo img{
+    width:190px !important;
+    max-width:100% !important;
+    height:auto !important;
+    max-height:58px !important;
+    object-fit:contain !important;
+    display:block !important;
+}
+.sidebar-menu-scroll{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    padding:0 6px 12px !important;
+    scrollbar-width:thin;
+    scrollbar-color:#3c526f transparent;
+}
+.sidebar-menu-scroll::-webkit-scrollbar{width:6px}
+.sidebar-menu-scroll::-webkit-scrollbar-track{background:transparent}
+.sidebar-menu-scroll::-webkit-scrollbar-thumb{background:#3c526f;border-radius:999px}
+.sidebar .menu-titulo{
+    margin:15px 10px 7px !important;
+    font-size:11px !important;
+    line-height:1.2 !important;
+    font-weight:700 !important;
+    color:#94a3b8 !important;
+    text-transform:uppercase !important;
+    letter-spacing:.2px !important;
+}
+.sidebar a{
+    width:100% !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:12px !important;
+    padding:11px 13px !important;
+    margin:0 0 3px !important;
+    border-radius:9px !important;
+    color:#dbeafe !important;
+    text-decoration:none !important;
+    font-size:14px !important;
+    line-height:1.25 !important;
+    transition:background .2s ease,color .2s ease !important;
+}
+.sidebar a:hover{background:rgba(37,99,235,.48) !important;color:#fff !important}
+.sidebar a.ativo{
+    background:#2563eb !important;
+    color:#fff !important;
+    box-shadow:0 6px 16px rgba(37,99,235,.25) !important;
+}
+.sidebar .menu-icon{
+    width:18px !important;
+    height:18px !important;
+    min-width:18px !important;
+    stroke:currentColor !important;
+    fill:none !important;
+    stroke-width:1.8 !important;
+    stroke-linecap:round !important;
+    stroke-linejoin:round !important;
+}
+.sidebar-footer{
+    flex:0 0 auto !important;
+    margin:0 !important;
+    padding:10px 6px 0 !important;
+    border-top:1px solid rgba(255,255,255,.08) !important;
+    background:#061426 !important;
+}
+.sidebar .btn-recolher{
+    width:100% !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:12px !important;
+    padding:12px 13px !important;
+    border:1px solid rgba(255,255,255,.10) !important;
+    border-radius:9px !important;
+    background:rgba(255,255,255,.07) !important;
+    color:#e5efff !important;
+    cursor:pointer !important;
+    font-size:14px !important;
+}
+.sidebar.recolhida{width:82px !important;padding-left:12px !important;padding-right:12px !important}
+.sidebar.recolhida .sidebar-logo{justify-content:center !important;padding-left:0 !important;padding-right:0 !important}
+.sidebar.recolhida .sidebar-logo img{width:48px !important;max-height:48px !important}
+.sidebar.recolhida .sidebar-menu-scroll{padding-left:3px !important;padding-right:3px !important}
+.sidebar.recolhida a{width:52px !important;height:46px !important;margin-left:auto !important;margin-right:auto !important;padding:0 !important;justify-content:center !important;gap:0 !important}
+.sidebar.recolhida a span,
+.sidebar.recolhida .menu-titulo,
+.sidebar.recolhida .btn-recolher span{display:none !important}
+.sidebar.recolhida .btn-recolher{width:52px !important;margin:auto !important;justify-content:center !important;padding:12px !important}
+.sidebar.recolhida .btn-recolher svg{transform:rotate(180deg)}
+.main{transition:margin-left .25s ease !important}
+.sidebar.recolhida + .main{margin-left:82px !important}
+@media(max-width:900px){
+    .sidebar{display:none !important}
+    .main{margin-left:0 !important}
+}
+</style>
+
+</head><body><aside class="sidebar">
+
+    <div class="sidebar-logo">
+        <img
+            id="logoSidebar"
+            src="https://iili.io/CujQzXa.png"
+            data-logo-aberta="https://iili.io/CujQzXa.png"
+            data-logo-fechada="https://iili.io/CuwvauR.png"
+            alt="SGOS"
+        >
+    </div>
+
+    <div class="sidebar-menu-scroll">
+    <a href="painel.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg>
+        <span>Painel Inicial</span>
+    </a>
+
+    <div class="menu-titulo">Operação</div>
+
+    <a href="agendamentos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+        <span>Agendamentos</span>
+    </a>
+
+    <a href="relatorios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg>
+        <span>Relatórios</span>
+    </a>
+
+<a href="financeiro.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><path d="M7 12h10M9 9h6"/></svg><span>Financeiro</span></a>
+
+  <a href="estoque.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 7l8-4 8 4-8 4z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/></svg><span>Estoque</span></a>
+
+<a href="mapa-tecnicos.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/><circle cx="15" cy="10" r="2"/></svg><span>Mapa dos Técnicos</span></a>
+
+    <a href="os-clientes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>OS Clientes</span>
+    </a>
+
+<a href="escala.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 14h6"/></svg>
+        <span>Escala</span>
+    </a>
+
+    <a href="servicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg>
+        <span>Serviços</span>
+    </a>
+
+    <a href="viabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+        <span>Viabilidades</span>
+    </a>
+
+    <a href="inviabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+        <span>Inviabilidades</span>
+    </a>
+
+ <a href="informativos-ia.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg><span>Informativos IA</span></a>
+
+
+    <div class="menu-titulo">Cadastros</div>
+
+    <a href="planos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        <span>Planos</span>
+    </a>
+
+<a href="escritorios.html">
+    <svg class="menu-icon" viewBox="0 0 24 24">
+        <path d="M4 21V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v16"/>
+        <path d="M16 21v-9a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v9"/>
+        <path d="M8 8h2M12 8h1M8 12h2M12 12h1M8 16h2M12 16h1"/>
+    </svg>
+    <span>Escritórios</span>
+</a>
+
+    <a href="localidades.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span>Localidades</span>
+    </a>
+
+    <a href="tecnicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Técnicos</span>
+    </a>
+
+    <a href="tipos_servicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.5 2.5-3-3z"/></svg>
+        <span>Tipos de Serviços</span>
+    </a>
+
+<a href="svas.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 21h8M12 18v3M9 10l4 2-4 2z"/></svg>
+        <span>SVAs</span>
+    </a>
+
+    <div class="menu-titulo">Configurações</div>
+
+    <a href="usuarios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Usuários</span>
+    </a>
+
+<a href="integracoes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 12h8"/><path d="M6 8h.01M18 8h.01"/><rect x="3" y="4" width="18" height="8" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></svg>
+        <span>Integrações ERP</span>
+    </a>
+
+<a href="whatsapp-cliente.html"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg><span>WhatsApp da Empresa</span></a>
+
+    <div class="menu-titulo">Auditoria</div>
+
+    <a href="logs_acesso.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        <span>Logs do Sistema</span>
+    </a>
+
+    <a href="logs_acoes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <span>Log de Ações</span>
+    </a>
+
+    <a href="historico-os.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/><path d="M12 8v5l3 2"/></svg>
+        <span>Histórico de OS</span>
+    </a>
+
+        </div>
+
+<div class="sidebar-footer">
+        <button class="btn-recolher" onclick="toggleSidebar()" type="button">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M2 12h20"/></svg>
+            <span>Recolher menu</span>
+        </button>
+    </div>
+
+
+</aside><main class="main"><header class="header"><div class="header-left"><div class="header-logo"><img id="logo" src="/img/logo-default.png"></div><div class="divisor"></div><div class="header-title">Escritórios e grupos de usuários</div></div><div class="usuario-info"><strong id="user">Carregando...</strong><small id="empresa">Empresa</small></div></header><section class="content"><div class="card"><div class="tabs"><button class="tab ativo" data-tab="lista" onclick="tab('lista')">Escritórios</button><button class="tab" data-tab="cadastro" onclick="tab('cadastro');limpar()">Cadastrar / Editar</button></div><div id="tabLista" class="painel-tab ativo"><div class="card-header"><div><div class="titulo-card">Escritórios cadastrados</div><div class="sub-card">Cada escritório forma um grupo com os usuários responsáveis.</div></div><button class="btn-primary" onclick="carregar()">Atualizar</button></div><div class="table-wrap"><table><thead><tr><th>Escritório</th><th>Descrição</th><th>Responsáveis</th><th>Situação</th><th>Cadastrado por</th><th>Ações</th></tr></thead><tbody id="tb"></tbody></table></div></div><div id="tabCadastro" class="painel-tab"><input type="hidden" id="id"><div class="form-grid"><div class="campo span-2"><label>Nome *</label><input id="nome"></div><div class="campo"><label>Situação</label><select id="ativo"><option value="1">Ativo</option><option value="0">Inativo</option></select></div><div class="campo span-4"><label>Descrição</label><textarea id="descricao"></textarea></div><div class="campo span-4"><label>Usuários responsáveis *</label><select id="responsaveis" multiple style="height:180px"></select><div class="hint">Use Ctrl para selecionar vários usuários no computador.</div></div></div><div class="form-actions"><button class="btn-primary" onclick="salvar()">Salvar escritório</button><button class="btn-light" onclick="limpar()">Limpar</button></div></div></div></section></main><div id="toast" class="toast"></div><script>
+let dados=[],users=[];const $=i=>document.getElementById(i),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));async function req(u,o={}){return fetchAuth(u,{...o,headers:{'Content-Type':'application/json',...(o.headers||{})}})}function toast(t,e=false){$('toast').textContent=t;$('toast').className='toast ativo'+(e?' erro':'');setTimeout(()=>$('toast').className='toast',3000)}function tab(n){document.querySelectorAll('.painel-tab,.tab').forEach(x=>x.classList.remove('ativo'));$('tab'+n[0].toUpperCase()+n.slice(1)).classList.add('ativo');document.querySelector(`[data-tab="${n}"]`).classList.add('ativo')}async function carregar(){dados=await req('/api/escritorios');$('tb').innerHTML=dados.length?dados.map(x=>`<tr><td><strong>${esc(x.nome)}</strong></td><td>${esc(x.descricao||'-')}</td><td>${esc(x.responsaveis_nomes||'Nenhum responsável')}</td><td><span class="pill ${x.ativo?'pill-entrada':'pill-saida'}">${x.ativo?'Ativo':'Inativo'}</span></td><td>${esc(x.cadastrado_por_nome||'-')}</td><td><button class="btn-warning btn-icon" onclick="editar(${x.id})">✎</button> <button class="btn-danger btn-icon" onclick="excluir(${x.id})">×</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">Nenhum escritório cadastrado.</td></tr>'}async function carregarUsuarios(){users=await req('/api/escritorios/usuarios');$('responsaveis').innerHTML=users.map(x=>`<option value="${x.id}">${esc(x.usuario)} · ${esc(x.cargo||'')}</option>`).join('')}function limpar(){$('id').value='';$('nome').value='';$('descricao').value='';$('ativo').value='1';[...$('responsaveis').options].forEach(o=>o.selected=false)}async function editar(id){const x=await req('/api/escritorios/'+id);$('id').value=x.id;$('nome').value=x.nome;$('descricao').value=x.descricao||'';$('ativo').value=x.ativo?'1':'0';const ids=new Set((x.responsaveis||[]).map(r=>Number(r.usuario_id)));[...$('responsaveis').options].forEach(o=>o.selected=ids.has(Number(o.value)));tab('cadastro')}async function salvar(){const id=$('id').value,b={nome:$('nome').value,descricao:$('descricao').value,ativo:$('ativo').value==='1',responsaveis:[...$('responsaveis').selectedOptions].map(o=>Number(o.value))};try{await req('/api/escritorios'+(id?'/'+id:''),{method:id?'PUT':'POST',body:JSON.stringify(b)});toast('Escritório salvo.');limpar();await carregar();tab('lista')}catch(e){toast(e.message||'Erro ao salvar.',true)}}async function excluir(id){if(!confirm('Excluir ou inativar este escritório?'))return;try{const r=await req('/api/escritorios/'+id,{method:'DELETE'});toast(r.inativado?'Escritório inativado porque possui movimentações.':'Escritório excluído.');carregar()}catch(e){toast(e.message,true)}}document.addEventListener('DOMContentLoaded',async()=>{try{const me=await fetchAuth('/api/me');const cargo=String(me.cargo||'').toLowerCase();if(!['admin','administrador'].includes(cargo)){alert('Apenas administradores podem gerenciar escritórios.');location.href='financeiro.html';return}$('user').textContent=me.usuario;$('empresa').textContent=me.empresa_nome||'Empresa';$('logo').src=me.empresa_logo?(me.empresa_logo.startsWith('/')?me.empresa_logo:'/'+me.empresa_logo):'/img/logo-default.png';await carregarUsuarios();await carregar();limpar()}catch(e){alert('Não foi possível carregar escritórios.')}})</script>
+<script id="sgos-sidebar-completa-v2-js">
+(function(){
+    function normalizarPagina(valor){
+        try {
+            var url = new URL(valor, window.location.href);
+            return (url.pathname.split('/').pop() || 'painel.html').toLowerCase();
+        } catch(e){
+            return String(valor || '').split('?')[0].split('#')[0].split('/').pop().toLowerCase();
+        }
+    }
+
+    window.toggleSidebar = function(){
+        var sidebar = document.querySelector('.sidebar');
+        if(!sidebar) return;
+        sidebar.classList.toggle('recolhida');
+        localStorage.setItem('sgosSidebarRecolhida', sidebar.classList.contains('recolhida') ? '1' : '0');
+        var logo = document.getElementById('logoSidebar');
+        if(logo){
+            logo.src = sidebar.classList.contains('recolhida')
+                ? (logo.dataset.logoFechada || logo.src)
+                : (logo.dataset.logoAberta || logo.src);
+        }
+    };
+
+    function iniciarMenuSGOS(){
+        var sidebar = document.querySelector('.sidebar');
+        if(!sidebar) return;
+
+        var recolhida = localStorage.getItem('sgosSidebarRecolhida') === '1';
+        sidebar.classList.toggle('recolhida', recolhida);
+
+        var logo = document.getElementById('logoSidebar');
+        if(logo){
+            logo.src = recolhida
+                ? (logo.dataset.logoFechada || logo.src)
+                : (logo.dataset.logoAberta || logo.src);
+        }
+
+        var atual = normalizarPagina(window.location.href);
+        var ativo = null;
+        sidebar.querySelectorAll('a[href]').forEach(function(link){
+            link.classList.remove('ativo');
+            if(normalizarPagina(link.getAttribute('href')) === atual){
+                link.classList.add('ativo');
+                ativo = link;
+            }
+        });
+
+        if(ativo){
+            window.setTimeout(function(){
+                var area = sidebar.querySelector('.sidebar-menu-scroll');
+                if(!area) return;
+                var alvo = ativo.offsetTop - (area.clientHeight / 2) + (ativo.offsetHeight / 2);
+                area.scrollTop = Math.max(0, alvo);
+            }, 60);
+        }
+    }
+
+    if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', iniciarMenuSGOS);
+    } else {
+        iniciarMenuSGOS();
+    }
+})();
+</script>
+
+</body></html>

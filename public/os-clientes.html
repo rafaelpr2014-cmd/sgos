@@ -15,17 +15,273 @@
 .content{padding:28px 20px 40px}.page-head{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:18px}.page-head h1{font-size:24px;margin:0}.page-head p{margin:6px 0 0;color:var(--muted);font-size:13px}.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:8px}.btn-primary{background:var(--azul);color:#fff}.btn-light{background:#eef2ff;color:#1d4ed8}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:18px}.card{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:20px;box-shadow:0 8px 20px rgba(15,23,42,.04)}.metric-label{font-size:12px;color:var(--muted);font-weight:800;text-transform:uppercase}.metric-value{font-size:30px;font-weight:900;margin-top:8px}.metric-note{font-size:12px;color:var(--muted);margin-top:5px}.filters{display:grid;grid-template-columns:2fr repeat(3,minmax(150px,1fr)) auto;gap:12px;align-items:end;margin-bottom:18px}.campo{display:flex;flex-direction:column;gap:6px}.campo label{font-size:12px;color:#334155;font-weight:800}.campo input,.campo select{width:100%;padding:11px 12px;border:1px solid var(--borda);border-radius:10px;background:#fff;outline:none}.clientes-lista{display:grid;gap:14px}.cliente-card{background:#fff;border:1px solid var(--borda);border-radius:14px;overflow:hidden;box-shadow:0 8px 20px rgba(15,23,42,.04)}.cliente-topo{padding:17px 18px;display:grid;grid-template-columns:minmax(220px,1.4fr) repeat(4,minmax(130px,.7fr)) auto;gap:14px;align-items:center;cursor:pointer}.cliente-topo:hover{background:#f8fbff}.cliente-nome strong{display:block;font-size:15px}.cliente-nome small{display:block;color:var(--muted);margin-top:4px}.dado small{display:block;color:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase;margin-bottom:4px}.dado strong{font-size:13px}.badge{display:inline-block;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:900}.badge-recorrente{background:#fee2e2;color:#b91c1c}.badge-unica{background:#dcfce7;color:#15803d}.toggle{width:34px;height:34px;border:0;border-radius:9px;background:#eff6ff;color:#2563eb;font-size:18px;cursor:pointer}.historico{display:none;border-top:1px solid var(--borda);background:#f8fafc;padding:16px}.cliente-card.aberto .historico{display:block}.linha-tempo{position:relative;padding-left:28px}.linha-tempo:before{content:"";position:absolute;left:8px;top:7px;bottom:8px;width:2px;background:#cbd5e1}.os-item{position:relative;background:#fff;border:1px solid var(--borda);border-radius:12px;padding:14px;margin-bottom:10px;display:grid;grid-template-columns:90px minmax(180px,1fr) repeat(4,minmax(115px,.7fr)) auto;gap:12px;align-items:center}.os-item:before{content:"";position:absolute;left:-25px;top:22px;width:12px;height:12px;background:#2563eb;border:3px solid #dbeafe;border-radius:50%}.os-item.original:before{background:#16a34a;border-color:#dcfce7}.os-id{font-weight:900;color:#1e40af}.os-desc{white-space:normal}.os-desc strong{display:block;font-size:13px}.os-desc small{display:block;color:var(--muted);margin-top:3px}.status{padding:5px 9px;border-radius:999px;font-size:11px;font-weight:900;display:inline-block}.status-concluido{background:#dcfce7;color:#15803d}.status-aberto{background:#dbeafe;color:#1d4ed8}.status-em_andamento{background:#ffedd5;color:#c2410c}.status-cliente_ausente{background:#fee2e2;color:#b91c1c}.status-agendado{background:#ede9fe;color:#6d28d9}.status-inviabilidade{background:#f1f5f9;color:#475569}.vazio{text-align:center;padding:44px;color:var(--muted)}.erro{padding:16px;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:12px}
 @media(max-width:1200px){.cards{grid-template-columns:repeat(2,1fr)}.filters{grid-template-columns:repeat(2,1fr)}.cliente-topo,.os-item{grid-template-columns:1fr 1fr}.toggle{justify-self:end}}@media(max-width:800px){.sidebar{display:none}.main{margin-left:0}.header{height:auto;padding:18px}.cards,.filters{grid-template-columns:1fr}.cliente-topo,.os-item{grid-template-columns:1fr}.content{padding:20px}}
 </style>
+
+<style id="sgos-sidebar-completa-v2">
+/* Menu SGOS unificado: logo fixa, links com rolagem e rodapé sempre visível */
+.sidebar{
+    position:fixed !important;
+    left:0 !important;
+    top:0 !important;
+    width:230px !important;
+    height:100vh !important;
+    padding:12px 12px 14px !important;
+    display:flex !important;
+    flex-direction:column !important;
+    overflow:hidden !important;
+    background:linear-gradient(180deg,#081a31,#061426) !important;
+    color:#fff !important;
+    z-index:1000 !important;
+    transition:width .25s ease !important;
+}
+.sidebar-logo{
+    flex:0 0 auto !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    min-height:62px !important;
+    padding:0 6px 8px !important;
+    margin:0 0 4px !important;
+}
+.sidebar-logo img{
+    width:190px !important;
+    max-width:100% !important;
+    height:auto !important;
+    max-height:58px !important;
+    object-fit:contain !important;
+    display:block !important;
+}
+.sidebar-menu-scroll{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    padding:0 6px 12px !important;
+    scrollbar-width:thin;
+    scrollbar-color:#3c526f transparent;
+}
+.sidebar-menu-scroll::-webkit-scrollbar{width:6px}
+.sidebar-menu-scroll::-webkit-scrollbar-track{background:transparent}
+.sidebar-menu-scroll::-webkit-scrollbar-thumb{background:#3c526f;border-radius:999px}
+.sidebar .menu-titulo{
+    margin:15px 10px 7px !important;
+    font-size:11px !important;
+    line-height:1.2 !important;
+    font-weight:700 !important;
+    color:#94a3b8 !important;
+    text-transform:uppercase !important;
+    letter-spacing:.2px !important;
+}
+.sidebar a{
+    width:100% !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:12px !important;
+    padding:11px 13px !important;
+    margin:0 0 3px !important;
+    border-radius:9px !important;
+    color:#dbeafe !important;
+    text-decoration:none !important;
+    font-size:14px !important;
+    line-height:1.25 !important;
+    transition:background .2s ease,color .2s ease !important;
+}
+.sidebar a:hover{background:rgba(37,99,235,.48) !important;color:#fff !important}
+.sidebar a.ativo{
+    background:#2563eb !important;
+    color:#fff !important;
+    box-shadow:0 6px 16px rgba(37,99,235,.25) !important;
+}
+.sidebar .menu-icon{
+    width:18px !important;
+    height:18px !important;
+    min-width:18px !important;
+    stroke:currentColor !important;
+    fill:none !important;
+    stroke-width:1.8 !important;
+    stroke-linecap:round !important;
+    stroke-linejoin:round !important;
+}
+.sidebar-footer{
+    flex:0 0 auto !important;
+    margin:0 !important;
+    padding:10px 6px 0 !important;
+    border-top:1px solid rgba(255,255,255,.08) !important;
+    background:#061426 !important;
+}
+.sidebar .btn-recolher{
+    width:100% !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:12px !important;
+    padding:12px 13px !important;
+    border:1px solid rgba(255,255,255,.10) !important;
+    border-radius:9px !important;
+    background:rgba(255,255,255,.07) !important;
+    color:#e5efff !important;
+    cursor:pointer !important;
+    font-size:14px !important;
+}
+.sidebar.recolhida{width:82px !important;padding-left:12px !important;padding-right:12px !important}
+.sidebar.recolhida .sidebar-logo{justify-content:center !important;padding-left:0 !important;padding-right:0 !important}
+.sidebar.recolhida .sidebar-logo img{width:48px !important;max-height:48px !important}
+.sidebar.recolhida .sidebar-menu-scroll{padding-left:3px !important;padding-right:3px !important}
+.sidebar.recolhida a{width:52px !important;height:46px !important;margin-left:auto !important;margin-right:auto !important;padding:0 !important;justify-content:center !important;gap:0 !important}
+.sidebar.recolhida a span,
+.sidebar.recolhida .menu-titulo,
+.sidebar.recolhida .btn-recolher span{display:none !important}
+.sidebar.recolhida .btn-recolher{width:52px !important;margin:auto !important;justify-content:center !important;padding:12px !important}
+.sidebar.recolhida .btn-recolher svg{transform:rotate(180deg)}
+.main{transition:margin-left .25s ease !important}
+.sidebar.recolhida + .main{margin-left:82px !important}
+@media(max-width:900px){
+    .sidebar{display:none !important}
+    .main{margin-left:0 !important}
+}
+</style>
+
 </head>
 <body>
-<aside class="sidebar" id="sidebar">
-<div class="sidebar-logo"><img id="logoSidebar" src="https://iili.io/CujQzXa.png" data-logo-aberta="https://iili.io/CujQzXa.png" data-logo-fechada="https://iili.io/CuwvauR.png" alt="SGOS"></div>
-<a href="painel.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg><span>Painel Inicial</span></a>
-<div class="menu-titulo">Operação</div>
-<a href="agendamentos.html"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg><span>Agendamentos</span></a>
-<a href="os-clientes.html" class="ativo"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>OS Clientes</span></a>
-<a href="relatorios.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg><span>Relatórios</span></a>
-<a href="viabilidade.html"><svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg><span>Viabilidades</span></a>
-<div class="sidebar-footer"><button class="btn-recolher" onclick="toggleSidebar()"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span>Recolher menu</span></button></div>
+<aside class="sidebar">
+
+    <div class="sidebar-logo">
+        <img
+            id="logoSidebar"
+            src="https://iili.io/CujQzXa.png"
+            data-logo-aberta="https://iili.io/CujQzXa.png"
+            data-logo-fechada="https://iili.io/CuwvauR.png"
+            alt="SGOS"
+        >
+    </div>
+
+    <div class="sidebar-menu-scroll">
+    <a href="painel.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg>
+        <span>Painel Inicial</span>
+    </a>
+
+    <div class="menu-titulo">Operação</div>
+
+    <a href="agendamentos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+        <span>Agendamentos</span>
+    </a>
+
+    <a href="relatorios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg>
+        <span>Relatórios</span>
+    </a>
+
+<a href="financeiro.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><path d="M7 12h10M9 9h6"/></svg><span>Financeiro</span></a>
+
+  <a href="estoque.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 7l8-4 8 4-8 4z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/></svg><span>Estoque</span></a>
+
+<a href="mapa-tecnicos.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/><circle cx="15" cy="10" r="2"/></svg><span>Mapa dos Técnicos</span></a>
+
+    <a href="os-clientes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>OS Clientes</span>
+    </a>
+
+<a href="escala.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 14h6"/></svg>
+        <span>Escala</span>
+    </a>
+
+    <a href="servicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg>
+        <span>Serviços</span>
+    </a>
+
+    <a href="viabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+        <span>Viabilidades</span>
+    </a>
+
+    <a href="inviabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+        <span>Inviabilidades</span>
+    </a>
+
+ <a href="informativos-ia.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg><span>Informativos IA</span></a>
+
+
+    <div class="menu-titulo">Cadastros</div>
+
+    <a href="planos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        <span>Planos</span>
+    </a>
+
+<a href="escritorios.html">
+    <svg class="menu-icon" viewBox="0 0 24 24">
+        <path d="M4 21V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v16"/>
+        <path d="M16 21v-9a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v9"/>
+        <path d="M8 8h2M12 8h1M8 12h2M12 12h1M8 16h2M12 16h1"/>
+    </svg>
+    <span>Escritórios</span>
+</a>
+
+    <a href="localidades.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span>Localidades</span>
+    </a>
+
+    <a href="tecnicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Técnicos</span>
+    </a>
+
+    <a href="tipos_servicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.5 2.5-3-3z"/></svg>
+        <span>Tipos de Serviços</span>
+    </a>
+
+<a href="svas.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 21h8M12 18v3M9 10l4 2-4 2z"/></svg>
+        <span>SVAs</span>
+    </a>
+
+    <div class="menu-titulo">Configurações</div>
+
+    <a href="usuarios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Usuários</span>
+    </a>
+
+<a href="integracoes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 12h8"/><path d="M6 8h.01M18 8h.01"/><rect x="3" y="4" width="18" height="8" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></svg>
+        <span>Integrações ERP</span>
+    </a>
+
+<a href="whatsapp-cliente.html"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg><span>WhatsApp da Empresa</span></a>
+
+    <div class="menu-titulo">Auditoria</div>
+
+    <a href="logs_acesso.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        <span>Logs do Sistema</span>
+    </a>
+
+    <a href="logs_acoes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <span>Log de Ações</span>
+    </a>
+
+    <a href="historico-os.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/><path d="M12 8v5l3 2"/></svg>
+        <span>Histórico de OS</span>
+    </a>
+
+        </div>
+
+<div class="sidebar-footer">
+        <button class="btn-recolher" onclick="toggleSidebar()" type="button">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M2 12h20"/></svg>
+            <span>Recolher menu</span>
+        </button>
+    </div>
+
+
 </aside>
 <main class="main">
 <header class="header"><div class="header-left"><div class="header-logo"><img id="logoEmpresa" src="https://iili.io/CujQzXa.png" alt="SGOS"></div><div class="divisor"></div><div><div class="header-title">OS Clientes</div><div class="header-subtitle">Histórico de atendimentos e recorrências por cliente</div></div></div><div class="usuario" id="usuarioTopo">Usuário</div></header>
@@ -57,5 +313,72 @@ function limparFiltros(){document.getElementById('busca').value='';document.getE
 function toggleSidebar(){const s=document.getElementById('sidebar');s.classList.toggle('recolhida');localStorage.setItem('sidebarRecolhida',s.classList.contains('recolhida')?'1':'0');const img=document.getElementById('logoSidebar');img.src=s.classList.contains('recolhida')?img.dataset.logoFechada:img.dataset.logoAberta}
 document.addEventListener('DOMContentLoaded',()=>{const u=usuario();document.getElementById('usuarioTopo').textContent=u.nome||u.usuario||'Usuário';if(localStorage.getItem('sidebarRecolhida')==='1')toggleSidebar();carregarDados()})
 </script>
+
+<script id="sgos-sidebar-completa-v2-js">
+(function(){
+    function normalizarPagina(valor){
+        try {
+            var url = new URL(valor, window.location.href);
+            return (url.pathname.split('/').pop() || 'painel.html').toLowerCase();
+        } catch(e){
+            return String(valor || '').split('?')[0].split('#')[0].split('/').pop().toLowerCase();
+        }
+    }
+
+    window.toggleSidebar = function(){
+        var sidebar = document.querySelector('.sidebar');
+        if(!sidebar) return;
+        sidebar.classList.toggle('recolhida');
+        localStorage.setItem('sgosSidebarRecolhida', sidebar.classList.contains('recolhida') ? '1' : '0');
+        var logo = document.getElementById('logoSidebar');
+        if(logo){
+            logo.src = sidebar.classList.contains('recolhida')
+                ? (logo.dataset.logoFechada || logo.src)
+                : (logo.dataset.logoAberta || logo.src);
+        }
+    };
+
+    function iniciarMenuSGOS(){
+        var sidebar = document.querySelector('.sidebar');
+        if(!sidebar) return;
+
+        var recolhida = localStorage.getItem('sgosSidebarRecolhida') === '1';
+        sidebar.classList.toggle('recolhida', recolhida);
+
+        var logo = document.getElementById('logoSidebar');
+        if(logo){
+            logo.src = recolhida
+                ? (logo.dataset.logoFechada || logo.src)
+                : (logo.dataset.logoAberta || logo.src);
+        }
+
+        var atual = normalizarPagina(window.location.href);
+        var ativo = null;
+        sidebar.querySelectorAll('a[href]').forEach(function(link){
+            link.classList.remove('ativo');
+            if(normalizarPagina(link.getAttribute('href')) === atual){
+                link.classList.add('ativo');
+                ativo = link;
+            }
+        });
+
+        if(ativo){
+            window.setTimeout(function(){
+                var area = sidebar.querySelector('.sidebar-menu-scroll');
+                if(!area) return;
+                var alvo = ativo.offsetTop - (area.clientHeight / 2) + (ativo.offsetHeight / 2);
+                area.scrollTop = Math.max(0, alvo);
+            }, 60);
+        }
+    }
+
+    if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', iniciarMenuSGOS);
+    } else {
+        iniciarMenuSGOS();
+    }
+})();
+</script>
+
 </body>
 </html>

@@ -595,6 +595,130 @@ tr:hover{ background:#f8fbff; }
 @media(max-width:700px){.resumo-grid{grid-template-columns:1fr}.resumo-item.span-2{grid-column:span 1}.resumo-card{max-height:96vh}.endereco-quebrado{width:170px;min-width:170px;max-width:170px}}
 
 </style>
+
+<style id="sgos-sidebar-completa-v2">
+/* Menu SGOS unificado: logo fixa, links com rolagem e rodapé sempre visível */
+.sidebar{
+    position:fixed !important;
+    left:0 !important;
+    top:0 !important;
+    width:230px !important;
+    height:100vh !important;
+    padding:12px 12px 14px !important;
+    display:flex !important;
+    flex-direction:column !important;
+    overflow:hidden !important;
+    background:linear-gradient(180deg,#081a31,#061426) !important;
+    color:#fff !important;
+    z-index:1000 !important;
+    transition:width .25s ease !important;
+}
+.sidebar-logo{
+    flex:0 0 auto !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    min-height:62px !important;
+    padding:0 6px 8px !important;
+    margin:0 0 4px !important;
+}
+.sidebar-logo img{
+    width:190px !important;
+    max-width:100% !important;
+    height:auto !important;
+    max-height:58px !important;
+    object-fit:contain !important;
+    display:block !important;
+}
+.sidebar-menu-scroll{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    padding:0 6px 12px !important;
+    scrollbar-width:thin;
+    scrollbar-color:#3c526f transparent;
+}
+.sidebar-menu-scroll::-webkit-scrollbar{width:6px}
+.sidebar-menu-scroll::-webkit-scrollbar-track{background:transparent}
+.sidebar-menu-scroll::-webkit-scrollbar-thumb{background:#3c526f;border-radius:999px}
+.sidebar .menu-titulo{
+    margin:15px 10px 7px !important;
+    font-size:11px !important;
+    line-height:1.2 !important;
+    font-weight:700 !important;
+    color:#94a3b8 !important;
+    text-transform:uppercase !important;
+    letter-spacing:.2px !important;
+}
+.sidebar a{
+    width:100% !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:12px !important;
+    padding:11px 13px !important;
+    margin:0 0 3px !important;
+    border-radius:9px !important;
+    color:#dbeafe !important;
+    text-decoration:none !important;
+    font-size:14px !important;
+    line-height:1.25 !important;
+    transition:background .2s ease,color .2s ease !important;
+}
+.sidebar a:hover{background:rgba(37,99,235,.48) !important;color:#fff !important}
+.sidebar a.ativo{
+    background:#2563eb !important;
+    color:#fff !important;
+    box-shadow:0 6px 16px rgba(37,99,235,.25) !important;
+}
+.sidebar .menu-icon{
+    width:18px !important;
+    height:18px !important;
+    min-width:18px !important;
+    stroke:currentColor !important;
+    fill:none !important;
+    stroke-width:1.8 !important;
+    stroke-linecap:round !important;
+    stroke-linejoin:round !important;
+}
+.sidebar-footer{
+    flex:0 0 auto !important;
+    margin:0 !important;
+    padding:10px 6px 0 !important;
+    border-top:1px solid rgba(255,255,255,.08) !important;
+    background:#061426 !important;
+}
+.sidebar .btn-recolher{
+    width:100% !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:12px !important;
+    padding:12px 13px !important;
+    border:1px solid rgba(255,255,255,.10) !important;
+    border-radius:9px !important;
+    background:rgba(255,255,255,.07) !important;
+    color:#e5efff !important;
+    cursor:pointer !important;
+    font-size:14px !important;
+}
+.sidebar.recolhida{width:82px !important;padding-left:12px !important;padding-right:12px !important}
+.sidebar.recolhida .sidebar-logo{justify-content:center !important;padding-left:0 !important;padding-right:0 !important}
+.sidebar.recolhida .sidebar-logo img{width:48px !important;max-height:48px !important}
+.sidebar.recolhida .sidebar-menu-scroll{padding-left:3px !important;padding-right:3px !important}
+.sidebar.recolhida a{width:52px !important;height:46px !important;margin-left:auto !important;margin-right:auto !important;padding:0 !important;justify-content:center !important;gap:0 !important}
+.sidebar.recolhida a span,
+.sidebar.recolhida .menu-titulo,
+.sidebar.recolhida .btn-recolher span{display:none !important}
+.sidebar.recolhida .btn-recolher{width:52px !important;margin:auto !important;justify-content:center !important;padding:12px !important}
+.sidebar.recolhida .btn-recolher svg{transform:rotate(180deg)}
+.main{transition:margin-left .25s ease !important}
+.sidebar.recolhida + .main{margin-left:82px !important}
+@media(max-width:900px){
+    .sidebar{display:none !important}
+    .main{margin-left:0 !important}
+}
+</style>
+
 </head>
 
 <body>
@@ -611,93 +735,134 @@ tr:hover{ background:#f8fbff; }
         >
     </div>
 
+    <div class="sidebar-menu-scroll">
     <a href="painel.html">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg>
-    <span>Painel Inicial</span>
-</a>
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg>
+        <span>Painel Inicial</span>
+    </a>
 
-<div class="menu-titulo">Operação</div>
+    <div class="menu-titulo">Operação</div>
 
-<a href="agendamentos.html">
-    <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
-    <span>Agendamentos</span>
-</a>
+    <a href="agendamentos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+        <span>Agendamentos</span>
+    </a>
 
-<a href="relatorios.html" class=>
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg>
-    <span>Relatórios</span>
-</a>
+    <a href="relatorios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg>
+        <span>Relatórios</span>
+    </a>
 
-<a href="escala.html" class=>
+<a href="financeiro.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><path d="M7 12h10M9 9h6"/></svg><span>Financeiro</span></a>
+
+  <a href="estoque.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 7l8-4 8 4-8 4z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/></svg><span>Estoque</span></a>
+
+<a href="mapa-tecnicos.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/><circle cx="15" cy="10" r="2"/></svg><span>Mapa dos Técnicos</span></a>
+
+    <a href="os-clientes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>OS Clientes</span>
+    </a>
+
+<a href="escala.html">
         <svg class="menu-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 14h6"/></svg>
         <span>Escala</span>
     </a>
 
-<a href="cronograma.html">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg>
-    <span>Cronograma</span>
+    <a href="servicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg>
+        <span>Serviços</span>
+    </a>
+
+    <a href="viabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+        <span>Viabilidades</span>
+    </a>
+
+    <a href="inviabilidade.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+        <span>Inviabilidades</span>
+    </a>
+
+ <a href="informativos-ia.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg><span>Informativos IA</span></a>
+
+
+    <div class="menu-titulo">Cadastros</div>
+
+    <a href="planos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        <span>Planos</span>
+    </a>
+
+<a href="escritorios.html">
+    <svg class="menu-icon" viewBox="0 0 24 24">
+        <path d="M4 21V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v16"/>
+        <path d="M16 21v-9a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v9"/>
+        <path d="M8 8h2M12 8h1M8 12h2M12 12h1M8 16h2M12 16h1"/>
+    </svg>
+    <span>Escritórios</span>
 </a>
 
-<a href="viabilidade.html">
-    <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
-    <span>Viabilidades</span>
-</a>
+    <a href="localidades.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span>Localidades</span>
+    </a>
 
-<a href="inviabilidade.html">
-    <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
-    <span>Inviabilidades</span>
-</a>
+    <a href="tecnicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Técnicos</span>
+    </a>
 
-<div class="menu-titulo">Cadastros</div>
+    <a href="tipos_servicos.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.5 2.5-3-3z"/></svg>
+        <span>Tipos de Serviços</span>
+    </a>
 
-<a href="planos.html">
-    <svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
-    <span>Planos</span>
-</a>
+<a href="svas.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 21h8M12 18v3M9 10l4 2-4 2z"/></svg>
+        <span>SVAs</span>
+    </a>
 
-<a href="localidades.html">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-    <span>Localidades</span>
-</a>
+    <div class="menu-titulo">Configurações</div>
 
-<a href="tecnicos.html">
-    <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
-    <span>Técnicos</span>
-</a>
+    <a href="usuarios.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
+        <span>Usuários</span>
+    </a>
 
-<a href="tipos_servicos.html">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.5 2.5-3-3z"/></svg>
-    <span>Tipos de Serviços</span>
-</a>
+<a href="integracoes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 12h8"/><path d="M6 8h.01M18 8h.01"/><rect x="3" y="4" width="18" height="8" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></svg>
+        <span>Integrações ERP</span>
+    </a>
 
-<div class="menu-titulo">Configurações</div>
+<a href="whatsapp-cliente.html"><svg class="menu-icon" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg><span>WhatsApp da Empresa</span></a>
 
-<a href="usuarios.html">
-    <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
-    <span>Usuários</span>
-</a>
+    <div class="menu-titulo">Auditoria</div>
 
-<a href="logs_acesso.html">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
-    <span>Logs do Sistema</span>
-</a>
+    <a href="logs_acesso.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        <span>Logs do Sistema</span>
+    </a>
 
-<a href="logs_acoes.html">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-    <span>Log de Ações</span>
-</a>
+    <a href="logs_acoes.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <span>Log de Ações</span>
+    </a>
 
-<a href="historico-os.html">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/><path d="M12 8v5l3 2"/></svg>
-    <span>Histórico de OS</span>
-</a>
+    <a href="historico-os.html">
+        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/><path d="M12 8v5l3 2"/></svg>
+        <span>Histórico de OS</span>
+    </a>
+
+        </div>
 
 <div class="sidebar-footer">
-    <button class="btn-recolher" onclick="toggleSidebar()" type="button">
-        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M2 12h20"/></svg>
-        <span>Recolher menu</span>
-    </button>
-</div>
+        <button class="btn-recolher" onclick="toggleSidebar()" type="button">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M8 6l-6 6 6 6"/><path d="M2 12h20"/></svg>
+            <span>Recolher menu</span>
+        </button>
+    </div>
+
 
 </aside>
 
@@ -1300,7 +1465,74 @@ function htmlImpressaoInviabilidades(registros){
       .grade{display:grid;grid-template-columns:1fr;grid-template-rows:repeat(4,minmax(0,1fr));gap:2mm;flex:1;min-height:0}.item{border:1px solid #64748b;border-radius:2.2mm;padding:1.8mm 2mm;overflow:hidden;page-break-inside:avoid;background:#fff;min-width:0;min-height:0}
       .item-topo{border-bottom:1px solid #cbd5e1;padding-bottom:.8mm;margin-bottom:.8mm}.item h2{font-size:11pt;margin:0;line-height:1.08}.dados-principais{display:grid;grid-template-columns:1fr 1fr;gap:5mm}.dados-coluna{min-width:0}.dados-coluna-direita{border-left:1px solid #dbe3ee;padding-left:4mm}.linha,.obs,.evidencia-info{font-size:7.65pt;line-height:1.18;margin-top:.45mm;white-space:pre-line;overflow-wrap:anywhere}.detalhes-inferiores{margin-top:.7mm}.obs{border-top:1px solid #cbd5e1;padding-top:.6mm;max-height:13mm;overflow:hidden}.evidencia-info{margin-top:.7mm;background:#eff6ff;border:1px solid #bfdbfe;border-radius:1.6mm;padding:.7mm;color:#1e40af}
       .rodape{height:6mm;margin-top:1.5mm;border-top:1px solid #cbd5e1;display:flex;align-items:flex-end;justify-content:center;font-size:7.5pt;color:#475569;text-align:center}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-    </style></head><body>${paginas.map((pagina,indice)=>`<section class="pagina"><header class="cabecalho"><div class="marca"><img src="${esc(logo)}" alt="Logo"><div><h1>Relatório de Inviabilidades</h1><p>SGOS - Sistema de Gestão Operacional e Serviços</p></div></div><div class="contador">Página ${indice+1} de ${paginas.length}</div></header>${indice===0?resumoHtml:""}<main class="grade">${pagina.map(renderItem).join("")}</main><footer class="rodape">Emitido por SGOS - Sistema de Gestão Operacional e Serviços - ${esc(emitidoEm)}</footer></section>`).join("")}<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script></body></html>`;
+    </style></head><body>${paginas.map((pagina,indice)=>`<section class="pagina"><header class="cabecalho"><div class="marca"><img src="${esc(logo)}" alt="Logo"><div><h1>Relatório de Inviabilidades</h1><p>SGOS - Sistema de Gestão Operacional e Serviços</p></div></div><div class="contador">Página ${indice+1} de ${paginas.length}</div></header>${indice===0?resumoHtml:""}<main class="grade">${pagina.map(renderItem).join("")}</main><footer class="rodape">Emitido por SGOS - Sistema de Gestão Operacional e Serviços - ${esc(emitidoEm)}</footer></section>`).join("")}<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script>
+<script id="sgos-sidebar-completa-v2-js">
+(function(){
+    function normalizarPagina(valor){
+        try {
+            var url = new URL(valor, window.location.href);
+            return (url.pathname.split('/').pop() || 'painel.html').toLowerCase();
+        } catch(e){
+            return String(valor || '').split('?')[0].split('#')[0].split('/').pop().toLowerCase();
+        }
+    }
+
+    window.toggleSidebar = function(){
+        var sidebar = document.querySelector('.sidebar');
+        if(!sidebar) return;
+        sidebar.classList.toggle('recolhida');
+        localStorage.setItem('sgosSidebarRecolhida', sidebar.classList.contains('recolhida') ? '1' : '0');
+        var logo = document.getElementById('logoSidebar');
+        if(logo){
+            logo.src = sidebar.classList.contains('recolhida')
+                ? (logo.dataset.logoFechada || logo.src)
+                : (logo.dataset.logoAberta || logo.src);
+        }
+    };
+
+    function iniciarMenuSGOS(){
+        var sidebar = document.querySelector('.sidebar');
+        if(!sidebar) return;
+
+        var recolhida = localStorage.getItem('sgosSidebarRecolhida') === '1';
+        sidebar.classList.toggle('recolhida', recolhida);
+
+        var logo = document.getElementById('logoSidebar');
+        if(logo){
+            logo.src = recolhida
+                ? (logo.dataset.logoFechada || logo.src)
+                : (logo.dataset.logoAberta || logo.src);
+        }
+
+        var atual = normalizarPagina(window.location.href);
+        var ativo = null;
+        sidebar.querySelectorAll('a[href]').forEach(function(link){
+            link.classList.remove('ativo');
+            if(normalizarPagina(link.getAttribute('href')) === atual){
+                link.classList.add('ativo');
+                ativo = link;
+            }
+        });
+
+        if(ativo){
+            window.setTimeout(function(){
+                var area = sidebar.querySelector('.sidebar-menu-scroll');
+                if(!area) return;
+                var alvo = ativo.offsetTop - (area.clientHeight / 2) + (ativo.offsetHeight / 2);
+                area.scrollTop = Math.max(0, alvo);
+            }, 60);
+        }
+    }
+
+    if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', iniciarMenuSGOS);
+    } else {
+        iniciarMenuSGOS();
+    }
+})();
+</script>
+
+</body></html>`;
 }
 function abrirImpressaoInviabilidades(registros){const w=window.open("","_blank");if(!w){alert("Permita pop-ups para imprimir.");return}w.document.open();w.document.write(htmlImpressaoInviabilidades(registros));w.document.close()}
 function imprimirInviabilidade(id){const os=dados.find(o=>Number(o.id)===Number(id));if(os)abrirImpressaoInviabilidades([os])}
