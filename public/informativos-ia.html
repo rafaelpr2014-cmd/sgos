@@ -372,12 +372,13 @@ input,select,textarea{width:100%;padding:11px 12px;border-radius:10px;border:1px
                 <div class="opcoes"><div class="opcao" id="opcao1" onclick="selecionarOpcao(0)"><div class="opcao-topo"><strong>Opção 1</strong><span class="opcao-tag">Objetiva</span></div><p id="textoOpcao1"></p></div><div class="opcao" id="opcao2" onclick="selecionarOpcao(1)"><div class="opcao-topo"><strong>Opção 2</strong><span class="opcao-tag">Acolhedora</span></div><p id="textoOpcao2"></p></div><div class="opcao" id="opcao3" onclick="selecionarOpcao(2)"><div class="opcao-topo"><strong>Opção 3</strong><span class="opcao-tag">Detalhada</span></div><p id="textoOpcao3"></p></div></div>
                 <div class="editor-wrap"><div class="campo"><label for="textoEditavel">Texto selecionado e editável</label><textarea id="textoEditavel" oninput="atualizarArte()"></textarea></div><div class="editor-acoes"><button class="btn btn-light" onclick="copiarTexto()">Copiar texto</button><button class="btn btn-green" onclick="atualizarArte()">Atualizar imagem</button></div><div class="status-msg" id="statusTexto"></div></div>
                 <div class="arte-section">
-                    <div class="arte-titulo"><div><h3>Imagem do informativo</h3><small>A arte usa automaticamente a logo PNG transparente da empresa logada.</small></div></div>
+                    <div class="arte-titulo"><div><h3>Imagem do informativo</h3><small>Escolha entre a logo principal e a logo alternativa cadastrada para os informativos.</small></div></div>
                     <div class="arte-config">
                         <div class="campo"><label for="formatoImagem">Formato da imagem</label><select id="formatoImagem" onchange="alterarFormatoImagem()"><option value="feed">Feed — 1080 × 1080</option><option value="story">Story — 1080 × 1920</option></select><small>A resolução final do PNG seguirá o formato selecionado.</small></div>
                         <div><p class="fundos-titulo">Escolha um dos 20 modelos de fundo</p><div class="fundos-grid" id="fundosGrid"><button type="button" class="fundo-opcao fundo-1 ativo" onclick="selecionarFundo(1,this)"><span>Modelo 1</span></button><button type="button" class="fundo-opcao fundo-2" onclick="selecionarFundo(2,this)"><span>Modelo 2</span></button><button type="button" class="fundo-opcao fundo-3" onclick="selecionarFundo(3,this)"><span>Modelo 3</span></button><button type="button" class="fundo-opcao fundo-4" onclick="selecionarFundo(4,this)"><span>Modelo 4</span></button><button type="button" class="fundo-opcao fundo-5" onclick="selecionarFundo(5,this)"><span>Modelo 5</span></button><button type="button" class="fundo-opcao fundo-6" onclick="selecionarFundo(6,this)"><span>Modelo 6</span></button><button type="button" class="fundo-opcao fundo-7" onclick="selecionarFundo(7,this)"><span>Modelo 7</span></button><button type="button" class="fundo-opcao fundo-8" onclick="selecionarFundo(8,this)"><span>Modelo 8</span></button><button type="button" class="fundo-opcao fundo-9" onclick="selecionarFundo(9,this)"><span>Modelo 9</span></button><button type="button" class="fundo-opcao fundo-10" onclick="selecionarFundo(10,this)"><span>Modelo 10</span></button><button type="button" class="fundo-opcao fundo-11" onclick="selecionarFundo(11,this)"><span>Modelo 11</span></button><button type="button" class="fundo-opcao fundo-12" onclick="selecionarFundo(12,this)"><span>Modelo 12</span></button><button type="button" class="fundo-opcao fundo-13" onclick="selecionarFundo(13,this)"><span>Modelo 13</span></button><button type="button" class="fundo-opcao fundo-14" onclick="selecionarFundo(14,this)"><span>Modelo 14</span></button><button type="button" class="fundo-opcao fundo-15" onclick="selecionarFundo(15,this)"><span>Modelo 15</span></button><button type="button" class="fundo-opcao fundo-16" onclick="selecionarFundo(16,this)"><span>Modelo 16</span></button><button type="button" class="fundo-opcao fundo-17" onclick="selecionarFundo(17,this)"><span>Modelo 17</span></button><button type="button" class="fundo-opcao fundo-18" onclick="selecionarFundo(18,this)"><span>Modelo 18</span></button><button type="button" class="fundo-opcao fundo-19" onclick="selecionarFundo(19,this)"><span>Modelo 19</span></button><button type="button" class="fundo-opcao fundo-20" onclick="selecionarFundo(20,this)"><span>Modelo 20</span></button></div></div>
                     </div>
                     <div class="logo-config">
+                        <div class="campo"><label for="tipoLogoArte">Logo utilizada na arte</label><select id="tipoLogoArte" onchange="selecionarLogoArte()"><option value="alternativa">Logo alternativa — Informativos</option><option value="principal">Logo principal da empresa</option><option value="sem_logo">Não exibir logo</option></select><small id="statusLogoArte">Carregando logos cadastradas...</small></div>
                         <div class="campo"><label for="posicaoLogo">Posição inicial da logo</label><select id="posicaoLogo" onchange="aplicarPosicaoPredefinidaLogo()"><option value="top-left">Superior esquerda</option><option value="top-center">Superior centro</option><option value="top-right">Superior direita</option><option value="bottom-left">Inferior esquerda</option><option value="bottom-center">Inferior centro</option><option value="bottom-right">Inferior direita</option></select></div>
                         <div class="campo"><label for="tamanhoLogo">Largura da logo</label><div class="range-linha"><input id="tamanhoLogo" type="range" min="100" max="650" value="380" step="5" oninput="atualizarLogoArte('largura')"><span class="range-valor" id="valorTamanhoLogo">380 px</span></div></div>
                         <div class="campo"><label for="alturaLogo">Altura da logo</label><div class="range-linha"><input id="alturaLogo" type="range" min="50" max="300" value="125" step="5" oninput="atualizarLogoArte('altura')"><span class="range-valor" id="valorAlturaLogo">125 px</span></div><label class="check-linha"><input id="manterProporcaoLogo" type="checkbox" checked> Manter proporção ao alterar a largura</label></div>
@@ -477,9 +478,114 @@ function toggleSidebar(){const s=document.querySelector(".sidebar"),l=document.g
 function toggleUserDropdown(){document.getElementById("usuarioMenuDropdown").classList.toggle("ativo");document.getElementById("usuarioDropdown").classList.toggle("aberto")}
 document.addEventListener("click",e=>{const b=document.getElementById("usuarioDropdown"),m=document.getElementById("usuarioMenuDropdown");if(b&&!b.contains(e.target)){m.classList.remove("ativo");b.classList.remove("aberto")}})
 function logout(){const logId=localStorage.getItem("log_id");if(logId)fetch("/api/logout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({log_id:logId})}).catch(()=>{});sessionStorage.clear();localStorage.clear();location.href="login.html"}
-function normalizarLogo(logo){if(!logo)return "/img/logo-default.png";if(/^https?:\/\//i.test(logo))return logo;if(logo.startsWith("/"))return logo;return "/"+logo}
-async function carregarUsuarioTopo(){try{const u=usuarioLocal();if(!u.id){location.href="login.html";return}const r=await fetch("/api/me",{headers:{"x-usuario-id":u.id}});const d=await r.json();document.getElementById("userEmpresa").innerText=d.usuario||u.usuario||"Usuário";document.getElementById("empresaLogada").innerText=d.empresa_nome||u.empresa_nome||"Empresa";const logo=normalizarLogo(d.empresa_logo);document.getElementById("logoEmpresa").src=logo;document.getElementById("arteLogo").src=logo;document.getElementById("arteLogo").onload=agendarAjustePreview;empresaAtual={nome:d.empresa_nome||u.empresa_nome||"Empresa",logo};atualizarArte()}catch(e){console.error(e)}}
-async function carregarEmpresa(){try{const u=usuarioLocal();const r=await fetch("/api/empresa",{headers:{"x-usuario-id":u.id}});if(!r.ok)return;const d=await r.json();empresaAtual={...empresaAtual,...d};const logo=normalizarLogo(d.logo||empresaAtual.logo);document.getElementById("arteLogo").src=logo;document.getElementById("arteLogo").onload=agendarAjustePreview;atualizarArte()}catch(e){console.warn("Empresa indisponível",e)}}
+function normalizarLogo(logo){
+    const valor=String(logo||"").trim();
+    if(!valor)return "/img/logo-default.png";
+    if(/^https?:\/\//i.test(valor))return valor;
+    if(valor.startsWith("/"))return valor;
+    if(valor.startsWith("uploads/"))return `/${valor}`;
+    if(valor.includes("/"))return `/${valor.replace(/^\/+/,"")}`;
+    return `/uploads/logos/${encodeURIComponent(valor)}`;
+}
+function logoPrincipalEmpresa(){
+    return normalizarLogo(empresaAtual.logo_principal||empresaAtual.logo||empresaAtual.empresa_logo);
+}
+function logoAlternativaEmpresa(){
+    const logo=empresaAtual.logo_alternativa;
+    return logo?normalizarLogo(logo):"";
+}
+function selecionarLogoArte(preferirAlternativa=false){
+    const seletor=document.getElementById("tipoLogoArte");
+    const imagem=document.getElementById("arteLogo");
+    const box=document.getElementById("arteLogoBox");
+    const status=document.getElementById("statusLogoArte");
+    if(!seletor||!imagem||!box)return;
+
+    const principal=logoPrincipalEmpresa();
+    const alternativa=logoAlternativaEmpresa();
+    const opcaoAlternativa=seletor.querySelector('option[value="alternativa"]');
+
+    if(opcaoAlternativa){
+        opcaoAlternativa.disabled=!alternativa;
+        opcaoAlternativa.textContent=alternativa
+            ?"Logo alternativa — Informativos"
+            :"Logo alternativa — Não cadastrada";
+    }
+
+    if(preferirAlternativa){
+        seletor.value=alternativa?"alternativa":"principal";
+    }else if(seletor.value==="alternativa"&&!alternativa){
+        seletor.value="principal";
+    }
+
+    if(seletor.value==="sem_logo"){
+        box.classList.add("hidden");
+        if(status)status.textContent="A logo não será exibida na imagem.";
+        agendarAjustePreview();
+        return;
+    }
+
+    box.classList.remove("hidden");
+    const usandoAlternativa=seletor.value==="alternativa"&&alternativa;
+    imagem.src=usandoAlternativa?alternativa:principal;
+    imagem.onload=()=>{
+        const larguraNatural=imagem.naturalWidth||380;
+        const alturaNatural=imagem.naturalHeight||125;
+        if(larguraNatural>0&&alturaNatural>0)proporcaoLogo=larguraNatural/alturaNatural;
+        agendarAjustePreview();
+    };
+    imagem.onerror=()=>{
+        imagem.src="/img/logo-default.png";
+        agendarAjustePreview();
+    };
+
+    if(status){
+        status.textContent=usandoAlternativa
+            ?"Usando a logo alternativa cadastrada para informativos."
+            :"Usando a logo principal da empresa.";
+    }
+    atualizarArte();
+}
+async function carregarUsuarioTopo(){
+    try{
+        const u=usuarioLocal();
+        if(!u.id){location.href="login.html";return}
+        const r=await fetch("/api/me",{headers:{"x-usuario-id":u.id}});
+        const d=await r.json();
+        document.getElementById("userEmpresa").innerText=d.usuario||u.usuario||"Usuário";
+        document.getElementById("empresaLogada").innerText=d.empresa_nome||u.empresa_nome||"Empresa";
+        const logo=normalizarLogo(d.empresa_logo);
+        document.getElementById("logoEmpresa").src=logo;
+        empresaAtual={
+            ...empresaAtual,
+            nome:d.empresa_nome||u.empresa_nome||"Empresa",
+            logo_principal:d.empresa_logo||empresaAtual.logo_principal||empresaAtual.logo||""
+        };
+        atualizarArte();
+    }catch(e){console.error(e)}
+}
+async function carregarEmpresa(){
+    try{
+        const u=usuarioLocal();
+        const r=await fetch("/api/empresa",{headers:{"x-usuario-id":u.id}});
+        if(!r.ok)return;
+        const d=await r.json();
+        empresaAtual={
+            ...empresaAtual,
+            ...d,
+            nome:d.nome_provedor||d.nome_fantasia||d.razao_social||d.nome_completo||empresaAtual.nome||"Empresa",
+            logo_principal:d.logo||empresaAtual.logo_principal||empresaAtual.logo||"",
+            logo_alternativa:d.logo_alternativa||""
+        };
+
+        // O cabeçalho do sistema continua usando a logo principal.
+        document.getElementById("logoEmpresa").src=logoPrincipalEmpresa();
+
+        // Na arte, a logo alternativa é priorizada quando estiver cadastrada.
+        selecionarLogoArte(true);
+        atualizarArte();
+    }catch(e){console.warn("Empresa indisponível",e)}
+}
 async function carregarLocalidades(){try{const u=usuarioLocal();const r=await fetch("/api/localidades",{headers:{"x-usuario-id":u.id}});const lista=await r.json();document.getElementById("listaLocalidades").innerHTML=(Array.isArray(lista)?lista:[]).map(x=>`<option value="${String(x.nome||x.localidade||"").replace(/"/g,"&quot;")}"></option>`).join("")}catch(e){console.warn(e)}}
 async function carregarUsuariosOnlineTopo(){try{const r=await fetch("/api/logs");const logs=await r.json();const nomes=[...new Set((Array.isArray(logs)?logs:[]).filter(x=>!x.logout).map(x=>x.usuario).filter(Boolean))];document.getElementById("usuariosOnline").innerHTML=nomes.length?nomes.map(x=>`🟢 ${x}`).join("<br>"):"Nenhum usuário online"}catch(e){document.getElementById("usuariosOnline").innerText="Online indisponível"}}
 document.getElementById("tipo").addEventListener("change",e=>document.getElementById("campoOutro").classList.toggle("hidden",e.target.value!=="outro"));
