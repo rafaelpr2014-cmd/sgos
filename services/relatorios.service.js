@@ -905,8 +905,9 @@ function montarPdfExato({
 
         function novaPaginaOrdens() {
             doc.addPage();
-            y = 20;
             desenharLogo(doc, logoDataUri);
+            // Reserva espaço suficiente para a logo antes da tarja azul.
+            y = 38;
             cabecalhoOrdens(true);
         }
 
@@ -991,8 +992,9 @@ function montarPdfExato({
 
         if (y > 218) {
             doc.addPage();
-            y = 20;
             desenharLogo(doc, logoDataUri);
+            // Mantém a tarja de dados abaixo da logo da empresa.
+            y = 38;
         }
         cabecalhoOrdens(false);
 

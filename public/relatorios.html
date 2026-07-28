@@ -2491,7 +2491,8 @@ function desenharOrdensDoDiaPDF(doc, yAtual, tituloAzul, mapaPlanosLocal){
 
     function novaPagina(){
         doc.addPage();
-        y = 20;
+        // Reserva o topo da página para a logo da empresa.
+        y = 38;
         cabecalhoSecao(true);
     }
 
@@ -2574,7 +2575,8 @@ function desenharOrdensDoDiaPDF(doc, yAtual, tituloAzul, mapaPlanosLocal){
 
     if(y > 218){
         doc.addPage();
-        y = 20;
+        // Mantém a tarja abaixo da área reservada para a logo.
+        y = 38;
     }
     cabecalhoSecao(false);
 
