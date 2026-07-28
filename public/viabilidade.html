@@ -561,7 +561,6 @@ body.pagina-lista .card-filtros .filtro-periodo-rapido select{
     .main{margin-left:0 !important}
 }
 </style>
-
 </head>
 <body class="pagina-lista">
 
@@ -1471,7 +1470,30 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
         ${indice===0?resumoHtml:""}
         <main class="grade">${pagina.map(renderItem).join("")}</main>
         <footer class="rodape">Emitido por SGOS - Sistemas de Ordens de Serviço - ${escapar(emitidoEm)}</footer>
-    </section>`).join("")}<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script>
+    </section>`).join("")}<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script></body></html>`
+}
+function abrirImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){const w=window.open("","_blank");if(!w){alert("Permita pop-ups para imprimir.");return}w.document.open();w.document.write(htmlImpressao(registros,contextoFiltros));w.document.close()}
+function imprimirViabilidade(id){const o=viabilidades.find(v=>Number(v.id)===Number(id));if(o)abrirImpressao([o])}
+function imprimirSelecionadas(){const registros=viabilidadesFiltradas.filter(v=>idsSelecionados.has(Number(v.id)));if(!registros.length){alert("Selecione pelo menos uma viabilidade visível nos filtros para imprimir.");return}abrirImpressao(registros)}
+async function excluirViabilidade(id){if(!id||!confirm("Deseja excluir esta viabilidade?"))return;try{const r=await fetch(`${API_VIABILIDADE}/${id}`,{method:"DELETE",headers:getAuthHeaders()});if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.erro||`Erro ${r.status}`)}alert("Viabilidade excluída com sucesso.");carregarViabilidades()}catch(e){console.error(e);alert("Não foi possível excluir: "+e.message)}}
+function abrirMidia(url,video){const c=document.getElementById("popupConteudo");c.innerHTML=video?`<video src="${escapar(url)}" controls autoplay></video>`:`<img src="${escapar(url)}" alt="Anexo">`;document.getElementById("popupMidia").classList.add("ativo")}
+function fecharMidia(){document.getElementById("popupMidia").classList.remove("ativo");document.getElementById("popupConteudo").innerHTML=""}
+function fecharMidiaAoFundo(e){if(e.target.id==="popupMidia")fecharMidia()}
+
+document.addEventListener("DOMContentLoaded",()=>{
+    const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");if(s&&l&&localStorage.getItem("sidebar_recolhida")==="1"){s.classList.add("recolhida");l.src=l.dataset.logoFechada}
+    atualizarHorario();setInterval(atualizarHorario,60000);renderClientesERPVinculados();detectarERPAtivo();carregarUsuario();carregarTecnicos();carregarLocalidades();carregarUsuariosOnline();carregarViabilidades();
+    document.getElementById("telefone").addEventListener("input",aplicarMascaraTelefone);document.getElementById("tecnicoResponsavel").addEventListener("change",limitarSelecaoTecnicos);
+    document.getElementById("status").addEventListener("change",atualizarCampoInstalacao);
+    atualizarCampoInstalacao();document.getElementById("telefone2").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);document.getElementById("arquivosVisita").addEventListener("change",processarArquivosVisita);document.getElementById("arquivosPosInstalacao").addEventListener("change",processarArquivosPosInstalacao);
+    document.querySelectorAll("#filtroNome,#filtroEndereco,#filtroReferencia,#filtroLocalidade,#filtroStatusViabilidade,#filtroStatusInstalacao,#filtroClientesERP,#registroDataInicio,#registroDataFim,#atualizacaoDataInicio,#atualizacaoDataFim,#filtroPeriodoRapido").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
+    document.getElementById("buscaViabilidade").addEventListener("input",e=>{document.getElementById("filtroNome").value=e.target.value;renderTabela()});
+    document.getElementById("selecionarTodas").addEventListener("change",e=>selecionarTodasViabilidades(e.target.checked));
+    document.addEventListener("keydown",e=>{if(e.key==="Escape"){fecharMidia();fecharResumo()}});
+});
+setInterval(()=>{const id=localStorage.getItem("log_id");if(id)fetch("/api/ping",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({log_id:id})}).catch(()=>{});carregarUsuariosOnline()},300000);
+</script>
+
 <script id="sgos-sidebar-completa-v2-js">
 (function(){
     function normalizarPagina(valor){
@@ -1536,30 +1558,6 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
         iniciarMenuSGOS();
     }
 })();
-</script>
-
-</body></html>`
-}
-function abrirImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){const w=window.open("","_blank");if(!w){alert("Permita pop-ups para imprimir.");return}w.document.open();w.document.write(htmlImpressao(registros,contextoFiltros));w.document.close()}
-function imprimirViabilidade(id){const o=viabilidades.find(v=>Number(v.id)===Number(id));if(o)abrirImpressao([o])}
-function imprimirSelecionadas(){const registros=viabilidadesFiltradas.filter(v=>idsSelecionados.has(Number(v.id)));if(!registros.length){alert("Selecione pelo menos uma viabilidade visível nos filtros para imprimir.");return}abrirImpressao(registros)}
-async function excluirViabilidade(id){if(!id||!confirm("Deseja excluir esta viabilidade?"))return;try{const r=await fetch(`${API_VIABILIDADE}/${id}`,{method:"DELETE",headers:getAuthHeaders()});if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.erro||`Erro ${r.status}`)}alert("Viabilidade excluída com sucesso.");carregarViabilidades()}catch(e){console.error(e);alert("Não foi possível excluir: "+e.message)}}
-function abrirMidia(url,video){const c=document.getElementById("popupConteudo");c.innerHTML=video?`<video src="${escapar(url)}" controls autoplay></video>`:`<img src="${escapar(url)}" alt="Anexo">`;document.getElementById("popupMidia").classList.add("ativo")}
-function fecharMidia(){document.getElementById("popupMidia").classList.remove("ativo");document.getElementById("popupConteudo").innerHTML=""}
-function fecharMidiaAoFundo(e){if(e.target.id==="popupMidia")fecharMidia()}
-
-document.addEventListener("DOMContentLoaded",()=>{
-    const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");if(s&&l&&localStorage.getItem("sidebar_recolhida")==="1"){s.classList.add("recolhida");l.src=l.dataset.logoFechada}
-    atualizarHorario();setInterval(atualizarHorario,60000);renderClientesERPVinculados();detectarERPAtivo();carregarUsuario();carregarTecnicos();carregarLocalidades();carregarUsuariosOnline();carregarViabilidades();
-    document.getElementById("telefone").addEventListener("input",aplicarMascaraTelefone);document.getElementById("tecnicoResponsavel").addEventListener("change",limitarSelecaoTecnicos);
-    document.getElementById("status").addEventListener("change",atualizarCampoInstalacao);
-    atualizarCampoInstalacao();document.getElementById("telefone2").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);document.getElementById("arquivosVisita").addEventListener("change",processarArquivosVisita);document.getElementById("arquivosPosInstalacao").addEventListener("change",processarArquivosPosInstalacao);
-    document.querySelectorAll("#filtroNome,#filtroEndereco,#filtroReferencia,#filtroLocalidade,#filtroStatusViabilidade,#filtroStatusInstalacao,#filtroClientesERP,#registroDataInicio,#registroDataFim,#atualizacaoDataInicio,#atualizacaoDataFim,#filtroPeriodoRapido").forEach(el=>{el.addEventListener("input",renderTabela);el.addEventListener("change",renderTabela)});
-    document.getElementById("buscaViabilidade").addEventListener("input",e=>{document.getElementById("filtroNome").value=e.target.value;renderTabela()});
-    document.getElementById("selecionarTodas").addEventListener("change",e=>selecionarTodasViabilidades(e.target.checked));
-    document.addEventListener("keydown",e=>{if(e.key==="Escape"){fecharMidia();fecharResumo()}});
-});
-setInterval(()=>{const id=localStorage.getItem("log_id");if(id)fetch("/api/ping",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({log_id:id})}).catch(()=>{});carregarUsuariosOnline()},300000);
 </script>
 </body>
 </html>

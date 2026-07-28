@@ -886,7 +886,6 @@ select:focus{
     .main{margin-left:0 !important}
 }
 </style>
-
 </head>
 
 <body>
@@ -2215,6 +2214,64 @@ function imprimirEscalaCalendario(){
 <body>
 ${paginas}
 <script>window.addEventListener("load",()=>setTimeout(()=>window.print(),350));<\/script>
+</body>
+</html>`);
+
+    janela.document.close();
+}
+
+function filtrarEscalas(){
+    const termo = document.getElementById("campoBusca").value.toLowerCase();
+
+    const filtradas = escalas.filter(e =>
+        nomeTecnicoEscala(e).toLowerCase().includes(termo) ||
+        String(e.periodo || "").toLowerCase().includes(termo) ||
+        String(formatarData(e.data_escala)).includes(termo)
+    );
+
+    renderizarCalendario(filtradas);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const sidebar = document.querySelector(".sidebar");
+    const logo = document.getElementById("logoSidebar");
+
+    if(
+        sidebar &&
+        logo &&
+        localStorage.getItem("sidebar_recolhida") === "1"
+    ){
+        sidebar.classList.add("recolhida");
+        logo.src = logo.dataset.logoFechada;
+    }
+
+    carregarUsuario();
+    carregarUsuariosOnline();
+    carregarTecnicos();
+    carregarEscalas();
+    renderizarDatasSelecionadas();
+    alternarObservacaoFeriado();
+
+    setTimeout(() => {
+        if(Array.isArray(escalas)) atualizarCards(escalas);
+    }, 1200);
+});
+
+setInterval(async () => {
+    const logId = localStorage.getItem("log_id");
+
+    if(logId){
+        await fetch("/api/ping", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({ log_id:logId })
+        }).catch(console.error);
+    }
+
+    carregarUsuariosOnline();
+}, 300000);
+</script>
+
 
 <script id="sgos-sidebar-completa-v2-js">
 (function(){
@@ -2281,64 +2338,5 @@ ${paginas}
     }
 })();
 </script>
-
-</body>
-</html>`);
-
-    janela.document.close();
-}
-
-function filtrarEscalas(){
-    const termo = document.getElementById("campoBusca").value.toLowerCase();
-
-    const filtradas = escalas.filter(e =>
-        nomeTecnicoEscala(e).toLowerCase().includes(termo) ||
-        String(e.periodo || "").toLowerCase().includes(termo) ||
-        String(formatarData(e.data_escala)).includes(termo)
-    );
-
-    renderizarCalendario(filtradas);
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    const sidebar = document.querySelector(".sidebar");
-    const logo = document.getElementById("logoSidebar");
-
-    if(
-        sidebar &&
-        logo &&
-        localStorage.getItem("sidebar_recolhida") === "1"
-    ){
-        sidebar.classList.add("recolhida");
-        logo.src = logo.dataset.logoFechada;
-    }
-
-    carregarUsuario();
-    carregarUsuariosOnline();
-    carregarTecnicos();
-    carregarEscalas();
-    renderizarDatasSelecionadas();
-    alternarObservacaoFeriado();
-
-    setTimeout(() => {
-        if(Array.isArray(escalas)) atualizarCards(escalas);
-    }, 1200);
-});
-
-setInterval(async () => {
-    const logId = localStorage.getItem("log_id");
-
-    if(logId){
-        await fetch("/api/ping", {
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            body:JSON.stringify({ log_id:logId })
-        }).catch(console.error);
-    }
-
-    carregarUsuariosOnline();
-}, 300000);
-</script>
-
 </body>
 </html>
