@@ -446,130 +446,6 @@ body.pagina-cadastro .campo.anexo-terco:last-of-type{grid-column:span 10 !import
 }
 
 </style>
-
-<style id="sgos-sidebar-completa-v2">
-/* Menu SGOS unificado: logo fixa, links com rolagem e rodapé sempre visível */
-.sidebar{
-    position:fixed !important;
-    left:0 !important;
-    top:0 !important;
-    width:230px !important;
-    height:100vh !important;
-    padding:12px 12px 14px !important;
-    display:flex !important;
-    flex-direction:column !important;
-    overflow:hidden !important;
-    background:linear-gradient(180deg,#081a31,#061426) !important;
-    color:#fff !important;
-    z-index:1000 !important;
-    transition:width .25s ease !important;
-}
-.sidebar-logo{
-    flex:0 0 auto !important;
-    display:flex !important;
-    align-items:center !important;
-    justify-content:flex-start !important;
-    min-height:62px !important;
-    padding:0 6px 8px !important;
-    margin:0 0 4px !important;
-}
-.sidebar-logo img{
-    width:190px !important;
-    max-width:100% !important;
-    height:auto !important;
-    max-height:58px !important;
-    object-fit:contain !important;
-    display:block !important;
-}
-.sidebar-menu-scroll{
-    flex:1 1 auto !important;
-    min-height:0 !important;
-    overflow-y:auto !important;
-    overflow-x:hidden !important;
-    padding:0 6px 12px !important;
-    scrollbar-width:thin;
-    scrollbar-color:#3c526f transparent;
-}
-.sidebar-menu-scroll::-webkit-scrollbar{width:6px}
-.sidebar-menu-scroll::-webkit-scrollbar-track{background:transparent}
-.sidebar-menu-scroll::-webkit-scrollbar-thumb{background:#3c526f;border-radius:999px}
-.sidebar .menu-titulo{
-    margin:15px 10px 7px !important;
-    font-size:11px !important;
-    line-height:1.2 !important;
-    font-weight:700 !important;
-    color:#94a3b8 !important;
-    text-transform:uppercase !important;
-    letter-spacing:.2px !important;
-}
-.sidebar a{
-    width:100% !important;
-    display:flex !important;
-    align-items:center !important;
-    gap:12px !important;
-    padding:11px 13px !important;
-    margin:0 0 3px !important;
-    border-radius:9px !important;
-    color:#dbeafe !important;
-    text-decoration:none !important;
-    font-size:14px !important;
-    line-height:1.25 !important;
-    transition:background .2s ease,color .2s ease !important;
-}
-.sidebar a:hover{background:rgba(37,99,235,.48) !important;color:#fff !important}
-.sidebar a.ativo{
-    background:#2563eb !important;
-    color:#fff !important;
-    box-shadow:0 6px 16px rgba(37,99,235,.25) !important;
-}
-.sidebar .menu-icon{
-    width:18px !important;
-    height:18px !important;
-    min-width:18px !important;
-    stroke:currentColor !important;
-    fill:none !important;
-    stroke-width:1.8 !important;
-    stroke-linecap:round !important;
-    stroke-linejoin:round !important;
-}
-.sidebar-footer{
-    flex:0 0 auto !important;
-    margin:0 !important;
-    padding:10px 6px 0 !important;
-    border-top:1px solid rgba(255,255,255,.08) !important;
-    background:#061426 !important;
-}
-.sidebar .btn-recolher{
-    width:100% !important;
-    display:flex !important;
-    align-items:center !important;
-    gap:12px !important;
-    padding:12px 13px !important;
-    border:1px solid rgba(255,255,255,.10) !important;
-    border-radius:9px !important;
-    background:rgba(255,255,255,.07) !important;
-    color:#e5efff !important;
-    cursor:pointer !important;
-    font-size:14px !important;
-}
-.sidebar.recolhida{width:82px !important;padding-left:12px !important;padding-right:12px !important}
-.sidebar.recolhida .sidebar-logo{justify-content:center !important;padding-left:0 !important;padding-right:0 !important}
-.sidebar.recolhida .sidebar-logo img{width:48px !important;max-height:48px !important}
-.sidebar.recolhida .sidebar-menu-scroll{padding-left:3px !important;padding-right:3px !important}
-.sidebar.recolhida a{width:52px !important;height:46px !important;margin-left:auto !important;margin-right:auto !important;padding:0 !important;justify-content:center !important;gap:0 !important}
-.sidebar.recolhida a span,
-.sidebar.recolhida .menu-titulo,
-.sidebar.recolhida .btn-recolher span{display:none !important}
-.sidebar.recolhida .btn-recolher{width:52px !important;margin:auto !important;justify-content:center !important;padding:12px !important}
-.sidebar.recolhida .btn-recolher svg{transform:rotate(180deg)}
-.main{transition:margin-left .25s ease !important}
-.sidebar.recolhida + .main{margin-left:82px !important}
-@media(max-width:900px){
-    .sidebar{display:none !important}
-    .main{margin-left:0 !important}
-}
-</style>
-
 </head>
 <body class="pagina-cadastro">
 
@@ -624,7 +500,7 @@ body.pagina-cadastro .campo.anexo-terco:last-of-type{grid-column:span 10 !import
         <span>Serviços</span>
     </a>
 
-    <a href="viabilidade.html">
+    <a href="viabilidade.html" class="ativo">
         <svg class="menu-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
         <span>Viabilidades</span>
     </a>
@@ -1502,79 +1378,112 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
         .pdf-erp-cabecalho span,.pdf-erp-cliente span,.pdf-erp-cliente b{display:block;min-width:0;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
         .rodape{height:6mm;margin-top:1.5mm;border-top:1px solid #cbd5e1;display:flex;align-items:flex-end;justify-content:center;font-size:7.5pt;color:#475569;text-align:center}
         @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-    </style></head><body>${paginas.map((pagina,indice)=>`<section class="pagina">
+    
+/* ===== MENU COMPLETO DO PAINEL: ROLAGEM + RECOLHIMENTO ===== */
+.sidebar{
+    position:fixed;
+    left:0;
+    top:0;
+    width:230px;
+    height:100vh;
+    background:linear-gradient(180deg,#081a31,#061426);
+    color:#fff;
+    padding:12px 0 14px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    z-index:20;
+}
+.sidebar-menu-scroll{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding:0 18px 10px;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(148,163,184,.65) transparent;
+    overscroll-behavior:contain;
+}
+.sidebar-menu-scroll::-webkit-scrollbar{width:7px}
+.sidebar-menu-scroll::-webkit-scrollbar-track{background:transparent}
+.sidebar-menu-scroll::-webkit-scrollbar-thumb{
+    background:rgba(148,163,184,.58);
+    border-radius:999px;
+    border:2px solid transparent;
+    background-clip:padding-box;
+}
+.sidebar-menu-scroll::-webkit-scrollbar-thumb:hover{
+    background:rgba(203,213,225,.8);
+    background-clip:padding-box;
+}
+.sidebar-logo{
+    display:flex;
+    justify-content:flex-start;
+    align-items:center;
+    flex:0 0 auto;
+    padding:0 18px;
+    margin:0 0 14px;
+}
+.sidebar-footer{
+    flex:0 0 auto;
+    margin-top:0;
+    padding:12px 18px 0;
+    border-top:1px solid rgba(255,255,255,.10);
+    background:linear-gradient(180deg,rgba(6,20,38,.72),#061426 35%);
+    box-shadow:0 -10px 22px rgba(0,0,0,.12);
+}
+.sidebar.recolhida{
+    width:82px;
+    padding:24px 0 14px;
+    align-items:center;
+}
+.sidebar.recolhida .sidebar-logo{
+    width:100%;
+    margin-bottom:28px;
+    padding:0 12px;
+    justify-content:center;
+}
+.sidebar.recolhida .sidebar-logo img{width:48px;max-width:48px}
+.sidebar.recolhida .menu-titulo{display:none}
+.sidebar.recolhida a{
+    justify-content:center;
+    padding:13px;
+    width:52px;
+    height:46px;
+    gap:0;
+}
+.sidebar.recolhida a span{display:none}
+.sidebar.recolhida .menu-icon{width:20px;height:20px;min-width:20px}
+.sidebar.recolhida .sidebar-menu-scroll{
+    width:100%;
+    padding:0 15px 10px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+.sidebar.recolhida .sidebar-footer{
+    width:100%;
+    padding:12px 15px 0;
+    display:flex;
+    justify-content:center;
+}
+.sidebar.recolhida .btn-recolher{
+    justify-content:center;
+    width:52px;
+    height:46px;
+    padding:13px;
+    gap:0;
+}
+.sidebar.recolhida .btn-recolher span{display:none}
+.sidebar.recolhida .btn-recolher .menu-icon{transform:rotate(180deg)}
+.sidebar.recolhida + .main{margin-left:82px}
+
+</style></head><body>${paginas.map((pagina,indice)=>`<section class="pagina">
         <header class="cabecalho"><div class="marca"><img src="${escapar(logo)}" alt="Logo"><div><h1>Relatório de Viabilidades</h1><p>SGOS - Sistema de Gestão Operacional e Sistemas</p></div></div><div class="contador">Página ${indice+1} de ${paginas.length}</div></header>
         ${indice===0?resumoHtml:""}
         <main class="grade">${pagina.map(renderItem).join("")}</main>
         <footer class="rodape">Emitido por SGOS - Sistemas de Ordens de Serviço - ${escapar(emitidoEm)}</footer>
-    </section>`).join("")}<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script>
-<script id="sgos-sidebar-completa-v2-js">
-(function(){
-    function normalizarPagina(valor){
-        try {
-            var url = new URL(valor, window.location.href);
-            return (url.pathname.split('/').pop() || 'painel.html').toLowerCase();
-        } catch(e){
-            return String(valor || '').split('?')[0].split('#')[0].split('/').pop().toLowerCase();
-        }
-    }
-
-    window.toggleSidebar = function(){
-        var sidebar = document.querySelector('.sidebar');
-        if(!sidebar) return;
-        sidebar.classList.toggle('recolhida');
-        localStorage.setItem('sgosSidebarRecolhida', sidebar.classList.contains('recolhida') ? '1' : '0');
-        var logo = document.getElementById('logoSidebar');
-        if(logo){
-            logo.src = sidebar.classList.contains('recolhida')
-                ? (logo.dataset.logoFechada || logo.src)
-                : (logo.dataset.logoAberta || logo.src);
-        }
-    };
-
-    function iniciarMenuSGOS(){
-        var sidebar = document.querySelector('.sidebar');
-        if(!sidebar) return;
-
-        var recolhida = localStorage.getItem('sgosSidebarRecolhida') === '1';
-        sidebar.classList.toggle('recolhida', recolhida);
-
-        var logo = document.getElementById('logoSidebar');
-        if(logo){
-            logo.src = recolhida
-                ? (logo.dataset.logoFechada || logo.src)
-                : (logo.dataset.logoAberta || logo.src);
-        }
-
-        var atual = normalizarPagina(window.location.href);
-        var ativo = null;
-        sidebar.querySelectorAll('a[href]').forEach(function(link){
-            link.classList.remove('ativo');
-            if(normalizarPagina(link.getAttribute('href')) === atual){
-                link.classList.add('ativo');
-                ativo = link;
-            }
-        });
-
-        if(ativo){
-            window.setTimeout(function(){
-                var area = sidebar.querySelector('.sidebar-menu-scroll');
-                if(!area) return;
-                var alvo = ativo.offsetTop - (area.clientHeight / 2) + (ativo.offsetHeight / 2);
-                area.scrollTop = Math.max(0, alvo);
-            }, 60);
-        }
-    }
-
-    if(document.readyState === 'loading'){
-        document.addEventListener('DOMContentLoaded', iniciarMenuSGOS);
-    } else {
-        iniciarMenuSGOS();
-    }
-})();
-</script>
-
-</body></html>`
+    </section>`).join("")}<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script></body></html>`
 }
 function abrirImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){const w=window.open("","_blank");if(!w){alert("Permita pop-ups para imprimir.");return}w.document.open();w.document.write(htmlImpressao(registros,contextoFiltros));w.document.close()}
 function imprimirViabilidade(id){const o=viabilidades.find(v=>Number(v.id)===Number(id));if(o)abrirImpressao([o])}
