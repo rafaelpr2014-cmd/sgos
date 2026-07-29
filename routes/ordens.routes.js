@@ -2401,6 +2401,7 @@ router.get("/:id", verificarAutenticacao, async (req, res) => {
                 DATE_FORMAT(os.data_abertura, '%Y-%m-%d %H:%i:%s') AS data_abertura,
                 DATE_FORMAT(os.iniciado_em, '%Y-%m-%d %H:%i:%s') AS iniciado_em,
                 DATE_FORMAT(os.finalizado_em, '%Y-%m-%d %H:%i:%s') AS finalizado_em,
+                DATE_FORMAT(os.atualizado_em, '%Y-%m-%d %H:%i:%s') AS atualizado_em,
 
                 u.usuario AS criado_por_nome,
 
@@ -2858,50 +2859,12 @@ router.get(
 
         try {
 
-            // ===============================
-            // 🔐 TOKEN
-            // ===============================
-            const token = req.query.token;
-
-            if (!token) {
-                return res.status(401).send("Não autenticado");
-            }
-
-            let usuarioId;
-
-            try {
-
-                const decoded = Buffer
-                    .from(token, "base64")
-                    .toString("utf-8");
-
-                usuarioId = decoded.replace("_SGOS", "");
-
-            } catch {
-                return res.status(401).send("Token inválido");
-            }
-
-            if (!usuarioId) {
-                return res.status(401).send("Não autenticado");
-            }
-
-            // ===============================
-            // 🔐 USUÁRIO
-            // ===============================
-            const [usuarios] = await db.query(`
-                SELECT 
-                    id,
-                    empresa_id
-                FROM usuarios
-                WHERE id = ?
-                LIMIT 1
-            `, [usuarioId]);
-
-            if (!usuarios.length) {
-                return res.status(401).send("Usuário inválido");
-            }
-
-            const usuario = usuarios[0];
+            // A rota já foi autenticada pelo middleware do servidor.
+            // Usa a sessão validada para limitar a OS à empresa correta.
+            const usuario = {
+                id: req.usuario.id,
+                empresa_id: req.usuario.empresa_id
+            };
 
             // ===============================
             // 🔥 EMPRESA
@@ -3160,6 +3123,11 @@ try {
                     <div class="sub">
                         Gerado em:
                         ${new Date().toLocaleString("pt-BR")}
+                    </div>
+
+                    <div class="sub">
+                        Última atualização da OS:
+                        ${os.atualizado_em ? new Date(os.atualizado_em).toLocaleString("pt-BR") : "-"}
                     </div>
 
                     <div class="titulo">

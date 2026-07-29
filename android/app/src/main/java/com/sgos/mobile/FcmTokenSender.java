@@ -79,6 +79,26 @@ public class FcmTokenSender {
         }
     }
 
+    public static void limparUsuarioId(Context context) {
+        if (context == null) {
+            return;
+        }
+
+        try {
+            SharedPreferences prefs = context.getApplicationContext()
+                .getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+
+            prefs.edit()
+                .remove("usuario_id")
+                .remove("fcm_token_pendente")
+                .apply();
+
+            Log.d(TAG, "usuario_id removido das preferências nativas.");
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao limpar usuario_id", e);
+        }
+    }
+
     public static void enviarToken(Context context, String usuarioId, String token) {
         new Thread(() -> {
             HttpURLConnection conn = null;

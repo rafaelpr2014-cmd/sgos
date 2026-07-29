@@ -206,7 +206,184 @@ button.btn:not(.btn-red):not(.btn-green):not(.btn-light):not(.btn-roxo){
   }
 }
 
-</style></head><body><script>
+</style>
+<style id="sgos-menu-mobile-padronizado-2026">
+/* Menu lateral padronizado conforme o modelo SGOS aprovado */
+.side-drawer{
+    position:fixed !important;
+    left:0 !important;
+    top:0 !important;
+    width:280px !important;
+    max-width:86vw !important;
+    height:100dvh !important;
+    padding:calc(env(safe-area-inset-top) + 18px) 17px calc(env(safe-area-inset-bottom) + 18px) !important;
+    display:flex !important;
+    flex-direction:column !important;
+    overflow:hidden !important;
+    color:#fff !important;
+    background:linear-gradient(180deg,#1769ff 0%,#075cf6 42%,#0b43a8 100%) !important;
+    box-shadow:18px 0 45px rgba(2,37,109,.42) !important;
+    z-index:2000 !important;
+}
+.side-drawer.open{transform:translateX(0) !important}
+
+.drawer-head{
+    min-height:58px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    gap:12px !important;
+    margin:0 0 15px !important;
+    padding:0 3px 14px !important;
+    border-bottom:1px solid rgba(255,255,255,.20) !important;
+}
+.drawer-head img{
+    width:145px !important;
+    max-width:calc(100% - 54px) !important;
+    max-height:48px !important;
+    object-fit:contain !important;
+    filter:brightness(0) invert(1) !important;
+}
+.drawer-close{
+    width:38px !important;
+    height:38px !important;
+    flex:0 0 38px !important;
+    border:0 !important;
+    border-radius:11px !important;
+    display:grid !important;
+    place-items:center !important;
+    padding:0 !important;
+    background:rgba(255,255,255,.16) !important;
+    color:#fff !important;
+    font-size:25px !important;
+    font-weight:700 !important;
+    cursor:pointer !important;
+}
+
+.drawer-user{
+    margin:0 0 18px !important;
+    padding:10px 12px !important;
+    min-height:55px !important;
+    display:flex !important;
+    flex-direction:column !important;
+    justify-content:center !important;
+    text-align:left !important;
+    background:rgba(255,255,255,.12) !important;
+    border:1px solid rgba(255,255,255,.20) !important;
+    border-radius:14px !important;
+    box-shadow:none !important;
+}
+.drawer-user strong{
+    display:block !important;
+    margin:0 !important;
+    color:#fff !important;
+    font-size:14px !important;
+    line-height:1.15 !important;
+    font-weight:900 !important;
+    text-transform:none !important;
+}
+.drawer-user small{
+    display:block !important;
+    margin-top:2px !important;
+    color:#eef6ff !important;
+    font-size:11px !important;
+    line-height:1.15 !important;
+    font-weight:800 !important;
+}
+.drawer-avatar,
+.drawer-user-logout{
+    display:none !important;
+}
+
+.drawer-nav{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:7px !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    padding:0 !important;
+}
+.drawer-nav a{
+    min-height:51px !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:12px !important;
+    padding:10px 12px !important;
+    border:1px solid transparent !important;
+    border-radius:14px !important;
+    background:transparent !important;
+    color:#fff !important;
+    text-decoration:none !important;
+    font-size:14px !important;
+    line-height:1.2 !important;
+    font-weight:900 !important;
+    box-shadow:none !important;
+}
+.drawer-nav a:hover{
+    background:rgba(255,255,255,.12) !important;
+    color:#fff !important;
+}
+.drawer-nav a.active{
+    background:#fff !important;
+    color:#075cf6 !important;
+    border-color:#fff !important;
+    box-shadow:0 8px 20px rgba(2,37,109,.18) !important;
+}
+.drawer-nav .ico{
+    width:28px !important;
+    height:28px !important;
+    flex:0 0 28px !important;
+    display:grid !important;
+    place-items:center !important;
+    border-radius:9px !important;
+    background:rgba(255,255,255,.14) !important;
+    color:#fff !important;
+    font-size:16px !important;
+    line-height:1 !important;
+}
+.drawer-nav a.active .ico{
+    background:#eaf2ff !important;
+    color:#075cf6 !important;
+}
+
+.drawer-footer{
+    margin-top:auto !important;
+    padding-top:16px !important;
+}
+.drawer-push,
+.drawer-push-silenciar{
+    display:none !important;
+}
+.drawer-logout{
+    width:100% !important;
+    min-height:43px !important;
+    margin:0 !important;
+    padding:11px 14px !important;
+    border:0 !important;
+    border-radius:13px !important;
+    background:#ff4747 !important;
+    color:#fff !important;
+    font-size:13px !important;
+    line-height:1 !important;
+    font-weight:900 !important;
+    box-shadow:none !important;
+    cursor:pointer !important;
+}
+
+@media(max-width:360px){
+    .side-drawer{
+        width:262px !important;
+        padding-left:14px !important;
+        padding-right:14px !important;
+    }
+    .drawer-nav a{
+        min-height:48px !important;
+        font-size:13px !important;
+    }
+}
+</style>
+
+</head><body><script>
 function getApiBase(){
     const salvo = localStorage.getItem("api_base");
     if(salvo) return String(salvo).replace(/\/$/, "");
@@ -282,16 +459,27 @@ function mobileLayout(title, subtitle, active){return `
 <div class="mobile-shell">
 <div class="drawer-overlay" id="drawerOverlay" onclick="fecharMenu()"></div>
 <aside class="side-drawer" id="sideDrawer">
- <div class="drawer-head"><img id="drawerLogo" src="https://iili.io/C5XGAnp.png"><button class="drawer-close" onclick="fecharMenu()">×</button></div>
- <div class="drawer-user"><strong id="drawerUser">Carregando...</strong><small id="drawerEmpresa">Empresa</small></div>
- <nav class="drawer-nav">
-  <a data-page="os" href="appmobile.html"><span class="ico">▤</span>Ordens de Serviço</a>
-  <a data-page="escala" href="app-escala.html" class="active"><span class="ico">□</span>Escala</a>
-  <a data-page="viabilidades" href="app-viabilidades.html"><span class="ico">⌖</span>Viabilidades</a>
-  <a data-page="planos" href="app-planos.html"><span class="ico">▣</span>Planos</a>
-  <a data-page="historico" href="app-historico-os.html"><span class="ico">◷</span>Histórico de OS</a>
- </nav>
- <div class="drawer-footer"><button class="drawer-logout" onclick="logout()">Sair</button></div>
+    <div class="drawer-head">
+        <img id="drawerLogo" src="https://iili.io/C5XGAnp.png" alt="SGOS">
+        <button class="drawer-close" onclick="fecharMenu()" type="button" aria-label="Fechar menu">×</button>
+    </div>
+
+    <div class="drawer-user">
+        <strong id="drawerUser">Carregando...</strong>
+        <small id="drawerEmpresa">Empresa</small>
+    </div>
+
+    <nav class="drawer-nav">
+        <a data-page="os" href="appmobile.html"><span class="ico">▤</span><span>Ordens de Serviço</span></a>
+        <a data-page="escala" href="app-escala.html" class="active"><span class="ico">□</span><span>Escala</span></a>
+        <a data-page="viabilidades" href="app-viabilidades.html"><span class="ico">⌖</span><span>Viabilidades</span></a>
+        <a data-page="planos" href="app-planos.html"><span class="ico">▣</span><span>Planos</span></a>
+        <a data-page="historico" href="app-historico-os.html"><span class="ico">◷</span><span>Histórico de OS</span></a>
+    </nav>
+
+    <div class="drawer-footer">
+        <button class="drawer-logout" onclick="logout()" type="button">Sair</button>
+    </div>
 </aside>
 <header class="mobile-topbar"><button class="menu-btn" onclick="abrirMenu()" aria-label="Abrir menu"><span></span></button><img id="topLogo" class="top-logo"><div class="top-title"><strong>${title}</strong><small id="topEmpresa">${subtitle}</small></div><button class="top-user" title="Usuário">👤</button></header>
 `;}

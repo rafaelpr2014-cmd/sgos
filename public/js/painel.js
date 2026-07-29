@@ -23,6 +23,8 @@ async function apiFetch(url, options = {}) {
         headers: {
             "Content-Type": "application/json",
             "x-usuario-id": usuario.id,
+            "x-log-id": usuario.log_id || localStorage.getItem("log_id") || "",
+            "x-sgos-active": "1",
             ...(options.headers || {})
         }
     });
@@ -1808,7 +1810,8 @@ window.abrirResumoOS = async function(id){
             <div class="resumo-card">
                 <h3>📅 Datas</h3>
                 ${linhaResumo("Envio", formatarData(os.agendamento_envio), "Iniciado em", formatarData(os.iniciado_em))}
-                ${linhaResumo("Finalizado em", formatarData(os.finalizado_em), "Finalizado por", os.status === "concluido" ? (os.finalizado_por_nome || "-") : "-")}
+                ${linhaResumo("Atualizado em", formatarData(os.atualizado_em), "Finalizado em", formatarData(os.finalizado_em))}
+                ${linhaResumo("Finalizado por", os.status === "concluido" ? (os.finalizado_por_nome || "-") : "-", "Status atual", textoStatus)}
             </div>
 
             ${servicoTVResumo(os)}
@@ -2198,27 +2201,63 @@ document.addEventListener("DOMContentLoaded", () => {
 // ===============================
 // 🖨️ IMPRIMIR OS
 // ===============================
-window.imprimirOS = (id) => {
+window.imprimirOS = async (id) => {
 
-    const usuario = JSON.parse(
-        localStorage.getItem("usuario")
-    );
+    const usuario = JSON.parse(localStorage.getItem("usuario") || "null");
+    const logId = usuario?.log_id || localStorage.getItem("log_id");
 
-    if (!usuario) {
-
-        alert("Usuário não encontrado");
-
+    if (!usuario?.id || !logId) {
+        alert("Sessão inválida. Entre novamente no SGOS.");
         return;
     }
 
-    const token = btoa(
-        usuario.id + "_SGOS"
-    );
+    const janela = window.open("about:blank", "_blank");
 
-    window.open(
-        `/api/ordens_servico/imprimir/${id}?token=${token}`,
-        "_blank"
-    );
+    if (janela) {
+        janela.document.write(`
+            <html>
+            <head><title>Gerando impressão...</title></head>
+            <body style="font-family:Arial;padding:30px">
+                Gerando impressão autenticada da OS...
+            </body>
+            </html>
+        `);
+    }
+
+    try {
+        const resposta = await fetch(`/api/ordens_servico/imprimir/${id}`, {
+            method: "GET",
+            headers: {
+                "x-usuario-id": String(usuario.id),
+                "x-log-id": String(logId),
+                "x-sgos-active": "1"
+            },
+            credentials: "include",
+            cache: "no-store"
+        });
+
+        if (!resposta.ok) {
+            const texto = await resposta.text();
+            throw new Error(texto || `Erro ${resposta.status} ao imprimir`);
+        }
+
+        const html = await resposta.text();
+        const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+
+        if (janela && !janela.closed) {
+            janela.location.replace(url);
+        } else {
+            window.open(url, "_blank");
+        }
+
+        setTimeout(() => URL.revokeObjectURL(url), 120000);
+
+    } catch (erro) {
+        if (janela && !janela.closed) janela.close();
+        console.error("Erro ao imprimir OS:", erro);
+        alert(erro.message || "Não foi possível imprimir a OS.");
+    }
 };
 
 // ===============================

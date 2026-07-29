@@ -163,7 +163,7 @@ button:hover{
         >
 
         <div class="titulo">Acesso ao Aplicativo</div>
-        <div class="subtitulo">Sistema de Gestão Operacional e Serviços</div>
+        <div class="subtitulo">Sistema de Gestão de Ordens de Serviço</div>
 
         <div class="campo">
             <label>Provedor</label>
@@ -208,7 +208,7 @@ button:hover{
     </div>
 
     <div class="rodape">
-        SGOS © Sistema de Gestão Operacional e Serviços
+        SGOS © Sistema de Gestão de Ordens de Serviço
     </div>
 
 </div>
@@ -225,12 +225,12 @@ function montarDestinoApp(provedor, usuarioObj){
         id: String(usuarioObj.id || ""),
         token: String(usuarioObj.log_id || ""),
         usuario: String(usuarioObj.usuario || ""),
-        provedor: String(provedor || "")
+        provedor: String(provedor || ""),
+        empresa_id: String(usuarioObj.empresa_id || ""),
+        t: String(Date.now())
     });
 
-    // IMPORTANTE iOS:
-    // Mantém o app dentro do Capacitor/local para não separar o localStorage
-    // entre capacitor://localhost e https://provedor.sgos.net.br.
+    // Mantém a navegação dentro da origem local do Capacitor.
     return `appmobile.html?${params.toString()}`;
 }
 
@@ -358,6 +358,7 @@ async function login(){
         localStorage.removeItem("usuario_id");
         localStorage.removeItem("log_id");
         localStorage.removeItem("is_app");
+        localStorage.removeItem("sessao_app");
         sessionStorage.clear();
 
         const API_BASE =
@@ -437,9 +438,13 @@ async function login(){
 
             console.log("🚀 REDIRECIONANDO:", destino);
 
+            try{
+                window.history.replaceState({}, document.title, `index.html?login_novo=${Date.now()}`);
+            }catch(e){}
+
             setTimeout(() => {
                 window.location.replace(destino);
-            }, 300);
+            }, 150);
 
         }else{
             erroEl.innerText =
