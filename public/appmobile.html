@@ -4103,9 +4103,12 @@ async function logout(){
 
     try{
         if(logId){
-            const resposta = await fetch("/api/logout", {
+            // No Android/iOS a página roda em uma origem local (WebView/Capacitor).
+            // Usar fetch("/api/logout") enviava a chamada para a origem do aplicativo,
+            // e não para o servidor SGOS. apiFetch resolve a API remota e envia os
+            // cabeçalhos da sessão corretamente.
+            const resposta = await apiFetch("/api/logout", {
                 method:"POST",
-                credentials:"same-origin",
                 keepalive:true,
                 cache:"no-store",
                 headers:{
@@ -4114,7 +4117,8 @@ async function logout(){
                     "x-log-id":String(logId),
                     "x-usuario-id":String(usuarioAtual?.id || localStorage.getItem("usuario_id") || ""),
                     "x-empresa-id":String(usuarioAtual?.empresa_id || ""),
-                    "x-sgos-app":"1"
+                    "x-sgos-app":"1",
+                    "x-sgos-active":"0"
                 },
                 body:JSON.stringify({
                     log_id:logId,
@@ -4125,8 +4129,13 @@ async function logout(){
                 })
             });
 
-            if(!resposta.ok && resposta.status !== 404){
-                throw new Error("Falha ao encerrar sessão: " + resposta.status);
+            if(!resposta.ok){
+                let detalhe = "";
+                try{ detalhe = await resposta.text(); }catch(e){}
+                throw new Error(
+                    "Falha ao encerrar sessão: " + resposta.status +
+                    (detalhe ? " - " + detalhe : "")
+                );
             }
         }
     }catch(err){
@@ -4142,7 +4151,7 @@ async function logout(){
                     app_mobile:1
                 })], {type:"application/json"});
 
-                navigator.sendBeacon("/api/logout", blob);
+                navigator.sendBeacon(apiUrl("/api/logout"), blob);
             }catch(e){}
         }
     }finally{
