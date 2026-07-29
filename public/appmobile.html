@@ -2613,6 +2613,40 @@ body{
     .confirmacao-pagamento-anexo-acoes{grid-template-columns:1fr}
 }
 
+
+
+/* ===== PRODUTOS NO RESUMO DE EQUIPAMENTO DO CARD ===== */
+.os-equipamento-produtos{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    margin-top:5px;
+    color:#152744;
+    font-size:12px;
+    font-weight:800;
+    line-height:1.35;
+}
+.os-equipamento-produto{
+    display:flex;
+    align-items:flex-start;
+    gap:5px;
+    min-width:0;
+}
+.os-equipamento-produto-nome{
+    min-width:0;
+    overflow-wrap:anywhere;
+}
+.os-equipamento-produto-qtd{
+    flex:0 0 auto;
+    color:#075cf6;
+    font-weight:900;
+}
+@media(max-width:520px){
+    .os-equipamento-produtos{
+        font-size:11px;
+    }
+}
+
 </style>
 
 </head>
@@ -5304,6 +5338,35 @@ function valorVendaEquipamentoApp(os){
     }, 0);
 }
 
+
+function produtosEquipamentoCardHTML(os){
+    const materiais = materiaisOSApp(os);
+    if(!materiais.length) return "";
+
+    const linhas = materiais.map(item => {
+        const nome = item?.nome
+            ?? item?.produto_nome
+            ?? item?.nome_produto
+            ?? item?.descricao
+            ?? item?.produto
+            ?? (item?.produto_id ? `Produto #${item.produto_id}` : "Produto");
+
+        const quantidadeNumero = Number(item?.quantidade ?? item?.qtd ?? 1);
+        const quantidade = Number.isFinite(quantidadeNumero) && quantidadeNumero > 0
+            ? quantidadeNumero
+            : 1;
+
+        return `
+            <div class="os-equipamento-produto">
+                <span class="os-equipamento-produto-nome">${valorSeguro(nome)}</span>
+                <span class="os-equipamento-produto-qtd">${valorSeguro(quantidade)}x</span>
+            </div>
+        `;
+    }).join("");
+
+    return `<div class="os-equipamento-produtos">${linhas}</div>`;
+}
+
 function resumoEquipamentoCardHTML(os){
     if(!os || os._tipo === "avulsa") return "";
 
@@ -5367,6 +5430,7 @@ function resumoEquipamentoCardHTML(os){
             <span class="equip-icone">📦</span>
             <div class="equip-conteudo">
                 <span class="equip-titulo">${valorSeguro(titulo)}</span>
+                ${produtosEquipamentoCardHTML(os)}
                 ${detalhes}
             </div>
         </div>
