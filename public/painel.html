@@ -2760,9 +2760,19 @@ async function carregarUsuariosOnline() {
         const res = await fetch("/api/logs");
         const logs = await res.json();
 
+        const agora = Date.now();
+        const limiteOnline = 5 * 60 * 1000;
+
         const online = logs
-            .filter(l => !l.logout)
-            .map(l => l.usuario);
+            .filter(log => {
+                if (log.logout) return false;
+                if (String(log.status || "").toLowerCase() !== "ativo") return false;
+
+                const ultimaAtividade = new Date(log.ultimo_ping || log.login).getTime();
+                return Number.isFinite(ultimaAtividade) &&
+                       agora - ultimaAtividade < limiteOnline;
+            })
+            .map(log => log.usuario);
 
         const listaUnica = [...new Set(online)];
         const container = document.getElementById("usuariosOnline");
@@ -2793,24 +2803,11 @@ async function carregarUsuariosOnline() {
     }
 }
 
-function logout() {
-    const logId = localStorage.getItem("log_id");
-
-    if (logId) {
-        fetch("/api/logout", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                log_id: logId
-            })
-        }).catch(console.error);
+async function logoutPainel() {
+    if (typeof window.logout === "function" && window.logout !== logoutPainel) {
+        return window.logout();
     }
-
-    sessionStorage.clear();
-    localStorage.clear();
-    window.location.href = "login.html";
+    window.location.replace("/login.html?logout=1&t=" + Date.now());
 }
 
 document.addEventListener("DOMContentLoaded", () => {

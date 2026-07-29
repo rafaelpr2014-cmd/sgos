@@ -4083,51 +4083,114 @@ function visualizarLocalizacao(){
 }
 
 /* ================= LOGOUT ================= */
-function logout(){
+let logoutAppEmAndamento = false;
 
-    console.log("is_app =", localStorage.getItem("is_app"));
+async function logout(){
+    if(logoutAppEmAndamento) return;
+    logoutAppEmAndamento = true;
 
     const logId = localStorage.getItem("log_id");
+    let usuarioAtual = {};
 
-    if(logId){
-        apiFetch("/api/logout", {
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            body:JSON.stringify({ log_id: logId })
-        }).catch(console.error);
-    }
-
-    // Marca o logout antes da limpeza. Isso impede que o WebView restaure
-    // uma URL antiga contendo token/id do primeiro usuário.
-    try{ localStorage.setItem("sgos_logout_bloqueado", "1"); }catch(e){}
-
-    // Limpa sessão web completa e recria somente a trava de restauração.
-    try{ sessionStorage.clear(); }catch(e){}
     try{
-        localStorage.clear();
+        usuarioAtual = JSON.parse(localStorage.getItem("usuario") || "{}");
+    }catch(e){}
+
+    // Marca antes da chamada para bloquear restauração de URL antiga.
+    try{
         localStorage.setItem("sgos_logout_bloqueado", "1");
     }catch(e){}
 
-    // Limpa sessão salva no app nativo, se existir bridge Android/iOS.
-    // Mantém compatibilidade mesmo se o método ainda não existir no app.
     try{
-        if(window.SGOSAndroid){
-            if(typeof window.SGOSAndroid.limparUsuarioId === "function"){
-                window.SGOSAndroid.limparUsuarioId();
-            }
-            if(typeof window.SGOSAndroid.salvarUsuarioId === "function"){
-                window.SGOSAndroid.salvarUsuarioId("");
-            }
-            if(typeof window.SGOSAndroid.logout === "function"){
-                window.SGOSAndroid.logout();
+        if(logId){
+            const resposta = await fetch("/api/logout", {
+                method:"POST",
+                credentials:"same-origin",
+                keepalive:true,
+                cache:"no-store",
+                headers:{
+                    "Content-Type":"application/json",
+                    "Accept":"application/json",
+                    "x-log-id":String(logId),
+                    "x-usuario-id":String(usuarioAtual?.id || localStorage.getItem("usuario_id") || ""),
+                    "x-empresa-id":String(usuarioAtual?.empresa_id || ""),
+                    "x-sgos-app":"1"
+                },
+                body:JSON.stringify({
+                    log_id:logId,
+                    usuario_id:usuarioAtual?.id || localStorage.getItem("usuario_id") || null,
+                    empresa_id:usuarioAtual?.empresa_id || null,
+                    motivo:"manual",
+                    app_mobile:1
+                })
+            });
+
+            if(!resposta.ok && resposta.status !== 404){
+                throw new Error("Falha ao encerrar sessão: " + resposta.status);
             }
         }
-    }catch(e){
-        console.warn("Não foi possível limpar sessão nativa", e);
-    }
+    }catch(err){
+        console.error("Erro no logout do app:", err);
 
-    // Vai para a tela de login sem token/id antigo.
-    window.location.replace("index.html?logout=1&t=" + Date.now());
+        if(logId && navigator.sendBeacon){
+            try{
+                const blob = new Blob([JSON.stringify({
+                    log_id:logId,
+                    usuario_id:usuarioAtual?.id || null,
+                    empresa_id:usuarioAtual?.empresa_id || null,
+                    motivo:"manual_beacon",
+                    app_mobile:1
+                })], {type:"application/json"});
+
+                navigator.sendBeacon("/api/logout", blob);
+            }catch(e){}
+        }
+    }finally{
+        try{ sessionStorage.clear(); }catch(e){}
+
+        try{
+            const provedor = localStorage.getItem("provedor") || "";
+            const apiBase = localStorage.getItem("api_base") || "";
+
+            localStorage.clear();
+            localStorage.setItem("sgos_logout_bloqueado", "1");
+
+            if(provedor) localStorage.setItem("provedor", provedor);
+            if(apiBase) localStorage.setItem("api_base", apiBase);
+        }catch(e){}
+
+        try{
+            if(window.SGOSAndroid){
+                if(typeof window.SGOSAndroid.limparUsuarioId === "function"){
+                    window.SGOSAndroid.limparUsuarioId();
+                }
+                if(typeof window.SGOSAndroid.salvarUsuarioId === "function"){
+                    window.SGOSAndroid.salvarUsuarioId("");
+                }
+                if(typeof window.SGOSAndroid.logoutCompleto === "function"){
+                    window.SGOSAndroid.logoutCompleto();
+                    return;
+                }
+                if(typeof window.SGOSAndroid.logout === "function"){
+                    window.SGOSAndroid.logout();
+                    return;
+                }
+            }
+        }catch(e){
+            console.warn("Não foi possível limpar sessão nativa", e);
+        }
+
+        // Remove qualquer token antigo da URL antes de voltar ao login local.
+        try{
+            window.history.replaceState(
+                {},
+                document.title,
+                "index.html?logout=1&t=" + Date.now()
+            );
+        }catch(e){}
+
+        window.location.replace("index.html?logout=1&t=" + Date.now());
+    }
 }
 
 /* ================= SOM ================= */

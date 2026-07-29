@@ -1,11 +1,21 @@
+const db = require("../database");
+
 async function obterPermissoes(req, res, next) {
 
     try {
 
-        const isAdmin =
+        if (!req.usuario?.id) {
+            return res.status(401).json({ erro: "Não autenticado" });
+        }
+
+        const cargo =
             String(req.usuario.cargo || "")
-                .toLowerCase()
-                .includes("admin");
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .trim()
+                .toLowerCase();
+
+        const isAdmin = cargo === "administrador";
 
         if (isAdmin) {
 
@@ -47,3 +57,5 @@ async function obterPermissoes(req, res, next) {
         });
     }
 }
+
+module.exports = { obterPermissoes };

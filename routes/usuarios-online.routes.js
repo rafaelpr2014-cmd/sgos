@@ -238,14 +238,14 @@ module.exports = (pool, verificarAutenticacao) => {
             try {
                 [resultado] = await pool.query(`
                     UPDATE log_acessos
-                    SET logout = NOW(), status = 'offline', motivo_logout = 'deslogado_administrador_empresa_1'
+                    SET logout = NOW(), status = 'logout', ultimo_ping = NOW(), motivo_logout = 'deslogado_administrador_empresa_1'
                     WHERE usuario_id = ? AND logout IS NULL
                 `, [usuarioId]);
             } catch (erroComMotivo) {
                 console.warn("Tentativa sem motivo_logout:", erroComMotivo.message);
                 [resultado] = await pool.query(`
                     UPDATE log_acessos
-                    SET logout = NOW(), status = 'offline'
+                    SET logout = NOW(), status = 'logout', ultimo_ping = NOW()
                     WHERE usuario_id = ? AND logout IS NULL
                 `, [usuarioId]);
             }

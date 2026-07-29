@@ -50,6 +50,11 @@ function limparSessao() {
         "sessao_app",
         "token",
         "sgos_token",
+        "is_app",
+        "empresa_id",
+        "empresa_nome",
+        "empresa_logo",
+        "push_usuario_id",
         SGOS_ACTIVITY_KEY
     ].forEach(chave => localStorage.removeItem(chave));
 
@@ -77,6 +82,53 @@ let ultimoEstadoAtivo = null;
 let timerAtividade = null;
 let intervaloPing = null;
 let logoutEmAndamento = false;
+
+const SGOS_LOGOUT_EVENT_KEY = "sgos_logout_event";
+const canalSessaoSGOS = typeof BroadcastChannel !== "undefined"
+    ? new BroadcastChannel("sgos_sessao")
+    : null;
+
+function avisarOutrasAbasLogout(logId) {
+    const payload = {
+        tipo: "logout",
+        log_id: String(logId || ""),
+        em: Date.now()
+    };
+
+    try {
+        localStorage.setItem(SGOS_LOGOUT_EVENT_KEY, JSON.stringify(payload));
+    } catch {}
+
+    try {
+        canalSessaoSGOS?.postMessage(payload);
+    } catch {}
+}
+
+function receberLogoutExterno(payload) {
+    if (!payload || payload.tipo !== "logout") return;
+
+    const atual = obterLogId();
+    if (payload.log_id && atual && String(payload.log_id) !== String(atual)) return;
+
+    logoutEmAndamento = true;
+    clearTimeout(timerAtividade);
+    if (intervaloPing) clearInterval(intervaloPing);
+    limparSessao();
+
+    if (!window.location.pathname.includes("login")) {
+        window.location.replace("/login.html?logout=1&t=" + Date.now());
+    }
+}
+
+window.addEventListener("storage", (evento) => {
+    if (evento.key !== SGOS_LOGOUT_EVENT_KEY || !evento.newValue) return;
+    try { receberLogoutExterno(JSON.parse(evento.newValue)); } catch {}
+});
+
+if (canalSessaoSGOS) {
+    canalSessaoSGOS.onmessage = (evento) => receberLogoutExterno(evento.data);
+}
+
 
 function tempoInativo() {
     return Math.max(0, Date.now() - obterUltimaAtividade());
@@ -400,6 +452,7 @@ async function logout() {
             }
         }
     } finally {
+        avisarOutrasAbasLogout(log_id);
         limparSessao();
 
         const destino = executandoNoApp()

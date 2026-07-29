@@ -338,6 +338,30 @@ app.use(express.urlencoded({
 app.use("/api/site", siteContatoRoutes);
 
 // ===============================
+// CACHE DE LOGIN / APP
+// ===============================
+// Evita que navegador/WebView restaure HTML ou JS antigo de autenticação.
+app.use((req, res, next) => {
+    const caminho = String(req.path || "").toLowerCase();
+    const semCache =
+        caminho === "/login.html" ||
+        caminho === "/index.html" ||
+        caminho === "/appmobile.html" ||
+        caminho === "/js/auth.js" ||
+        caminho === "/js/init.js";
+
+    if (semCache) {
+        res.set({
+            "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "Surrogate-Control": "no-store"
+        });
+    }
+    next();
+});
+
+// ===============================
 // PUBLIC
 // ===============================
 // Injeta o controle visual de permissões em todas as páginas HTML.
@@ -872,7 +896,10 @@ app.post("/api/login", async (req, res) => {
 // PING / PRESENÇA
 // ===============================
 app.post("/api/ping", async (req, res) => {
-    const { log_id, ativo } = req.body || {};
+    const { ativo } = req.body || {};
+    const log_id = req.body?.log_id || req.headers["x-log-id"];
+    const usuarioId = req.headers["x-usuario-id"] || req.body?.usuario_id || null;
+    const empresaId = req.headers["x-empresa-id"] || req.body?.empresa_id || null;
     const acessoApp = requisicaoDoApp(req);
 
     if (!log_id) {
@@ -891,8 +918,10 @@ app.post("/api/ping", async (req, res) => {
                     COALESCE(app_mobile,0) AS app_mobile
              FROM log_acessos
              WHERE id = ?
+               AND (? IS NULL OR usuario_id = ?)
+               AND (? IS NULL OR empresa_id = ?)
              LIMIT 1`,
-            [log_id]
+            [log_id, usuarioId, usuarioId, empresaId, empresaId]
         );
 
         if (!rows.length || rows[0].logout) {
@@ -969,49 +998,115 @@ app.post("/api/ping", async (req, res) => {
 // LOGOUT MANUAL / AUTOMÁTICO
 // ===============================
 app.post("/api/logout", async (req, res) => {
-    const log_id = req.body?.log_id || req.query?.log_id;
-    const motivo = req.body?.motivo === "inatividade_8h" ? "inatividade_8h" : "manual";
+    const logIdBruto =
+        req.body?.log_id ||
+        req.query?.log_id ||
+        req.headers["x-log-id"];
 
-    if (!log_id) {
-        return res.status(400).json({ erro: "log_id não informado" });
+    const usuarioId =
+        req.body?.usuario_id ||
+        req.headers["x-usuario-id"] ||
+        null;
+
+    const empresaId =
+        req.body?.empresa_id ||
+        req.headers["x-empresa-id"] ||
+        null;
+
+    const logId = Number(logIdBruto);
+    const motivoRecebido = String(req.body?.motivo || "manual");
+    const motivo = motivoRecebido === "inatividade_8h"
+        ? "inatividade_8h"
+        : motivoRecebido === "manual_beacon"
+            ? "manual_beacon"
+            : "manual";
+
+    if (!Number.isInteger(logId) || logId <= 0) {
+        return res.status(400).json({
+            erro: "log_id não informado ou inválido",
+            motivo: "log_id_invalido"
+        });
     }
 
     try {
+        const params = [logId];
+        let filtro = "l.id = ?";
+
+        if (usuarioId) {
+            filtro += " AND l.usuario_id = ?";
+            params.push(Number(usuarioId));
+        }
+
+        if (empresaId) {
+            filtro += " AND l.empresa_id = ?";
+            params.push(Number(empresaId));
+        }
+
         const [rows] = await pool.query(
-            `SELECT usuario, empresa_id, logout
-             FROM log_acessos
-             WHERE id = ?
-             LIMIT 1`,
-            [log_id]
+            `SELECT l.id, l.usuario_id, l.usuario, l.empresa_id, l.logout, l.status
+               FROM log_acessos l
+              WHERE ${filtro}
+              LIMIT 1`,
+            params
         );
 
-        if (rows.length && !rows[0].logout) {
+        // Logout idempotente: sessão já encerrada/não encontrada não prende o cliente.
+        if (!rows.length) {
+            return res.json({ ok: true, ja_encerrada: true, log_id: logId });
+        }
+
+        const sessao = rows[0];
+
+        if (!sessao.logout) {
             await pool.query(
                 `UPDATE log_acessos
-                 SET logout = NOW(), status = 'logout', motivo_logout = ?
-                 WHERE id = ? AND logout IS NULL`,
-                [motivo, log_id]
+                    SET logout = NOW(),
+                        ultimo_ping = NOW(),
+                        status = 'logout',
+                        motivo_logout = ?
+                  WHERE id = ?
+                    AND logout IS NULL`,
+                [motivo, logId]
             );
 
             await registrarEventoAcesso({
-                empresa_id: rows[0].empresa_id,
-                usuario: rows[0].usuario,
-                acao: motivo === "manual" ? "LOGOUT_MANUAL" : "LOGOUT_AUTOMATICO",
-                detalhes: motivo === "manual"
-                    ? "Logout solicitado pelo usuário"
-                    : "Sessão encerrada após 8 horas sem atividade"
+                empresa_id: sessao.empresa_id,
+                usuario: sessao.usuario,
+                acao: motivo === "inatividade_8h" ? "LOGOUT_AUTOMATICO" : "LOGOUT_MANUAL",
+                detalhes: motivo === "inatividade_8h"
+                    ? "Sessão encerrada após 8 horas sem atividade"
+                    : "Logout solicitado pelo usuário"
             });
+
             await registrarEventoUsuariosOnline(
-                log_id,
-                motivo === "manual" ? "logout" : "expirado",
-                motivo === "manual" ? "Logout realizado" : "Logout — sessão expirada"
+                logId,
+                motivo === "inatividade_8h" ? "expirado" : "logout",
+                motivo === "inatividade_8h" ? "Logout — sessão expirada" : "Logout realizado"
             );
         }
 
-        return res.json({ ok: true });
+        // Remove presença em memória e avisa abas/aplicativos conectados.
+        for (const [key, value] of onlineUsers) {
+            if (Number(value.id) === Number(sessao.usuario_id) &&
+                Number(value.empresa_id) === Number(sessao.empresa_id)) {
+                onlineUsers.delete(key);
+            }
+        }
+
+        io.emit("online:update", Array.from(onlineUsers.values()));
+        io.emit("sgos:sessao-encerrada", {
+            log_id: logId,
+            usuario_id: sessao.usuario_id,
+            empresa_id: sessao.empresa_id
+        });
+
+        return res.json({ ok: true, encerrada: true, log_id: logId });
     } catch (err) {
         console.error("ERRO LOGOUT:", err);
-        return res.status(500).json({ erro: err.message });
+        return res.status(500).json({
+            erro: "Erro ao registrar logout",
+            motivo: "erro_logout"
+        });
     }
 });
 
