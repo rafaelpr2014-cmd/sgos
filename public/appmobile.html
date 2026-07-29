@@ -2346,7 +2346,7 @@ body{
         <div class="card-conteudo">
             <span id="cC">0</span>
             <small>Finalizadas</small>
-            <div class="card-subtitle">Concluídas hoje</div>
+            <div class="card-subtitle">Concluídas</div>
         </div>
 
         <div class="card-icon" aria-hidden="true">
@@ -4638,49 +4638,72 @@ function filtrarPorTipoServico(nome){
 }
 
 
-function dataHoraResponsavelStatusOS(os){
-    const status = normalizarStatusApp(os?.status);
-    if(status === "concluido"){
-        return os?.finalizado_em || os?.finalizada_em || os?.concluido_em || os?.concluida_em || os?.data_finalizacao || os?.data_conclusao || "";
-    }
-    if(status === "cliente_ausente"){
-        return os?.ausente_em || os?.cliente_ausente_em || os?.marcado_ausente_em || os?.data_ausente || os?.atualizado_em || os?.updated_at || "";
+function primeiroValorStatusOS(os, caminhos){
+    for(const caminho of caminhos){
+        const partes = String(caminho).split(".");
+        let atual = os;
+        for(const parte of partes){
+            atual = atual?.[parte];
+            if(atual === undefined || atual === null) break;
+        }
+        if(atual !== undefined && atual !== null && String(atual).trim() !== ""){
+            return atual;
+        }
     }
     return "";
 }
 
-function horarioStatusOS(os){
+function dataHoraResponsavelStatusOS(os){
+    const status = normalizarStatusApp(os?.status);
+    if(status === "concluido"){
+        return primeiroValorStatusOS(os, [
+            "finalizado_em","finalizada_em","concluido_em","concluida_em",
+            "data_finalizacao","data_conclusao","finalizacao.data_hora",
+            "conclusao.data_hora","historico_finalizacao.data_hora","atualizado_em","updated_at"
+        ]);
+    }
+    if(status === "cliente_ausente"){
+        return primeiroValorStatusOS(os, [
+            "ausente_em","cliente_ausente_em","marcado_ausente_em","marcado_como_ausente_em",
+            "data_ausente","ausencia.data_hora","cliente_ausente.data_hora",
+            "historico_ausente.data_hora","atualizado_em","updated_at"
+        ]);
+    }
+    return "";
+}
+
+function dataHoraStatusFormatadaOS(os){
     const data = parseDataApp(dataHoraResponsavelStatusOS(os));
     if(!data) return "";
-    return data.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
+    const dataTexto = data.toLocaleDateString("pt-BR");
+    const horaTexto = data.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
+    return `${dataTexto} às ${horaTexto}`;
 }
 
 function nomeResponsavelStatusOS(os){
     const status = normalizarStatusApp(os?.status);
 
     if(status === "concluido"){
-        return os?.finalizado_por_nome ||
-               os?.finalizada_por_nome ||
-               os?.concluido_por_nome ||
-               os?.concluida_por_nome ||
-               os?.finalizado_por_usuario ||
-               os?.finalizado_por ||
-               os?.concluido_por ||
-               "";
+        return primeiroValorStatusOS(os, [
+            "finalizado_por_nome","finalizada_por_nome","concluido_por_nome","concluida_por_nome",
+            "finalizado_por_usuario","finalizada_por_usuario","concluido_por_usuario",
+            "finalizado_por","finalizada_por","concluido_por","concluida_por",
+            "usuario_finalizacao","usuario_conclusao","responsavel_finalizacao","responsavel_conclusao",
+            "finalizacao.usuario_nome","finalizacao.usuario","conclusao.usuario_nome","conclusao.usuario",
+            "historico_finalizacao.usuario_nome","historico_finalizacao.usuario"
+        ]);
     }
 
     if(status === "cliente_ausente"){
-        return os?.ausente_por_nome ||
-               os?.cliente_ausente_por_nome ||
-               os?.marcado_ausente_por_nome ||
-               os?.marcado_por_nome ||
-               os?.ausente_por_usuario ||
-               os?.ausente_por ||
-               os?.cliente_ausente_por ||
-               os?.marcado_ausente_por ||
-               os?.atualizado_por_nome ||
-               os?.atualizado_por ||
-               "";
+        return primeiroValorStatusOS(os, [
+            "ausente_por_nome","cliente_ausente_por_nome","marcado_ausente_por_nome",
+            "marcado_como_ausente_por_nome","marcado_por_nome","usuario_ausente_nome",
+            "ausente_por_usuario","cliente_ausente_por_usuario","marcado_ausente_por_usuario",
+            "ausente_por","cliente_ausente_por","marcado_ausente_por","marcado_como_ausente_por",
+            "usuario_ausente","responsavel_ausente","ausencia.usuario_nome","ausencia.usuario",
+            "cliente_ausente.usuario_nome","cliente_ausente.usuario","historico_ausente.usuario_nome",
+            "historico_ausente.usuario","atualizado_por_nome","atualizado_por"
+        ]);
     }
 
     return "";
@@ -4688,19 +4711,31 @@ function nomeResponsavelStatusOS(os){
 
 function responsavelStatusCardHTML(os){
     const status = normalizarStatusApp(os?.status);
-    const responsavel = String(nomeResponsavelStatusOS(os) || "").trim();
+    let responsavel = String(nomeResponsavelStatusOS(os) || "").trim();
+    let dataHora = dataHoraStatusFormatadaOS(os);
+
+    // Metadado salvo no aparelho após a própria ação: usado também quando a API
+    // ainda não devolveu imediatamente o executor/data do novo status.
+    const metaLocal = lerMetaStatusLocal(os?.id);
+    if(metaLocal && normalizarStatusApp(metaLocal.status) === status){
+        responsavel = responsavel || String(metaLocal.responsavel || "").trim();
+        if(!dataHora && metaLocal.data_hora){
+            const d = parseDataApp(metaLocal.data_hora);
+            if(d){
+                dataHora = `${d.toLocaleDateString("pt-BR")} às ${d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})}`;
+            }
+        }
+    }
 
     if(!responsavel || responsavel === "-") return "";
-
-    const hora = horarioStatusOS(os);
-    const complementoHora = hora ? ` às ${valorSeguro(hora)}` : "";
+    const complemento = dataHora ? ` em ${valorSeguro(dataHora)}` : "";
 
     if(status === "concluido"){
-        return `<div class="os-responsavel-status finalizado"><span class="status-icone">✓</span><span>Finalizado por ${valorSeguro(responsavel)}${complementoHora}.</span></div>`;
+        return `<div class="os-responsavel-status finalizado"><span class="status-icone">✓</span><span>Finalizado por ${valorSeguro(responsavel)}${complemento}.</span></div>`;
     }
 
     if(status === "cliente_ausente"){
-        return `<div class="os-responsavel-status ausente"><span class="status-icone">!</span><span>${valorSeguro(responsavel)} marcou como Cliente Ausente${complementoHora}.</span></div>`;
+        return `<div class="os-responsavel-status ausente"><span class="status-icone">!</span><span>${valorSeguro(responsavel)} marcou como ausente${complemento}.</span></div>`;
     }
 
     return "";
@@ -4735,7 +4770,7 @@ function render(){
         const tel = formatarTelefoneApp(o.telefone);
         const href = telefoneHref(o.telefone);
         const tecnico = o.tecnicos_nomes || o.tecnico_nome || o.tecnico || "-";
-        return `<article class="os${alta ? " prioridade-alta-card" : ""}" role="button" tabindex="0" onclick="abrirResumoOS(event, '${chave}')" onkeydown="if(event.key==='Enter'||event.key===' '){abrirResumoOS(event, '${chave}')}">
+        return `<article class="os${alta ? " prioridade-alta-card" : ""}" role="button" tabindex="0" onclick="window.abrirModal('${chave}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.abrirModal('${chave}')}">
           <div class="os-main">
             <div class="os-top-badges">${o._tipo === "avulsa" ? "" : badgePrioridadeApp(o.prioridade)}<span class="os-tipo-servico">${valorSeguro(o.tipo_servico_nome || o.tipo_servico || "OS Avulsa")}</span></div>
             <div class="os-cliente-linha"><strong class="os-cliente-nome">${valorSeguro(o._tipo === "avulsa" ? (o.localidade_nome || "OS Avulsa") : nomeClienteOS(o))}</strong></div>
@@ -5170,6 +5205,7 @@ abrirModal = async function(chave){
 
     if(modal) modal.style.display = "flex";
 };
+window.abrirModal = abrirModal;
 function bloquearBotao(btn, bloqueado, textoTemporario="Enviando..."){
     if(!btn) return;
     if(bloqueado){
