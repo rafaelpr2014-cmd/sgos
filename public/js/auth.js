@@ -75,6 +75,8 @@ let ultimoPingEnviado = 0;
 let pingEmAndamento = false;
 let ultimoEstadoAtivo = null;
 let timerAtividade = null;
+let intervaloPing = null;
+let logoutEmAndamento = false;
 
 function tempoInativo() {
     return Math.max(0, Date.now() - obterUltimaAtividade());
@@ -107,14 +109,35 @@ function ehRotaPublica(url) {
 }
 
 async function finalizarSessaoAutomaticaLocal() {
+    if (logoutEmAndamento) return;
+    logoutEmAndamento = true;
+
     const log_id = obterLogId();
+    const usuario = obterUsuario();
+
+    clearTimeout(timerAtividade);
+    if (intervaloPing) {
+        clearInterval(intervaloPing);
+        intervaloPing = null;
+    }
+
     try {
         if (log_id) {
             await fetchOriginal("/api/logout", {
                 method: "POST",
                 keepalive: true,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ log_id, motivo: "inatividade_8h" })
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-log-id": String(log_id),
+                    "x-usuario-id": String(usuario?.id || ""),
+                    "x-empresa-id": String(usuario?.empresa_id || "")
+                },
+                body: JSON.stringify({
+                    log_id,
+                    usuario_id: usuario?.id || null,
+                    empresa_id: usuario?.empresa_id || null,
+                    motivo: "inatividade_8h"
+                })
             });
         }
     } catch (err) {
@@ -212,6 +235,8 @@ window.fetch = async function(url, opcoes = {}) {
 };
 
 async function enviarPing(forcar = false) {
+    if (logoutEmAndamento) return;
+
     const log_id = obterLogId();
     const usuario = obterUsuario();
     if (!log_id || !usuario || pingEmAndamento) return;
@@ -280,7 +305,9 @@ function iniciarControleDeAtividade() {
 
     enviarPing(true);
 
-    setInterval(() => {
+    intervaloPing = setInterval(() => {
+        if (logoutEmAndamento) return;
+
         if (sessaoExpiradaLocalmente()) {
             finalizarSessaoAutomaticaLocal();
             return;
@@ -292,23 +319,93 @@ function iniciarControleDeAtividade() {
 iniciarControleDeAtividade();
 
 async function logout() {
+    if (logoutEmAndamento) return;
+    logoutEmAndamento = true;
+
     const log_id = obterLogId();
+    const usuario = obterUsuario();
+
+    // Impede um ping concorrente de manter a sessão como ativa durante o logout.
+    clearTimeout(timerAtividade);
+    if (intervaloPing) {
+        clearInterval(intervaloPing);
+        intervaloPing = null;
+    }
+
+    let logoutRegistrado = !log_id;
+
     try {
         if (log_id) {
-            await fetchOriginal("/api/logout", {
+            const headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "x-log-id": String(log_id),
+                "x-sgos-app": executandoNoApp() ? "1" : "0"
+            };
+
+            if (usuario?.id != null) {
+                headers["x-usuario-id"] = String(usuario.id);
+            }
+
+            if (usuario?.empresa_id != null) {
+                headers["x-empresa-id"] = String(usuario.empresa_id);
+            }
+
+            const resposta = await fetchOriginal("/api/logout", {
                 method: "POST",
+                credentials: "same-origin",
                 keepalive: true,
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-sgos-app": executandoNoApp() ? "1" : "0"
-                },
-                body: JSON.stringify({ log_id, motivo: "manual" })
+                headers,
+                body: JSON.stringify({
+                    log_id,
+                    usuario_id: usuario?.id || null,
+                    empresa_id: usuario?.empresa_id || null,
+                    motivo: "manual"
+                })
             });
+
+            // 200 = encerrada agora; 404 também pode significar que já estava encerrada.
+            logoutRegistrado = resposta.ok || resposta.status === 404;
+
+            if (!logoutRegistrado) {
+                let detalhe = "";
+                try {
+                    detalhe = await resposta.text();
+                } catch {}
+
+                throw new Error(
+                    detalhe || `Falha ao encerrar sessão no servidor (${resposta.status})`
+                );
+            }
         }
     } catch (err) {
         console.error("Erro ao registrar logout:", err);
+
+        // Segunda tentativa simples, útil em WebView durante troca de página.
+        if (log_id && navigator.sendBeacon) {
+            try {
+                const dados = new Blob(
+                    [JSON.stringify({
+                        log_id,
+                        usuario_id: usuario?.id || null,
+                        empresa_id: usuario?.empresa_id || null,
+                        motivo: "manual_beacon"
+                    })],
+                    { type: "application/json" }
+                );
+
+                logoutRegistrado = navigator.sendBeacon("/api/logout", dados);
+            } catch (beaconErr) {
+                console.warn("Falha também no sendBeacon de logout:", beaconErr);
+            }
+        }
     } finally {
         limparSessao();
-        window.location.replace("/login.html");
+
+        const destino = executandoNoApp()
+            ? "/login.html?logout=1"
+            : "/login.html?logout=1";
+
+        window.location.replace(destino);
     }
 }

@@ -141,25 +141,105 @@ module.exports = (db) => {
     });
 
     router.post("/logout", async (req, res) => {
-        const logId = req.body?.log_id || req.query?.log_id || req.headers["x-log-id"];
-        if (!logId) return res.status(400).json({ erro: "log_id não informado" });
+        const logIdBruto =
+            req.body?.log_id ||
+            req.query?.log_id ||
+            req.headers["x-log-id"];
+
+        const usuarioId =
+            req.body?.usuario_id ||
+            req.headers["x-usuario-id"] ||
+            null;
+
+        const empresaId =
+            req.body?.empresa_id ||
+            req.headers["x-empresa-id"] ||
+            null;
+
+        const logId = Number(logIdBruto);
+
+        if (!Number.isInteger(logId) || logId <= 0) {
+            return res.status(400).json({
+                erro: "log_id não informado ou inválido",
+                motivo: "log_id_invalido"
+            });
+        }
 
         try {
+            // Primeiro localiza a sessão e, quando possível, confirma que ela
+            // realmente pertence ao usuário/empresa que está solicitando o logout.
+            const params = [logId];
+            let filtro = "la.id = ?";
+
+            if (usuarioId) {
+                filtro += " AND u.id = ?";
+                params.push(Number(usuarioId));
+            }
+
+            if (empresaId) {
+                filtro += " AND la.empresa_id = ?";
+                params.push(Number(empresaId));
+            }
+
+            const [sessoes] = await query(
+                `SELECT la.id, la.usuario, la.empresa_id, la.logout, la.status
+                   FROM log_acessos la
+              LEFT JOIN usuarios u
+                     ON u.usuario = la.usuario
+                    AND u.empresa_id = la.empresa_id
+                  WHERE ${filtro}
+                  LIMIT 1`,
+                params
+            );
+
+            if (!sessoes.length) {
+                return res.status(404).json({
+                    ok: true,
+                    ja_encerrada: true,
+                    motivo: "sessao_nao_encontrada"
+                });
+            }
+
+            const sessao = sessoes[0];
+
+            if (sessao.logout || sessao.status === "logout") {
+                return res.json({
+                    ok: true,
+                    ja_encerrada: true,
+                    log_id: logId
+                });
+            }
+
             const [result] = await query(
                 `UPDATE log_acessos
-                    SET logout = COALESCE(logout, NOW()),
+                    SET logout = NOW(),
+                        ultimo_ping = NOW(),
                         status = 'logout'
-                  WHERE id = ?`,
+                  WHERE id = ?
+                    AND logout IS NULL
+                    AND status <> 'logout'`,
                 [logId]
             );
 
             if (!result.affectedRows) {
-                return res.status(404).json({ erro: "Sessão não encontrada" });
+                return res.json({
+                    ok: true,
+                    ja_encerrada: true,
+                    log_id: logId
+                });
             }
-            return res.json({ ok: true });
+
+            return res.json({
+                ok: true,
+                encerrada: true,
+                log_id: logId
+            });
         } catch (err) {
             console.error("ERRO LOGOUT:", err);
-            return res.status(500).json({ erro: "Erro ao registrar logout" });
+            return res.status(500).json({
+                erro: "Erro ao registrar logout",
+                motivo: "erro_logout"
+            });
         }
     });
 
@@ -201,11 +281,18 @@ module.exports = (db) => {
             }
 
             const [sessions] = await query(
-                `SELECT id FROM log_acessos
-                  WHERE id = ? AND logout IS NULL AND status <> 'logout'
-                    AND COALESCE(ultimo_ping, login) >= DATE_SUB(NOW(), INTERVAL ${LIMITE_SESSAO_HORAS} HOUR)
+                `SELECT la.id
+                   FROM log_acessos la
+             INNER JOIN usuarios u
+                     ON u.usuario = la.usuario
+                    AND u.empresa_id = la.empresa_id
+                  WHERE la.id = ?
+                    AND u.id = ?
+                    AND la.logout IS NULL
+                    AND la.status <> 'logout'
+                    AND COALESCE(la.ultimo_ping, la.login) >= DATE_SUB(NOW(), INTERVAL ${LIMITE_SESSAO_HORAS} HOUR)
                   LIMIT 1`,
-                [logId]
+                [logId, userId]
             );
             if (!sessions.length) {
                 return res.status(401).json({ erro: "Sessão encerrada", motivo: "sessao_encerrada" });
