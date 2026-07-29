@@ -2189,6 +2189,49 @@ body{
     }
 }
 
+
+
+/* ===== RESPONSÁVEL PELA FINALIZAÇÃO / CLIENTE AUSENTE ===== */
+.os-responsavel-status{
+    grid-column:1 / -1;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:13px;
+    padding:11px 13px;
+    border-radius:12px;
+    font-size:13px;
+    font-weight:900;
+    line-height:1.35;
+}
+.os-responsavel-status.finalizado{
+    color:#166534;
+    background:#f0fdf4;
+    border:1px solid #bbf7d0;
+}
+.os-responsavel-status.ausente{
+    color:#b91c1c;
+    background:#fff1f2;
+    border:1px solid #fecdd3;
+}
+.os-responsavel-status .status-icone{
+    width:24px;
+    height:24px;
+    flex:0 0 24px;
+    display:grid;
+    place-items:center;
+    border-radius:50%;
+    background:rgba(255,255,255,.72);
+    font-size:14px;
+}
+@media(max-width:759px){
+    .os-responsavel-status{
+        margin-top:11px;
+        padding:10px 11px;
+        font-size:12px;
+    }
+}
+
 </style>
 
 
@@ -2747,7 +2790,51 @@ function normalizarOSAvulsa(os){
     };
 }
 
+function chaveMetaStatusLocal(osId){
+    return `sgos_status_meta_${String(osId || "")}`;
+}
+
+function lerMetaStatusLocal(osId){
+    try{
+        return JSON.parse(localStorage.getItem(chaveMetaStatusLocal(osId)) || "null") || {};
+    }catch(e){
+        return {};
+    }
+}
+
+function salvarMetaStatusLocal(osId, status, responsavel, dataHora){
+    if(!osId) return;
+    try{
+        localStorage.setItem(chaveMetaStatusLocal(osId), JSON.stringify({
+            status: normalizarStatusApp(status),
+            responsavel: String(responsavel || "").trim(),
+            data_hora: dataHora || new Date().toISOString()
+        }));
+    }catch(e){
+        console.warn("Não foi possível salvar os dados locais do status:", e);
+    }
+}
+
+function aplicarMetaStatusLocal(os){
+    const meta = lerMetaStatusLocal(os?.id);
+    if(!meta || !meta.status) return os;
+
+    const statusAtual = normalizarStatusApp(os?.status);
+    if(statusAtual !== normalizarStatusApp(meta.status)) return os;
+
+    const copia = {...os};
+    if(statusAtual === "concluido"){
+        copia.finalizado_por_nome = copia.finalizado_por_nome || copia.finalizado_por || meta.responsavel;
+        copia.finalizado_em = copia.finalizado_em || copia.concluido_em || meta.data_hora;
+    }else if(statusAtual === "cliente_ausente"){
+        copia.ausente_por_nome = copia.ausente_por_nome || copia.ausente_por || meta.responsavel;
+        copia.ausente_em = copia.ausente_em || meta.data_hora;
+    }
+    return copia;
+}
+
 function normalizarOSNormal(os){
+    os = aplicarMetaStatusLocal(os);
     return {
         ...os,
         _tipo: "normal",
@@ -3157,6 +3244,39 @@ function headersSessaoApp(){
     return headers;
 }
 
+async function enriquecerStatusDasOrdens(lista){
+    const candidatas = (Array.isArray(lista) ? lista : []).filter(os => {
+        if(os?._tipo === "avulsa") return false;
+        const status = normalizarStatusApp(os?.status);
+        if(!["concluido", "cliente_ausente"].includes(status)) return false;
+        return !nomeResponsavelStatusOS(os) || !dataHoraResponsavelStatusOS(os);
+    });
+
+    if(!candidatas.length) return lista;
+
+    const mapa = new Map(lista.map(os => [chaveOS(os), os]));
+    const lotes = [];
+    for(let i=0;i<candidatas.length;i+=6) lotes.push(candidatas.slice(i,i+6));
+
+    for(const lote of lotes){
+        await Promise.allSettled(lote.map(async os => {
+            const res = await apiFetch(`${API_PATH}/${os.id}?_=${Date.now()}`, {
+                method:"GET",
+                headers:headersSessaoApp(),
+                credentials:"include",
+                cache:"no-store"
+            });
+            if(!res.ok) return;
+            const bruto = await res.json().catch(()=>null);
+            const detalhe = bruto?.os || bruto?.ordem || bruto?.data || bruto;
+            if(!detalhe || typeof detalhe !== "object") return;
+            mapa.set(chaveOS(os), normalizarOSNormal({...os, ...detalhe}));
+        }));
+    }
+
+    return lista.map(os => mapa.get(chaveOS(os)) || os);
+}
+
 async function load(){
 
     if(!user.id){
@@ -3201,10 +3321,14 @@ async function load(){
             console.warn("Não foi possível carregar OS Avulsas no app:", errAvulsa);
         }
 
-        const novaLista = [
+        let novaLista = [
             ...listaNormal.map(normalizarOSNormal),
             ...listaAvulsas.map(normalizarOSAvulsa)
         ];
+
+        // Busca os detalhes somente quando a listagem não traz quem executou
+        // ou o horário do status. Isso garante a faixa em ausentes/finalizadas.
+        novaLista = await enriquecerStatusDasOrdens(novaLista);
 
         const novosIds = [];
 
@@ -3256,6 +3380,14 @@ function iconeMetaOS(tipo){
         localidade: `<svg class="meta-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11Z"></path><circle cx="12" cy="10" r="2.2"></circle></svg>`
     };
     return icones[tipo] || "";
+}
+
+function abrirResumoOS(evento, chave){
+    if(evento){
+        evento.preventDefault();
+        evento.stopPropagation();
+    }
+    abrirModal(chave);
 }
 
 function render(){
@@ -4505,6 +4637,75 @@ function filtrarPorTipoServico(nome){
     render();
 }
 
+
+function dataHoraResponsavelStatusOS(os){
+    const status = normalizarStatusApp(os?.status);
+    if(status === "concluido"){
+        return os?.finalizado_em || os?.finalizada_em || os?.concluido_em || os?.concluida_em || os?.data_finalizacao || os?.data_conclusao || "";
+    }
+    if(status === "cliente_ausente"){
+        return os?.ausente_em || os?.cliente_ausente_em || os?.marcado_ausente_em || os?.data_ausente || os?.atualizado_em || os?.updated_at || "";
+    }
+    return "";
+}
+
+function horarioStatusOS(os){
+    const data = parseDataApp(dataHoraResponsavelStatusOS(os));
+    if(!data) return "";
+    return data.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
+}
+
+function nomeResponsavelStatusOS(os){
+    const status = normalizarStatusApp(os?.status);
+
+    if(status === "concluido"){
+        return os?.finalizado_por_nome ||
+               os?.finalizada_por_nome ||
+               os?.concluido_por_nome ||
+               os?.concluida_por_nome ||
+               os?.finalizado_por_usuario ||
+               os?.finalizado_por ||
+               os?.concluido_por ||
+               "";
+    }
+
+    if(status === "cliente_ausente"){
+        return os?.ausente_por_nome ||
+               os?.cliente_ausente_por_nome ||
+               os?.marcado_ausente_por_nome ||
+               os?.marcado_por_nome ||
+               os?.ausente_por_usuario ||
+               os?.ausente_por ||
+               os?.cliente_ausente_por ||
+               os?.marcado_ausente_por ||
+               os?.atualizado_por_nome ||
+               os?.atualizado_por ||
+               "";
+    }
+
+    return "";
+}
+
+function responsavelStatusCardHTML(os){
+    const status = normalizarStatusApp(os?.status);
+    const responsavel = String(nomeResponsavelStatusOS(os) || "").trim();
+
+    if(!responsavel || responsavel === "-") return "";
+
+    const hora = horarioStatusOS(os);
+    const complementoHora = hora ? ` às ${valorSeguro(hora)}` : "";
+
+    if(status === "concluido"){
+        return `<div class="os-responsavel-status finalizado"><span class="status-icone">✓</span><span>Finalizado por ${valorSeguro(responsavel)}${complementoHora}.</span></div>`;
+    }
+
+    if(status === "cliente_ausente"){
+        return `<div class="os-responsavel-status ausente"><span class="status-icone">!</span><span>${valorSeguro(responsavel)} marcou como Cliente Ausente${complementoHora}.</span></div>`;
+    }
+
+    return "";
+}
+
 function render(){
     const inputBusca = document.getElementById("busca");
     const busca = (inputBusca?.value || "").toLowerCase().trim();
@@ -4534,7 +4735,7 @@ function render(){
         const tel = formatarTelefoneApp(o.telefone);
         const href = telefoneHref(o.telefone);
         const tecnico = o.tecnicos_nomes || o.tecnico_nome || o.tecnico || "-";
-        return `<article class="os${alta ? " prioridade-alta-card" : ""}" role="button" tabindex="0" onclick="abrirModal('${chave}')">
+        return `<article class="os${alta ? " prioridade-alta-card" : ""}" role="button" tabindex="0" onclick="abrirResumoOS(event, '${chave}')" onkeydown="if(event.key==='Enter'||event.key===' '){abrirResumoOS(event, '${chave}')}">
           <div class="os-main">
             <div class="os-top-badges">${o._tipo === "avulsa" ? "" : badgePrioridadeApp(o.prioridade)}<span class="os-tipo-servico">${valorSeguro(o.tipo_servico_nome || o.tipo_servico || "OS Avulsa")}</span></div>
             <div class="os-cliente-linha"><strong class="os-cliente-nome">${valorSeguro(o._tipo === "avulsa" ? (o.localidade_nome || "OS Avulsa") : nomeClienteOS(o))}</strong></div>
@@ -4548,6 +4749,7 @@ function render(){
               <div class="os-meta-item"><b class="meta-titulo">${iconeMetaOS("tecnico")} Técnico</b><span>${valorSeguro(tecnico)}</span></div>
               ${o._tipo === "avulsa" ? "" : agendamentoMetaHTML(o)}
             </div>
+            ${responsavelStatusCardHTML(o)}
           </div>
           <span class="os-hora">${escapeHTML(horarioCurto(data))}</span><span class="os-seta">›</span>
           <div class="os-acoes-share">
@@ -5233,6 +5435,17 @@ async function enviarAcao(tipo, botao){
         clearTimeout(timer);
         const data = await lerRespostaSegura(res);
         if(!res.ok) throw new Error(data.erro || data.mensagem || `Erro HTTP ${res.status}`);
+
+        if(tipo === "ausente" || tipo === "concluir"){
+            const nomeExecutor = user.usuario || user.nome || localStorage.getItem("usuario_nome") || "Usuário";
+            salvarMetaStatusLocal(
+                osAtual.id,
+                tipo === "ausente" ? "cliente_ausente" : "concluido",
+                nomeExecutor,
+                new Date().toISOString()
+            );
+        }
+
         alert("OS atualizada com sucesso");
         fecharModal(); await load();
     }catch(err){
