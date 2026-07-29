@@ -2477,6 +2477,142 @@ body{
         font-size:13px !important;
     }
 }
+
+
+/* ===== EQUIPAMENTO / PAGAMENTO NO CARD DA OS ===== */
+.os-equipamento-resumo{
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px solid #e5ebf3;
+    display:flex;
+    align-items:flex-start;
+    gap:9px;
+    color:#334155;
+    font-size:13px;
+    line-height:1.45;
+}
+.os-equipamento-resumo .equip-icone{
+    width:30px;
+    height:30px;
+    flex:0 0 30px;
+    border-radius:10px;
+    display:grid;
+    place-items:center;
+    background:#eaf2ff;
+    color:#075cf6;
+    font-size:15px;
+}
+.os-equipamento-resumo .equip-conteudo{
+    min-width:0;
+    flex:1;
+}
+.os-equipamento-resumo .equip-titulo{
+    display:block;
+    color:#0f172a;
+    font-weight:900;
+}
+.os-equipamento-resumo .equip-detalhes{
+    display:flex;
+    flex-wrap:wrap;
+    gap:4px 12px;
+    margin-top:3px;
+    color:#52627a;
+    font-size:12px;
+}
+.os-equipamento-resumo .equip-detalhes strong{
+    color:#334155;
+}
+.os-equipamento-resumo .pagamento-pago{
+    color:#15803d;
+    font-weight:900;
+}
+.os-equipamento-resumo .pagamento-pendente{
+    color:#c2410c;
+    font-weight:900;
+}
+@media(max-width:520px){
+    .os-equipamento-resumo{
+        font-size:12px;
+        padding-right:44px;
+    }
+    .os-equipamento-resumo .equip-detalhes{
+        font-size:11px;
+        gap:3px 9px;
+    }
+}
+
+
+
+/* ===== COMPROVANTE DE PAGAMENTO NO APP ===== */
+.confirmacao-pagamento-anexo{
+    display:none;
+    margin-top:14px;
+    padding:13px;
+    border:1px solid #dbe3ef;
+    border-radius:15px;
+    background:#f8fafc;
+}
+.confirmacao-pagamento-anexo.ativo{display:block}
+.confirmacao-pagamento-anexo label{
+    display:block;
+    margin-bottom:8px;
+    color:#334155;
+    font-size:13px;
+    font-weight:900;
+}
+.confirmacao-pagamento-anexo-acoes{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:9px;
+}
+.confirmacao-pagamento-anexo-acoes button{
+    border:0;
+    border-radius:13px;
+    min-height:46px;
+    padding:10px;
+    color:#fff;
+    font-weight:900;
+    cursor:pointer;
+}
+.btn-pagamento-arquivo{background:#075cf6 !important}
+.btn-pagamento-camera{background:#0f766e !important}
+.confirmacao-pagamento-arquivo-info{
+    margin-top:9px;
+    min-height:38px;
+    padding:9px 10px;
+    border:1px dashed #cbd5e1;
+    border-radius:11px;
+    background:#fff;
+    color:#64748b;
+    font-size:12px;
+    line-height:1.4;
+    word-break:break-word;
+}
+.confirmacao-pagamento-preview{
+    display:none;
+    margin-top:9px;
+    max-height:160px;
+    max-width:100%;
+    border-radius:11px;
+    border:1px solid #dbe3ef;
+    object-fit:contain;
+    background:#fff;
+}
+.confirmacao-pagamento-preview.ativo{display:block}
+.confirmacao-pagamento-confirmar{
+    width:100%;
+    margin-top:10px;
+    border:0;
+    background:#16a34a;
+    color:#fff;
+    padding:13px;
+    border-radius:14px;
+    font-weight:900;
+}
+@media(max-width:390px){
+    .confirmacao-pagamento-anexo-acoes{grid-template-columns:1fr}
+}
+
 </style>
 
 </head>
@@ -2675,14 +2811,61 @@ body{
   <div class="confirmacao-pagamento-card" role="dialog" aria-modal="true" aria-labelledby="tituloConfirmacaoPagamento">
     <h3 id="tituloConfirmacaoPagamento">O pagamento foi realizado?</h3>
     <p>Somente valores confirmados como pagos serão contabilizados no financeiro.</p>
+
     <div class="confirmacao-pagamento-opcoes">
-      <button type="button" class="pago" onclick="resolverConfirmacaoPagamento('pago')">✓ Sim, foi pago</button>
-      <button type="button" class="pendente" onclick="resolverConfirmacaoPagamento('pendente')">⌛ Não, manter pendente</button>
+      <button type="button" class="pago" onclick="selecionarStatusPagamentoApp('pago')">✓ Sim, foi pago</button>
+      <button type="button" class="pendente" onclick="selecionarStatusPagamentoApp('pendente')">⌛ Não, manter pendente</button>
     </div>
+
+    <div class="confirmacao-pagamento-anexo" id="blocoComprovantePagamentoApp">
+      <label>Comprovante do pagamento (opcional)</label>
+
+      <div class="confirmacao-pagamento-anexo-acoes">
+        <button type="button" class="btn-pagamento-arquivo" onclick="document.getElementById('arquivoPagamentoApp').click()">
+          📎 Escolher arquivo
+        </button>
+        <button type="button" class="btn-pagamento-camera" onclick="document.getElementById('cameraPagamentoApp').click()">
+          📷 Tirar foto
+        </button>
+      </div>
+
+      <input
+        type="file"
+        id="arquivoPagamentoApp"
+        accept="image/*,application/pdf"
+        hidden
+        onchange="selecionarComprovantePagamentoApp(this)"
+      >
+
+      <input
+        type="file"
+        id="cameraPagamentoApp"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onchange="selecionarComprovantePagamentoApp(this)"
+      >
+
+      <div class="confirmacao-pagamento-arquivo-info" id="infoComprovantePagamentoApp">
+        Nenhum comprovante selecionado.
+      </div>
+
+      <img class="confirmacao-pagamento-preview" id="previewComprovantePagamentoApp" alt="Pré-visualização do comprovante">
+    </div>
+
+    <button
+      type="button"
+      class="confirmacao-pagamento-confirmar"
+      id="btnConfirmarPagamentoApp"
+      onclick="confirmarStatusPagamentoApp()"
+      disabled
+    >
+      Confirmar pagamento
+    </button>
+
     <button type="button" class="confirmacao-pagamento-cancelar" onclick="cancelarConfirmacaoPagamento()">Cancelar</button>
   </div>
 </div>
-
 
 <div class="modal-reagendamento" id="modalReagendamento" aria-hidden="true" inert>
   <div class="reagendamento-card" role="dialog" aria-modal="true" aria-labelledby="tituloReagendamento">
@@ -5084,6 +5267,113 @@ function responsavelStatusCardHTML(os){
     return "";
 }
 
+
+function normalizarTextoEquipamentoApp(valor){
+    return String(valor ?? "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+}
+
+function valorVendaEquipamentoApp(os){
+    const candidatos = [
+        os?.total_equipamentos,
+        os?.total_venda_equipamentos,
+        os?.valor_total_equipamentos,
+        os?.valor_total_equipamento,
+        os?.valor_equipamento,
+        os?.total_venda
+    ];
+
+    for(const valor of candidatos){
+        const numero = Number(String(valor ?? "").replace(",", "."));
+        if(Number.isFinite(numero) && numero > 0) return numero;
+    }
+
+    return materiaisOSApp(os).reduce((total, item) => {
+        const quantidade = Number(item?.quantidade || 1);
+        const unitario = Number(item?.valor_unitario || 0);
+        const desconto = Number(item?.desconto || 0);
+        const valorItem = Number(item?.valor_total);
+        return total + (
+            Number.isFinite(valorItem) && valorItem > 0
+                ? valorItem
+                : Math.max(0, (unitario * quantidade) - desconto)
+        );
+    }, 0);
+}
+
+function resumoEquipamentoCardHTML(os){
+    if(!os || os._tipo === "avulsa") return "";
+
+    const origem = normalizarTextoEquipamentoApp(
+        os.origem_equipamento ??
+        os.origem_equipamentos ??
+        os.tipo_origem_equipamento
+    );
+
+    const modalidade = normalizarTextoEquipamentoApp(
+        os.modalidade_equipamento ??
+        os.modalidade ??
+        os.tipo_equipamento
+    );
+
+    let titulo = "";
+    let detalhes = "";
+
+    if(origem === "proprio" || origem.includes("cliente")){
+        titulo = "Equipamento: Próprio";
+    }else if(modalidade === "comodato" || modalidade.includes("comodato")){
+        titulo = "Equipamento: Comodato";
+    }else if(modalidade === "vendido" || modalidade.includes("vend")){
+        titulo = "Equipamento: Vendido";
+
+        const valor = valorVendaEquipamentoApp(os);
+        const forma = formaPagamentoApp(
+            os.forma_pagamento_equipamento ??
+            os.tipo_pagamento_equipamento ??
+            os.forma_pagamento
+        );
+
+        const statusNormalizado = normalizarStatusPagamentoApp(os);
+        const pago = statusNormalizado === "pago";
+        const statusTexto = pago
+            ? "Pago"
+            : statusNormalizado === "pendente"
+                ? "Pendente"
+                : "Não informado";
+        const statusClasse = pago ? "pagamento-pago" : "pagamento-pendente";
+
+        detalhes = `
+            <div class="equip-detalhes">
+                <span><strong>Valor:</strong> ${moedaApp(valor)}</span>
+                <span><strong>Pagamento:</strong> ${valorSeguro(forma)}</span>
+                <span><strong>Status:</strong> <span class="${statusClasse}">${statusTexto}</span></span>
+            </div>
+        `;
+    }else{
+        // Compatibilidade com OS antigas sem os novos campos.
+        const materiais = materiaisOSApp(os);
+        if(materiais.length){
+            titulo = "Equipamento: Empresa";
+        }else{
+            titulo = "Equipamento: Próprio";
+        }
+    }
+
+    return `
+        <div class="os-equipamento-resumo">
+            <span class="equip-icone">📦</span>
+            <div class="equip-conteudo">
+                <span class="equip-titulo">${valorSeguro(titulo)}</span>
+                ${detalhes}
+            </div>
+        </div>
+    `;
+}
+
+
 function render(){
     const inputBusca = document.getElementById("busca");
     const busca = (inputBusca?.value || "").toLowerCase().trim();
@@ -5131,6 +5421,7 @@ function render(){
               <div class="os-meta-item"><b class="meta-titulo">${iconeMetaOS("tecnico")} Técnico</b><span>${valorSeguro(tecnico)}</span></div>
               ${o._tipo === "avulsa" ? "" : agendamentoMetaHTML(o)}
             </div>
+            ${resumoEquipamentoCardHTML(o)}
             ${responsavelStatusCardHTML(o)}
           </div>
           <span class="os-hora">${escapeHTML(horarioCurto(data))}</span><span class="os-seta">›</span>
@@ -5663,24 +5954,225 @@ function confirmarUsoEquipamento(){
   const resolver=resolucaoConfirmacaoEquipamento;resolucaoConfirmacaoEquipamento=null;if(resolver)resolver({utilizado:escolhaUsoEquipamento,observacao});
 }
 
-let resolucaoConfirmacaoPagamento=null;
+let resolucaoConfirmacaoPagamento = null;
+let statusPagamentoSelecionadoApp = "";
+let comprovantePagamentoApp = null;
+
+function normalizarStatusPagamentoApp(os){
+    const candidatos = [
+        os?.status_pagamento_equipamento,
+        os?.status_pagamento,
+        os?.pagamento_status,
+        os?.financeiro_status,
+        os?.status_financeiro,
+        os?.situacao_pagamento,
+        os?.financeiro?.status,
+        os?.pagamento?.status
+    ];
+
+    for(const valor of candidatos){
+        const texto = normalizarTextoEquipamentoApp(valor);
+        if(!texto) continue;
+        if(texto === "pago" || texto === "paga" || texto.includes("quit") || texto.includes("recebid")){
+            return "pago";
+        }
+        if(texto === "pendente" || texto.includes("aguard") || texto.includes("aberto")){
+            return "pendente";
+        }
+    }
+
+    const booleanosPagos = [
+        os?.pago,
+        os?.pagamento_pago,
+        os?.foi_pago,
+        os?.financeiro_pago,
+        os?.pagamento_confirmado
+    ];
+
+    if(booleanosPagos.some(v => v === true || v === 1 || String(v).toLowerCase() === "true" || String(v) === "1")){
+        return "pago";
+    }
+
+    if(booleanosPagos.some(v => v === false || v === 0 || String(v).toLowerCase() === "false" || String(v) === "0")){
+        return "pendente";
+    }
+
+    const datasPagamento = [
+        os?.pago_em,
+        os?.pagamento_em,
+        os?.pagamento_confirmado_em,
+        os?.financeiro_pago_em
+    ];
+
+    if(datasPagamento.some(v => String(v || "").trim())){
+        return "pago";
+    }
+
+    return "";
+}
+
+function limparComprovantePagamentoApp(){
+    comprovantePagamentoApp = null;
+
+    const arquivo = document.getElementById("arquivoPagamentoApp");
+    const camera = document.getElementById("cameraPagamentoApp");
+    if(arquivo) arquivo.value = "";
+    if(camera) camera.value = "";
+
+    const info = document.getElementById("infoComprovantePagamentoApp");
+    if(info) info.textContent = "Nenhum comprovante selecionado.";
+
+    const preview = document.getElementById("previewComprovantePagamentoApp");
+    if(preview){
+        preview.removeAttribute("src");
+        preview.classList.remove("ativo");
+    }
+}
+
+function selecionarStatusPagamentoApp(status){
+    statusPagamentoSelecionadoApp = status === "pago" ? "pago" : "pendente";
+
+    const bloco = document.getElementById("blocoComprovantePagamentoApp");
+    bloco?.classList.toggle("ativo", statusPagamentoSelecionadoApp === "pago");
+
+    document.querySelectorAll("#modalConfirmacaoPagamento .confirmacao-pagamento-opcoes button")
+        .forEach(botao => botao.classList.remove("selecionado"));
+
+    const seletor = statusPagamentoSelecionadoApp === "pago" ? ".pago" : ".pendente";
+    document.querySelector(`#modalConfirmacaoPagamento ${seletor}`)?.classList.add("selecionado");
+
+    const confirmar = document.getElementById("btnConfirmarPagamentoApp");
+    if(confirmar) confirmar.disabled = false;
+
+    if(statusPagamentoSelecionadoApp !== "pago"){
+        limparComprovantePagamentoApp();
+    }
+}
+
+function selecionarComprovantePagamentoApp(input){
+    const arquivo = input?.files?.[0] || null;
+    if(!arquivo) return;
+
+    if(arquivo.size > 8 * 1024 * 1024){
+        alert("O comprovante deve ter no máximo 8 MB.");
+        input.value = "";
+        return;
+    }
+
+    comprovantePagamentoApp = arquivo;
+
+    const info = document.getElementById("infoComprovantePagamentoApp");
+    if(info){
+        const tamanhoMB = (arquivo.size / 1024 / 1024).toFixed(2).replace(".", ",");
+        info.textContent = `${arquivo.name} — ${tamanhoMB} MB`;
+    }
+
+    const preview = document.getElementById("previewComprovantePagamentoApp");
+    if(preview){
+        if(String(arquivo.type || "").startsWith("image/")){
+            const leitor = new FileReader();
+            leitor.onload = () => {
+                preview.src = String(leitor.result || "");
+                preview.classList.add("ativo");
+            };
+            leitor.readAsDataURL(arquivo);
+        }else{
+            preview.removeAttribute("src");
+            preview.classList.remove("ativo");
+        }
+    }
+}
+
+function arquivoParaBase64PagamentoApp(arquivo){
+    return new Promise((resolve, reject) => {
+        if(!arquivo){
+            resolve(null);
+            return;
+        }
+
+        const leitor = new FileReader();
+        leitor.onload = () => resolve(String(leitor.result || ""));
+        leitor.onerror = () => reject(new Error("Não foi possível ler o comprovante de pagamento."));
+        leitor.readAsDataURL(arquivo);
+    });
+}
+
 function abrirConfirmacaoPagamento(){
-  const modal=document.getElementById("modalConfirmacaoPagamento");
-  if(modal){modal.removeAttribute("inert");modal.classList.add("ativo");modal.setAttribute("aria-hidden","false");}
-  return new Promise(resolve=>{resolucaoConfirmacaoPagamento=resolve;});
+    statusPagamentoSelecionadoApp = "";
+    limparComprovantePagamentoApp();
+
+    document.getElementById("blocoComprovantePagamentoApp")?.classList.remove("ativo");
+    document.querySelectorAll("#modalConfirmacaoPagamento .confirmacao-pagamento-opcoes button")
+        .forEach(botao => botao.classList.remove("selecionado"));
+
+    const confirmar = document.getElementById("btnConfirmarPagamentoApp");
+    if(confirmar) confirmar.disabled = true;
+
+    const modal = document.getElementById("modalConfirmacaoPagamento");
+    if(modal){
+        modal.removeAttribute("inert");
+        modal.classList.add("ativo");
+        modal.setAttribute("aria-hidden", "false");
+    }
+
+    return new Promise(resolve => {
+        resolucaoConfirmacaoPagamento = resolve;
+    });
 }
+
+async function confirmarStatusPagamentoApp(){
+    if(!["pago", "pendente"].includes(statusPagamentoSelecionadoApp)){
+        alert("Selecione se o pagamento foi realizado.");
+        return;
+    }
+
+    try{
+        const arquivo = statusPagamentoSelecionadoApp === "pago"
+            ? comprovantePagamentoApp
+            : null;
+
+        const base64 = await arquivoParaBase64PagamentoApp(arquivo);
+
+        fecharModalPagamento({
+            status: statusPagamentoSelecionadoApp,
+            arquivo,
+            base64,
+            nome: arquivo?.name || null,
+            mime: arquivo?.type || null
+        });
+    }catch(err){
+        alert(err.message || "Não foi possível processar o comprovante.");
+    }
+}
+
 function fecharModalPagamento(valor){
-  if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
-  const modal=document.getElementById("modalConfirmacaoPagamento");
-  if(modal){modal.classList.remove("ativo");modal.setAttribute("aria-hidden","true");modal.setAttribute("inert","");}
-  const resolver=resolucaoConfirmacaoPagamento;resolucaoConfirmacaoPagamento=null;if(resolver)resolver(valor);
+    if(document.activeElement instanceof HTMLElement) document.activeElement.blur();
+
+    const modal = document.getElementById("modalConfirmacaoPagamento");
+    if(modal){
+        modal.classList.remove("ativo");
+        modal.setAttribute("aria-hidden", "true");
+        modal.setAttribute("inert", "");
+    }
+
+    const resolver = resolucaoConfirmacaoPagamento;
+    resolucaoConfirmacaoPagamento = null;
+
+    if(resolver) resolver(valor);
 }
-function resolverConfirmacaoPagamento(valor){fecharModalPagamento(valor);}
-function cancelarConfirmacaoPagamento(){fecharModalPagamento(null);}
+
+function cancelarConfirmacaoPagamento(){
+    fecharModalPagamento(null);
+}
+
 function osExigeConfirmacaoPagamento(os){
-  return String(os?.origem_equipamento||'').toLowerCase()==='empresa'
-    && String(os?.modalidade_equipamento||'').toLowerCase()==='vendido'
-    && String(os?.status_pagamento_equipamento||'pendente').toLowerCase()==='pendente';
+    const origem = normalizarTextoEquipamentoApp(os?.origem_equipamento);
+    const modalidade = normalizarTextoEquipamentoApp(os?.modalidade_equipamento);
+    const status = normalizarStatusPagamentoApp(os);
+
+    return origem === "empresa"
+        && modalidade.includes("vend")
+        && status !== "pago";
 }
 
 
@@ -5791,6 +6283,7 @@ async function enviarAcao(tipo, botao){
     let equipamentoUtilizado = "";
     let observacaoEquipamento = "";
     let statusPagamentoConfirmado = "";
+    let comprovantePagamentoConfirmado = null;
     let checkinFinal = null;
 
     if(tipo === "concluir"){
@@ -5817,7 +6310,8 @@ async function enviarAcao(tipo, botao){
         if(equipamentoUtilizado === "sim" && osExigeConfirmacaoPagamento(osAtual)){
             const pagamento = await abrirConfirmacaoPagamento();
             if(!pagamento) return;
-            statusPagamentoConfirmado = pagamento;
+            statusPagamentoConfirmado = pagamento.status;
+            comprovantePagamentoConfirmado = pagamento;
         }
     }
 
@@ -5839,7 +6333,18 @@ async function enviarAcao(tipo, botao){
                 formData.append("equipamentos_utilizados", equipamentoUtilizado);
             }
             if(observacaoEquipamento) formData.append("observacao_equipamento", observacaoEquipamento);
-            if(statusPagamentoConfirmado) formData.append("status_pagamento_confirmado", statusPagamentoConfirmado);
+            if(statusPagamentoConfirmado){
+                formData.append("status_pagamento_confirmado", statusPagamentoConfirmado);
+                formData.append("status_pagamento_equipamento", statusPagamentoConfirmado);
+                formData.append("status_pagamento", statusPagamentoConfirmado);
+            }
+
+            if(comprovantePagamentoConfirmado?.base64){
+                formData.append("anexo_pagamento_base64", comprovantePagamentoConfirmado.base64);
+                formData.append("anexo_pagamento_nome", comprovantePagamentoConfirmado.nome || "comprovante-pagamento");
+                formData.append("anexo_pagamento_mime", comprovantePagamentoConfirmado.mime || "application/octet-stream");
+            }
+
             if(checkinFinal){
                 formData.append("checkin_fim_latitude", String(checkinFinal.latitude));
                 formData.append("checkin_fim_longitude", String(checkinFinal.longitude));

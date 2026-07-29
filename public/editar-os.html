@@ -1148,6 +1148,19 @@ button:hover{
                         <div class="campo hidden" id="campoModalidadeEquipamento"><label>Modalidade</label><select id="modalidade_equipamento"><option value="comodato">Comodato</option><option value="vendido">Vendido</option></select></div>
                         <div id="areaMateriaisOS" class="campo hidden"><label>Material de instalação</label><div class="material-seletor-linha"><select id="produto_material"><option value="">Selecione um produto</option></select><button type="button" class="btn-adicionar-material" title="Adicionar material" onclick="adicionarMaterialOS()">+</button></div></div>
                         <div id="campoPagamentoEquipamento" class="campo hidden"><label>Tipo de pagamento *</label><select id="forma_pagamento_equipamento"><option value="">Selecione...</option><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao_credito">Cartão de crédito</option><option value="cartao_debito">Cartão de débito</option><option value="cheque">Cheque</option></select></div>
+
+                        <div id="campoStatusPagamentoEquipamento" class="campo hidden">
+                            <label>Status do pagamento *</label>
+                            <select id="status_pagamento_equipamento">
+                                <option value="pendente">Pendente</option>
+                                <option value="pago">Pago</option>
+                            </select>
+                        </div>
+                        <div id="campoAnexoPagamentoEquipamento" class="campo hidden">
+                            <label>Comprovante de pagamento</label>
+                            <input id="anexo_pagamento_equipamento" type="file" accept="image/*,application/pdf">
+                            <small id="anexoPagamentoAtual" class="hint"></small>
+                        </div>
                     </div>
                     <div id="listaMateriaisOS" class="materiais-os-lista hidden"></div>
                     <div id="areaVendaEquipamento" class="hidden venda-equipamento-box"><div class="resumo-venda-os"><span>Subtotal: <strong id="subtotalVendaOS">R$ 0,00</strong></span><span>Descontos: <strong id="descontoVendaOS">R$ 0,00</strong></span><span>Total da venda: <strong id="totalVendaOS">R$ 0,00</strong></span></div></div>
