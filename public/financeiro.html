@@ -459,7 +459,7 @@ html,body{width:100%;margin:0!important;padding:0!important;background:#fff;colo
 const $=id=>document.getElementById(id),api='/api/financeiro';let movs=[],rel=[],arquivoColado=null,usuarioLogado=null;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 const moeda=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v)||0);const dt=v=>v?new Date(v).toLocaleString('pt-BR'):'-';const dtPrint=v=>{if(!v)return '-';const d=new Date(v);if(Number.isNaN(d.getTime()))return '-';return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})};
-function pagamento(valor){const mapa={dinheiro:'Dinheiro',pix:'Pix',cartao_credito:'Cartão de crédito',cartao_debito:'Cartão de débito',cheque:'Cheque'}
+function pagamento(valor){const mapa={dinheiro:'Dinheiro',pix:'Pix',cartao_credito:'Cartão de crédito',cartao_debito:'Cartão de débito',cheque:'Cheque'};return esc(mapa[String(valor||'').toLowerCase()]||valor||'-')}
 function comprovanteFinanceiro(x){
  const valor=x?.anexos_comprovantes||x?.anexo_comprovante||x?.anexo_pagamento_equipamento||x?.anexo_pagamento||x?.comprovante_pagamento||x?.anexo||"";
  return String(valor||"").trim();
@@ -470,7 +470,6 @@ function comprovanteFinanceiroHTML(x,mini=false){
  const imagem=/\.(png|jpe?g|gif|webp|bmp)(\?|#|$)/i.test(url);
  return imagem?`<a href="${seguro}" target="_blank" onclick="event.stopPropagation()"><img class="${mini?'thumb':'resumo-anexo'}" src="${seguro}" alt="Comprovante de pagamento"></a>`:`<a href="${seguro}" target="_blank" onclick="event.stopPropagation()">Abrir comprovante</a>`;
 }
-;return esc(mapa[String(valor||'').toLowerCase()]||valor||'-')}
 function destinatario(x){return esc(x?.destinatario_nome||x?.destinatario_usuario_nome||x?.destinatario_nome_usuario||x?.usuario_destinatario_nome||x?.destinatario||'-')}
 function ymdFinanceiro(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dia=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${dia}`}
 function periodoMesFinanceiro(valor){
