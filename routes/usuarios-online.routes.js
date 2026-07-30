@@ -112,6 +112,7 @@ module.exports = (pool, verificarAutenticacao) => {
                     COALESCE(e.nome_provedor, CONCAT('Empresa ', u.empresa_id)) AS empresa_nome,
                     CASE WHEN COALESCE(sa.sessoes_online, 0) > 0 THEN 'online' ELSE 'offline' END AS status,
                     COALESCE(sa.sessoes_online, 0) AS sessoes_online,
+                    COALESCE(sa.sessoes_abertas, 0) AS sessoes_abertas,
                     la.id AS log_id,
                     la.login AS conectado_em,
                     la.ultimo_ping AS ultima_atividade,
@@ -121,16 +122,30 @@ module.exports = (pool, verificarAutenticacao) => {
                 FROM usuarios u
                 LEFT JOIN empresa e ON e.id = u.empresa_id
                 LEFT JOIN (
-                    SELECT usuario_id, COUNT(*) AS sessoes_online, MAX(id) AS ultimo_log_id
+                    SELECT
+                        usuario_id,
+                        SUM(CASE
+                            WHEN logout IS NULL
+                             AND status = 'ativo'
+                             AND ultimo_ping > DATE_SUB(NOW(), INTERVAL ${OFFLINE_MINUTOS} MINUTE)
+                            THEN 1 ELSE 0
+                        END) AS sessoes_online,
+                        SUM(CASE WHEN logout IS NULL THEN 1 ELSE 0 END) AS sessoes_abertas,
+                        MAX(CASE
+                            WHEN logout IS NULL
+                             AND status = 'ativo'
+                             AND ultimo_ping > DATE_SUB(NOW(), INTERVAL ${OFFLINE_MINUTOS} MINUTE)
+                            THEN id ELSE NULL
+                        END) AS ultimo_log_online,
+                        MAX(CASE WHEN logout IS NULL THEN id ELSE NULL END) AS ultimo_log_aberto,
+                        MAX(id) AS ultimo_log_id
                     FROM log_acessos
-                    WHERE logout IS NULL
-                      AND status = 'ativo'
-                      AND ultimo_ping > DATE_SUB(NOW(), INTERVAL ${OFFLINE_MINUTOS} MINUTE)
                     GROUP BY usuario_id
                 ) sa ON sa.usuario_id = u.id
                 LEFT JOIN log_acessos la ON la.id = COALESCE(
-                    sa.ultimo_log_id,
-                    (SELECT MAX(l2.id) FROM log_acessos l2 WHERE l2.usuario_id = u.id)
+                    sa.ultimo_log_online,
+                    sa.ultimo_log_aberto,
+                    sa.ultimo_log_id
                 )
                 WHERE COALESCE(u.ativo, 1) = 1
                 ORDER BY CASE WHEN COALESCE(sa.sessoes_online, 0) > 0 THEN 0 ELSE 1 END,
@@ -233,19 +248,19 @@ module.exports = (pool, verificarAutenticacao) => {
             );
             let resultado;
 
-            // logout é o campo que efetivamente invalida a sessão no verificarAutenticacao.
-            // Usa offline para não depender de ENUM que talvez não aceite o valor "logout".
+            // O campo logout é o que invalida a sessão no middleware.
+            // Mantemos status='offline' para compatibilidade com ENUMs antigos.
             try {
                 [resultado] = await pool.query(`
                     UPDATE log_acessos
-                    SET logout = NOW(), status = 'logout', ultimo_ping = NOW(), motivo_logout = 'deslogado_administrador_empresa_1'
+                    SET logout = NOW(), status = 'offline', ultimo_ping = NOW(), motivo_logout = 'deslogado_administrador_empresa_1'
                     WHERE usuario_id = ? AND logout IS NULL
                 `, [usuarioId]);
             } catch (erroComMotivo) {
                 console.warn("Tentativa sem motivo_logout:", erroComMotivo.message);
                 [resultado] = await pool.query(`
                     UPDATE log_acessos
-                    SET logout = NOW(), status = 'logout', ultimo_ping = NOW()
+                    SET logout = NOW(), status = 'offline', ultimo_ping = NOW()
                     WHERE usuario_id = ? AND logout IS NULL
                 `, [usuarioId]);
             }
