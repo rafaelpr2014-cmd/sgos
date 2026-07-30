@@ -2855,6 +2855,7 @@ await logService.registrarLog(
 // ===============================
 router.get(
     "/imprimir/:id",
+    verificarAutenticacao,
     async (req, res) => {
 
         try {
@@ -3274,55 +3275,17 @@ try {
 // ===============================
 router.get(
     "/comprovacao/:id",
+    verificarAutenticacao,
     async (req, res) => {
 
         try {
 
-            // ===============================
-            // 🔐 TOKEN
-            // ===============================
-            const token = req.query.token;
-
-            if (!token) {
-                return res.status(401).send("Não autenticado");
-            }
-
-            let usuarioId;
-
-            try {
-
-                const decoded = Buffer
-                    .from(token, "base64")
-                    .toString("utf-8");
-
-                usuarioId = decoded.replace("_SGOS", "");
-
-            } catch {
-
-                return res.status(401).send("Token inválido");
-            }
-
-            if (!usuarioId) {
-                return res.status(401).send("Não autenticado");
-            }
-
-            // ===============================
-            // 🔐 USUÁRIO
-            // ===============================
-            const [usuarios] = await db.query(`
-                SELECT 
-                    id,
-                    empresa_id
-                FROM usuarios
-                WHERE id = ?
-                LIMIT 1
-            `, [usuarioId]);
-
-            if (!usuarios.length) {
-                return res.status(401).send("Usuário inválido");
-            }
-
-            const usuario = usuarios[0];
+            // Usa a sessão já validada pelo middleware.
+            // Não utiliza mais o token antigo enviado pela query string.
+            const usuario = {
+                id: req.usuario.id,
+                empresa_id: req.usuario.empresa_id
+            };
 
             // ===============================
             // 🔥 EMPRESA

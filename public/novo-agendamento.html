@@ -1009,7 +1009,7 @@ button{
                             </select>
                         </div>
                         <div id="campoAnexoPagamentoEquipamento" class="campo hidden">
-                            <label>Comprovante de pagamento</label>
+                            <label>Comprovante de pagamento <span style="color:#dc2626">*</span></label>
                             <input id="anexo_pagamento_equipamento" type="file" accept="image/*,application/pdf">
                             <small id="anexoPagamentoAtual" class="hint"></small>
                         </div>
@@ -2366,6 +2366,15 @@ async function dadosEquipamentosOS(){
     let anexoPagamentoMime = null;
     const arquivoPagamento = document.getElementById("anexo_pagamento_equipamento")?.files?.[0];
 
+    const comprovanteAtual = document.getElementById("anexoPagamentoAtual")?.querySelector("a")?.getAttribute("href") || "";
+    if(vendido && statusPagamento === "pago" && !arquivoPagamento && !comprovanteAtual){
+        avisarCampoObrigatorio(
+            "Anexe o comprovante para confirmar o pagamento como pago.",
+            "anexo_pagamento_equipamento"
+        );
+        throw new Error("Comprovante de pagamento obrigatório.");
+    }
+
     if(arquivoPagamento){
         if(arquivoPagamento.size > 8 * 1024 * 1024){
             throw new Error("O comprovante deve ter no máximo 8 MB.");
@@ -2405,6 +2414,9 @@ async function dadosEquipamentosOS(){
         anexo_pagamento_base64: vendido ? anexoPagamentoBase64 : null,
         anexo_pagamento_nome: vendido ? anexoPagamentoNome : null,
         anexo_pagamento_mime: vendido ? anexoPagamentoMime : null,
+        anexos_comprovantes_base64: vendido ? anexoPagamentoBase64 : null,
+        anexos_comprovantes_nome: vendido ? anexoPagamentoNome : null,
+        anexos_comprovantes_mime: vendido ? anexoPagamentoMime : null,
         equipamentos_materiais: materiais,
         materiais_os: materiais,
         valor_equipamentos_subtotal: totais.subtotal,

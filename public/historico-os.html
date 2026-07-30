@@ -510,12 +510,44 @@ tr:hover{ background:#f8fbff; }
     display:flex;
     align-items:center;
     gap:8px;
+    flex-wrap:nowrap;
 }
 
-.icone{
+.btn-acao-historico{
+    width:34px;
+    height:34px;
+    border:none;
+    border-radius:10px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
     cursor:pointer;
-    font-size:18px;
+    box-shadow:0 4px 10px rgba(15,23,42,.14);
+    transition:transform .16s ease, filter .16s ease, box-shadow .16s ease;
+    flex:0 0 34px;
 }
+
+.btn-acao-historico:hover{
+    transform:translateY(-1px);
+    filter:brightness(.96);
+    box-shadow:0 7px 15px rgba(15,23,42,.18);
+}
+
+.btn-acao-historico:active{ transform:translateY(0); }
+.btn-acao-historico svg{
+    width:18px;
+    height:18px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:2;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    pointer-events:none;
+}
+.btn-acao-reciclar{ background:#7c3aed; }
+.btn-acao-localizacao{ background:#2563eb; }
+.btn-acao-comprovacao{ background:#64748b; }
 
 .paginacao{
     margin-top:20px;
@@ -1428,8 +1460,15 @@ function renderTabelaHistorico(){
 
             <td>
                 <div class="acoes">
-                    <span class="icone" title="Reciclar atendimento" onclick="reclicarAtendimento(${os.id})">♻️</span>
-                    <span class="icone" title="Comprovação" onclick="comprovacaoOS(${os.id})">📄</span>
+                    <button class="btn-acao-historico btn-acao-reciclar" type="button" title="Reciclar OS" aria-label="Reciclar OS" onclick="reclicarAtendimento(${os.id})">
+                        <svg viewBox="0 0 24 24"><path d="M20 7h-5V2"></path><path d="M20 2l-4 4a8 8 0 1 0 2 8"></path></svg>
+                    </button>
+                    <button class="btn-acao-historico btn-acao-localizacao" type="button" title="Abrir localização" aria-label="Abrir localização" onclick="abrirLocalizacaoOS(${os.latitude || os.lat || os.checkin_latitude || 'null'}, ${os.longitude || os.lng || os.checkin_longitude || 'null'})">
+                        <svg viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+                    </button>
+                    <button class="btn-acao-historico btn-acao-comprovacao" type="button" title="Imprimir comprovação" aria-label="Imprimir comprovação" onclick="comprovacaoOS(${os.id})">
+                        <svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z"></path><path d="M16 3v4h4"></path><path d="M8 11h8M8 15h8M8 19h5"></path></svg>
+                    </button>
                 </div>
             </td>
         </tr>`;
@@ -1454,14 +1493,96 @@ window.reclicarAtendimento = function(id){
     window.location.href = `editar-os.html?id=${id}&reclicar=1`;
 };
 
-window.comprovacaoOS = function(id){
-    const usuario = JSON.parse(localStorage.getItem("usuario"));
-    const token = btoa(usuario.id + "_SGOS");
+window.abrirLocalizacaoOS = function(latitude, longitude){
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if(!Number.isFinite(lat) || !Number.isFinite(lng) || (!lat && !lng)){
+        alert("Esta OS não possui localização registrada.");
+        return;
+    }
+    window.open(`https://www.google.com/maps?q=${lat},${lng}`, "_blank", "noopener");
+};
 
-    window.open(
-        `/api/ordens_servico/comprovacao/${id}?token=${token}`,
-        "_blank"
-    );
+function requisitarDocumentoXHR(url){
+    return new Promise((resolve, reject) => {
+        const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+        const logId = localStorage.getItem("log_id") || usuario.log_id || "";
+
+        if(!usuario?.id || !logId){
+            reject(new Error("Sessão local não encontrada. Atualize a página e tente novamente."));
+            return;
+        }
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", url, true);
+        xhr.responseType = "blob";
+        xhr.withCredentials = true;
+        xhr.setRequestHeader("Accept", "application/pdf,text/html,*/*");
+        xhr.setRequestHeader("x-usuario-id", String(usuario.id));
+        xhr.setRequestHeader("x-log-id", String(logId));
+        xhr.setRequestHeader("x-sgos-active", "1");
+
+        xhr.onload = () => {
+            const tipo = (xhr.getResponseHeader("content-type") || "").toLowerCase();
+            if(xhr.status >= 200 && xhr.status < 300){
+                resolve({ blob:xhr.response, tipo });
+                return;
+            }
+
+            const leitor = new FileReader();
+            leitor.onload = () => {
+                let mensagem = `Erro ${xhr.status} ao gerar a comprovação.`;
+                try{
+                    const dadosErro = JSON.parse(String(leitor.result || ""));
+                    mensagem = dadosErro.erro || dadosErro.mensagem || mensagem;
+                }catch{
+                    const texto = String(leitor.result || "").trim();
+                    if(texto && !texto.startsWith("<!DOCTYPE")) mensagem = texto;
+                }
+                reject(new Error(mensagem));
+            };
+            leitor.onerror = () => reject(new Error(`Erro ${xhr.status} ao gerar a comprovação.`));
+            leitor.readAsText(xhr.response || new Blob());
+        };
+
+        xhr.onerror = () => reject(new Error("Falha de comunicação ao gerar a comprovação."));
+        xhr.send();
+    });
+}
+
+async function abrirDocumentoAutenticado(url){
+    const popup = window.open("about:blank", "_blank");
+    if(!popup){
+        alert("Permita pop-ups para imprimir a comprovação da OS.");
+        return;
+    }
+
+    popup.document.write('<!doctype html><html><head><title>Carregando...</title></head><body style="font-family:Arial;padding:24px">Carregando comprovação...</body></html>');
+
+    try{
+        const { blob, tipo } = await requisitarDocumentoXHR(url);
+
+        if(tipo.includes("text/html")){
+            let html = await blob.text();
+            if(!/<base\s/i.test(html)){
+                html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${location.origin}/">`);
+            }
+            popup.document.open();
+            popup.document.write(html);
+            popup.document.close();
+            return;
+        }
+
+        const blobUrl = URL.createObjectURL(blob);
+        popup.location.replace(blobUrl);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
+    }catch(erro){
+        popup.close();
+        alert(erro.message || "Não foi possível abrir a comprovação.");
+    }
+}
+window.comprovacaoOS = function(id){
+    return abrirDocumentoAutenticado(`/api/ordens_servico/comprovacao/${id}`);
 };
 
 // ===============================

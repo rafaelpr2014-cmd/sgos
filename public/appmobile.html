@@ -2852,7 +2852,7 @@ body{
     </div>
 
     <div class="confirmacao-pagamento-anexo" id="blocoComprovantePagamentoApp">
-      <label>Comprovante do pagamento (opcional)</label>
+      <label>Comprovante do pagamento <span style="color:#dc2626">*</span></label>
 
       <div class="confirmacao-pagamento-anexo-acoes">
         <button type="button" class="btn-pagamento-arquivo" onclick="document.getElementById('arquivoPagamentoApp').click()">
@@ -6195,6 +6195,11 @@ async function confirmarStatusPagamentoApp(){
             ? comprovantePagamentoApp
             : null;
 
+        if(statusPagamentoSelecionadoApp === "pago" && !arquivo){
+            alert("Anexe ou tire uma foto do comprovante para confirmar o pagamento.");
+            return;
+        }
+
         const base64 = await arquivoParaBase64PagamentoApp(arquivo);
 
         fecharModalPagamento({
@@ -6407,6 +6412,9 @@ async function enviarAcao(tipo, botao){
                 formData.append("anexo_pagamento_base64", comprovantePagamentoConfirmado.base64);
                 formData.append("anexo_pagamento_nome", comprovantePagamentoConfirmado.nome || "comprovante-pagamento");
                 formData.append("anexo_pagamento_mime", comprovantePagamentoConfirmado.mime || "application/octet-stream");
+                formData.append("anexos_comprovantes_base64", comprovantePagamentoConfirmado.base64);
+                formData.append("anexos_comprovantes_nome", comprovantePagamentoConfirmado.nome || "comprovante-pagamento");
+                formData.append("anexos_comprovantes_mime", comprovantePagamentoConfirmado.mime || "application/octet-stream");
             }
 
             if(checkinFinal){

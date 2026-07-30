@@ -3707,5 +3707,91 @@ function modoTV() {
 </script>
 
 
+
+<script id="sgos-impressao-autenticada">
+(function(){
+    const abrirOriginal = window.open.bind(window);
+
+    function sessaoAtual(){
+        let usuario = {};
+        try{ usuario = JSON.parse(localStorage.getItem("usuario") || "{}"); }catch(_){ }
+        const logId = localStorage.getItem("log_id") || usuario.log_id || "";
+        return { usuario, logId };
+    }
+
+    async function abrirComAutenticacao(url, alvo, recursos){
+        const popup = abrirOriginal("about:blank", alvo || "_blank", recursos);
+        if(!popup){
+            alert("Permita pop-ups para imprimir a comprovação da OS.");
+            return null;
+        }
+
+        popup.document.write('<!doctype html><html><head><title>Carregando...</title></head><body style="font-family:Arial;padding:24px">Carregando comprovação...</body></html>');
+
+        try{
+            const {usuario, logId} = sessaoAtual();
+            if(!usuario?.id || !logId) throw new Error("Sessão inválida ou expirada.");
+
+            const resposta = await fetch(url, {
+                method:"GET",
+                cache:"no-store",
+                credentials:"include",
+                headers:{
+                    "x-usuario-id":String(usuario.id),
+                    "x-log-id":String(logId),
+                    "x-sgos-active":"1",
+                    "Accept":"application/pdf,text/html,*/*"
+                }
+            });
+
+            if(resposta.status === 401){
+                throw new Error("Sua sessão foi encerrada. Faça login novamente.");
+            }
+            if(!resposta.ok){
+                let mensagem = "Não foi possível abrir a comprovação.";
+                try{
+                    const erro = await resposta.clone().json();
+                    mensagem = erro.erro || erro.mensagem || mensagem;
+                }catch(_){
+                    const texto = await resposta.text();
+                    if(texto) mensagem = texto;
+                }
+                throw new Error(mensagem);
+            }
+
+            const tipo = (resposta.headers.get("content-type") || "").toLowerCase();
+            if(tipo.includes("text/html")){
+                let html = await resposta.text();
+                if(!/<base\s/i.test(html)){
+                    html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${location.origin}/">`);
+                }
+                popup.document.open();
+                popup.document.write(html);
+                popup.document.close();
+            }else{
+                const blob = await resposta.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                popup.location.replace(blobUrl);
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
+            }
+        }catch(erro){
+            popup.close();
+            alert(erro.message || "Não foi possível abrir a comprovação.");
+        }
+        return popup;
+    }
+
+    window.open = function(url, alvo, recursos){
+        const endereco = String(url || "");
+        if(/\/api\/ordens_servico\/comprovacao\/\d+/i.test(endereco)){
+            return abrirComAutenticacao(endereco, alvo, recursos);
+        }
+        return abrirOriginal(url, alvo, recursos);
+    };
+
+    window.abrirComprovacaoAutenticada = abrirComAutenticacao;
+})();
+</script>
+
 </body>
 </html>
