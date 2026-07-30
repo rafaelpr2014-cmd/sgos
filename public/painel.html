@@ -10,7 +10,7 @@ TYPE html>
 <link rel="icon" type="image/png" href="/img/favicon.png">
 <script src="/js/auth.js" defer></script>
 <script src="/js/init.js" defer></script>
-<script src="/js/painel.js?v=20260729-financeiro-comprovante" defer></script>
+<script src="/js/painel.js" defer></script>
 
 <style>
 :root{
@@ -1951,7 +1951,7 @@ let periodoAtual = "hoje";
 
         <div class="header-left">
             <div class="header-logo">
-                <img id="logoEmpresa" src="/img/logo-default.png" alt="Logo Empresa">
+                <img id="logoEmpresa" src="https://iili.io/CujQzXa.png" alt="Logo Empresa">
             </div>
 
             <div class="divisor"></div>
@@ -3792,6 +3792,108 @@ function modoTV() {
     };
 
     window.abrirComprovacaoAutenticada = abrirComAutenticacao;
+})();
+</script>
+
+
+<style id="sgos-resumo-acoes-iguais-tabela">
+#resumoOSAcoes{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-end !important;
+    gap:8px !important;
+    flex-wrap:wrap !important;
+}
+#resumoOSAcoes .acoes{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:8px;
+    flex-wrap:wrap;
+}
+@media(max-width:700px){
+    #resumoOSAcoes,
+    #resumoOSAcoes .acoes{
+        justify-content:flex-start !important;
+    }
+}
+</style>
+
+<script id="sgos-resumo-acoes-iguais-tabela">
+(function(){
+    function localizarLinhaOS(id){
+        const tabelas = [
+            document.getElementById("tabelaAbertas"),
+            document.getElementById("tabelaAndamento"),
+            document.getElementById("tabelaConcluidas")
+        ].filter(Boolean);
+
+        for(const tabela of tabelas){
+            for(const linha of tabela.querySelectorAll("tr")){
+                const dataId = Number(linha.dataset.id || 0);
+                const onclick = String(linha.getAttribute("onclick") || "");
+                const match = onclick.match(/abrirResumoOS\s*\(\s*(\d+)\s*\)/i);
+                const onclickId = match ? Number(match[1]) : 0;
+                if(dataId === Number(id) || onclickId === Number(id)) return linha;
+            }
+        }
+        return null;
+    }
+
+    function copiarAcoesDaTabela(id){
+        const destino = document.getElementById("resumoOSAcoes");
+        const linha = localizarLinhaOS(id);
+        if(!destino || !linha) return false;
+
+        const celula = linha.querySelector("td:last-child");
+        if(!celula) return false;
+
+        const origem = celula.querySelector(".acoes") || celula.querySelector(".acoes-linha") || celula;
+        const elementos = [...origem.children].filter(el =>
+            el.matches("button,a,span[onclick],.icone-acao,.sgos-btn-acao")
+        );
+        if(!elementos.length) return false;
+
+        const bloco = document.createElement("div");
+        bloco.className = "acoes";
+        bloco.addEventListener("click", event => event.stopPropagation());
+        elementos.forEach(el => bloco.appendChild(el.cloneNode(true)));
+        destino.replaceChildren(bloco);
+        return true;
+    }
+
+    function instalar(){
+        const original = window.abrirResumoOS;
+        if(typeof original !== "function" || original.__sgosAcoesTabela) return false;
+
+        const atualizada = async function(id){
+            const retorno = await original.apply(this, arguments);
+            requestAnimationFrame(() => {
+                copiarAcoesDaTabela(id);
+                setTimeout(() => copiarAcoesDaTabela(id), 100);
+            });
+            return retorno;
+        };
+
+        atualizada.__sgosAcoesTabela = true;
+        window.abrirResumoOS = atualizada;
+        return true;
+    }
+
+    function iniciar(){
+        if(instalar()) return;
+        let tentativas = 0;
+        const timer = setInterval(() => {
+            tentativas++;
+            if(instalar() || tentativas >= 50) clearInterval(timer);
+        }, 100);
+    }
+
+    if(document.readyState === "loading"){
+        document.addEventListener("DOMContentLoaded", iniciar);
+    }else{
+        iniciar();
+    }
 })();
 </script>
 
