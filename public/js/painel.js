@@ -1729,9 +1729,15 @@ window.fecharResumoOS = function(){
 function materiaisResumoOS(os){
     const origem = os?.origem_equipamento === 'empresa' ? 'Equipamento da empresa' : 'Equipamento próprio do cliente';
     const modalidade = os?.origem_equipamento === 'empresa' ? (os?.modalidade_equipamento === 'vendido' ? 'Vendido' : 'Comodato') : '-';
+    const moeda=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    const forma=String(os?.forma_pagamento_equipamento||'-').replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase());
+    const status=String(os?.status_pagamento_equipamento||'-').toLowerCase()==='pago'?'Pago':String(os?.status_pagamento_equipamento||'-').toLowerCase()==='pendente'?'Pendente':'-';
     let materiais=os?.materiais_os || []; if(typeof materiais==='string'){try{materiais=JSON.parse(materiais)}catch{materiais=[]}}
-    const lista=Array.isArray(materiais)&&materiais.length ? `<div style="margin-top:10px;display:grid;gap:7px">${materiais.map(m=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 10px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px"><strong>${escapeResumo(m.nome||'Produto')}</strong><span>${Number(m.quantidade)||1} un.</span></div>`).join('')}</div>` : '<div class="resumo-texto">Nenhum material informado.</div>';
-    return `<div class="resumo-card full"><h3>📦 Equipamentos e materiais</h3>${linhaResumo('Origem',origem,'Modalidade',modalidade)}${os?.origem_equipamento==='empresa'?lista:''}</div>`;
+    const lista=Array.isArray(materiais)&&materiais.length ? `<div style="margin-top:10px;display:grid;gap:7px">${materiais.map(m=>`<div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:12px;align-items:center;padding:9px 10px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px"><strong>${escapeResumo(m.nome||'Produto')}</strong><span>${Number(m.quantidade)||1} un.</span><span>Unit.: ${moeda(m.valor_unitario)}</span><strong>Total: ${moeda(m.valor_total ?? Number(m.valor_unitario||0)*Number(m.quantidade||1))}</strong></div>`).join('')}</div>` : '<div class="resumo-texto">Nenhum material informado.</div>';
+    const caminho=os?.anexo_pagamento_equipamento||'';
+    const nome=os?.anexo_pagamento_nome||'Comprovante de pagamento';
+    const comprovante=caminho?`<div style="margin-top:12px;padding:11px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:10px"><strong>📎 Comprovante de pagamento:</strong> <a href="${escapeResumo(caminho)}" target="_blank" rel="noopener">${escapeResumo(nome)}</a></div>`:'';
+    return `<div class="resumo-card full"><h3>📦 Equipamentos e materiais</h3>${linhaResumo('Origem',origem,'Modalidade',modalidade)}${os?.modalidade_equipamento==='vendido'?linhaResumo('Pagamento',forma,'Status',status):''}${os?.modalidade_equipamento==='vendido'?linhaResumo('Subtotal',moeda(os?.subtotal_equipamentos),'Total',moeda(os?.total_equipamentos)):''}${os?.origem_equipamento==='empresa'?lista:''}${comprovante}</div>`;
 }
 
 window.abrirResumoOS = async function(id){

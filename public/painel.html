@@ -10,7 +10,7 @@ TYPE html>
 <link rel="icon" type="image/png" href="/img/favicon.png">
 <script src="/js/auth.js" defer></script>
 <script src="/js/init.js" defer></script>
-<script src="/js/painel.js?v=20260728-auth-impressao-atualizado" defer></script>
+<script src="/js/painel.js?v=20260729-financeiro-comprovante" defer></script>
 
 <style>
 :root{
@@ -3148,7 +3148,9 @@ function modoTV() {
       ?`<div class="sgos-confirmacao-web ${uso==="Não"?"nao":""}"><strong>Equipamento vinculado foi utilizado?</strong> ${uso}${os.observacao_equipamento?`<br><strong>Observação:</strong> ${esc(os.observacao_equipamento)}`:""}${os.equipamentos_confirmado_por_nome?`<br><strong>Confirmado por:</strong> ${esc(os.equipamentos_confirmado_por_nome)}`:""}${os.equipamentos_confirmado_em?`<br><strong>Confirmado em:</strong> ${esc(dataHora(os.equipamentos_confirmado_em))}`:""}</div>`
       :"";
 
-    return `<section class="sgos-equip-resumo-web"><h4>Equipamentos vinculados</h4>${itens}<div class="sgos-equip-total-web"><span><strong>Pagamento:</strong> ${esc(forma(os.forma_pagamento_equipamento))}</span><span><strong>Total:</strong> ${moeda(os.total_equipamentos)}</span></div>${confirmacao}</section>`;
+    const caminhoComprovante=os.anexo_pagamento_equipamento||"";
+    const comprovante=caminhoComprovante?`<div class="sgos-confirmacao-web"><strong>Comprovante de pagamento:</strong> <a href="${esc(caminhoComprovante)}" target="_blank" rel="noopener">${esc(os.anexo_pagamento_nome||"Visualizar comprovante")}</a></div>`:"";
+    return `<section class="sgos-equip-resumo-web"><h4>Equipamentos vinculados</h4>${itens}<div class="sgos-equip-total-web"><span><strong>Pagamento:</strong> ${esc(forma(os.forma_pagamento_equipamento))}</span><span><strong>Status:</strong> ${esc(os.status_pagamento_equipamento||"-")}</span><span><strong>Total:</strong> ${moeda(os.total_equipamentos)}</span></div>${comprovante}${confirmacao}</section>`;
   }
 
   function elementoVisivel(el){

@@ -47,7 +47,10 @@ module.exports = function financeiroRoutes(pool, verificarAutenticacao) {
     const [produtos]=await pool.query(`SELECT om.os_id,ep.nome produto_nome,om.quantidade,om.valor_unitario,om.valor_total FROM os_materiais om JOIN estoque_produtos ep ON ep.id=om.produto_id AND ep.empresa_id=om.empresa_id WHERE om.os_id IN (?) ORDER BY ep.nome`,[ids]);
     const mapa=new Map();
     for(const item of produtos){if(!mapa.has(Number(item.os_id)))mapa.set(Number(item.os_id),[]);mapa.get(Number(item.os_id)).push(item);}
-    for(const x of lista){const itens=mapa.get(Number(x.os_id))||[];if(!itens.length)continue;x.produtos_os=itens;x.estoque_produto_nome=itens.map(i=>i.produto_nome).join(', ');x.estoque_quantidade=itens.map(i=>`${i.produto_nome}: ${Number(i.quantidade||0)}`).join(' | ');x.produto_vinculado_nome=x.estoque_produto_nome;}
+    for(const x of lista){const itens=mapa.get(Number(x.os_id))||[];if(itens.length){x.produtos_os=itens;x.estoque_produto_nome=itens.map(i=>i.produto_nome).join(', ');x.estoque_quantidade=itens.map(i=>`${i.produto_nome}: ${Number(i.quantidade||0)}`).join(' | ');x.produto_vinculado_nome=x.estoque_produto_nome;}}
+    const [comprovantes]=await pool.query(`SELECT id os_id,anexo_pagamento_equipamento,anexo_pagamento_nome,anexo_pagamento_mime FROM ordens_servico WHERE id IN (?)`,[ids]).catch(()=>[[]]);
+    const mapaComp=new Map(comprovantes.map(o=>[Number(o.os_id),o]));
+    for(const x of lista){const c=mapaComp.get(Number(x.os_id));if(!c)continue;if(!x.anexo)x.anexo=c.anexo_pagamento_equipamento||null;if(!x.anexo_nome)x.anexo_nome=c.anexo_pagamento_nome||null;if(!x.anexo_mime)x.anexo_mime=c.anexo_pagamento_mime||null;if(!x.anexos_comprovantes)x.anexos_comprovantes=c.anexo_pagamento_equipamento||null;}
     return registros;
   }
   async function anexarProdutosAosLogs(logs){
@@ -91,14 +94,14 @@ module.exports = function financeiroRoutes(pool, verificarAutenticacao) {
     const conn=await pool.getConnection();
     try{
       await conn.beginTransaction();
-      const [[os]]=await conn.query(`SELECT id,forma_pagamento_equipamento,status_pagamento_equipamento FROM ordens_servico WHERE id=? AND empresa_id=? FOR UPDATE`,[Number(req.params.osId),c.empresaId]);
+      const [[os]]=await conn.query(`SELECT id,forma_pagamento_equipamento,status_pagamento_equipamento,anexo_pagamento_equipamento,anexo_pagamento_nome,anexo_pagamento_mime FROM ordens_servico WHERE id=? AND empresa_id=? FOR UPDATE`,[Number(req.params.osId),c.empresaId]);
       if(!os) {const e=new Error('OS não encontrada.');e.statusCode=404;throw e;}
       if(String(os.status_pagamento_equipamento)!=='pendente'){const e=new Error('O pagamento desta OS não está pendente.');e.statusCode=400;throw e;}
       const [itens]=await conn.query(`SELECT om.valor_total,ep.escritorio_id FROM os_materiais om JOIN estoque_produtos ep ON ep.id=om.produto_id AND ep.empresa_id=om.empresa_id WHERE om.os_id=? AND om.empresa_id=?`,[os.id,c.empresaId]);
       const por=new Map(); for(const i of itens){const eid=Number(i.escritorio_id||0),v=Number(i.valor_total||0);if(eid&&v>0)por.set(eid,(por.get(eid)||0)+v);}
       if(!por.size){const e=new Error('Não foi possível identificar o escritório e o valor dos produtos.');e.statusCode=400;throw e;}
       await conn.query(`UPDATE financeiro_movimentacoes SET ativo=0,excluido_em=NOW(),motivo_exclusao='Pagamento pendente confirmado novamente' WHERE empresa_id=? AND os_id=? AND origem='venda_os' AND ativo=1`,[c.empresaId,os.id]);
-      for(const [escritorioId,valor] of por){await conn.query(`INSERT INTO financeiro_movimentacoes (empresa_id,escritorio_id,tipo,valor,forma_pagamento,descricao,observacao,criado_por,criado_por_nome,criado_em,ativo,os_id,origem) VALUES (?,?, 'entrada', ?, ?, ?, ?, ?, ?, NOW(),1,?,'venda_os')`,[c.empresaId,escritorioId,valor,os.forma_pagamento_equipamento,`Pagamento de equipamentos da OS #${os.id}`,`Pagamento pendente confirmado pelo financeiro.`,c.usuarioId,c.usuarioNome,os.id]);}
+      for(const [escritorioId,valor] of por){await conn.query(`INSERT INTO financeiro_movimentacoes (empresa_id,escritorio_id,tipo,valor,forma_pagamento,descricao,observacao,anexo,anexo_nome,anexo_mime,anexos_comprovantes,criado_por,criado_por_nome,criado_em,ativo,os_id,origem) VALUES (?,?, 'entrada', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(),1,?,'venda_os')`,[c.empresaId,escritorioId,valor,os.forma_pagamento_equipamento,`Pagamento de equipamentos da OS #${os.id}`,`Pagamento pendente confirmado pelo financeiro.`,os.anexo_pagamento_equipamento||null,os.anexo_pagamento_nome||null,os.anexo_pagamento_mime||null,os.anexo_pagamento_equipamento||null,c.usuarioId,c.usuarioNome,os.id]);}
       await conn.query(`UPDATE ordens_servico SET status_pagamento_equipamento='pago' WHERE id=? AND empresa_id=?`,[os.id,c.empresaId]);
       await conn.commit(); res.json({ok:true,os_id:os.id,status_pagamento:'pago'});
     }catch(e){try{await conn.rollback()}catch(_){ } fail(res,e,'Erro ao confirmar pagamento.');}

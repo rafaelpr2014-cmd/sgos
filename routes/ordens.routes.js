@@ -166,6 +166,7 @@ async function garantirEstruturaMateriaisOS(){
     await alterar('ordens_servico','status_pagamento_equipamento',`ALTER TABLE ordens_servico ADD COLUMN status_pagamento_equipamento ENUM('pendente','pago') NULL AFTER forma_pagamento_equipamento`);
     await alterar('ordens_servico','anexo_pagamento_equipamento',`ALTER TABLE ordens_servico ADD COLUMN anexo_pagamento_equipamento VARCHAR(500) NULL AFTER status_pagamento_equipamento`);
     await alterar('ordens_servico','anexo_pagamento_nome',`ALTER TABLE ordens_servico ADD COLUMN anexo_pagamento_nome VARCHAR(255) NULL AFTER anexo_pagamento_equipamento`);
+    await alterar('ordens_servico','anexo_pagamento_mime',`ALTER TABLE ordens_servico ADD COLUMN anexo_pagamento_mime VARCHAR(120) NULL AFTER anexo_pagamento_nome`);
     await alterar('ordens_servico','subtotal_equipamentos',`ALTER TABLE ordens_servico ADD COLUMN subtotal_equipamentos DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER forma_pagamento_equipamento`);
     await alterar('ordens_servico','desconto_equipamentos',`ALTER TABLE ordens_servico ADD COLUMN desconto_equipamentos DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER subtotal_equipamentos`);
     await alterar('ordens_servico','total_equipamentos',`ALTER TABLE ordens_servico ADD COLUMN total_equipamentos DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER desconto_equipamentos`);
@@ -174,6 +175,7 @@ async function garantirEstruturaMateriaisOS(){
     await alterar('os_materiais','valor_total',`ALTER TABLE os_materiais ADD COLUMN valor_total DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER desconto`);
     await alterar('financeiro_movimentacoes','os_id',`ALTER TABLE financeiro_movimentacoes ADD COLUMN os_id INT NULL AFTER estoque_movimentacao_id`);
     await alterar('financeiro_movimentacoes','origem',`ALTER TABLE financeiro_movimentacoes ADD COLUMN origem VARCHAR(30) NULL AFTER os_id`);
+    await alterar('financeiro_movimentacoes','anexos_comprovantes',`ALTER TABLE financeiro_movimentacoes ADD COLUMN anexos_comprovantes VARCHAR(500) NULL AFTER anexo_mime`);
     await alterar('estoque_movimentacoes','os_id',`ALTER TABLE estoque_movimentacoes ADD COLUMN os_id INT NULL AFTER produto_id`);
     await db.query(`ALTER TABLE estoque_movimentacoes MODIFY COLUMN origem VARCHAR(40) NULL`).catch(()=>null);
     await alterar('ordens_servico','equipamentos_utilizados',`ALTER TABLE ordens_servico ADD COLUMN equipamentos_utilizados ENUM('pendente','sim','nao') NOT NULL DEFAULT 'pendente' AFTER total_equipamentos`);
@@ -238,7 +240,7 @@ async function salvarMateriaisOS(osId,empresaId,origem,modalidade,materiais,form
     if(vendido&&!formas.includes(formaPagamento))throw new Error('Selecione um tipo de pagamento válido para a venda.');
     const statusPagamentoFinal=vendido&&['pendente','pago'].includes(statusPagamento)?statusPagamento:null;
     if(vendido&&!statusPagamentoFinal)throw new Error('Selecione o status do pagamento.');
-    const [[osAtualPagamento]]=await db.query('SELECT anexo_pagamento_equipamento FROM ordens_servico WHERE id=? AND empresa_id=? LIMIT 1',[osId,empresaId]);
+    const [[osAtualPagamento]]=await db.query('SELECT anexo_pagamento_equipamento,anexo_pagamento_nome,anexo_pagamento_mime FROM ordens_servico WHERE id=? AND empresa_id=? LIMIT 1',[osId,empresaId]);
     const caminhoComprovante=vendido?salvarComprovantePagamentoOS(osId,empresaId,anexoBase64,anexoNome,anexoMime,osAtualPagamento?.anexo_pagamento_equipamento):null;
     await db.query(`DELETE FROM os_materiais WHERE os_id=? AND empresa_id=?`,[osId,empresaId]);
     let subtotal=0,descontoTotal=0,total=0;const porEscritorio=new Map();
@@ -252,8 +254,8 @@ async function salvarMateriaisOS(osId,empresaId,origem,modalidade,materiais,form
         if(vendido)porEscritorio.set(Number(produto.escritorio_id),(porEscritorio.get(Number(produto.escritorio_id))||0)+liquido);
       }
     }
-    await db.query(`UPDATE ordens_servico SET origem_equipamento=?,modalidade_equipamento=?,forma_pagamento_equipamento=?,status_pagamento_equipamento=?,anexo_pagamento_equipamento=?,anexo_pagamento_nome=?,subtotal_equipamentos=?,desconto_equipamentos=?,total_equipamentos=? WHERE id=? AND empresa_id=?`,
-      [origemFinal,modalidadeFinal,vendido?formaPagamento:null,statusPagamentoFinal,caminhoComprovante,vendido?(anexoNome||null):null,subtotal,descontoTotal,total,osId,empresaId]);
+    await db.query(`UPDATE ordens_servico SET origem_equipamento=?,modalidade_equipamento=?,forma_pagamento_equipamento=?,status_pagamento_equipamento=?,anexo_pagamento_equipamento=?,anexo_pagamento_nome=?,anexo_pagamento_mime=?,subtotal_equipamentos=?,desconto_equipamentos=?,total_equipamentos=? WHERE id=? AND empresa_id=?`,
+      [origemFinal,modalidadeFinal,vendido?formaPagamento:null,statusPagamentoFinal,caminhoComprovante,vendido?(anexoNome||osAtualPagamento?.anexo_pagamento_nome||null):null,vendido?(anexoMime||osAtualPagamento?.anexo_pagamento_mime||null):null,subtotal,descontoTotal,total,osId,empresaId]);
     // O financeiro é contabilizado somente após o técnico confirmar uso e pagamento na conclusão.
     await db.query(`UPDATE financeiro_movimentacoes
         SET ativo=0,excluido_em=NOW(),motivo_exclusao='Aguardando conclusão e confirmação de pagamento da OS'
@@ -261,7 +263,7 @@ async function salvarMateriaisOS(osId,empresaId,origem,modalidade,materiais,form
 }
 
 
-async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, utilizado, observacaoEquipamento, statusPagamentoConfirmado, usuario){
+async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, utilizado, observacaoEquipamento, statusPagamentoConfirmado, usuario, anexoPagamentoBase64=null, anexoPagamentoNome=null, anexoPagamentoMime=null){
     const resposta = String(utilizado ?? '').trim().toLowerCase();
     const respostaNormalizada = ['sim','1','true'].includes(resposta) ? 'sim' : ['nao','não','0','false'].includes(resposta) ? 'nao' : '';
 
@@ -302,13 +304,28 @@ async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, 
 
     const [[dadosOS]] = await conn.query(`
         SELECT origem_equipamento,modalidade_equipamento,forma_pagamento_equipamento,
-               status_pagamento_equipamento,total_equipamentos
+               status_pagamento_equipamento,total_equipamentos,
+               anexo_pagamento_equipamento,anexo_pagamento_nome,anexo_pagamento_mime
           FROM ordens_servico
          WHERE id=? AND empresa_id=?
          LIMIT 1`, [osId,empresaId]);
 
     const origemEmpresa = String(dadosOS?.origem_equipamento||'').toLowerCase()==='empresa';
     const vendido = origemEmpresa && String(dadosOS?.modalidade_equipamento||'').toLowerCase()==='vendido';
+
+    // Caso o técnico anexe o comprovante na conclusão, ele substitui/atualiza o comprovante da OS.
+    if(vendido && anexoPagamentoBase64){
+        const caminhoNovo=salvarComprovantePagamentoOS(
+            osId,empresaId,anexoPagamentoBase64,anexoPagamentoNome,anexoPagamentoMime,
+            dadosOS?.anexo_pagamento_equipamento
+        );
+        dadosOS.anexo_pagamento_equipamento=caminhoNovo;
+        dadosOS.anexo_pagamento_nome=anexoPagamentoNome||dadosOS?.anexo_pagamento_nome||null;
+        dadosOS.anexo_pagamento_mime=anexoPagamentoMime||dadosOS?.anexo_pagamento_mime||null;
+        await conn.query(`UPDATE ordens_servico SET anexo_pagamento_equipamento=?,anexo_pagamento_nome=?,anexo_pagamento_mime=? WHERE id=? AND empresa_id=?`,[
+            dadosOS.anexo_pagamento_equipamento,dadosOS.anexo_pagamento_nome,dadosOS.anexo_pagamento_mime,osId,empresaId
+        ]);
+    }
     let statusPagamentoFinal = vendido ? String(dadosOS?.status_pagamento_equipamento||'pendente').toLowerCase() : null;
 
     // Quando a venda ainda está pendente, o técnico confirma no momento da conclusão.
@@ -401,11 +418,15 @@ async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, 
             for(const [escritorioId,valor] of porEscritorio.entries()){
                 await conn.query(`
                     INSERT INTO financeiro_movimentacoes
-                    (empresa_id,escritorio_id,tipo,valor,forma_pagamento,descricao,observacao,criado_por,criado_por_nome,criado_em,ativo,os_id,origem)
-                    VALUES (?,?, 'entrada', ?, ?, ?, ?, ?, ?, NOW(),1,?,'venda_os')`,
+                    (empresa_id,escritorio_id,tipo,valor,forma_pagamento,descricao,observacao,anexo,anexo_nome,anexo_mime,anexos_comprovantes,criado_por,criado_por_nome,criado_em,ativo,os_id,origem)
+                    VALUES (?,?, 'entrada', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(),1,?,'venda_os')`,
                     [empresaId,escritorioId,valor,dadosOS?.forma_pagamento_equipamento||null,
                      `Venda de equipamentos utilizados na OS #${osId}`,
                      `Lançamento automático confirmado na conclusão da OS #${osId}.`,
+                     dadosOS?.anexo_pagamento_equipamento||null,
+                     dadosOS?.anexo_pagamento_nome||null,
+                     dadosOS?.anexo_pagamento_mime||null,
+                     dadosOS?.anexo_pagamento_equipamento||null,
                      Number(usuario?.id||0),String(usuario?.usuario||usuario?.nome||'Sistema'),osId]);
                 financeiroLancado++;
                 valorFinanceiro+=valor;
@@ -2020,7 +2041,10 @@ router.post(
                 req.body.equipamento_utilizado,
                 req.body.observacao_equipamento,
                 req.body.status_pagamento_confirmado,
-                req.usuario
+                req.usuario,
+                req.body.anexo_pagamento_base64 || req.body.anexos_comprovantes_base64 || null,
+                req.body.anexo_pagamento_nome || req.body.anexos_comprovantes_nome || null,
+                req.body.anexo_pagamento_mime || req.body.anexos_comprovantes_mime || null
             );
             await conn.query(`UPDATE ordens_servico SET
                 status='concluido',
