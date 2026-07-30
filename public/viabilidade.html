@@ -1475,13 +1475,13 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
         const pool=document.getElementById("itemPool");
         const itens=Array.from(pool.children);
         const resumo=document.getElementById("resumoTemplate").innerHTML;
-        const cabecalho=()=>`<header class="cabecalho"><div class="marca"><img src="${escapar(logo)}" alt="Logo"><div><h1>Relatório de Viabilidades</h1><p>SGOS - Sistema de Gestão Operacional e Sistemas</p></div></div><div class="contador"></div></header>`;
-        const rodape=`<footer class="rodape">Emitido por SGOS - Sistemas de Ordens de Serviço - ${escapar(emitidoEm)}</footer>`;
+        const cabecalho=()=>'<header class="cabecalho"><div class="marca"><img src="${escapar(logo)}" alt="Logo"><div><h1>Relatório de Viabilidades</h1><p>SGOS - Sistema de Gestão Operacional e Sistemas</p></div></div><div class="contador"></div></header>';
+        const rodape='<footer class="rodape">Emitido por SGOS - Sistemas de Ordens de Serviço - ${escapar(emitidoEm)}</footer>';
 
         function criarPagina(primeira=false){
             const pagina=document.createElement("section");
             pagina.className="pagina";
-            pagina.innerHTML=cabecalho()+(primeira?resumo:"")+`<main class="grade"></main>`+rodape;
+            pagina.innerHTML=cabecalho()+(primeira?resumo:"")+'<main class="grade"></main>'+rodape;
             root.appendChild(pagina);
             return pagina;
         }
@@ -1514,7 +1514,7 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
         pool.remove();
         const paginas=Array.from(root.querySelectorAll(".pagina"));
         paginas.forEach((p,i)=>{
-            p.querySelector(".contador").textContent=`Página ${i+1} de ${paginas.length}`;
+            p.querySelector(".contador").textContent="Página "+(i+1)+" de "+paginas.length;
         });
         setTimeout(()=>window.print(),350);
     };
