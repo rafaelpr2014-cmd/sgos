@@ -1392,9 +1392,8 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
     const logo=document.getElementById("logoEmpresa")?.src||"/img/logo-default.png";
     const emitidoEm=new Date().toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"});
     const resumo=contarResumoPdf(registros);
-    // Uma viabilidade por página: o bloco passa a crescer conforme a quantidade
-    // de clientes ERP, observações e demais dados, sem cortar conteúdo.
-    const paginas=registros.map(registro=>[registro]);
+    // A paginação é calculada no próprio documento de impressão após a renderização.
+    // Assim, entram o máximo de viabilidades possível em cada folha sem dividir nenhum bloco.
     const resumoHtml=`<section class="resumo-relatorio">
         <div class="resumo-periodos"><strong>VIABILIDADES SELECIONADAS: ${resumo.total}</strong><span>PERÍODO DE REGISTRO: ${escapar(contextoFiltros.periodoRegistro)}</span><span>PERÍODO DE ATUALIZAÇÃO: ${escapar(contextoFiltros.periodoAtualizacao)}</span></div>
         <div class="resumo-contagens">
@@ -1447,7 +1446,7 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relatório de Viabilidades</title><style>
         @page{size:A4 portrait;margin:5mm}
         *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#0f172a;background:#fff}
-        .pagina{min-height:287mm;height:auto;display:flex;flex-direction:column;page-break-after:always;overflow:visible}.pagina:last-child{page-break-after:auto}
+        .pagina{height:287mm;min-height:287mm;display:flex;flex-direction:column;page-break-after:always;overflow:hidden}.pagina:last-child{page-break-after:auto}
         .cabecalho{height:19mm;display:flex;align-items:center;justify-content:space-between;border-bottom:1.5px solid #2563eb;padding:0 1.5mm 2mm;margin-bottom:2mm}
         .marca{display:flex;align-items:center;gap:3mm}.marca img{max-width:38mm;max-height:14mm;object-fit:contain}.marca h1{font-size:14pt;margin:0}.marca p{font-size:8pt;color:#64748b;margin:.6mm 0 0}
         .contador{font-size:8pt;color:#64748b;font-weight:bold}.resumo-relatorio{margin-bottom:2mm;font-size:8pt}.resumo-periodos{display:flex;gap:2mm 5mm;align-items:center;flex-wrap:wrap;border:1px solid #94a3b8;border-radius:2mm;background:#f8fafc;padding:1.2mm 2mm;margin-bottom:1.2mm}.resumo-periodos strong{color:#1d4ed8}.resumo-contagens{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2mm;align-items:stretch}.resumo-contagens span{display:flex;align-items:center;justify-content:center;min-width:0;min-height:8mm;white-space:normal;text-align:center;font-size:8.2pt;line-height:1.15;border:1px solid #cbd5e1;border-radius:2mm;background:#fff;padding:1mm 1.4mm}.resumo-contagens b{font-weight:800}.resumo-contagens strong{font-size:9.2pt;color:#0f172a;font-weight:900}
@@ -1466,12 +1465,60 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
         .pdf-erp-cabecalho span,.pdf-erp-cliente span,.pdf-erp-cliente b{display:block;min-width:0;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
         .rodape{height:6mm;margin-top:1.5mm;border-top:1px solid #cbd5e1;display:flex;align-items:flex-end;justify-content:center;font-size:7.5pt;color:#475569;text-align:center}
         @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-    </style></head><body>${paginas.map((pagina,indice)=>`<section class="pagina">
-        <header class="cabecalho"><div class="marca"><img src="${escapar(logo)}" alt="Logo"><div><h1>Relatório de Viabilidades</h1><p>SGOS - Sistema de Gestão Operacional e Sistemas</p></div></div><div class="contador">Página ${indice+1} de ${paginas.length}</div></header>
-        ${indice===0?resumoHtml:""}
-        <main class="grade">${pagina.map(renderItem).join("")}</main>
-        <footer class="rodape">Emitido por SGOS - Sistemas de Ordens de Serviço - ${escapar(emitidoEm)}</footer>
-    </section>`).join("")}<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script></body></html>`
+    </style></head><body>
+    <div id="printRoot"></div>
+    <div id="itemPool" style="display:none">${registros.map(renderItem).join("")}</div>
+    <template id="resumoTemplate">${resumoHtml}</template>
+    <script>
+    window.onload=()=>{
+        const root=document.getElementById("printRoot");
+        const pool=document.getElementById("itemPool");
+        const itens=Array.from(pool.children);
+        const resumo=document.getElementById("resumoTemplate").innerHTML;
+        const cabecalho=()=>`<header class="cabecalho"><div class="marca"><img src="${escapar(logo)}" alt="Logo"><div><h1>Relatório de Viabilidades</h1><p>SGOS - Sistema de Gestão Operacional e Sistemas</p></div></div><div class="contador"></div></header>`;
+        const rodape=`<footer class="rodape">Emitido por SGOS - Sistemas de Ordens de Serviço - ${escapar(emitidoEm)}</footer>`;
+
+        function criarPagina(primeira=false){
+            const pagina=document.createElement("section");
+            pagina.className="pagina";
+            pagina.innerHTML=cabecalho()+(primeira?resumo:"")+`<main class="grade"></main>`+rodape;
+            root.appendChild(pagina);
+            return pagina;
+        }
+
+        let pagina=criarPagina(true);
+        let grade=pagina.querySelector(".grade");
+
+        itens.forEach(item=>{
+            item.style.display="";
+            grade.appendChild(item);
+
+            if(pagina.scrollHeight>pagina.clientHeight+2){
+                grade.removeChild(item);
+
+                // Somente cria outra folha quando já existe conteúdo nesta página.
+                if(grade.children.length){
+                    pagina=criarPagina(false);
+                    grade=pagina.querySelector(".grade");
+                    grade.appendChild(item);
+                }else{
+                    // Um bloco excepcionalmente grande permanece inteiro e a folha cresce,
+                    // evitando qualquer corte interno do registro.
+                    grade.appendChild(item);
+                    pagina.style.height="auto";
+                    pagina.style.overflow="visible";
+                }
+            }
+        });
+
+        pool.remove();
+        const paginas=Array.from(root.querySelectorAll(".pagina"));
+        paginas.forEach((p,i)=>{
+            p.querySelector(".contador").textContent=`Página ${i+1} de ${paginas.length}`;
+        });
+        setTimeout(()=>window.print(),350);
+    };
+    <\/script></body></html>`
 }
 function abrirImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){const w=window.open("","_blank");if(!w){alert("Permita pop-ups para imprimir.");return}w.document.open();w.document.write(htmlImpressao(registros,contextoFiltros));w.document.close()}
 function imprimirViabilidade(id){const o=viabilidades.find(v=>Number(v.id)===Number(id));if(o)abrirImpressao([o])}
