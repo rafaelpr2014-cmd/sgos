@@ -434,7 +434,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/inviabilidades", inviabilidadeRoutes);
 app.use("/api", viabilidadeRoutes(pool, verificarAutenticacao));
 app.use('/api/relatorios-automaticos', verificarAutenticacao, somenteAdministrador, relatoriosAutomaticosRoutes(pool, verificarAutenticacao));
-app.use('/api/admin/monitor-relatorios', verificarAutenticacao, somenteSuporteSgosAdministrador, monitorRelatoriosRoutes(pool));
+app.use('/api/admin/monitor-relatorios', verificarAutenticacao, somenteAdministrador, monitorRelatoriosRoutes(pool));
 app.use("/api/svas", verificarAutenticacao, somenteLeituraParaNaoAdministrador, svasRoutes);
 app.use("/api/lembretes", lembretesRoutes);
 app.use('/api/estoque', verificarAutenticacao, somenteAdministrador, estoqueRoutes);
@@ -601,27 +601,6 @@ function somenteAdministrador(req, res, next) {
         return res.status(403).json({
             erro: "Acesso não autorizado. Este módulo é exclusivo para administradores.",
             codigo: "ACESSO_SOMENTE_ADMINISTRADOR"
-        });
-    }
-
-    next();
-}
-
-function somenteSuporteSgosAdministrador(req, res, next) {
-    if (!req.usuario) {
-        return res.status(401).json({
-            erro: "Não autenticado.",
-            codigo: "NAO_AUTENTICADO"
-        });
-    }
-
-    const empresaId = Number(req.usuario.empresa_id || 0);
-    const administrador = usuarioEhAdministrador(req);
-
-    if (empresaId !== 1 || !administrador) {
-        return res.status(403).json({
-            erro: "Acesso exclusivo ao Suporte SGOS: empresa 1 e cargo Administrador.",
-            codigo: "ACESSO_EXCLUSIVO_SUPORTE_SGOS"
         });
     }
 

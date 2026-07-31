@@ -1,3 +1,19 @@
+
+const fs = require("fs");
+const path = require("path");
+
+function salvarPdfMonitor(buffer, nomeOriginal, empresaId) {
+    if (!buffer?.length) return null;
+    const pasta = path.join(__dirname, "..", "uploads", "relatorios-monitor");
+    fs.mkdirSync(pasta, { recursive: true });
+    const baseSeguro = path.basename(String(nomeOriginal || "relatorio.pdf"))
+        .replace(/[^a-zA-Z0-9._-]/g, "_");
+    const nome = `${Date.now()}-${empresaId}-${Math.random().toString(36).slice(2, 8)}-${baseSeguro}`;
+    const absoluto = path.join(pasta, nome);
+    fs.writeFileSync(absoluto, buffer);
+    return path.relative(path.join(__dirname, ".."), absoluto).replace(/\\/g, "/");
+}
+
 module.exports = (pool, verificarAutenticacao) => {
     const express = require("express");
     const multer = require("multer");
@@ -107,6 +123,7 @@ module.exports = (pool, verificarAutenticacao) => {
                 );
 
                 const nomeArquivo = req.file?.originalname || "relatorio.pdf";
+                const caminhoArquivo = salvarPdfMonitor(pdfBuffer, nomeArquivo, req.usuario?.empresa_id);
 
                 const controleLog = await iniciarLog(pool, {
                     empresa_id: req.usuario.empresa_id,
@@ -116,7 +133,8 @@ module.exports = (pool, verificarAutenticacao) => {
                     canal: "email",
                     destinatario: email,
                     assunto: `Relatório SGOS - ${descricaoPeriodo}`,
-                    nome_arquivo: nomeArquivo
+                    nome_arquivo: nomeArquivo,
+                    caminho_arquivo: caminhoArquivo
                 });
 
                 try {
@@ -173,6 +191,7 @@ module.exports = (pool, verificarAutenticacao) => {
                 );
 
                 const nomeArquivo = req.file.originalname || "relatorio.pdf";
+                const caminhoArquivo = salvarPdfMonitor(req.file.buffer, nomeArquivo, req.usuario?.empresa_id);
                 const controleLog = await iniciarLog(pool, {
                     empresa_id: req.usuario.empresa_id,
                     usuario_id: req.usuario.id,
@@ -181,7 +200,8 @@ module.exports = (pool, verificarAutenticacao) => {
                     canal: "whatsapp",
                     destinatario: telefone,
                     assunto: `Relatório SGOS - ${descricaoPeriodo}`,
-                    nome_arquivo: nomeArquivo
+                    nome_arquivo: nomeArquivo,
+                    caminho_arquivo: caminhoArquivo
                 });
 
                 let resultado;

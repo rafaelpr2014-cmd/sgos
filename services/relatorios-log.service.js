@@ -2,8 +2,8 @@ async function iniciarLog(pool, dados = {}) {
   const [resultado] = await pool.query(`
     INSERT INTO relatorios_logs
       (empresa_id, usuario_id, tipo_relatorio, origem, canal, destinatario,
-       assunto, nome_arquivo, status, tentativa, iniciado_em, criado_em)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'processando', ?, NOW(), NOW())
+       assunto, nome_arquivo, caminho_arquivo, status, tentativa, iniciado_em, criado_em)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'processando', ?, NOW(), NOW())
   `, [
     Number(dados.empresa_id || 0),
     dados.usuario_id ? Number(dados.usuario_id) : null,
@@ -13,6 +13,7 @@ async function iniciarLog(pool, dados = {}) {
     dados.destinatario ? String(dados.destinatario).slice(0, 255) : null,
     dados.assunto ? String(dados.assunto).slice(0, 255) : null,
     dados.nome_arquivo ? String(dados.nome_arquivo).slice(0, 255) : null,
+    dados.caminho_arquivo ? String(dados.caminho_arquivo).slice(0, 500) : null,
     Math.max(1, Number(dados.tentativa || 1))
   ]);
   return { id: resultado.insertId, inicio: Date.now() };

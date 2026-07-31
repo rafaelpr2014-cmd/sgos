@@ -4,6 +4,22 @@ const { gerarRelatorioEmpresa, enviarRelatorio } = require("../services/relatori
 const { enviarMidiaCentral } = require("../services/whatsappService");
 const { iniciarLog, finalizarLog } = require("../services/relatorios-log.service");
 
+
+const fs = require("fs");
+const path = require("path");
+
+function salvarPdfMonitor(buffer, nomeOriginal, empresaId) {
+    if (!buffer?.length) return null;
+    const pasta = path.join(__dirname, "..", "uploads", "relatorios-monitor");
+    fs.mkdirSync(pasta, { recursive: true });
+    const baseSeguro = path.basename(String(nomeOriginal || "relatorio.pdf"))
+        .replace(/[^a-zA-Z0-9._-]/g, "_");
+    const nome = `${Date.now()}-${empresaId}-${Math.random().toString(36).slice(2, 8)}-${baseSeguro}`;
+    const absoluto = path.join(pasta, nome);
+    fs.writeFileSync(absoluto, buffer);
+    return path.relative(path.join(__dirname, ".."), absoluto).replace(/\\/g, "/");
+}
+
 module.exports = (pool, verificarAutenticacao) => {
     router.post("/enviar-manual", verificarAutenticacao, async (req, res) => {
         const controles = [];
@@ -11,12 +27,13 @@ module.exports = (pool, verificarAutenticacao) => {
             const empresaId = Number(req.usuario?.empresa_id);
             const tipo = ["diario", "semanal", "mensal"].includes(req.body.tipo) ? req.body.tipo : "diario";
             const rel = await gerarRelatorioEmpresa(pool, empresaId, tipo);
+            const caminhoArquivo = salvarPdfMonitor(rel.buffer, rel.filename, empresaId);
             const canal = String(req.body.canal || "email").toLowerCase();
 
             if (["email", "ambos"].includes(canal)) {
                 const email = req.body.email;
                 if (!email) return res.status(400).json({ erro: "Informe o e-mail" });
-                const log = await iniciarLog(pool, { empresa_id: empresaId, usuario_id: req.usuario?.id, tipo_relatorio: tipo, origem: 'manual', canal: 'email', destinatario: email, assunto: `Relatório ${tipo} SGOS`, nome_arquivo: rel.filename });
+                const log = await iniciarLog(pool, { empresa_id: empresaId, usuario_id: req.usuario?.id, tipo_relatorio: tipo, origem: 'manual', canal: 'email', destinatario: email, assunto: `Relatório ${tipo} SGOS`, nome_arquivo: rel.filename, caminho_arquivo: caminhoArquivo });
                 controles.push(log);
                 try {
                     const retorno = await enviarRelatorio(email, rel.buffer, `Relatório ${tipo} SGOS`, rel.filename);
@@ -30,7 +47,7 @@ module.exports = (pool, verificarAutenticacao) => {
             if (["whatsapp", "ambos"].includes(canal)) {
                 const telefone = req.body.telefone;
                 if (!telefone) return res.status(400).json({ erro: "Informe o telefone" });
-                const log = await iniciarLog(pool, { empresa_id: empresaId, usuario_id: req.usuario?.id, tipo_relatorio: tipo, origem: 'manual', canal: 'whatsapp', destinatario: telefone, assunto: 'Relatório SGOS', nome_arquivo: rel.filename });
+                const log = await iniciarLog(pool, { empresa_id: empresaId, usuario_id: req.usuario?.id, tipo_relatorio: tipo, origem: 'manual', canal: 'whatsapp', destinatario: telefone, assunto: 'Relatório SGOS', nome_arquivo: rel.filename, caminho_arquivo: caminhoArquivo });
                 controles.push(log);
                 try {
                     const retorno = await enviarMidiaCentral(empresaId, telefone, rel.buffer, rel.filename, "Relatório SGOS");
