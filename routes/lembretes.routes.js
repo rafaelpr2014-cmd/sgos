@@ -222,21 +222,56 @@ router.get('/historico', async (req, res) => {
         if (!usuario) return res.status(401).json({ erro: 'Usuário não autenticado.' });
 
         const categoria = String(req.query.categoria || 'todos').toLowerCase();
-        let filtroCategoria = '';
+        const periodo = String(req.query.periodo || 'todos').toLowerCase();
+        const leitura = String(req.query.leitura || 'todos').toLowerCase();
+        const usuarioFiltro = Number(req.query.usuario_id || 0);
+        const direcaoUsuario = String(req.query.direcao_usuario || 'todos').toLowerCase();
+
+        const filtros = ['(l.criado_por_id = ? OR l.destinatario_id = ?)'];
         const params = [usuario.id, usuario.id];
 
         if (categoria === 'recebidos') {
-            filtroCategoria = `AND l.tipo = 'enviado' AND l.destinatario_id = ?`;
+            filtros.push("l.tipo = 'enviado' AND l.destinatario_id = ?");
             params.push(usuario.id);
         } else if (categoria === 'enviados') {
-            filtroCategoria = `AND l.tipo = 'enviado' AND l.criado_por_id = ?`;
+            filtros.push("l.tipo = 'enviado' AND l.criado_por_id = ?");
             params.push(usuario.id);
         } else if (categoria === 'salvos') {
-            filtroCategoria = `AND l.tipo = 'salvo' AND l.criado_por_id = ?`;
+            filtros.push("l.tipo = 'salvo' AND l.criado_por_id = ?");
             params.push(usuario.id);
         }
 
-        if (usuario.empresa_id != null) params.push(usuario.empresa_id);
+        if (periodo === 'hoje') {
+            filtros.push('DATE(COALESCE(l.agendado_para, l.criado_em)) = CURDATE()');
+        } else if (periodo === 'ontem') {
+            filtros.push('DATE(COALESCE(l.agendado_para, l.criado_em)) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)');
+        } else if (periodo === '7dias') {
+            filtros.push('COALESCE(l.agendado_para, l.criado_em) >= DATE_SUB(NOW(), INTERVAL 7 DAY)');
+        }
+
+        if (leitura === 'lido') {
+            filtros.push("l.tipo = 'enviado' AND l.lido_em IS NOT NULL");
+        } else if (leitura === 'nao_lido') {
+            filtros.push("l.tipo = 'enviado' AND l.lido_em IS NULL AND l.removido_em IS NULL");
+        }
+
+        if (usuarioFiltro > 0) {
+            if (direcaoUsuario === 'recebido_de') {
+                filtros.push('l.criado_por_id = ? AND l.destinatario_id = ?');
+                params.push(usuarioFiltro, usuario.id);
+            } else if (direcaoUsuario === 'enviado_para') {
+                filtros.push('l.criado_por_id = ? AND l.destinatario_id = ?');
+                params.push(usuario.id, usuarioFiltro);
+            } else {
+                filtros.push('(l.criado_por_id = ? OR l.destinatario_id = ?)');
+                params.push(usuarioFiltro, usuarioFiltro);
+            }
+        }
+
+        if (usuario.empresa_id != null) {
+            filtros.push('l.empresa_id = ?');
+            params.push(usuario.empresa_id);
+        }
 
         const rows = await executar(
             `SELECT l.id,
@@ -255,9 +290,7 @@ router.get('/historico', async (req, res) => {
                FROM lembretes l
                LEFT JOIN usuarios uc ON uc.id = l.criado_por_id
                LEFT JOIN usuarios ud ON ud.id = l.destinatario_id
-              WHERE (l.criado_por_id = ? OR l.destinatario_id = ?)
-                ${filtroCategoria}
-                ${usuario.empresa_id != null ? 'AND l.empresa_id = ?' : ''}
+              WHERE ${filtros.join(' AND ')}
               ORDER BY COALESCE(l.agendado_para, l.criado_em) DESC
               LIMIT 500`,
             params
@@ -482,7 +515,7 @@ router.patch('/:id/lido', async (req, res) => {
         const resultado = await executar(
             `UPDATE lembretes
                 SET lido_em = COALESCE(lido_em, NOW()),
-                    visivel_ate = COALESCE(visivel_ate, DATE_ADD(NOW(), INTERVAL 30 MINUTE))
+                    visivel_ate = COALESCE(visivel_ate, DATE_ADD(NOW(), INTERVAL 2 HOUR))
               WHERE id = ?
                 AND tipo = 'enviado'
                 AND destinatario_id = ?
@@ -494,7 +527,7 @@ router.patch('/:id/lido', async (req, res) => {
         if (!resultado.affectedRows) {
             return res.status(404).json({ erro: 'Lembrete recebido não encontrado ou ainda não liberado.' });
         }
-        return res.json({ ok: true, mensagem: 'Lembrete marcado como lido. Ele ficará visível por mais 30 minutos.' });
+        return res.json({ ok: true, mensagem: 'Lembrete marcado como lido. Ele ficará visível no painel por mais 2 horas.' });
     } catch (erro) {
         console.error('Erro ao marcar lembrete como lido:', erro);
         return res.status(500).json({ erro: 'Erro ao atualizar lembrete.' });
