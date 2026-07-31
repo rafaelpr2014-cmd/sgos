@@ -19,6 +19,32 @@ module.exports = (pool) => {
 
   router.use(somenteSuporteAdministrador);
 
+  async function garantirTabelaMonitorConexoes() {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS monitor_conexoes (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        servico ENUM('whatsapp','email') NOT NULL,
+        status ENUM('conectado','desconectado','erro') NOT NULL,
+        tempo_ms INT UNSIGNED NULL,
+        mensagem VARCHAR(500) NULL,
+        detalhes LONGTEXT NULL,
+        testado_por BIGINT NULL,
+        testado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY idx_monitor_conexoes_servico_data (servico, testado_em)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  }
+
+  async function salvarTesteConexao({ servico, status, tempo_ms = null, mensagem = null, detalhes = null, usuario_id = null }) {
+    await garantirTabelaMonitorConexoes();
+    await pool.query(
+      `INSERT INTO monitor_conexoes (servico, status, tempo_ms, mensagem, detalhes, testado_por, testado_em)
+       VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+      [servico, status, tempo_ms, mensagem, detalhes ? JSON.stringify(detalhes) : null, usuario_id]
+    );
+  }
+
   async function tabelaExiste(nome) {
     const [rows] = await pool.query(`SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? LIMIT 1`, [nome]);
     return rows.length > 0;
@@ -147,7 +173,61 @@ module.exports = (pool) => {
     }catch(err){return res.status(500).json({erro:err.message});}
   });
 
-  router.get('/status-email', async (_req,res)=>{ const inicio=Date.now(); try{const {transporter,publicInfo}=criarTransporter();await transporter.verify();return res.json({ok:true,status:'conectado',tempo_ms:Date.now()-inicio,configuracao:publicInfo});}catch(err){return res.status(503).json({ok:false,status:'desconectado',tempo_ms:Date.now()-inicio,codigo:err.code||'smtp_error',erro:err.message});} });
+  router.get('/status-email', async (req,res)=>{
+    const inicio=Date.now();
+    try {
+      const {transporter,publicInfo}=criarTransporter();
+      await transporter.verify();
+      const tempoMs=Date.now()-inicio;
+      await salvarTesteConexao({servico:'email',status:'conectado',tempo_ms:tempoMs,mensagem:'SMTP autenticado e disponível.',detalhes:publicInfo,usuario_id:req.usuario?.id});
+      return res.json({ok:true,status:'conectado',tempo_ms:tempoMs,configuracao:publicInfo,testado_em:new Date().toISOString()});
+    } catch(err) {
+      const tempoMs=Date.now()-inicio;
+      await salvarTesteConexao({servico:'email',status:'desconectado',tempo_ms:tempoMs,mensagem:err.message,detalhes:{codigo:err.code||'smtp_error'},usuario_id:req.usuario?.id}).catch(()=>{});
+      return res.status(503).json({ok:false,status:'desconectado',tempo_ms:tempoMs,codigo:err.code||'smtp_error',erro:err.message,testado_em:new Date().toISOString()});
+    }
+  });
+
+  router.post('/registrar-status-whatsapp', async (req,res) => {
+    try {
+      const conectado = req.body?.conectado === true;
+      const tempoMs = Math.max(0, Number(req.body?.tempo_ms || 0));
+      const mensagem = String(req.body?.mensagem || (conectado ? 'WhatsApp conectado e pronto.' : 'WhatsApp desconectado.')).slice(0,500);
+      await salvarTesteConexao({
+        servico:'whatsapp',
+        status: conectado ? 'conectado' : 'desconectado',
+        tempo_ms: tempoMs,
+        mensagem,
+        detalhes:req.body?.detalhes || null,
+        usuario_id:req.usuario?.id
+      });
+      return res.json({ok:true,testado_em:new Date().toISOString()});
+    } catch(err) {
+      return res.status(500).json({erro:err.message});
+    }
+  });
+
+  router.get('/ultimos-testes', async (_req,res) => {
+    try {
+      await garantirTabelaMonitorConexoes();
+      const [rows] = await pool.query(`
+        SELECT mc.*
+        FROM monitor_conexoes mc
+        INNER JOIN (
+          SELECT servico, MAX(id) AS id
+          FROM monitor_conexoes
+          GROUP BY servico
+        ) ult ON ult.id = mc.id
+        ORDER BY mc.servico
+      `);
+      const resultado={whatsapp:null,email:null};
+      for(const row of rows) resultado[row.servico]=row;
+      return res.json({ok:true,ultimos:resultado});
+    } catch(err) {
+      return res.status(500).json({erro:err.message});
+    }
+  });
+
   router.post('/testar-email', async (req,res)=>{const inicio=Date.now();try{const destino=String(req.body?.email||'').trim();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destino))return res.status(400).json({erro:'Informe um e-mail válido.'});const {transporter}=criarTransporter();const from=process.env.SMTP_FROM||process.env.EMAIL_FROM||process.env.SMTP_USER||process.env.EMAIL_USER;const info=await transporter.sendMail({from,to:destino,subject:'Teste de conexão SGOS',html:'<p>Teste de conexão do monitor administrativo de relatórios do SGOS.</p>'});return res.json({ok:true,mensagem:'E-mail de teste enviado.',message_id:info.messageId,tempo_ms:Date.now()-inicio});}catch(err){return res.status(500).json({erro:err.message,tempo_ms:Date.now()-inicio});}});
 
   router.get('/exportar.csv', async (req,res)=>{
