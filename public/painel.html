@@ -3284,7 +3284,7 @@ function modoTV() {
       if(!r.ok) return;
 
       const os=await r.json();
-      const html=blocoCheckin(os);
+      const html=[blocoCheckin(os),blocoEquipamentos(os)].filter(Boolean).join("");
       if(!html) return;
 
       let tentativas=0;
@@ -3897,5 +3897,171 @@ function modoTV() {
 })();
 </script>
 
+
+
+<style id="sgos-comprovante-conclusao-pendente">
+.sgos-comprovante-conclusao{
+    margin-top:14px;
+    padding:13px;
+    border:1px solid #bfdbfe;
+    border-radius:12px;
+    background:#f8fbff;
+}
+.sgos-comprovante-conclusao label{
+    display:block;
+    margin-bottom:7px;
+    color:#0f172a;
+    font-size:13px;
+    font-weight:800;
+}
+.sgos-comprovante-conclusao small{
+    display:block;
+    margin-top:6px;
+    color:#64748b;
+    font-size:11px;
+    line-height:1.4;
+}
+.sgos-comprovante-conclusao input[type="file"]{
+    width:100%;
+    padding:9px;
+    border:1px dashed #93c5fd;
+    border-radius:9px;
+    background:#fff;
+    color:#334155;
+}
+.sgos-comprovante-nome{
+    margin-top:7px;
+    color:#1d4ed8;
+    font-size:12px;
+    font-weight:800;
+    overflow-wrap:anywhere;
+}
+</style>
+
+<script id="sgos-comprovante-conclusao-pendente-js">
+(function(){
+    let arquivoComprovanteConclusao = null;
+    let dadosComprovanteConclusao = null;
+
+    function arquivoParaDataURL(arquivo){
+        return new Promise((resolve,reject)=>{
+            const leitor=new FileReader();
+            leitor.onload=()=>resolve(String(leitor.result||""));
+            leitor.onerror=()=>reject(new Error("Não foi possível ler o comprovante selecionado."));
+            leitor.readAsDataURL(arquivo);
+        });
+    }
+
+    function elementoVisivel(el){
+        if(!el) return false;
+        const estilo=getComputedStyle(el);
+        const rect=el.getBoundingClientRect();
+        return estilo.display!=="none" && estilo.visibility!=="hidden" && rect.width>0 && rect.height>0;
+    }
+
+    function localizarModalConclusao(){
+        const candidatos=[...document.querySelectorAll('[role="dialog"],.modal,.modal-overlay,.popup,.swal2-container,body > div')]
+            .filter(elementoVisivel)
+            .filter(el=>/Confirmar utilização do equipamento|equipamento vendido foi pago/i.test(String(el.textContent||"")));
+        return candidatos.sort((a,b)=>a.getBoundingClientRect().width-b.getBoundingClientRect().width)[0]||null;
+    }
+
+    function atualizarVisibilidade(area, selectPagamento){
+        if(!area) return;
+        const valor=String(selectPagamento?.value||"").toLowerCase();
+        const marcouNao=!![...document.querySelectorAll('input[type="radio"]')].find(r=>r.checked && /nao|não|0|false/i.test(String(r.value||r.parentElement?.textContent||"")));
+        area.style.display=marcouNao || valor==='pendente' ? 'none' : '';
+        if(area.style.display==='none'){
+            arquivoComprovanteConclusao=null;
+            dadosComprovanteConclusao=null;
+            const input=area.querySelector('input[type="file"]');
+            if(input) input.value='';
+            const nome=area.querySelector('.sgos-comprovante-nome');
+            if(nome) nome.textContent='';
+        }
+    }
+
+    function injetarCampo(){
+        const modal=localizarModalConclusao();
+        if(!modal || modal.querySelector('.sgos-comprovante-conclusao')) return;
+
+        const selects=[...modal.querySelectorAll('select')];
+        const selectPagamento=selects.find(s=>/pago|pagamento/i.test(String(s.parentElement?.textContent||s.getAttribute('aria-label')||''))) || selects[0];
+        if(!selectPagamento) return;
+
+        const area=document.createElement('div');
+        area.className='sgos-comprovante-conclusao';
+        area.innerHTML=`
+            <label>Comprovante de pagamento</label>
+            <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
+            <div class="sgos-comprovante-nome"></div>
+            <small>Opcional. Aceita JPG, PNG, WEBP ou PDF de até 8 MB.</small>
+        `;
+
+        const bloco=selectPagamento.closest('div') || selectPagamento.parentElement;
+        bloco.insertAdjacentElement('afterend',area);
+
+        const input=area.querySelector('input[type="file"]');
+        const nome=area.querySelector('.sgos-comprovante-nome');
+        input.addEventListener('change',async()=>{
+            const arquivo=input.files?.[0]||null;
+            arquivoComprovanteConclusao=null;
+            dadosComprovanteConclusao=null;
+            nome.textContent='';
+            if(!arquivo) return;
+            if(arquivo.size>8*1024*1024){
+                alert('O comprovante deve ter no máximo 8 MB.');
+                input.value='';
+                return;
+            }
+            try{
+                arquivoComprovanteConclusao=arquivo;
+                dadosComprovanteConclusao=await arquivoParaDataURL(arquivo);
+                nome.textContent=`Arquivo selecionado: ${arquivo.name}`;
+            }catch(erro){
+                alert(erro.message||'Não foi possível ler o comprovante.');
+                input.value='';
+            }
+        });
+
+        selectPagamento.addEventListener('change',()=>atualizarVisibilidade(area,selectPagamento));
+        modal.addEventListener('change',e=>{
+            if(e.target?.matches('input[type="radio"]')) atualizarVisibilidade(area,selectPagamento);
+        });
+        atualizarVisibilidade(area,selectPagamento);
+    }
+
+    const observador=new MutationObserver(()=>setTimeout(injetarCampo,20));
+    observador.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+    document.addEventListener('click',()=>setTimeout(injetarCampo,80),true);
+
+    const fetchAnterior=window.fetch.bind(window);
+    window.fetch=async function(input,init={}){
+        const url=typeof input==='string'?input:(input?.url||'');
+        const metodo=String(init?.method||'GET').toUpperCase();
+        if(metodo==='POST' && /\/api\/ordens_servico\/concluir\/\d+/i.test(url) && arquivoComprovanteConclusao && dadosComprovanteConclusao){
+            if(init.body instanceof FormData){
+                init.body.set('anexo_pagamento_base64',dadosComprovanteConclusao);
+                init.body.set('anexo_pagamento_nome',arquivoComprovanteConclusao.name);
+                init.body.set('anexo_pagamento_mime',arquivoComprovanteConclusao.type||'application/octet-stream');
+            }else if(typeof init.body==='string'){
+                try{
+                    const corpo=JSON.parse(init.body);
+                    corpo.anexo_pagamento_base64=dadosComprovanteConclusao;
+                    corpo.anexo_pagamento_nome=arquivoComprovanteConclusao.name;
+                    corpo.anexo_pagamento_mime=arquivoComprovanteConclusao.type||'application/octet-stream';
+                    init.body=JSON.stringify(corpo);
+                }catch(_){ }
+            }
+        }
+        const resposta=await fetchAnterior(input,init);
+        if(metodo==='POST' && /\/api\/ordens_servico\/concluir\/\d+/i.test(url) && resposta.ok){
+            arquivoComprovanteConclusao=null;
+            dadosComprovanteConclusao=null;
+        }
+        return resposta;
+    };
+})();
+</script>
 </body>
 </html>
