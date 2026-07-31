@@ -434,7 +434,26 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/inviabilidades", inviabilidadeRoutes);
 app.use("/api", viabilidadeRoutes(pool, verificarAutenticacao));
 app.use('/api/relatorios-automaticos', verificarAutenticacao, somenteAdministrador, relatoriosAutomaticosRoutes(pool, verificarAutenticacao));
-app.use('/api/admin/monitor-relatorios', verificarAutenticacao, somenteAdministrador, monitorRelatoriosRoutes(pool));
+app.use(
+    '/api/admin/monitor-relatorios',
+    verificarAutenticacao,
+    (req, res, next) => {
+        const cargo = String(req.usuario?.cargo || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toLowerCase();
+
+        if (Number(req.usuario?.empresa_id) !== 1 || cargo !== 'administrador') {
+            return res.status(403).json({
+                erro: 'Acesso exclusivo para administradores da empresa 1.'
+            });
+        }
+
+        next();
+    },
+    monitorRelatoriosRoutes(pool)
+);
 app.use("/api/svas", verificarAutenticacao, somenteLeituraParaNaoAdministrador, svasRoutes);
 app.use("/api/lembretes", lembretesRoutes);
 app.use('/api/estoque', verificarAutenticacao, somenteAdministrador, estoqueRoutes);

@@ -1831,10 +1831,6 @@ let periodoAtual = "hoje";
         <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg>
         <span>Relatórios</span>
     </a>
-    <a id="menuMonitorRelatorios" href="monitor-relatorios.html" data-apenas-cargo="administrador" style="display:none">
-        <svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V3"/></svg>
-        <span>Monitor de Envios</span>
-    </a>
 
 <a href="financeiro.html"><svg class="menu-icon" viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><path d="M7 12h10M9 9h6"/></svg><span>Financeiro</span></a>
 
@@ -4065,22 +4061,6 @@ function modoTV() {
         }
         return resposta;
     };
-})();
-</script>
-
-<script>
-(function controlarMenuMonitorRelatorios(){
-    function aplicar(){
-        const link=document.getElementById('menuMonitorRelatorios');
-        if(!link)return;
-        let usuario={};
-        try{ usuario=JSON.parse(localStorage.getItem('usuario')||'{}'); }catch(_){ }
-        const cargo=String(usuario.cargo||usuario.tipo_usuario||'')
-            .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
-        link.style.display=(Number(usuario.empresa_id)===1 && cargo==='administrador')?'flex':'none';
-    }
-    document.addEventListener('DOMContentLoaded',aplicar);
-    window.addEventListener('storage',aplicar);
 })();
 </script>
 </body>
