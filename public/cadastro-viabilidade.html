@@ -782,6 +782,16 @@ function classeStatusInstalacao(status){return String(status||"PENDENTE").toUppe
 function atualizarCampoInstalacao(){const aprovada=document.getElementById("status").value==="APROVADA";document.getElementById("campoStatusInstalacao").style.display=aprovada?"block":"none";if(!aprovada)document.getElementById("statusInstalacao").value="PENDENTE"}
 function nomeLocalidade(valor){const bruto=String(valor??"").trim();if(!bruto)return "-";const encontrada=localidades.find(x=>String(x.id)===bruto||String(x.nome).trim().toLowerCase()===bruto.toLowerCase());return encontrada?.nome||bruto}
 function localidadeDoRegistro(o){return nomeLocalidade(o?.localidade_nome||o?.localidade)}
+function localidadePermitidaAoUsuario(o){
+    if(!Array.isArray(localidades)||!localidades.length)return false;
+    const valorId=String(o?.localidade_id??o?.localidade??"").trim();
+    const valorNome=String(o?.localidade_nome??localidadeDoRegistro(o)??"").trim().toLowerCase();
+    return localidades.some(l=>{
+        const id=String(l?.id??"").trim();
+        const nome=String(l?.nome??"").trim().toLowerCase();
+        return (valorId&&id&&valorId===id)||(valorNome&&nome&&valorNome===nome);
+    });
+}
 function anexosDoRegistro(o){
     let lista=o.anexos||o.arquivos||o.midias||[];
     if(typeof lista==="string"){
@@ -837,7 +847,7 @@ async function carregarTecnicos(){
     if(!select)return;
     const valorAtual=[...select.selectedOptions].map(o=>o.value).join(", ");
     try{
-        const r=await fetch("/api/usuarios/tecnicos",{headers:getAuthHeaders()});
+        const r=await fetch("/api/ordens_servico/tecnicos",{headers:getAuthHeaders()});
         if(!r.ok)throw new Error(`Erro ${r.status}`);
         const resp=await r.json();
         const lista=Array.isArray(resp)?resp:(Array.isArray(resp?.dados)?resp.dados:(Array.isArray(resp?.tecnicos)?resp.tecnicos:[]));
@@ -850,7 +860,7 @@ async function carregarTecnicos(){
 
 async function carregarLocalidades(){
     try{
-        const r=await fetch("/api/usuarios/localidades",{headers:getAuthHeaders()});
+        const r=await fetch("/api/ordens_servico/localidades",{headers:getAuthHeaders()});
         if(!r.ok)throw new Error(`Erro ${r.status}`);
         const resp=await r.json();
         const lista=Array.isArray(resp)?resp:(Array.isArray(resp?.dados)?resp.dados:(Array.isArray(resp?.localidades)?resp.localidades:[]));
@@ -1132,6 +1142,9 @@ async function carregarViabilidades(){
         const r=await fetch(API_VIABILIDADE,{headers:getAuthHeaders()});
         if(!r.ok)throw new Error(`Erro ${r.status}`);
         viabilidades=normalizarLista(await r.json());
+        // Mesma regra do Novo Atendimento: só exibe viabilidades das localidades
+        // retornadas pela rota operacional, que já considera o match do usuário.
+        viabilidades=viabilidades.filter(localidadePermitidaAoUsuario);
         const ids=viabilidades.map(v=>Number(v.id)).filter(Boolean);
         if(ids.length){
             const er=await fetch(`${API_VIABILIDADE_ERP}/lote?ids=${encodeURIComponent(ids.join(","))}`,{headers:getAuthHeaders()});
@@ -1493,9 +1506,9 @@ function abrirMidia(url,video){const c=document.getElementById("popupConteudo");
 function fecharMidia(){document.getElementById("popupMidia").classList.remove("ativo");document.getElementById("popupConteudo").innerHTML=""}
 function fecharMidiaAoFundo(e){if(e.target.id==="popupMidia")fecharMidia()}
 
-document.addEventListener("DOMContentLoaded",()=>{
+document.addEventListener("DOMContentLoaded",async()=>{
     const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");if(s&&l&&localStorage.getItem("sidebar_recolhida")==="1"){s.classList.add("recolhida");l.src=l.dataset.logoFechada}
-    atualizarHorario();setInterval(atualizarHorario,60000);renderClientesERPVinculados();detectarERPAtivo();carregarUsuario();carregarTecnicos();carregarLocalidades();carregarUsuariosOnline();carregarViabilidades();
+    atualizarHorario();setInterval(atualizarHorario,60000);renderClientesERPVinculados();detectarERPAtivo();carregarUsuario();carregarTecnicos();await carregarLocalidades();carregarUsuariosOnline();await carregarViabilidades();
     document.getElementById("telefone").addEventListener("input",aplicarMascaraTelefone);document.getElementById("tecnicoResponsavel").addEventListener("change",limitarSelecaoTecnicos);
     document.getElementById("status").addEventListener("change",atualizarCampoInstalacao);
     atualizarCampoInstalacao();document.getElementById("telefone2").addEventListener("input",aplicarMascaraTelefone);document.getElementById("arquivos").addEventListener("change",processarArquivos);document.getElementById("arquivosVisita").addEventListener("change",processarArquivosVisita);document.getElementById("arquivosPosInstalacao").addEventListener("change",processarArquivosPosInstalacao);
