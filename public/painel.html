@@ -2497,7 +2497,7 @@ function abrirModalNovoLembrete(){
 function descricaoStatusLembrete(item, usuarioId){
     const agendamento = item.agendado_para ? `Agendado para ${formatarDataHora(item.agendado_para)} — ` : "";
     if(item.tipo === "salvo") return `${agendamento}Salvo para mim`;
-    if(item.lido_em) return `${agendamento}Lido em ${formatarDataHora(item.lido_em)} — visível por 30 minutos`;
+    if(item.lido_em) return `${agendamento}Lido em ${formatarDataHora(item.lido_em)} — visível por 2 horas`;
     return `${agendamento}${Number(item.destinatario_id) === Number(usuarioId) ? "Recebido — não lido" : "Enviado — aguardando leitura"}`;
 }
 
