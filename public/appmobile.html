@@ -5533,7 +5533,19 @@ function equipamentosHTMLApp(os){
             Valor unitário: ${moedaApp(item.valor_unitario)}<br>
             Valor total: ${moedaApp(item.valor_total ?? (Number(item.valor_unitario||0)*Number(item.quantidade||1)))}
         </div>`).join("");
-    return `<div class="equipamentos-os-app"><div class="equipamentos-os-app-title">Equipamentos vinculados</div>${itens}<div class="equipamento-os-app-item"><b>Tipo de pagamento:</b> ${valorSeguro(formaPagamentoApp(os.forma_pagamento_equipamento))}<br><b>Total:</b> ${moedaApp(os.total_equipamentos)}</div></div>`;
+    const statusPagamento = normalizarStatusPagamentoApp(os);
+    const statusRotulo = statusPagamento === "pago" ? "Pago" : statusPagamento === "pendente" ? "Pendente" : "Não informado";
+    const statusClasse = statusPagamento === "pago" ? "pagamento-pago" : "pagamento-pendente";
+
+    return `<div class="equipamentos-os-app">
+        <div class="equipamentos-os-app-title">Equipamentos vinculados</div>
+        ${itens}
+        <div class="equipamento-os-app-item">
+            <b>Tipo de pagamento:</b> ${valorSeguro(formaPagamentoApp(os.forma_pagamento_equipamento))}<br>
+            <b>Status do pagamento:</b> <span class="${statusClasse}">${statusRotulo}</span><br>
+            <b>Total:</b> ${moedaApp(os.total_equipamentos)}
+        </div>
+    </div>`;
 }
 function formatarDuracaoAtendimento(segundos){
     const total = Math.max(0, Number(segundos || 0));
@@ -6097,7 +6109,14 @@ function selecionarStatusPagamentoApp(status){
     statusPagamentoSelecionadoApp = status === "pago" ? "pago" : "pendente";
 
     const bloco = document.getElementById("blocoComprovantePagamentoApp");
-    bloco?.classList.toggle("ativo", statusPagamentoSelecionadoApp === "pago");
+    bloco?.classList.add("ativo");
+
+    const label = bloco?.querySelector("label");
+    if(label){
+        label.innerHTML = statusPagamentoSelecionadoApp === "pago"
+            ? 'Comprovante do pagamento <span style="color:#dc2626">*</span>'
+            : 'Comprovante do pagamento <span style="color:#64748b">(opcional enquanto pendente)</span>';
+    }
 
     document.querySelectorAll("#modalConfirmacaoPagamento .confirmacao-pagamento-opcoes button")
         .forEach(botao => botao.classList.remove("selecionado"));
@@ -6108,9 +6127,6 @@ function selecionarStatusPagamentoApp(status){
     const confirmar = document.getElementById("btnConfirmarPagamentoApp");
     if(confirmar) confirmar.disabled = false;
 
-    if(statusPagamentoSelecionadoApp !== "pago"){
-        limparComprovantePagamentoApp();
-    }
 }
 
 function selecionarComprovantePagamentoApp(input){
@@ -6165,7 +6181,12 @@ function abrirConfirmacaoPagamento(){
     statusPagamentoSelecionadoApp = "";
     limparComprovantePagamentoApp();
 
-    document.getElementById("blocoComprovantePagamentoApp")?.classList.remove("ativo");
+    const blocoComprovante = document.getElementById("blocoComprovantePagamentoApp");
+    blocoComprovante?.classList.add("ativo");
+    const labelComprovante = blocoComprovante?.querySelector("label");
+    if(labelComprovante){
+        labelComprovante.innerHTML = 'Comprovante do pagamento <span style="color:#64748b">(se confirmar como pago, o anexo será obrigatório)</span>';
+    }
     document.querySelectorAll("#modalConfirmacaoPagamento .confirmacao-pagamento-opcoes button")
         .forEach(botao => botao.classList.remove("selecionado"));
 
@@ -6191,9 +6212,7 @@ async function confirmarStatusPagamentoApp(){
     }
 
     try{
-        const arquivo = statusPagamentoSelecionadoApp === "pago"
-            ? comprovantePagamentoApp
-            : null;
+        const arquivo = comprovantePagamentoApp;
 
         if(statusPagamentoSelecionadoApp === "pago" && !arquivo){
             alert("Anexe ou tire uma foto do comprovante para confirmar o pagamento.");
