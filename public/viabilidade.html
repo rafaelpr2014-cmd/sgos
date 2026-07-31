@@ -439,6 +439,74 @@ body.pagina-lista .card-filtros .filtro-periodo-rapido select{
     body.pagina-lista .card-filtros .filtros{grid-template-columns:1fr !important;}
 }
 
+
+/* ===== AJUSTE FINAL: LARGURAS E ORDENAÇÃO DAS COLUNAS ===== */
+.col-referencia{
+    width:145px;
+    min-width:145px;
+    max-width:145px;
+    white-space:normal;
+    word-break:break-word;
+}
+.tabela-observacao{
+    width:210px;
+    min-width:210px;
+    max-width:210px;
+}
+th.col-referencia{
+    width:145px;
+    min-width:145px;
+    max-width:145px;
+}
+th.tabela-observacao{
+    width:210px;
+    min-width:210px;
+    max-width:210px;
+}
+.th-ordenavel{
+    padding:0 !important;
+    user-select:none;
+}
+.btn-ordenar-coluna{
+    width:100%;
+    min-height:40px;
+    padding:11px 9px;
+    border:0;
+    background:transparent;
+    color:inherit;
+    font-size:12px;
+    font-weight:800;
+    text-align:left;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:7px;
+    white-space:nowrap;
+}
+.btn-ordenar-coluna:hover{
+    background:#eef4ff;
+    color:#1d4ed8;
+}
+.setas-ordenacao{
+    width:13px;
+    min-width:13px;
+    display:inline-flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    font-size:8px;
+    line-height:.72;
+    color:#94a3b8;
+}
+.btn-ordenar-coluna.ativo .setas-ordenacao{
+    color:#2563eb;
+}
+.btn-ordenar-coluna[data-direcao="asc"] .seta-baixo,
+.btn-ordenar-coluna[data-direcao="desc"] .seta-cima{
+    opacity:.25;
+}
+
 </style>
 
 <style id="sgos-sidebar-completa-v2">
@@ -852,7 +920,7 @@ body.pagina-lista .card-filtros .filtro-periodo-rapido select{
     <div class="card card-lista">
         <div class="card-header lista-toolbar"><div><div class="titulo-card">Lista de Viabilidades</div><div class="sub-card">Clique em uma viabilidade para abrir o resumo completo.</div><div id="contadorClientesERPFiltrados" class="contador-erp-filtro">Clientes integrados via ERP (0)</div></div><div class="lista-toolbar-acoes"><button class="btn btn-nova-viabilidade" type="button" onclick="location.href='cadastro-viabilidade.html'"><svg class="btn-icon-svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Cadastrar Nova Viabilidade</button><button class="btn btn-imprimir" type="button" onclick="imprimirSelecionadas()"><svg class="btn-icon-svg" viewBox="0 0 24 24"><path d="M7 8V4h10v4"/><rect x="5" y="12" width="14" height="8" rx="1"/><path d="M5 16H3V9h18v7h-2"/><path d="M17 11h.01"/></svg> Imprimir selecionadas</button></div></div>
         <div class="table-wrap">
-            <table><thead><tr><th><input type="checkbox" class="checkbox-viabilidade" id="selecionarTodas" title="Selecionar todas"></th><th>Nome</th><th>Localidade</th><th>Endereço</th><th>Referência</th><th>Observação inicial</th><th>Telefones</th><th>Cadastrado por</th><th>Registrado em</th><th>Atualizado por</th><th>Atualizado em</th><th>Viabilidade</th><th>Instalação</th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="15" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
+            <table><thead><tr><th><input type="checkbox" class="checkbox-viabilidade" id="selecionarTodas" title="Selecionar todas"></th><th class="th-ordenavel ".strip()><button type="button" class="btn-ordenar-coluna" data-coluna="nome" data-direcao="" onclick="ordenarPorColuna('nome')" title="Ordenar por Nome"><span>Nome</span><span class="setas-ordenacao" aria-hidden="true"><span class="seta-cima">▲</span><span class="seta-baixo">▼</span></span></button></th><th class="th-ordenavel ".strip()><button type="button" class="btn-ordenar-coluna" data-coluna="localidade" data-direcao="" onclick="ordenarPorColuna('localidade')" title="Ordenar por Localidade"><span>Localidade</span><span class="setas-ordenacao" aria-hidden="true"><span class="seta-cima">▲</span><span class="seta-baixo">▼</span></span></button></th><th class="th-ordenavel ".strip()><button type="button" class="btn-ordenar-coluna" data-coluna="endereco" data-direcao="" onclick="ordenarPorColuna('endereco')" title="Ordenar por Endereço"><span>Endereço</span><span class="setas-ordenacao" aria-hidden="true"><span class="seta-cima">▲</span><span class="seta-baixo">▼</span></span></button></th><th class="th-ordenavel col-referencia".strip()><button type="button" class="btn-ordenar-coluna" data-coluna="referencia" data-direcao="" onclick="ordenarPorColuna('referencia')" title="Ordenar por Referência"><span>Referência</span><span class="setas-ordenacao" aria-hidden="true"><span class="seta-cima">▲</span><span class="seta-baixo">▼</span></span></button></th><th class="th-ordenavel tabela-observacao".strip()><button type="button" class="btn-ordenar-coluna" data-coluna="observacao" data-direcao="" onclick="ordenarPorColuna('observacao')" title="Ordenar por Observação inicial"><span>Observação inicial</span><span class="setas-ordenacao" aria-hidden="true"><span class="seta-cima">▲</span><span class="seta-baixo">▼</span></span></button></th><th class="th-ordenavel ".strip()><button type="button" class="btn-ordenar-coluna" data-coluna="telefones" data-direcao="" onclick="ordenarPorColuna('telefones')" title="Ordenar por Telefones"><span>Telefones</span><span class="setas-ordenacao" aria-hidden="true"><span class="seta-cima">▲</span><span class="seta-baixo">▼</span></span></button></th><th class="th-ordenavel ".strip()><button type="button" class="btn-ordenar-coluna" data-coluna="cadastrado_por" data-direcao="" onclick="ordenarPorColuna('cadastrado_por')" title="Ordenar por Cadastrado por"><span>Cadastrado por</span><span class="setas-ordenacao" aria-hidden="true"><span class="seta-cima">▲</span><span class="seta-baixo">▼</span></span></button></th><th class="th-ordenavel ".strip()><button type="button" class="btn-ordenar-coluna" data-coluna="registrado_em" data-direcao="" onclick="ordenarPorColuna('registrado_em')" title="Ordenar por Registrado em"><span>Registrado em</span><span class="setas-ordenacao" aria-hidden="true"><span class="seta-cima">▲</span><span class="seta-baixo">▼</span></span></button></th><th class="th-ordenavel ".strip()><button type="button" class="btn-ordenar-coluna" data-coluna="atualizado_por" data-direcao="" onclick="ordenarPorColuna('atualizado_por')" title="Ordenar por Atualizado por"><span>Atualizado por</span><span class="setas-ordenacao" aria-hidden="true"><span class="seta-cima">▲</span><span class="seta-baixo">▼</span></span></button></th><th class="th-ordenavel ".strip()><button type="button" class="btn-ordenar-coluna" data-coluna="atualizado_em" data-direcao="" onclick="ordenarPorColuna('atualizado_em')" title="Ordenar por Atualizado em"><span>Atualizado em</span><span class="setas-ordenacao" aria-hidden="true"><span class="seta-cima">▲</span><span class="seta-baixo">▼</span></span></button></th><th class="th-ordenavel ".strip()><button type="button" class="btn-ordenar-coluna" data-coluna="status" data-direcao="" onclick="ordenarPorColuna('status')" title="Ordenar por Viabilidade"><span>Viabilidade</span><span class="setas-ordenacao" aria-hidden="true"><span class="seta-cima">▲</span><span class="seta-baixo">▼</span></span></button></th><th class="th-ordenavel ".strip()><button type="button" class="btn-ordenar-coluna" data-coluna="instalacao" data-direcao="" onclick="ordenarPorColuna('instalacao')" title="Ordenar por Instalação"><span>Instalação</span><span class="setas-ordenacao" aria-hidden="true"><span class="seta-cima">▲</span><span class="seta-baixo">▼</span></span></button></th><th>Ações</th></tr></thead><tbody id="tabelaViabilidades"><tr><td colspan="14" class="vazio">Carregando viabilidades...</td></tr></tbody></table>
         </div>
     </div>
 </section>
@@ -874,6 +942,8 @@ const API_VIABILIDADE = "/api/viabilidade";
 const API_UPLOAD = "/api/upload_viabilidade";
 let viabilidades = [];
 let viabilidadesFiltradas = [];
+let colunaOrdenacao = "registrado_em";
+let direcaoOrdenacao = "desc";
 let arquivosSelecionados = [];
 let arquivosVisitaSelecionados = [];
 let arquivosPosInstalacaoSelecionados = [];
@@ -1241,6 +1311,80 @@ function atualizarCards(lista){
     document.getElementById("cardClientesERP").innerText=lista.reduce((total,o)=>total+clientesERPDoRegistro(o).length,0);
     document.getElementById("cardHoje").innerText=viabilidades.filter(x=>mesmoDia(dataRegistro(x))).length;
 }
+
+function normalizarTextoOrdenacao(valor){
+    return String(valor ?? "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g,"")
+        .trim()
+        .toLowerCase();
+}
+function timestampOrdenacao(valor){
+    if(!valor)return 0;
+    const data=new Date(valor);
+    return Number.isNaN(data.getTime())?0:data.getTime();
+}
+function valorOrdenacaoViabilidade(o,coluna){
+    switch(coluna){
+        case "nome": return normalizarTextoOrdenacao(o.nome);
+        case "localidade": return normalizarTextoOrdenacao(localidadeDoRegistro(o));
+        case "endereco": return normalizarTextoOrdenacao(o.endereco);
+        case "referencia": return normalizarTextoOrdenacao(o.referencia);
+        case "observacao": return normalizarTextoOrdenacao(o.observacao||o.observacoes);
+        case "telefones": return normalizarTextoOrdenacao([o.telefone,o.telefone2||o.telefone_secundario].filter(Boolean).join(" "));
+        case "cadastrado_por": return normalizarTextoOrdenacao(nomeCadastrador(o));
+        case "registrado_em": return timestampOrdenacao(dataRegistro(o));
+        case "atualizado_por": return normalizarTextoOrdenacao(nomeAtualizador(o));
+        case "atualizado_em": return timestampOrdenacao(o.atualizado_em);
+        case "status": return normalizarTextoOrdenacao(nomeStatus(String(o.status||"PENDENTE").toUpperCase()));
+        case "instalacao":
+            return normalizarTextoOrdenacao(
+                String(o.status||"PENDENTE").toUpperCase()==="APROVADA"
+                    ? (statusInstalacaoRegistro(o)==="INSTALADO"?"INSTALAÇÃO REALIZADA":"PENDENTE")
+                    : ""
+            );
+        default: return "";
+    }
+}
+function compararViabilidades(a,b){
+    const va=valorOrdenacaoViabilidade(a,colunaOrdenacao);
+    const vb=valorOrdenacaoViabilidade(b,colunaOrdenacao);
+    let resultado=0;
+
+    if(typeof va==="number"&&typeof vb==="number"){
+        resultado=va-vb;
+    }else{
+        resultado=String(va).localeCompare(String(vb),"pt-BR",{numeric:true,sensitivity:"base"});
+    }
+
+    if(resultado===0){
+        resultado=timestampOrdenacao(dataRegistro(b))-timestampOrdenacao(dataRegistro(a));
+    }
+    return direcaoOrdenacao==="asc"?resultado:-resultado;
+}
+function ordenarPorColuna(coluna){
+    if(colunaOrdenacao===coluna){
+        direcaoOrdenacao=direcaoOrdenacao==="asc"?"desc":"asc";
+    }else{
+        colunaOrdenacao=coluna;
+        direcaoOrdenacao=(coluna==="registrado_em"||coluna==="atualizado_em")?"desc":"asc";
+    }
+    renderTabela();
+}
+function atualizarIndicadoresOrdenacao(){
+    document.querySelectorAll(".btn-ordenar-coluna").forEach(botao=>{
+        const ativo=botao.dataset.coluna===colunaOrdenacao;
+        botao.classList.toggle("ativo",ativo);
+        botao.dataset.direcao=ativo?direcaoOrdenacao:"";
+        botao.setAttribute(
+            "aria-label",
+            `${botao.textContent.trim()}. ${ativo
+                ? `Ordenação ${direcaoOrdenacao==="asc"?"crescente":"decrescente"}`
+                : "Clique para ordenar"}`
+        );
+    });
+}
+
 function renderTabela(){
     const nome=document.getElementById("filtroNome").value.toLowerCase();
     const end=document.getElementById("filtroEndereco").value.toLowerCase();
@@ -1287,7 +1431,7 @@ function renderTabela(){
             ok=ok&&dataRegistroValor&&!isNaN(dataRegistroValor)&&dataRegistroValor>=inicioRapido&&dataRegistroValor<=fimRapido;
         }
         return ok;
-    }).sort((a,b)=>new Date(dataRegistro(b)||0)-new Date(dataRegistro(a)||0));
+    }).sort(compararViabilidades);
 
     viabilidadesFiltradas=lista;
     const totalClientesERPFiltrados=lista.reduce((total,o)=>total+clientesERPDoRegistro(o).length,0);
@@ -1295,7 +1439,7 @@ function renderTabela(){
     if(contadorERP)contadorERP.textContent=`Clientes integrados via ERP (${totalClientesERPFiltrados})`;
     atualizarCards(lista);
     const tbody=document.getElementById("tabelaViabilidades");
-    if(!lista.length){tbody.innerHTML='<tr><td colspan="15" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';return}
+    if(!lista.length){tbody.innerHTML='<tr><td colspan="14" class="vazio">Nenhuma viabilidade encontrada.</td></tr>';atualizarIndicadoresOrdenacao();return}
     tbody.innerHTML=lista.map(o=>{
         const anexos=anexosDoRegistro(o).length;
         const st=String(o.status||"PENDENTE").toUpperCase();
@@ -1306,7 +1450,7 @@ function renderTabela(){
             <td><strong>${escapar(o.nome||"-")}</strong></td>
             <td>${escapar(localidadeDoRegistro(o))}</td>
             <td>${escapar(o.endereco||"-")}</td>
-            <td>${escapar(o.referencia||"-")}</td>
+            <td class="col-referencia">${escapar(o.referencia||"-")}</td>
             <td class="tabela-observacao"><div class="texto-limitado" title="${escapar(o.observacao||o.observacoes||"-")}">${escapar(o.observacao||o.observacoes||"-")}</div></td>
             <td class="col-telefones">${telefones}</td>
             
@@ -1320,6 +1464,7 @@ function renderTabela(){
         </tr>`;
     }).join("");
     atualizarCheckboxTodas(lista);
+    atualizarIndicadoresOrdenacao();
 }
 function alternarSelecao(id,marcado){marcado?idsSelecionados.add(Number(id)):idsSelecionados.delete(Number(id));atualizarCheckboxTodas()}
 function atualizarCheckboxTodas(listaAtual){const check=document.getElementById("selecionarTodas");if(!check)return;const checks=[...document.querySelectorAll(".chk-item")];check.checked=checks.length>0&&checks.every(c=>c.checked);check.indeterminate=checks.some(c=>c.checked)&&!check.checked}
