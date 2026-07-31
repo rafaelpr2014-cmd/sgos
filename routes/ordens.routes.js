@@ -292,7 +292,8 @@ async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, 
         throw erro;
     }
 
-    // Compatível com coluna TINYINT(1): 1 = sim, 0 = não.
+    // A coluna equipamentos_utilizados é ENUM('pendente','sim','nao').
+    // Grava exatamente 'sim' ou 'nao' para evitar Data truncated no MariaDB.
     await conn.query(`
         UPDATE ordens_servico
            SET equipamentos_utilizados=?,
@@ -300,7 +301,7 @@ async function processarConfirmacaoEquipamentosConclusao(conn, osId, empresaId, 
                equipamentos_confirmado_por=?,
                observacao_equipamento=?
          WHERE id=? AND empresa_id=?`,
-        [respostaNormalizada==='sim'?1:0,Number(usuario?.id||0)||null,observacaoFinal,osId,empresaId]);
+        [respostaNormalizada,Number(usuario?.id||0)||null,observacaoFinal,osId,empresaId]);
 
     const [[dadosOS]] = await conn.query(`
         SELECT origem_equipamento,modalidade_equipamento,forma_pagamento_equipamento,
