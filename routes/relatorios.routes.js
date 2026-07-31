@@ -10,6 +10,7 @@ module.exports = (pool, verificarAutenticacao) => {
 
     const { enviarRelatorio } = require("../services/relatorios.service");
     const { enviarMidiaCentral } = require("../services/whatsappService");
+    const { iniciarLog, finalizarLog } = require("../services/relatorios-log.service");
 
     router.get("/relatorios", verificarAutenticacao, async (req, res) => {
         try {
@@ -107,12 +108,34 @@ module.exports = (pool, verificarAutenticacao) => {
 
                 const nomeArquivo = req.file?.originalname || "relatorio.pdf";
 
-                await enviarRelatorio(
-                    email,
-                    pdfBuffer,
-                    `Relatório SGOS - ${descricaoPeriodo}`,
-                    nomeArquivo
-                );
+                const controleLog = await iniciarLog(pool, {
+                    empresa_id: req.usuario.empresa_id,
+                    usuario_id: req.usuario.id,
+                    tipo_relatorio: periodo || "manual",
+                    origem: "manual",
+                    canal: "email",
+                    destinatario: email,
+                    assunto: `Relatório SGOS - ${descricaoPeriodo}`,
+                    nome_arquivo: nomeArquivo
+                });
+
+                try {
+                    const retornoEmail = await enviarRelatorio(
+                        email,
+                        pdfBuffer,
+                        `Relatório SGOS - ${descricaoPeriodo}`,
+                        nomeArquivo
+                    );
+                    await finalizarLog(pool, controleLog, true, {
+                        resposta: retornoEmail?.messageId || "E-mail enviado com sucesso"
+                    });
+                } catch (erroEnvio) {
+                    await finalizarLog(pool, controleLog, false, {
+                        codigo: erroEnvio.code,
+                        erro: erroEnvio.message
+                    });
+                    throw erroEnvio;
+                }
 
                 return res.json({
                     ok: true,
@@ -149,13 +172,47 @@ module.exports = (pool, verificarAutenticacao) => {
                     dataFim
                 );
 
-                const resultado = await enviarMidiaCentral(
-                    1,
-                    telefone,
-                    req.file.buffer,
-                    req.file.originalname || "relatorio.pdf",
-                    `📊 Relatório SGOS - ${descricaoPeriodo}`
-                );
+                const nomeArquivo = req.file.originalname || "relatorio.pdf";
+                const controleLog = await iniciarLog(pool, {
+                    empresa_id: req.usuario.empresa_id,
+                    usuario_id: req.usuario.id,
+                    tipo_relatorio: periodo || "manual",
+                    origem: "manual",
+                    canal: "whatsapp",
+                    destinatario: telefone,
+                    assunto: `Relatório SGOS - ${descricaoPeriodo}`,
+                    nome_arquivo: nomeArquivo
+                });
+
+                let resultado;
+                try {
+                    resultado = await enviarMidiaCentral(
+                        1,
+                        telefone,
+                        req.file.buffer,
+                        nomeArquivo,
+                        `📊 Relatório SGOS - ${descricaoPeriodo}`
+                    );
+
+                    if (!resultado.ok) {
+                        await finalizarLog(pool, controleLog, false, {
+                            codigo: resultado.error,
+                            erro: resultado.detail || resultado.error || "Falha no WhatsApp",
+                            detalhes: resultado
+                        });
+                    } else {
+                        await finalizarLog(pool, controleLog, true, {
+                            resposta: resultado.messageId || "WhatsApp enviado com sucesso",
+                            detalhes: resultado
+                        });
+                    }
+                } catch (erroEnvio) {
+                    await finalizarLog(pool, controleLog, false, {
+                        codigo: erroEnvio.code,
+                        erro: erroEnvio.message
+                    });
+                    throw erroEnvio;
+                }
 
                 if (!resultado.ok) {
                     const mensagens = {
