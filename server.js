@@ -1260,6 +1260,146 @@ const relatoriosRoutes =
         verificarAutenticacao
     );
 
+
+// ======================================================
+// FILTRO CENTRAL DE MATCH: LOCALIDADES E TÉCNICOS
+// Garante que TODAS as páginas recebam somente os vínculos
+// do usuário logado, mesmo quando usam rotas antigas.
+// Administradores continuam visualizando todos os registros.
+// ======================================================
+async function listarLocalidadesPermitidas(req, res) {
+    try {
+        let sql = `
+            SELECT l.id, l.nome, l.vlan
+            FROM localidades l
+            WHERE l.empresa_id = ?
+        `;
+        const params = [req.usuario.empresa_id];
+
+        if (!usuarioEhAdministrador(req)) {
+            sql += `
+                AND EXISTS (
+                    SELECT 1
+                    FROM usuario_localidades ul
+                    WHERE ul.usuario_id = ?
+                      AND ul.empresa_id = l.empresa_id
+                      AND ul.localidade_id = l.id
+                )
+            `;
+            params.push(req.usuario.id);
+        }
+
+        sql += ` ORDER BY l.nome`;
+        const [rows] = await pool.query(sql, params);
+        return res.json(rows);
+    } catch (err) {
+        console.error("ERRO AO FILTRAR LOCALIDADES POR MATCH:", err);
+        return res.status(500).json({ erro: err.message });
+    }
+}
+
+async function listarTecnicosPermitidos(req, res) {
+    try {
+        let sql = `
+            SELECT t.id, t.nome, t.ativo
+            FROM tecnicos t
+            WHERE t.empresa_id = ?
+        `;
+        const params = [req.usuario.empresa_id];
+
+        if (!usuarioEhAdministrador(req)) {
+            sql += `
+                AND EXISTS (
+                    SELECT 1
+                    FROM usuario_tecnicos ut
+                    WHERE ut.usuario_id = ?
+                      AND ut.empresa_id = t.empresa_id
+                      AND ut.tecnico_id = t.id
+                )
+            `;
+            params.push(req.usuario.id);
+        }
+
+        sql += ` ORDER BY t.nome`;
+        const [rows] = await pool.query(sql, params);
+        return res.json(rows);
+    } catch (err) {
+        console.error("ERRO AO FILTRAR TÉCNICOS POR MATCH:", err);
+        return res.status(500).json({ erro: err.message });
+    }
+}
+
+// Rotas usadas pelo Novo Atendimento.
+// Precisam vir antes de ordensRoutes para não cair em uma implementação antiga sem filtro.
+app.get("/api/ordens_servico/localidades", verificarAutenticacao, listarLocalidadesPermitidas);
+app.get("/api/ordens_servico/tecnicos", verificarAutenticacao, listarTecnicosPermitidos);
+
+// Rotas antigas ainda usadas por várias páginas do SGOS.
+// O filtro central evita que essas páginas exibam dados fora do match.
+app.get("/api/localidades", verificarAutenticacao, listarLocalidadesPermitidas);
+app.get("/api/tecnicos", verificarAutenticacao, listarTecnicosPermitidos);
+
+// Filtra a resposta da listagem de viabilidades pelo match de localidades.
+// A proteção fica no servidor; portanto não depende de JavaScript ou cache da página.
+app.use("/api/viabilidade", verificarAutenticacao, async (req, res, next) => {
+    if (req.method !== "GET" || req.path !== "/" || usuarioEhAdministrador(req)) {
+        return next();
+    }
+
+    try {
+        const [permitidas] = await pool.query(`
+            SELECT l.id, l.nome
+            FROM localidades l
+            INNER JOIN usuario_localidades ul
+                ON ul.localidade_id = l.id
+               AND ul.empresa_id = l.empresa_id
+            WHERE ul.usuario_id = ?
+              AND l.empresa_id = ?
+        `, [req.usuario.id, req.usuario.empresa_id]);
+
+        const idsPermitidos = new Set(permitidas.map(l => String(l.id)));
+        const nomesPermitidos = new Set(
+            permitidas.map(l => String(l.nome || "").trim().toLowerCase()).filter(Boolean)
+        );
+
+        const jsonOriginal = res.json.bind(res);
+        res.json = function (payload) {
+            const filtrarLista = (lista) => (Array.isArray(lista) ? lista : []).filter(item => {
+                const localidadeId = String(item?.localidade_id ?? item?.localidade ?? "").trim();
+                const localidadeNome = String(
+                    item?.localidade_nome ?? item?.nome_localidade ?? item?.localidade ?? ""
+                ).trim().toLowerCase();
+
+                return (localidadeId && idsPermitidos.has(localidadeId)) ||
+                       (localidadeNome && nomesPermitidos.has(localidadeNome));
+            });
+
+            if (Array.isArray(payload)) {
+                return jsonOriginal(filtrarLista(payload));
+            }
+
+            if (payload && Array.isArray(payload.dados)) {
+                return jsonOriginal({ ...payload, dados: filtrarLista(payload.dados) });
+            }
+
+            if (payload && Array.isArray(payload.viabilidades)) {
+                return jsonOriginal({ ...payload, viabilidades: filtrarLista(payload.viabilidades) });
+            }
+
+            if (payload && Array.isArray(payload.data)) {
+                return jsonOriginal({ ...payload, data: filtrarLista(payload.data) });
+            }
+
+            return jsonOriginal(payload);
+        };
+
+        next();
+    } catch (err) {
+        console.error("ERRO AO PREPARAR FILTRO DE VIABILIDADES:", err);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
 app.use("/api/ordens_servico", ordensRoutes);
 app.use("/api/tecnicos", verificarAutenticacao, somenteLeituraParaNaoAdministrador, tecnicosRoutes);
 app.use("/api/localidades", verificarAutenticacao, somenteLeituraParaNaoAdministrador, localidadesRoutes);
