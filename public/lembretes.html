@@ -17,6 +17,11 @@
 
 .filtros{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:15px;margin-bottom:18px;display:grid;grid-template-columns:repeat(4,minmax(160px,1fr)) auto;gap:12px;align-items:end}.filtro-grupo label{display:block;font-size:11px;font-weight:800;color:#475569;margin-bottom:6px;text-transform:uppercase}.filtro-grupo select{width:100%;padding:10px 11px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#0f172a}.btn-filtrar{border:0;background:var(--azul);color:#fff;padding:11px 16px;border-radius:9px;font-weight:800;cursor:pointer}.btn-limpar{border:1px solid #cbd5e1;background:#fff;color:#334155;padding:10px 14px;border-radius:9px;font-weight:800;cursor:pointer}.filtro-acoes{display:flex;gap:8px}.contador-resultados{font-size:12px;color:#64748b;margin:-6px 0 12px}@media(max-width:1100px){.filtros{grid-template-columns:repeat(2,minmax(160px,1fr))}.filtro-acoes{grid-column:1/-1}}@media(max-width:620px){.filtros{grid-template-columns:1fr}}
 
+.sortable{cursor:pointer;user-select:none;white-space:nowrap;position:relative;padding-right:28px}
+.sortable:hover{background:#eef4ff}
+.sortable .sort-indicator{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:#94a3b8;line-height:1}
+.sortable.ordenacao-ativa .sort-indicator{color:var(--azul)}
+
 </style>
 
 <style id="sgos-sidebar-completa-v2">
@@ -304,7 +309,16 @@
  <div class="filtro-acoes"><button class="btn-filtrar" type="button" onclick="aplicarFiltros()">Filtrar</button><button class="btn-limpar" type="button" onclick="limparFiltros()">Limpar</button></div>
 </div>
 <div class="contador-resultados" id="contadorResultados"></div>
-<div class="card"><div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Lembrete</th><th>De</th><th>Para</th><th>Registrado em</th><th>Agendado para</th><th>Status</th><th>Exclusão</th><th>Ações</th></tr></thead><tbody id="tabelaLembretes"><tr><td colspan="9" class="loading">Carregando lembretes...</td></tr></tbody></table></div></div>
+<div class="card"><div class="table-wrap"><table><thead><tr>
+<th class="sortable" data-sort="tipo">Tipo <span class="sort-indicator">↕</span></th>
+<th class="sortable" data-sort="mensagem">Lembrete <span class="sort-indicator">↕</span></th>
+<th class="sortable" data-sort="criado_por_nome">De <span class="sort-indicator">↕</span></th>
+<th class="sortable" data-sort="destinatario_nome">Para <span class="sort-indicator">↕</span></th>
+<th class="sortable" data-sort="criado_em" data-tipo="data">Registrado em <span class="sort-indicator">↕</span></th>
+<th class="sortable" data-sort="agendado_para" data-tipo="data">Agendado para <span class="sort-indicator">↕</span></th>
+<th class="sortable" data-sort="status_ordenacao">Status <span class="sort-indicator">↕</span></th>
+<th class="sortable" data-sort="excluir_em" data-tipo="data">Exclusão <span class="sort-indicator">↕</span></th>
+<th>Ações</th></tr></thead><tbody id="tabelaLembretes"><tr><td colspan="9" class="loading">Carregando lembretes...</td></tr></tbody></table></div></div>
 <div class="rodape-info">A limpeza é realizada gradativamente pelo sistema. Lembretes enviados expiram em até 30 dias; lembretes salvos removidos ficam no histórico por mais 30 dias.</div>
 </section>
 </main>
@@ -340,7 +354,62 @@ function linha(item,uid){
  let acoes='-';if(podeEditar||podeExcluir){acoes='<div class="acoes">';if(podeEditar)acoes+=`<button class="btn-acao btn-editar" type="button" onclick="editar(${Number(item.id)})">Editar</button>`;if(podeExcluir)acoes+=`<button class="btn-acao btn-excluir" type="button" onclick="excluir(${Number(item.id)})">Excluir</button>`;acoes+='</div>'}
  return `<tr><td><span class="badge ${classe}">${tipo}</span></td><td class="mensagem">${esc(item.mensagem)}</td><td>${esc(item.criado_por_nome)}</td><td>${esc(item.destinatario_nome)}</td><td>${esc(dataHora(item.criado_em))}</td><td>${esc(dataHora(item.agendado_para))}</td><td><span class="badge ${statusClasse}">${esc(status)}</span></td><td>${esc(exclusao)}</td><td>${acoes}</td></tr>`;
 }
-let cache=new Map(),categoriaAtual='todos',editandoId=null,usuariosEdicao=[];
+let cache=new Map(),listaAtual=[],categoriaAtual='todos',editandoId=null,usuariosEdicao=[],ordenacaoAtual={campo:null,direcao:'asc',tipo:'texto'};
+
+function valorStatusOrdenacao(item){
+ const futuro=item.agendado_para&&new Date(item.agendado_para).getTime()>Date.now();
+ if(item.removido_em)return'Removido';
+ if(futuro)return'Agendado';
+ if(item.tipo==='enviado'&&!item.lido_em)return'Não lido';
+ if(item.tipo==='enviado'&&item.lido_em)return'Lido';
+ return'Ativo';
+}
+function prepararItemOrdenacao(item){
+ return {...item,status_ordenacao:valorStatusOrdenacao(item)};
+}
+function compararItens(a,b,campo,tipo,direcao){
+ let va=a?.[campo],vb=b?.[campo];
+ if(tipo==='data'){
+   va=va?new Date(va).getTime():0;
+   vb=vb?new Date(vb).getTime():0;
+ }else if(tipo==='numero'){
+   va=Number(va)||0;vb=Number(vb)||0;
+ }else{
+   va=String(va??'').trim().toLocaleLowerCase('pt-BR');
+   vb=String(vb??'').trim().toLocaleLowerCase('pt-BR');
+ }
+ let r=0;
+ if(va<vb)r=-1;else if(va>vb)r=1;
+ return direcao==='desc'?-r:r;
+}
+function renderizarLista(lista,uid){
+ const tbody=document.getElementById('tabelaLembretes');
+ let dados=[...lista];
+ if(ordenacaoAtual.campo){
+   dados.sort((a,b)=>compararItens(a,b,ordenacaoAtual.campo,ordenacaoAtual.tipo,ordenacaoAtual.direcao));
+ }
+ tbody.innerHTML=dados.length?dados.map(i=>linha(i,uid)).join(''):'<tr><td colspan="9" class="vazio">Nenhum lembrete encontrado com os filtros selecionados.</td></tr>';
+}
+function atualizarIndicadoresOrdenacao(){
+ document.querySelectorAll('th.sortable').forEach(th=>{
+   const ativo=th.dataset.sort===ordenacaoAtual.campo;
+   th.classList.toggle('ordenacao-ativa',ativo);
+   const icone=th.querySelector('.sort-indicator');
+   if(icone)icone.textContent=ativo?(ordenacaoAtual.direcao==='asc'?'▲':'▼'):'↕';
+ });
+}
+function ordenarPorCabecalho(th){
+ const campo=th.dataset.sort,tipo=th.dataset.tipo||'texto';
+ if(ordenacaoAtual.campo===campo){
+   ordenacaoAtual.direcao=ordenacaoAtual.direcao==='asc'?'desc':'asc';
+ }else{
+   ordenacaoAtual={campo,direcao:'asc',tipo};
+ }
+ atualizarIndicadoresOrdenacao();
+ const u=usuarioLocal();
+ renderizarLista(listaAtual,u.id);
+}
+
 async function carregarUsuariosEdicao(){const u=usuarioLocal(),r=await fetch('/api/lembretes/usuarios',{headers:{'x-usuario-id':u.id}}),d=await r.json();if(!r.ok)throw new Error(d.erro||`HTTP ${r.status}`);usuariosEdicao=d.usuarios||[]}
 async function carregarFiltroUsuarios(){try{await carregarUsuariosEdicao();const s=document.getElementById('filtroUsuario');s.innerHTML='<option value="">Todos os usuários</option>'+usuariosEdicao.map(x=>`<option value="${Number(x.id)}">${esc(x.nome)}</option>`).join('')}catch(e){console.warn(e)}}
 async function editar(id){const item=cache.get(Number(id));if(!item)return;editandoId=Number(id);try{await carregarUsuariosEdicao();const s=document.getElementById('editarDestinatario');s.innerHTML='<option value="">Salvar para o próprio usuário</option>'+usuariosEdicao.map(x=>`<option value="${Number(x.id)}">${esc(x.nome)} — ${esc(x.tipo_usuario||x.cargo||'usuário')}</option>`).join('');s.value=item.tipo==='enviado'?String(item.destinatario_id||''):'';document.getElementById('editarMensagem').value=item.mensagem||'';document.getElementById('editarAgendamento').value=item.agendado_para?new Date(new Date(item.agendado_para).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';document.getElementById('modalEditarLembrete').classList.add('ativo')}catch(e){alert(e.message||'Erro ao preparar edição.')}}
@@ -348,10 +417,10 @@ function fecharEdicao(){document.getElementById('modalEditarLembrete').classList
 async function salvarEdicao(){const u=usuarioLocal(),item=cache.get(Number(editandoId));if(!item)return;const destinatarioId=Number(document.getElementById('editarDestinatario').value||0),mensagem=document.getElementById('editarMensagem').value.trim(),agendado=document.getElementById('editarAgendamento').value||null;if(!mensagem)return alert('O lembrete não pode ficar vazio.');try{const r=await fetch(`/api/lembretes/${editandoId}`,{method:'PATCH',headers:{'Content-Type':'application/json','x-usuario-id':u.id},body:JSON.stringify({tipo:destinatarioId?'enviado':'salvo',destinatario_id:destinatarioId||null,destinatarios_ids:destinatarioId?[destinatarioId]:[],mensagem,agendado_para:agendado})}),d=await r.json();if(!r.ok)throw new Error(d.erro||`HTTP ${r.status}`);fecharEdicao();await carregar(categoriaAtual)}catch(e){alert(e.message||'Erro ao editar lembrete.')}}
 async function excluir(id){const u=usuarioLocal();if(!confirm('Excluir este lembrete?'))return;try{const r=await fetch(`/api/lembretes/${id}`,{method:'DELETE',headers:{'x-usuario-id':u.id}}),d=await r.json();if(!r.ok)throw new Error(d.erro||`HTTP ${r.status}`);await carregar(categoriaAtual)}catch(e){alert(e.message||'Erro ao excluir lembrete.')}}
 function parametrosFiltros(categoria){const p=new URLSearchParams({categoria});const periodo=document.getElementById('filtroPeriodo').value,leitura=document.getElementById('filtroLeitura').value,direcao=document.getElementById('filtroDirecaoUsuario').value,usuario=document.getElementById('filtroUsuario').value;if(periodo)p.set('periodo',periodo);if(leitura)p.set('leitura',leitura);if(direcao)p.set('direcao_usuario',direcao);if(usuario)p.set('usuario_id',usuario);return p}
-async function carregar(categoria='todos'){categoriaAtual=categoria;const tbody=document.getElementById('tabelaLembretes'),u=usuarioLocal();if(!u.id){location.href='login.html';return}tbody.innerHTML='<tr><td colspan="9" class="loading">Carregando lembretes...</td></tr>';try{const r=await fetch(`/api/lembretes/historico?${parametrosFiltros(categoria)}`,{headers:{'x-usuario-id':u.id}}),d=await r.json();if(!r.ok)throw new Error(d.erro||`HTTP ${r.status}`);const lista=d.lembretes||[];cache=new Map(lista.map(i=>[Number(i.id),i]));document.getElementById('contadorResultados').textContent=`${lista.length} lembrete(s) encontrado(s)`;tbody.innerHTML=lista.length?lista.map(i=>linha(i,d.usuario_id||u.id)).join(''):'<tr><td colspan="9" class="vazio">Nenhum lembrete encontrado com os filtros selecionados.</td></tr>'}catch(e){document.getElementById('contadorResultados').textContent='';tbody.innerHTML=`<tr><td colspan="9" class="vazio">${esc(e.message||'Erro ao carregar lembretes.')}</td></tr>`}}
+async function carregar(categoria='todos'){categoriaAtual=categoria;const tbody=document.getElementById('tabelaLembretes'),u=usuarioLocal();if(!u.id){location.href='login.html';return}tbody.innerHTML='<tr><td colspan="9" class="loading">Carregando lembretes...</td></tr>';try{const r=await fetch(`/api/lembretes/historico?${parametrosFiltros(categoria)}`,{headers:{'x-usuario-id':u.id}}),d=await r.json();if(!r.ok)throw new Error(d.erro||`HTTP ${r.status}`);const lista=(d.lembretes||[]).map(prepararItemOrdenacao);listaAtual=lista;cache=new Map(lista.map(i=>[Number(i.id),i]));document.getElementById('contadorResultados').textContent=`${lista.length} lembrete(s) encontrado(s)`;renderizarLista(lista,d.usuario_id||u.id);atualizarIndicadoresOrdenacao()}catch(e){document.getElementById('contadorResultados').textContent='';tbody.innerHTML=`<tr><td colspan="9" class="vazio">${esc(e.message||'Erro ao carregar lembretes.')}</td></tr>`}}
 function aplicarFiltros(){carregar(categoriaAtual)}
 function limparFiltros(){document.getElementById('filtroPeriodo').value='todos';document.getElementById('filtroLeitura').value='todos';document.getElementById('filtroDirecaoUsuario').value='todos';document.getElementById('filtroUsuario').value='';carregar(categoriaAtual)}
-document.addEventListener('DOMContentLoaded',()=>{carregarFiltroUsuarios();carregar();document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(b=>b.classList.remove('ativo'));btn.classList.add('ativo');carregar(btn.dataset.categoria)}));document.querySelectorAll('.filtros select').forEach(s=>s.addEventListener('change',aplicarFiltros))})
+document.addEventListener('DOMContentLoaded',()=>{carregarFiltroUsuarios();carregar();document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(b=>b.classList.remove('ativo'));btn.classList.add('ativo');carregar(btn.dataset.categoria)}));document.querySelectorAll('.filtros select').forEach(s=>s.addEventListener('change',aplicarFiltros));document.querySelectorAll('th.sortable').forEach(th=>th.addEventListener('click',()=>ordenarPorCabecalho(th)))})
 </script>
 
 <script id="sgos-sidebar-completa-v2-js">
