@@ -167,6 +167,8 @@ button,input,textarea,select{font:inherit}
 .campo.status-linha1{grid-column:span 4}
 .campo.tecnicos-linha2{grid-column:span 6}
 .campo.observacao-linha2{grid-column:span 9}
+.campo.orcamento-valor{grid-column:span 6}
+.campo.orcamento-descricao{grid-column:span 18}
 .campo.anexo-metade{grid-column:span 12}
 #observacao,#observacaoPosAprovacao{min-height:82px;height:82px}
 #tecnicoResponsavel{min-height:82px;height:82px;padding:5px;font-size:14px}
@@ -636,6 +638,9 @@ body.pagina-cadastro .campo.anexo-terco:last-of-type{grid-column:span 10 !import
             <div class="campo observacao-tripla"><label for="observacaoPosAprovacao">Observação do técnico pós-visita</label><textarea id="observacaoPosAprovacao" maxlength="3000" placeholder="Texto já salvo permanece visível e pode ser atualizado pelo técnico."></textarea></div>
             <div class="campo observacao-tripla"><label for="observacaoPosInstalacao">Observação pós-instalação realizada</label><textarea id="observacaoPosInstalacao" maxlength="3000" placeholder="Resultado final da instalação, materiais utilizados, pendências e orientações ao cliente."></textarea></div>
 
+            <div class="campo orcamento-valor"><label for="orcamentoValor">Valor do orçamento</label><input id="orcamentoValor" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00"></div>
+            <div class="campo orcamento-descricao"><label for="orcamentoDescricao">Descrição do orçamento</label><textarea id="orcamentoDescricao" maxlength="3000" placeholder="Descreva serviços, materiais, condições e demais informações do orçamento."></textarea></div>
+
             <div class="erp-card">
                 <div class="erp-topo">
                     <div class="erp-campo" style="max-width:190px">
@@ -1074,6 +1079,8 @@ function editarViabilidade(id){
     document.getElementById("ajudaObservacaoInicial").textContent="A observação inicial está preenchida e pode ser atualizada.";
     document.getElementById("observacaoPosAprovacao").value=o.observacao_pos_aprovacao||"";
     document.getElementById("observacaoPosInstalacao").value=o.observacao_pos_instalacao||"";
+    document.getElementById("orcamentoValor").value=o.orcamento_valor??"";
+    document.getElementById("orcamentoDescricao").value=o.orcamento_descricao||"";
     definirTecnicosSelecionados(o.tecnico_responsavel||o.tecnicos_responsaveis||"");
     document.getElementById("status").value=String(o.status||"PENDENTE").toUpperCase();
     document.getElementById("statusInstalacao").value=statusInstalacaoRegistro(o)||"PENDENTE";
@@ -1092,7 +1099,7 @@ function editarViabilidade(id){
 }
 function limparFormulario(){
     if(document.getElementById("viabilidadeId")?.value){ location.href="viabilidade.html"; return; }
-    ["viabilidadeId","nome","endereco","referencia","telefone","telefone2","localidade","observacao","observacaoPosAprovacao","observacaoPosInstalacao","latitude","longitude","localizacaoTecnico"].forEach(id=>document.getElementById(id).value="");
+    ["viabilidadeId","nome","endereco","referencia","telefone","telefone2","localidade","observacao","observacaoPosAprovacao","observacaoPosInstalacao","orcamentoValor","orcamentoDescricao","latitude","longitude","localizacaoTecnico"].forEach(id=>document.getElementById(id).value="");
     document.getElementById("observacao").readOnly=false;
     document.getElementById("ajudaObservacaoInicial").textContent="Preencha a observação inicial. Ela poderá ser editada posteriormente.";
     clientesErpVinculados=[];clienteErpConsultado=null;
@@ -1118,7 +1125,7 @@ function limparFormulario(){
 
 async function salvarViabilidade(){
     const id=document.getElementById("viabilidadeId").value;
-    const nome=document.getElementById("nome").value.trim(),endereco=document.getElementById("endereco").value.trim(),referencia=document.getElementById("referencia").value.trim(),observacao=document.getElementById("observacao").value.trim(),observacao_pos_aprovacao=document.getElementById("observacaoPosAprovacao").value.trim(),observacao_pos_instalacao=document.getElementById("observacaoPosInstalacao").value.trim(),telefone=document.getElementById("telefone").value.trim(),telefone2=document.getElementById("telefone2").value.trim(),localidade=document.getElementById("localidade").value.trim(),tecnicos=tecnicosSelecionados(),tecnico_responsavel=tecnicos.join(", "),status=document.getElementById("status").value,status_instalacao=status==="APROVADA"?document.getElementById("statusInstalacao").value:"";
+    const nome=document.getElementById("nome").value.trim(),endereco=document.getElementById("endereco").value.trim(),referencia=document.getElementById("referencia").value.trim(),observacao=document.getElementById("observacao").value.trim(),observacao_pos_aprovacao=document.getElementById("observacaoPosAprovacao").value.trim(),observacao_pos_instalacao=document.getElementById("observacaoPosInstalacao").value.trim(),orcamento_valor=document.getElementById("orcamentoValor").value.trim(),orcamento_descricao=document.getElementById("orcamentoDescricao").value.trim(),telefone=document.getElementById("telefone").value.trim(),telefone2=document.getElementById("telefone2").value.trim(),localidade=document.getElementById("localidade").value.trim(),tecnicos=tecnicosSelecionados(),tecnico_responsavel=tecnicos.join(", "),status=document.getElementById("status").value,status_instalacao=status==="APROVADA"?document.getElementById("statusInstalacao").value:"";
     if(!nome||!endereco){alert("Preencha os campos Nome e Endereço.");return}
     if(!localidade){alert("Selecione uma localidade para salvar a viabilidade.");document.getElementById("localidade").focus();return}
     if(tecnicos.length>4){alert("Selecione no máximo 4 técnicos.");return}
@@ -1126,7 +1133,7 @@ async function salvarViabilidade(){
     try{
         const latitude=document.getElementById("latitude").value;
         const longitude=document.getElementById("longitude").value;
-        const payload={nome,endereco,referencia,observacao,observacao_pos_aprovacao,observacao_pos_instalacao,telefone,telefone2,localidade,tecnico_responsavel,status,status_instalacao,latitude,longitude};
+        const payload={nome,endereco,referencia,observacao,observacao_pos_aprovacao,observacao_pos_instalacao,orcamento_valor,orcamento_descricao,telefone,telefone2,localidade,tecnico_responsavel,status,status_instalacao,latitude,longitude};
         const r=await fetch(id?`${API_VIABILIDADE}/${id}`:API_VIABILIDADE,{method:id?"PUT":"POST",headers:{"Content-Type":"application/json",...getAuthHeaders()},body:JSON.stringify(payload)});
         const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.erro||j.mensagem||`Erro ${r.status}`);
         const registroId=Number(id||j.id||j.viabilidade_id||j.insertId||j?.dados?.id);
@@ -1253,6 +1260,11 @@ function alternarSelecao(id,marcado){marcado?idsSelecionados.add(Number(id)):ids
 function atualizarCheckboxTodas(listaAtual){const check=document.getElementById("selecionarTodas");if(!check)return;const checks=[...document.querySelectorAll(".chk-item")];check.checked=checks.length>0&&checks.every(c=>c.checked);check.indeterminate=checks.some(c=>c.checked)&&!check.checked}
 function selecionarTodasViabilidades(marcado){document.querySelectorAll(".chk-item").forEach(c=>{c.checked=marcado;const id=Number(c.value);marcado?idsSelecionados.add(id):idsSelecionados.delete(id)});atualizarCheckboxTodas()}
 function renderAnexosResumo(lista){if(!lista.length)return '<div class="muted">Nenhum anexo.</div>';return `<div class="resumo-anexos">${lista.map(a=>{const u=getUrl(typeof a==="object"?(a.url||a.caminho||a.arquivo):a),video=String(a?.tipo||"").startsWith("video/")||ehVideo(u);return video?`<div class="resumo-anexo" onclick="abrirMidia('${escapar(u)}',true)">▶</div>`:`<div class="resumo-anexo" onclick="abrirMidia('${escapar(u)}',false)"><img src="${escapar(u)}" alt="Anexo"></div>`}).join("")}</div>`}
+function formatarOrcamento(valor){
+    if(valor===null||valor===undefined||valor==="")return "-";
+    const numero=Number(valor);
+    return Number.isFinite(numero)?numero.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}):"-";
+}
 function abrirResumoViabilidade(id,foco=""){
     const o=viabilidades.find(v=>Number(v.id)===Number(id));if(!o)return;
     const analise=anexosPorCategoria(o,"ANALISE"),visita=anexosPorCategoria(o,"COMPROVACAO_VISITA"),posInstalacao=anexosPorCategoria(o,"POS_INSTALACAO"),clientesErp=clientesERPDoRegistro(o),st=String(o.status||"PENDENTE").toUpperCase();
@@ -1275,6 +1287,8 @@ function abrirResumoViabilidade(id,foco=""){
         <div class="resumo-item span-2"><small>Observação inicial</small><div>${escapar(o.observacao||o.observacoes||"-")}</div></div>
         <div class="resumo-item span-2"><small>Observação do técnico pós-visita</small><div>${escapar(o.observacao_pos_aprovacao||"-")}</div></div>
         <div class="resumo-item span-2"><small>Observação pós-instalação realizada</small><div>${escapar(o.observacao_pos_instalacao||"-")}</div></div>
+        <div class="resumo-item"><small>Valor do orçamento</small><strong>${formatarOrcamento(o.orcamento_valor)}</strong></div>
+        <div class="resumo-item span-2"><small>Descrição do orçamento</small><div>${escapar(o.orcamento_descricao||"-")}</div></div>
         ${statusInstalacaoRegistro(o)==="INSTALADO"?`<div class="resumo-item span-2"><small>Instalação confirmada em</small><div>${formatarData(o.instalacao_aprovada_em)}</div></div>`:""}
     </div>
     <div class="resumo-secao"><h3>Clientes integrados via ERP (${clientesErp.length})</h3>${renderClientesERPResumo(clientesErp)}</div>
@@ -1353,6 +1367,7 @@ function htmlImpressao(registros,contextoFiltros=obterContextoFiltrosPdf()){
             ${statusInstalacaoRegistro(o)==="INSTALADO"
                 ? `${o.observacao_pos_aprovacao?`<div class="obs pos"><b>Observação do técnico pós-visita:</b> ${escapar(o.observacao_pos_aprovacao)}</div>`:""}${o.observacao_pos_instalacao?`<div class="obs pos obs-pos-instalacao"><b>Observação pós-instalação realizada:</b> ${escapar(o.observacao_pos_instalacao)}</div>`:""}`
                 : `${(o.observacao||o.observacoes)?`<div class="obs"><b>Observação inicial:</b> ${escapar(o.observacao||o.observacoes)}</div>`:""}${o.observacao_pos_aprovacao?`<div class="obs pos"><b>Observação do técnico pós-visita:</b> ${escapar(o.observacao_pos_aprovacao)}</div>`:""}`}
+            ${(o.orcamento_valor!==null&&o.orcamento_valor!==undefined&&o.orcamento_valor!=="")||o.orcamento_descricao?`<div class="obs orcamento"><b>Orçamento:</b> ${formatarOrcamento(o.orcamento_valor)}${o.orcamento_descricao?` — ${escapar(o.orcamento_descricao)}`:""}</div>`:""}
             ${clientesERPDoRegistro(o).length?`<div class="pdf-erp">
                 <div class="pdf-erp-titulo"><b>Clientes integrados via ERP (${clientesERPDoRegistro(o).length})</b></div>
                 <div class="pdf-erp-cabecalho">

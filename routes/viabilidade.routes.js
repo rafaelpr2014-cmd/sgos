@@ -82,7 +82,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                         COALESCE(l.nome, NULLIF(v.localidade, '')) AS localidade_nome,
                         v.empresa_id, v.cadastrado_por, v.registrado_em, v.status, v.status_instalacao, v.instalacao_aprovada_em,
                         v.atualizado_em, v.atualizado_por, v.tecnico_responsavel, v.observacao_pos_aprovacao, v.observacao_pos_instalacao,
-                        v.latitude, v.longitude
+                        v.latitude, v.longitude, v.orcamento_valor, v.orcamento_descricao
                  FROM viabilidade v
                  LEFT JOIN localidades l
                         ON l.id = CAST(v.localidade AS UNSIGNED)
@@ -126,7 +126,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                         COALESCE(l.nome, NULLIF(v.localidade, '')) AS localidade_nome,
                         v.empresa_id, v.cadastrado_por, v.registrado_em, v.status, v.status_instalacao, v.instalacao_aprovada_em,
                         v.atualizado_em, v.atualizado_por, v.tecnico_responsavel, v.observacao_pos_aprovacao, v.observacao_pos_instalacao,
-                        v.latitude, v.longitude
+                        v.latitude, v.longitude, v.orcamento_valor, v.orcamento_descricao
                  FROM viabilidade v
                  LEFT JOIN localidades l
                         ON l.id = CAST(v.localidade AS UNSIGNED)
@@ -164,6 +164,13 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const tecnicoResponsavel = normalizarTecnicosResponsaveis(req.body.tecnico_responsavel);
             const observacaoPosAprovacao = String(req.body.observacao_pos_aprovacao || "").trim() || null;
             const observacaoPosInstalacao = String(req.body.observacao_pos_instalacao || "").trim() || null;
+            const orcamentoDescricao = String(req.body.orcamento_descricao || "").trim() || null;
+            const orcamentoValorRecebido = req.body.orcamento_valor;
+            const orcamentoValor = orcamentoValorRecebido === "" || orcamentoValorRecebido === null || orcamentoValorRecebido === undefined
+                ? null : Number(orcamentoValorRecebido);
+            if (orcamentoValor !== null && (!Number.isFinite(orcamentoValor) || orcamentoValor < 0)) {
+                return res.status(400).json({ erro: "Valor do orçamento inválido." });
+            }
             const latitudeRecebida = req.body.latitude;
             const longitudeRecebida = req.body.longitude;
             const latitude = latitudeRecebida === "" || latitudeRecebida === null || latitudeRecebida === undefined
@@ -190,15 +197,15 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const cadastradoPor = req.usuario.usuario || String(req.usuario.id);
             const [resultado] = await pool.query(
                 `INSERT INTO viabilidade
-                    (nome, endereco, referencia, observacao, telefone, telefone2, localidade, tecnico_responsavel, observacao_pos_aprovacao, observacao_pos_instalacao, status, status_instalacao, instalacao_aprovada_em,
+                    (nome, endereco, referencia, observacao, telefone, telefone2, localidade, tecnico_responsavel, observacao_pos_aprovacao, observacao_pos_instalacao, orcamento_valor, orcamento_descricao, status, status_instalacao, instalacao_aprovada_em,
                      latitude, longitude, empresa_id, cadastrado_por, registrado_em, atualizado_em, atualizado_por)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                          CASE WHEN ? = 'INSTALADO'
                               THEN DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 HOUR)
                               ELSE NULL
                          END,
                          ?, ?, ?, ?, NOW(), NOW(), ?)`,
-                [nome, endereco, referencia, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, observacaoPosInstalacao, status, statusInstalacao, statusInstalacao,
+                [nome, endereco, referencia, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, observacaoPosInstalacao, orcamentoValor, orcamentoDescricao, status, statusInstalacao, statusInstalacao,
                  latitude, longitude, req.usuario.empresa_id, cadastradoPor, cadastradoPor]
             );
 
@@ -221,6 +228,13 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const tecnicoResponsavel = normalizarTecnicosResponsaveis(req.body.tecnico_responsavel);
             const observacaoPosAprovacao = String(req.body.observacao_pos_aprovacao || "").trim() || null;
             const observacaoPosInstalacao = String(req.body.observacao_pos_instalacao || "").trim() || null;
+            const orcamentoDescricao = String(req.body.orcamento_descricao || "").trim() || null;
+            const orcamentoValorRecebido = req.body.orcamento_valor;
+            const orcamentoValor = orcamentoValorRecebido === "" || orcamentoValorRecebido === null || orcamentoValorRecebido === undefined
+                ? null : Number(orcamentoValorRecebido);
+            if (orcamentoValor !== null && (!Number.isFinite(orcamentoValor) || orcamentoValor < 0)) {
+                return res.status(400).json({ erro: "Valor do orçamento inválido." });
+            }
             const latitudeRecebida = req.body.latitude;
             const longitudeRecebida = req.body.longitude;
             const latitude = latitudeRecebida === "" || latitudeRecebida === null || latitudeRecebida === undefined
@@ -249,7 +263,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
             const [resultado] = await pool.query(
                 `UPDATE viabilidade
                  SET nome = ?, endereco = ?, referencia = ?, observacao = ?, telefone = ?, telefone2 = ?, localidade = ?,
-                     tecnico_responsavel = ?, observacao_pos_aprovacao = ?, observacao_pos_instalacao = ?, status = ?,
+                     tecnico_responsavel = ?, observacao_pos_aprovacao = ?, observacao_pos_instalacao = ?, orcamento_valor = ?, orcamento_descricao = ?, status = ?,
                      instalacao_aprovada_em = CASE
                          WHEN ? = 'INSTALADO'
                               AND (COALESCE(status_instalacao, '') <> 'INSTALADO' OR instalacao_aprovada_em IS NULL)
@@ -260,7 +274,7 @@ module.exports = function criarRotasViabilidade(pool, verificarAutenticacao) {
                      status_instalacao = ?,
                      latitude = ?, longitude = ?, atualizado_em = NOW(), atualizado_por = ?
                  WHERE id = ? AND empresa_id = ?`,
-                [nome, endereco, referencia, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, observacaoPosInstalacao, status,
+                [nome, endereco, referencia, observacao, telefone, telefone2, localidade, tecnicoResponsavel, observacaoPosAprovacao, observacaoPosInstalacao, orcamentoValor, orcamentoDescricao, status,
                  statusInstalacao, statusInstalacao, statusInstalacao, latitude, longitude, atualizadoPor, req.params.id, req.usuario.empresa_id]
             );
 
