@@ -2,7 +2,9 @@ package com.sgos.mobile;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -10,12 +12,17 @@ import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebStorage;
 import android.webkit.WebView;
+import android.webkit.WebSettings;
+
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
 
     private static final String TAG = "SGOS_FCM";
+    private static final int REQUEST_PERMISSOES_MIDIA_LOCALIZACAO = 2026;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,7 +31,62 @@ public class MainActivity extends BridgeActivity {
         Log.e("SGOS_TESTE", "========== MAIN ACTIVITY EXECUTOU ==========");
 
         criarCanalNotificacao();
+        configurarWebViewParaMidiaELocalizacao();
+        solicitarPermissoesDoApp();
         registrarPonteJavascript();
+    }
+
+    private void configurarWebViewParaMidiaELocalizacao() {
+        try {
+            if (getBridge() == null || getBridge().getWebView() == null) {
+                Log.w(TAG, "Bridge/WebView indisponível para configuração de mídia e GPS.");
+                return;
+            }
+
+            WebView webView = getBridge().getWebView();
+            WebSettings settings = webView.getSettings();
+
+            settings.setJavaScriptEnabled(true);
+            settings.setDomStorageEnabled(true);
+            settings.setDatabaseEnabled(true);
+            settings.setGeolocationEnabled(true);
+            settings.setMediaPlaybackRequiresUserGesture(false);
+
+            CookieManager.getInstance().setAcceptCookie(true);
+            CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+
+            Log.d(TAG, "WebView configurada para câmera, vídeo e geolocalização.");
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao configurar WebView para mídia e localização", e);
+        }
+    }
+
+    private void solicitarPermissoesDoApp() {
+        java.util.ArrayList<String> pendentes = new java.util.ArrayList<>();
+
+        adicionarSePendente(pendentes, Manifest.permission.ACCESS_FINE_LOCATION);
+        adicionarSePendente(pendentes, Manifest.permission.ACCESS_COARSE_LOCATION);
+        adicionarSePendente(pendentes, Manifest.permission.CAMERA);
+        adicionarSePendente(pendentes, Manifest.permission.RECORD_AUDIO);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            adicionarSePendente(pendentes, Manifest.permission.POST_NOTIFICATIONS);
+        }
+
+        if (!pendentes.isEmpty()) {
+            ActivityCompat.requestPermissions(
+                this,
+                pendentes.toArray(new String[0]),
+                REQUEST_PERMISSOES_MIDIA_LOCALIZACAO
+            );
+        }
+    }
+
+    private void adicionarSePendente(java.util.ArrayList<String> pendentes, String permissao) {
+        if (ContextCompat.checkSelfPermission(this, permissao)
+            != PackageManager.PERMISSION_GRANTED) {
+            pendentes.add(permissao);
+        }
     }
 
     private void registrarPonteJavascript() {
