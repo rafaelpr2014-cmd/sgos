@@ -1,8 +1,10 @@
 const express = require('express');
 const asaas = require('../services/asaas.service');
+const criarWebhookService = require('../services/asaas.webhook.service');
 
 module.exports = function criarRotasAsaas(pool) {
     const router = express.Router();
+    const webhookService = criarWebhookService(pool);
 
     function responderErroAsaas(res, erro, contexto = 'operação') {
         const statusOriginal = Number(
@@ -55,12 +57,20 @@ module.exports = function criarRotasAsaas(pool) {
         if (!req.usuario) {
             return res.status(401).json({ erro: 'Não autenticado.' });
         }
-        if (Number(req.usuario.empresa_id) !== 1) {
+
+        const cargo = String(req.usuario.cargo || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toLowerCase();
+
+        if (Number(req.usuario.empresa_id) !== 1 || cargo !== 'administrador') {
             return res.status(403).json({
-                erro: 'Acesso exclusivo da administração SGOS.',
-                codigo: 'ASAAS_APENAS_EMPRESA_1'
+                erro: 'Acesso exclusivo para administradores da empresa 1.',
+                codigo: 'ASAAS_APENAS_ADMIN_EMPRESA_1'
             });
         }
+
         next();
     }
 
@@ -276,83 +286,30 @@ module.exports = function criarRotasAsaas(pool) {
 
     router.get('/cobrancas/:id/sincronizar', async (req, res) => {
         try {
-            const [rows] = await pool.query('SELECT * FROM empresa_cobrancas WHERE id = ? LIMIT 1', [req.params.id]);
-            if (!rows.length) return res.status(404).json({ erro: 'Cobrança não encontrada.' });
+            const [rows] = await pool.query(
+                'SELECT * FROM empresa_cobrancas WHERE id = ? LIMIT 1',
+                [req.params.id]
+            );
+
+            if (!rows.length) {
+                return res.status(404).json({ erro: 'Cobrança não encontrada.' });
+            }
 
             const local = rows[0];
-            const remoto = await asaas.consultarCobranca(local.asaas_payment_id);
+            const resultado = await webhookService.sincronizarPagamentoPorIdAsaas(
+                local.asaas_payment_id,
+                {
+                    usuarioId: req.usuario.id,
+                    origem: 'SINCRONIZACAO_MANUAL'
+                }
+            );
 
-            const statusInterno = mapearStatusInterno(remoto.status);
-            const dataPagamento =
-                remoto.clientPaymentDate ||
-                remoto.paymentDate ||
-                remoto.confirmedDate ||
-                null;
-
-            const valorPago =
-                statusInterno === 'PAGO'
-                    ? Number(remoto.value ?? local.valor)
-                    : null;
-
-            console.log('STATUS ASAAS:', {
-                cobranca_local_id: local.id,
-                asaas_payment_id: local.asaas_payment_id,
-                remoto: remoto.status,
-                interno: statusInterno,
-                pagamento: dataPagamento,
-                valor_pago: valorPago
-            });
-
-            const [resultadoAtualizacao] = await pool.query(`
-                UPDATE empresa_cobrancas SET
-                    valor = ?,
-                    valor_pago = ?,
-                    vencimento = ?,
-                    status_asaas = ?,
-                    status_interno = ?,
-                    pago_em = ?,
-                    invoice_url = ?,
-                    bank_slip_url = ?,
-                    atualizado_em = NOW()
-                WHERE id = ?
-            `, [
-                remoto.value ?? local.valor,
-                valorPago,
-                remoto.dueDate ?? local.vencimento,
-                remoto.status || local.status_asaas,
-                statusInterno,
-                dataPagamento,
-                remoto.invoiceUrl || local.invoice_url,
-                remoto.bankSlipUrl || local.bank_slip_url,
-                local.id
-            ]);
-
-            console.log('UPDATE COBRANÇA ASAAS:', {
-                cobranca_local_id: local.id,
-                affectedRows: resultadoAtualizacao.affectedRows,
-                changedRows: resultadoAtualizacao.changedRows
-            });
-
-            await registrarLog({
-                empresaId: local.empresa_id,
-                cobrancaId: local.id,
-                usuarioId: req.usuario.id,
-                acao: 'COBRANCA_SINCRONIZADA',
-                detalhes: JSON.stringify({
-                    payment_id: local.asaas_payment_id,
-                    status_asaas: remoto.status || null,
-                    status_interno: statusInterno,
-                    valor_pago: valorPago,
-                    pago_em: dataPagamento
-                })
-            });
-
-            res.json({
+            return res.json({
                 sucesso: true,
-                cobranca: remoto,
-                status_interno: statusInterno,
-                valor_pago: valorPago,
-                pago_em: dataPagamento
+                cobranca: resultado.remoto,
+                status_interno: resultado.statusInterno,
+                valor_pago: resultado.valorPago,
+                pago_em: resultado.dataPagamento
             });
         } catch (erro) {
             return responderErroAsaas(res, erro, 'consulta da cobrança');

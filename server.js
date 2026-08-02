@@ -39,6 +39,7 @@ const pushService = require("./services/push.service");
 const relatoriosAutomaticosRoutes = require('./routes/relatorios-automaticos.routes');
 const monitorRelatoriosRoutes = require('./routes/monitor-relatorios.routes');
 const asaasRoutesFactory = require('./routes/asaas.routes');
+const asaasWebhookRoutesFactory = require('./routes/asaas.webhook.routes');
 
 
 // ===============================
@@ -338,6 +339,15 @@ app.use(express.urlencoded({
 // SITE PÚBLICO DE VENDAS (SEM LOGIN)
 // ======================================
 app.use("/api/site", siteContatoRoutes);
+
+// ======================================
+// WEBHOOK ASAAS (PÚBLICO, COM TOKEN PRÓPRIO)
+// Não usa verificarAutenticacao, pois é chamado pelos servidores do Asaas.
+// ======================================
+app.use(
+    "/api/webhooks/asaas",
+    asaasWebhookRoutesFactory(pool)
+);
 
 // ===============================
 // CACHE DE LOGIN / APP
