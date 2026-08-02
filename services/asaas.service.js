@@ -2,11 +2,13 @@ const axios = require('axios');
 
 function getConfig() {
     const ambiente = String(process.env.ASAAS_ENV || 'sandbox').trim().toLowerCase();
-    const baseURL = process.env.ASAAS_API_URL || (
+    const baseURL = String(process.env.ASAAS_API_URL || (
         ambiente === 'production'
             ? 'https://api.asaas.com/v3'
             : 'https://api-sandbox.asaas.com/v3'
-    );
+    )).trim().replace(/\/+$/, '');
+
+    // dotenv remove aspas externas automaticamente. O trim evita espaços/quebras acidentais.
     const apiKey = String(process.env.ASAAS_API_KEY || '').trim();
 
     if (!apiKey) {
@@ -42,13 +44,27 @@ function mensagemErroAsaas(data, status) {
 
 async function requisicao(method, url, data, params) {
     const http = criarClienteHttp();
-    const resposta = await http.request({ method, url, data, params });
+    let resposta;
+
+    try {
+        resposta = await http.request({ method, url, data, params });
+    } catch (falhaRede) {
+        const erro = new Error(falhaRede?.message || 'Falha de conexão com o Asaas.');
+        erro.status = 0;
+        erro.codigo = 'ASAAS_FALHA_REDE';
+        erro.detalhes = {
+            code: falhaRede?.code || null,
+            method,
+            url
+        };
+        throw erro;
+    }
 
     if (resposta.status < 200 || resposta.status >= 300) {
         const erro = new Error(mensagemErroAsaas(resposta.data, resposta.status));
         erro.status = resposta.status;
         erro.codigo = 'ERRO_ASAAS';
-        erro.detalhes = resposta.data;
+        erro.detalhes = resposta.data || null;
         throw erro;
     }
 

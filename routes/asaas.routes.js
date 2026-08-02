@@ -4,6 +4,53 @@ const asaas = require('../services/asaas.service');
 module.exports = function criarRotasAsaas(pool) {
     const router = express.Router();
 
+    function responderErroAsaas(res, erro, contexto = 'operação') {
+        const statusOriginal = Number(
+            erro?.status ||
+            erro?.statusCode ||
+            erro?.response?.status ||
+            0
+        );
+
+        const detalhes =
+            erro?.detalhes ||
+            erro?.response?.data ||
+            null;
+
+        console.error(`Erro Asaas durante ${contexto}:`, {
+            status: statusOriginal || null,
+            codigo: erro?.codigo || null,
+            mensagem: erro?.message || null,
+            detalhes
+        });
+
+        // 401/403 vindos do Asaas não significam que a sessão SGOS expirou.
+        // Retornamos 502 para o auth.js não apagar a sessão do usuário.
+        if (statusOriginal === 401 || statusOriginal === 403) {
+            return res.status(502).json({
+                erro: 'O Asaas recusou a autenticação da integração.',
+                codigo: 'ASAAS_AUTENTICACAO_INVALIDA',
+                detalhe: erro?.message || 'Confira ASAAS_ENV, ASAAS_API_URL e ASAAS_API_KEY na VPS.',
+                detalhes
+            });
+        }
+
+        // Erros funcionais continuam com seus códigos locais.
+        if ([400, 404, 409, 422].includes(statusOriginal)) {
+            return res.status(statusOriginal).json({
+                erro: erro?.message || 'Não foi possível concluir a operação.',
+                codigo: erro?.codigo || 'ASAAS_ERRO_VALIDACAO',
+                detalhes
+            });
+        }
+
+        return res.status(502).json({
+            erro: erro?.message || 'Erro ao comunicar com o Asaas.',
+            codigo: erro?.codigo || 'ASAAS_ERRO_EXTERNO',
+            detalhes
+        });
+    }
+
     function somenteEmpresa1(req, res, next) {
         if (!req.usuario) {
             return res.status(401).json({ erro: 'Não autenticado.' });
@@ -143,8 +190,7 @@ module.exports = function criarRotasAsaas(pool) {
             const resultado = await sincronizarClienteEmpresa(req.params.id, req.usuario.id);
             res.json({ sucesso: true, customer: resultado.cliente });
         } catch (erro) {
-            console.error('Erro ao sincronizar cliente Asaas:', erro.detalhes || erro);
-            res.status(erro.status || 500).json({ erro: erro.message, detalhes: erro.detalhes || null });
+            return responderErroAsaas(res, erro, 'sincronização do cliente');
         }
     });
 
@@ -224,8 +270,7 @@ module.exports = function criarRotasAsaas(pool) {
 
             res.status(201).json({ sucesso: true, id: resultado.insertId, cobranca: cobrancaAsaas });
         } catch (erro) {
-            console.error('Erro ao criar cobrança Asaas:', erro.detalhes || erro);
-            res.status(erro.status || 500).json({ erro: erro.message, detalhes: erro.detalhes || null });
+            return responderErroAsaas(res, erro, 'emissão da cobrança');
         }
     });
 
@@ -253,8 +298,7 @@ module.exports = function criarRotasAsaas(pool) {
 
             res.json({ sucesso: true, cobranca: remoto });
         } catch (erro) {
-            console.error('Erro ao sincronizar cobrança:', erro.detalhes || erro);
-            res.status(erro.status || 500).json({ erro: erro.message, detalhes: erro.detalhes || null });
+            return responderErroAsaas(res, erro, 'consulta da cobrança');
         }
     });
 
@@ -305,8 +349,7 @@ module.exports = function criarRotasAsaas(pool) {
 
             res.json({ sucesso: true, cobranca: remoto });
         } catch (erro) {
-            console.error('Erro ao atualizar cobrança:', erro.detalhes || erro);
-            res.status(erro.status || 500).json({ erro: erro.message, detalhes: erro.detalhes || null });
+            return responderErroAsaas(res, erro, 'atualização da cobrança');
         }
     });
 
@@ -334,8 +377,7 @@ module.exports = function criarRotasAsaas(pool) {
 
             res.json({ sucesso: true });
         } catch (erro) {
-            console.error('Erro ao remover cobrança:', erro.detalhes || erro);
-            res.status(erro.status || 500).json({ erro: erro.message, detalhes: erro.detalhes || null });
+            return responderErroAsaas(res, erro, 'remoção da cobrança');
         }
     });
 
