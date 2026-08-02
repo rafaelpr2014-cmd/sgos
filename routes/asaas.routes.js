@@ -182,7 +182,21 @@ module.exports = function criarRotasAsaas(pool) {
                 SELECT e.*,
                        COUNT(c.id) AS total_cobrancas,
                        SUM(CASE WHEN c.status_interno = 'PAGO' THEN 1 ELSE 0 END) AS cobrancas_pagas,
-                       SUM(CASE WHEN c.status_interno = 'VENCIDO' THEN 1 ELSE 0 END) AS cobrancas_vencidas
+                       SUM(CASE WHEN c.status_interno = 'VENCIDO' THEN 1 ELSE 0 END) AS cobrancas_vencidas,
+                       (
+                           SELECT COUNT(*)
+                           FROM empresa_promessas_pagamento p
+                           WHERE p.empresa_id = e.id
+                             AND p.status = 'ATIVA'
+                             AND p.acesso_liberado_ate >= NOW()
+                       ) AS promessas_ativas,
+                       (
+                           SELECT MAX(p.acesso_liberado_ate)
+                           FROM empresa_promessas_pagamento p
+                           WHERE p.empresa_id = e.id
+                             AND p.status = 'ATIVA'
+                             AND p.acesso_liberado_ate >= NOW()
+                       ) AS promessa_ate
                 FROM empresa e
                 LEFT JOIN empresa_cobrancas c ON c.empresa_id = e.id
                 GROUP BY e.id
