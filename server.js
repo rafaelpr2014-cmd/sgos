@@ -38,6 +38,7 @@ const pushRoutes = require("./routes/push.routes");
 const pushService = require("./services/push.service");
 const relatoriosAutomaticosRoutes = require('./routes/relatorios-automaticos.routes');
 const monitorRelatoriosRoutes = require('./routes/monitor-relatorios.routes');
+const asaasRoutesFactory = require('./routes/asaas.routes');
 
 
 // ===============================
@@ -424,7 +425,8 @@ app.use("/api/informativos-ia", verificarAutenticacao, somenteAdministrador);
 
 app.use("/api/whatsapp", verificarAutenticacao, somenteLeituraParaNaoAdministrador, whatsappRoutes);
 app.use("/api/empresa", empresaRoutes);
-app.use("/api/escalas", escalaRoutes);
+app.use('/api/asaas', verificarAutenticacao, asaasRoutesFactory(pool));
+app.use("/api/escalas", verificarAutenticacao, somenteLeituraParaNaoAdministrador, escalaRoutes);
 app.use("/api/os-avulsas", osAvulsasRoutes(pool));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/integracoes", verificarAutenticacao, somenteLeituraParaNaoAdministrador, integracoesRoutes);

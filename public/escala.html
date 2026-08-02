@@ -762,6 +762,12 @@ select:focus{
     }
 }
 
+
+.filtros-escala{display:grid;grid-template-columns:240px minmax(320px,1fr);gap:14px;margin:0 0 18px;align-items:start}
+.filtro-pessoas{min-height:96px}.filtro-selecionados.oculto{display:none}
+.somente-admin.oculto-admin{display:none!important}
+.perfil-badge{display:inline-block;margin-left:5px;padding:3px 6px;border-radius:999px;background:#e2e8f0;color:#475569;font-size:9px;font-weight:900;vertical-align:middle}
+@media(max-width:900px){.filtros-escala{grid-template-columns:1fr}}
 </style>
 
 <style id="sgos-sidebar-completa-v2">
@@ -1038,7 +1044,7 @@ select:focus{
 <header class="header">
     <div class="header-left">
         <div class="header-logo">
-            <img id="logoEmpresa" src="/img/logo-default.png" alt="Logo Empresa">
+            <img id="logoEmpresa" src="/img/logo-default.png" alt="Logo Empresa" onerror="this.onerror=null;this.src='/img/logo-default.png';">
         </div>
 
         <div class="divisor"></div>
@@ -1079,7 +1085,7 @@ select:focus{
 <section class="content">
 
     <div class="top-actions">
-        <button class="action-card" onclick="document.querySelector('#tecnicoEscala').scrollIntoView({behavior:'smooth'})">
+        <button class="action-card somente-admin" onclick="document.querySelector('#pessoaEscala').scrollIntoView({behavior:'smooth'})">
             <span>
                 <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             </span>
@@ -1102,7 +1108,7 @@ select:focus{
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 14.5-4 16 0"/></svg>
             </div>
             <div class="card-info">
-                <small>Técnicos</small>
+                <small>Colaboradores</small>
                 <strong id="escalaCardTecnicos">0</strong>
                 <span>Na escala</span>
             </div>
@@ -1120,7 +1126,7 @@ select:focus{
         </div>
     </div>
 
-    <div class="card">
+    <div class="card somente-admin" id="cardCadastroEscala">
         <div class="card-header">
             <div class="titulo-card">Cadastrar Escala</div>
         </div>
@@ -1129,10 +1135,9 @@ select:focus{
 
         <div class="form-grid-lote">
             <div class="campo">
-                <label>Técnicos</label>
-                <select id="tecnicoEscala" class="select-multiplo" multiple>
-                </select>
-                <div class="ajuda-campo">Use Ctrl no Windows ou Command no Mac para selecionar vários técnicos.</div>
+                <label>Técnicos e atendentes</label>
+                <select id="pessoaEscala" class="select-multiplo" multiple></select>
+                <div class="ajuda-campo">Use Ctrl no Windows ou Command no Mac para selecionar várias pessoas.</div>
             </div>
 
             <div class="campo">
@@ -1195,6 +1200,22 @@ select:focus{
             </button>
         </div>
 
+        <div class="filtros-escala">
+            <div class="campo">
+                <label>Exibir</label>
+                <select id="filtroTipoPessoa" onchange="aplicarFiltrosEscala()">
+                    <option value="TODOS">Todos</option>
+                    <option value="TECNICO">Somente técnicos</option>
+                    <option value="ATENDENTE">Somente atendentes</option>
+                    <option value="SELECIONADOS">Selecionados</option>
+                </select>
+            </div>
+            <div class="campo filtro-selecionados oculto" id="campoFiltroSelecionados">
+                <label>Pessoas selecionadas</label>
+                <select id="filtroPessoasSelecionadas" class="select-multiplo filtro-pessoas" multiple onchange="aplicarFiltrosEscala()"></select>
+            </div>
+        </div>
+
         <div class="escala-wrap">
             <table class="escala-table">
                 <thead>
@@ -1219,6 +1240,9 @@ select:focus{
 <script>
 let escalas = [];
 let tecnicos = [];
+let atendentes = [];
+let pessoasEscala = [];
+let usuarioAdministrador = false;
 let datasSelecionadasEscala = [];
 let escalaEmEdicao = null;
 let feriadoAutomaticoAtivo = false;
@@ -1299,7 +1323,17 @@ async function carregarUsuario(){
                 ? (data.empresa_logo.startsWith("/") ? data.empresa_logo : "/" + data.empresa_logo)
                 : "/img/logo-default.png";
 
-            if(logoEl) logoEl.src = logoFinal;
+            if(logoEl){
+                logoEl.onerror = function(){
+                    this.onerror = null;
+                    if(this.src.endsWith('/img/logo-default.png')){
+                        this.style.display = 'none';
+                    }else{
+                        this.src = '/img/logo-default.png';
+                    }
+                };
+                logoEl.src = logoFinal;
+            }
         }
 
     }catch(err){
@@ -1349,37 +1383,41 @@ function logout(){
     window.location.href = "login.html";
 }
 
-async function carregarTecnicos(){
+async function carregarPessoasEscala(){
     try{
         const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
-        const res = await fetch("/api/tecnicos", {
-            headers:{ "x-usuario-id": usuario.id }
-        });
-
-        const resposta = await res.json();
-        tecnicos = Array.isArray(resposta)
-            ? resposta
-            : Array.isArray(resposta?.dados)
-                ? resposta.dados
-                : Array.isArray(resposta?.tecnicos)
-                    ? resposta.tecnicos
-                    : [];
-
-        const select = document.getElementById("tecnicoEscala");
-        select.innerHTML = "";
-
-        tecnicos
-            .filter(t => t.ativo == 1 || t.ativo === true || t.ativo === "1")
-            .sort((a,b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"))
-            .forEach(t => {
-                select.insertAdjacentHTML("beforeend", `
-                    <option value="${t.id}">${escaparHtml(t.nome || t.usuario || "Técnico")}</option>
-                `);
-            });
-
-    }catch(err){
-        console.error("Erro ao carregar técnicos:", err);
-    }
+        const headers = { "x-usuario-id": usuario.id };
+        const [resTecnicos, resUsuarios] = await Promise.all([
+            fetch("/api/tecnicos", { headers }),
+            fetch("/api/usuarios", { headers })
+        ]);
+        const rt = await resTecnicos.json().catch(() => []);
+        const ru = await resUsuarios.json().catch(() => []);
+        tecnicos = Array.isArray(rt) ? rt : (rt.dados || rt.tecnicos || []);
+        const usuarios = Array.isArray(ru) ? ru : (ru.dados || ru.usuarios || []);
+        atendentes = usuarios.filter(u => normalizarCargo(u.cargo) === "atendente" && (u.ativo == 1 || u.ativo === true || u.ativo === "1"));
+        pessoasEscala = [
+            ...tecnicos.filter(t => t.ativo == 1 || t.ativo === true || t.ativo === "1").map(t => ({tipo:"TECNICO", id:Number(t.id), nome:t.nome || t.usuario || "Técnico"})),
+            ...atendentes.map(u => ({tipo:"ATENDENTE", id:Number(u.id), nome:u.nome || u.usuario || "Atendente"}))
+        ].sort((a,b) => a.nome.localeCompare(b.nome,"pt-BR"));
+        preencherSelectPessoas("pessoaEscala", true);
+        preencherSelectPessoas("filtroPessoasSelecionadas", false);
+    }catch(err){ console.error("Erro ao carregar pessoas da escala:", err); }
+}
+function normalizarCargo(valor){return String(valor||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase()}
+function preencherSelectPessoas(id, agrupar){
+    const select=document.getElementById(id); if(!select) return; select.innerHTML="";
+    ["TECNICO","ATENDENTE"].forEach(tipo=>{
+        const lista=pessoasEscala.filter(p=>p.tipo===tipo); if(!lista.length)return;
+        const grupo=document.createElement("optgroup"); grupo.label=tipo==="TECNICO"?"Técnicos":"Atendentes";
+        lista.forEach(p=>{const op=document.createElement("option");op.value=`${p.tipo}:${p.id}`;op.textContent=p.nome;grupo.appendChild(op)});
+        select.appendChild(grupo);
+    });
+}
+function configurarPermissaoPagina(){
+    const usuario=JSON.parse(localStorage.getItem("usuario")||"{}");
+    usuarioAdministrador=normalizarCargo(usuario.cargo)==="administrador";
+    document.querySelectorAll(".somente-admin").forEach(el=>el.classList.toggle("oculto-admin",!usuarioAdministrador));
 }
 
 async function carregarEscalas(){
@@ -1402,7 +1440,7 @@ async function carregarEscalas(){
                         ? resposta.data
                         : [];
 
-        renderizarCalendario(escalas);
+        aplicarFiltrosEscala();
 
         // Reforça os indicadores após scripts compartilhados terminarem de carregar.
         setTimeout(() => atualizarCards(escalas), 300);
@@ -1527,15 +1565,15 @@ function alternarObservacaoFeriado(){
     }
 }
 
-function tecnicosSelecionados(){
-    return [...document.getElementById("tecnicoEscala").selectedOptions]
-        .map(option => option.value)
-        .filter(Boolean);
+function pessoasSelecionadasCadastro(){
+    return [...document.getElementById("pessoaEscala").selectedOptions].map(option => {
+        const [tipo,id]=option.value.split(":"); return {tipo,id:Number(id)};
+    }).filter(p=>p.tipo && Number.isInteger(p.id));
 }
 
 function limparFormularioEscala(){
     document.getElementById("escalaEdicaoId").value = "";
-    [...document.getElementById("tecnicoEscala").options].forEach(option => option.selected = false);
+    [...document.getElementById("pessoaEscala").options].forEach(option => option.selected = false);
     datasSelecionadasEscala = [];
     renderizarDatasSelecionadas();
     document.getElementById("dataEscala").value = "";
@@ -1554,14 +1592,15 @@ function cancelarEdicaoEscala(){
 }
 
 async function salvarEscalas(){
-    const idsTecnicos = tecnicosSelecionados();
+    const pessoasSelecionadas = pessoasSelecionadasCadastro();
     const periodo = document.getElementById("periodoEscala").value;
     const feriado = document.getElementById("feriadoEscala").value === "SIM";
     const observacao_feriado = document.getElementById("observacaoFeriado").value.trim();
     const idEdicao = document.getElementById("escalaEdicaoId").value;
 
-    if(!idsTecnicos.length){
-        alert("Selecione pelo menos um técnico.");
+    if(!usuarioAdministrador){ alert("Apenas administradores podem alterar a escala."); return; }
+    if(!pessoasSelecionadas.length){
+        alert("Selecione pelo menos um técnico ou atendente.");
         return;
     }
 
@@ -1580,8 +1619,8 @@ async function salvarEscalas(){
         return;
     }
 
-    if(idEdicao && (idsTecnicos.length !== 1 || datasSelecionadasEscala.length !== 1)){
-        alert("Durante a edição, mantenha apenas um técnico e uma data.");
+    if(idEdicao && (pessoasSelecionadas.length !== 1 || datasSelecionadasEscala.length !== 1)){
+        alert("Durante a edição, mantenha apenas uma pessoa e uma data.");
         return;
     }
 
@@ -1593,7 +1632,8 @@ async function salvarEscalas(){
     try{
         if(idEdicao){
             const payload = {
-                tecnico_id: idsTecnicos[0],
+                pessoa_tipo: pessoasSelecionadas[0].tipo,
+                pessoa_id: pessoasSelecionadas[0].id,
                 data_escala: datasSelecionadasEscala[0],
                 periodo,
                 feriado: feriado ? 1 : 0,
@@ -1617,10 +1657,11 @@ async function salvarEscalas(){
             alert("Escala atualizada com sucesso.");
         }else{
             const combinacoes = [];
-            idsTecnicos.forEach(tecnico_id => {
+            pessoasSelecionadas.forEach(pessoa => {
                 datasSelecionadasEscala.forEach(data_escala => {
                     combinacoes.push({
-                        tecnico_id,
+                        pessoa_tipo: pessoa.tipo,
+                        pessoa_id: pessoa.id,
                         data_escala,
                         periodo,
                         feriado: feriado ? 1 : 0,
@@ -1678,16 +1719,10 @@ function editarEscala(id){
     escalaEmEdicao = escala;
     document.getElementById("escalaEdicaoId").value = escala.id;
 
-    const idTecnico =
-        escala.tecnico_id ??
-        escala.id_tecnico ??
-        escala.tecnicoId ??
-        escala.idTecnico ??
-        escala.tecnico?.id ??
-        "";
-
-    [...document.getElementById("tecnicoEscala").options].forEach(option => {
-        option.selected = String(option.value) === String(idTecnico);
+    if(!usuarioAdministrador) return;
+    const valorPessoa = `${tipoPessoaEscala(escala)}:${idPessoaEscala(escala)}`;
+    [...document.getElementById("pessoaEscala").options].forEach(option => {
+        option.selected = option.value === valorPessoa;
     });
 
     datasSelecionadasEscala = [normalizarDataEscala(escala.data_escala)];
@@ -1716,6 +1751,7 @@ function editarEscala(id){
 }
 
 async function excluirEscala(id){
+    if(!usuarioAdministrador){ alert("Apenas administradores podem excluir escalas."); return; }
     if(!confirm("Deseja excluir esta escala?")) return;
 
     try{
@@ -1760,51 +1796,10 @@ function periodoTexto(periodo){
     return periodo;
 }
 
-function chaveTecnicoEscala(escala){
-    const id =
-        escala?.tecnico_id ??
-        escala?.id_tecnico ??
-        escala?.tecnicoId ??
-        escala?.idTecnico ??
-        escala?.tecnico?.id ??
-        "";
-
-    if(String(id).trim()){
-        return `id:${String(id).trim()}`;
-    }
-
-    const nomeOriginal = String(
-        escala?.tecnico_nome ??
-        escala?.nome_tecnico ??
-        escala?.nome ??
-        escala?.tecnico?.nome ??
-        escala?.tecnico ??
-        ""
-    ).trim();
-
-    if(!nomeOriginal) return "";
-
-    const tecnicoEncontrado = (Array.isArray(tecnicos) ? tecnicos : []).find(t =>
-        String(t?.nome || t?.usuario || "").trim().toLocaleLowerCase("pt-BR") ===
-        nomeOriginal.toLocaleLowerCase("pt-BR")
-    );
-
-    if(tecnicoEncontrado?.id){
-        return `id:${String(tecnicoEncontrado.id).trim()}`;
-    }
-
-    return `nome:${nomeOriginal.toLocaleLowerCase("pt-BR")}`;
-}
-
-function nomeTecnicoEscala(escala){
-    return String(
-        escala?.tecnico_nome ??
-        escala?.nome_tecnico ??
-        escala?.tecnico?.nome ??
-        escala?.tecnico ??
-        "Técnico não informado"
-    ).trim();
-}
+function tipoPessoaEscala(escala){ return String(escala?.pessoa_tipo || escala?.tipo_pessoa || "TECNICO").toUpperCase(); }
+function idPessoaEscala(escala){ return Number(tipoPessoaEscala(escala)==="ATENDENTE" ? (escala?.usuario_id ?? escala?.pessoa_id) : (escala?.tecnico_id ?? escala?.pessoa_id)); }
+function chaveTecnicoEscala(escala){ const id=idPessoaEscala(escala); return id ? `${tipoPessoaEscala(escala)}:${id}` : `nome:${nomeTecnicoEscala(escala).toLowerCase()}`; }
+function nomeTecnicoEscala(escala){ return String(escala?.pessoa_nome ?? escala?.atendente ?? escala?.tecnico_nome ?? escala?.nome_tecnico ?? escala?.tecnico?.nome ?? escala?.tecnico ?? "Pessoa não informada").trim(); }
 
 function atualizarCards(lista){
     const registros = Array.isArray(lista) ? lista : [];
@@ -1880,16 +1875,13 @@ function renderizarCalendario(lista){
 
             return `
                 <div class="escala-item">
-                    <strong>${escaparHtml(nomeTecnicoEscala(e))}</strong>
+                    <strong>${escaparHtml(nomeTecnicoEscala(e))}<span class="perfil-badge">${tipoPessoaEscala(e)==="ATENDENTE"?"ATENDENTE":"TÉCNICO"}</span></strong>
                     <span class="periodo ${escaparHtml(e.periodo || "")}">
                         ${escaparHtml(periodoTexto(e.periodo))}
                     </span>
                     ${feriado ? '<span class="feriado-badge">FERIADO</span>' : ''}
                     ${feriado && observacaoFeriado ? `<div class="feriado-observacao">${escaparHtml(observacaoFeriado)}</div>` : ''}
-                    <div class="acoes-item">
-                        <button type="button" class="acao-editar" onclick="editarEscala(${Number(e.id)})">Editar</button>
-                        <button type="button" class="acao-excluir" onclick="excluirEscala(${Number(e.id)})">Excluir</button>
-                    </div>
+                    ${usuarioAdministrador ? `<div class="acoes-item"><button type="button" class="acao-editar" onclick="editarEscala(${Number(e.id)})">Editar</button><button type="button" class="acao-excluir" onclick="excluirEscala(${Number(e.id)})">Excluir</button></div>` : ""}
                 </div>
             `;
         }).join("");
@@ -1924,11 +1916,11 @@ function listaAtualParaImpressao(){
     );
 }
 
-function dadosMesParaImpressao(ano, mes){
+function dadosMesParaImpressao(ano, mes, fonte = escalas){
     const primeiroDia = new Date(ano, mes, 1);
     const ultimoDia = new Date(ano, mes + 1, 0);
 
-    const listaMes = escalas.filter(e => {
+    const listaMes = fonte.filter(e => {
         const valor = normalizarDataEscala(e.data_escala);
         if(!valor) return false;
         const data = new Date(valor + "T00:00:00");
@@ -2007,6 +1999,8 @@ function dadosMesParaImpressao(ano, mes){
 }
 
 function imprimirEscalaCalendario(){
+    const listaImpressao = obterEscalasFiltradas();
+    if(!listaImpressao.length){ alert("Não há escalas para imprimir com o filtro selecionado."); return; }
     const hoje = new Date();
     const anoAtual = hoje.getFullYear();
     const mesAtual = hoje.getMonth();
@@ -2014,7 +2008,7 @@ function imprimirEscalaCalendario(){
     const chavesMeses = new Set();
     chavesMeses.add(`${anoAtual}-${String(mesAtual + 1).padStart(2, "0")}`);
 
-    escalas.forEach(escala => {
+    listaImpressao.forEach(escala => {
         const dataIso = normalizarDataEscala(escala.data_escala);
         if(!/^\d{4}-\d{2}-\d{2}$/.test(dataIso)) return;
 
@@ -2033,7 +2027,7 @@ function imprimirEscalaCalendario(){
         .sort()
         .map(chave => {
             const [ano, mes] = chave.split("-").map(Number);
-            return dadosMesParaImpressao(ano, mes - 1);
+            return dadosMesParaImpressao(ano, mes - 1, listaImpressao);
         });
 
     const logo = document.getElementById("logoEmpresa")?.src || "";
@@ -2046,7 +2040,7 @@ function imprimirEscalaCalendario(){
             <header class="print-header">
                 <div class="marca">
                     ${logo ? `<img src="${escaparHtml(logo)}" alt="Logo">` : ""}
-                    <div><h1>Escala de Técnicos</h1><p>${escaparHtml(empresa)}</p></div>
+                    <div><h1>Escala de Técnicos e Atendentes</h1><p>${escaparHtml(empresa)}</p></div>
                 </div>
                 <div class="mes-titulo">${escaparHtml(dados.tituloMes)}</div>
                 <div class="emissao">
@@ -2220,19 +2214,26 @@ ${paginas}
     janela.document.close();
 }
 
-function filtrarEscalas(){
-    const termo = document.getElementById("campoBusca").value.toLowerCase();
-
-    const filtradas = escalas.filter(e =>
-        nomeTecnicoEscala(e).toLowerCase().includes(termo) ||
-        String(e.periodo || "").toLowerCase().includes(termo) ||
-        String(formatarData(e.data_escala)).includes(termo)
-    );
-
-    renderizarCalendario(filtradas);
+function obterEscalasFiltradas(){
+    const termo=(document.getElementById("campoBusca")?.value||"").toLowerCase();
+    const tipo=document.getElementById("filtroTipoPessoa")?.value||"TODOS";
+    const selecionados=new Set([...document.getElementById("filtroPessoasSelecionadas")?.selectedOptions||[]].map(o=>o.value));
+    return escalas.filter(e=>{
+        const chave=`${tipoPessoaEscala(e)}:${idPessoaEscala(e)}`;
+        const passaTipo=tipo==="TODOS" || tipo===tipoPessoaEscala(e) || (tipo==="SELECIONADOS" && selecionados.has(chave));
+        const passaBusca=!termo || nomeTecnicoEscala(e).toLowerCase().includes(termo) || String(e.periodo||"").toLowerCase().includes(termo) || String(formatarData(e.data_escala)).includes(termo);
+        return passaTipo && passaBusca;
+    });
 }
+function aplicarFiltrosEscala(){
+    const tipo=document.getElementById("filtroTipoPessoa")?.value||"TODOS";
+    document.getElementById("campoFiltroSelecionados")?.classList.toggle("oculto",tipo!=="SELECIONADOS");
+    renderizarCalendario(obterEscalasFiltradas());
+}
+function filtrarEscalas(){ aplicarFiltrosEscala(); }
 
 document.addEventListener("DOMContentLoaded", () => {
+    configurarPermissaoPagina();
     const sidebar = document.querySelector(".sidebar");
     const logo = document.getElementById("logoSidebar");
 
@@ -2247,7 +2248,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     carregarUsuario();
     carregarUsuariosOnline();
-    carregarTecnicos();
+    carregarPessoasEscala();
     carregarEscalas();
     renderizarDatasSelecionadas();
     alternarObservacaoFeriado();

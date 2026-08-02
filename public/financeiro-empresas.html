@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SGOS - Financeiro das Empresas</title>
+<link rel="icon" type="image/png" href="/img/favicon.png">
+<script src="/js/auth.js"></script>
+<script src="/js/init.js"></script>
+<style>
+:root{--azul:#2563eb;--azul-escuro:#0f2f5f;--texto:#0f172a;--muted:#64748b;--borda:#e2e8f0;--fundo:#f5f7fb;--verde:#15803d;--vermelho:#dc2626;--laranja:#c2410c}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);color:var(--texto)}
+.topbar{min-height:76px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;justify-content:space-between;padding:14px 28px;gap:16px}.brand{display:flex;align-items:center;gap:14px}.brand img{height:46px;max-width:155px;object-fit:contain}.brand h1{font-size:19px;margin:0}.page{max-width:1500px;margin:auto;padding:26px}.head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px}.head h2{margin:0 0 6px;font-size:26px}.muted{color:var(--muted)}
+.btn{border:0;border-radius:9px;padding:10px 13px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:7px}.btn:disabled{opacity:.55;cursor:not-allowed}.btn-primary{background:var(--azul);color:#fff}.btn-light{background:#eaf0ff;color:#1e40af}.btn-success{background:#dcfce7;color:var(--verde)}.btn-warning{background:#ffedd5;color:var(--laranja)}.btn-danger{background:#fee2e2;color:var(--vermelho)}
+.status-config{padding:10px 13px;border-radius:10px;background:#fff;border:1px solid var(--borda);font-size:13px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--borda);border-radius:14px;padding:14px;margin-bottom:16px}.toolbar input,.toolbar select{border:1px solid var(--borda);border-radius:9px;padding:10px 12px;font:inherit}.toolbar input{min-width:280px;flex:1}
+.card{background:#fff;border:1px solid var(--borda);border-radius:15px;overflow:hidden;box-shadow:0 8px 22px rgba(15,23,42,.05)}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:1250px}th,td{padding:13px 14px;border-bottom:1px solid #eef2f7;text-align:left;vertical-align:middle;font-size:13px}th{background:var(--azul-escuro);color:#fff;font-size:12px;text-transform:uppercase}tr:hover td{background:#f8fafc}.actions{display:flex;gap:6px;flex-wrap:wrap}.badge{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:800}.badge-ok{background:#dcfce7;color:#15803d}.badge-pendente{background:#fef3c7;color:#a16207}.badge-vencido{background:#fee2e2;color:#b91c1c}.badge-removido{background:#e2e8f0;color:#475569}.empty{text-align:center;padding:40px;color:var(--muted)}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.6);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}.modal.open{display:flex}.modal-box{width:min(680px,100%);background:#fff;border-radius:16px;padding:22px;max-height:92vh;overflow:auto}.modal-head{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:18px}.modal-head h3{margin:0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.full{grid-column:1/-1}.field{display:flex;flex-direction:column;gap:7px}.field label{font-size:13px;font-weight:800}.field input,.field textarea{border:1px solid var(--borda);border-radius:9px;padding:11px 12px;font:inherit;width:100%}.field textarea{min-height:80px;resize:vertical}.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+@media(max-width:800px){.page{padding:18px 12px}.topbar,.head{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.full{grid-column:auto}.toolbar input{min-width:100%}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><img src="https://iili.io/CujQzXa.png" alt="SGOS"><h1>Financeiro das Empresas</h1></div>
+  <a class="btn btn-light" href="/listar_empresas.html">Voltar para empresas</a>
+</header>
+<main class="page">
+  <div class="head"><div><h2>Integração Asaas</h2><div class="muted">Sincronize empresas, emita, consulte, edite e remova boletos.</div></div><div id="statusConfig" class="status-config">Verificando configuração...</div></div>
+  <div class="toolbar"><input id="busca" type="search" placeholder="Buscar empresa, CPF/CNPJ ou subdomínio..."><select id="filtroIntegracao"><option value="">Todas</option><option value="integrada">Integradas ao Asaas</option><option value="nao_integrada">Não integradas</option></select></div>
+  <div class="card"><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Documento</th><th>Contato</th><th>Plano</th><th>Cliente Asaas</th><th>Cobranças</th><th>Ações</th></tr></thead><tbody id="empresasBody"></tbody></table></div></div>
+  <section id="secaoCobrancas" style="margin-top:22px;display:none">
+    <div class="head"><div><h2 id="tituloCobrancas">Cobranças</h2><div class="muted">Histórico local das cobranças desta empresa.</div></div><button class="btn btn-primary" id="btnNovaCobranca">+ Emitir boleto</button></div>
+    <div class="card"><div class="table-wrap"><table><thead><tr><th>Competência</th><th>Descrição</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Ações</th></tr></thead><tbody id="cobrancasBody"></tbody></table></div></div>
+  </section>
+</main>
+
+<div class="modal" id="modalCobranca"><div class="modal-box"><div class="modal-head"><h3 id="modalTitulo">Emitir boleto</h3><button class="btn btn-light" id="btnFecharModal">Fechar</button></div><div class="grid">
+  <div class="field"><label>Competência</label><input type="month" id="competencia"></div>
+  <div class="field"><label>Valor (R$)</label><input type="number" id="valor" min="0.01" step="0.01"></div>
+  <div class="field"><label>Vencimento</label><input type="date" id="vencimento"></div>
+  <div class="field full"><label>Descrição</label><textarea id="descricao" placeholder="Mensalidade SGOS"></textarea></div>
+</div><div class="modal-actions"><button class="btn btn-light" id="btnCancelarModal">Cancelar</button><button class="btn btn-primary" id="btnSalvarCobranca">Emitir boleto</button></div></div></div>
+<script src="/js/financeiro-empresas.js"></script>
+</body>
+</html>
