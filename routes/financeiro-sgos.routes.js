@@ -44,11 +44,32 @@ module.exports = function criarFinanceiroSgosRoutes(pool) {
         return { mes: valor, inicio, fim };
     }
 
+    function periodoConsulta(mes, dia) {
+        const periodo = periodoMes(mes);
+        const data = String(dia || '').trim();
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(data) && data.startsWith(`${periodo.mes}-`)) {
+            return {
+                ...periodo,
+                dia: data,
+                inicioConsulta: data,
+                fimConsulta: data
+            };
+        }
+
+        return {
+            ...periodo,
+            dia: null,
+            inicioConsulta: periodo.inicio,
+            fimConsulta: periodo.fim
+        };
+    }
+
     router.use(somenteAdminEmpresa1);
 
     router.get('/resumo', async (req, res) => {
         try {
-            const periodo = periodoMes(req.query.mes);
+            const periodo = periodoConsulta(req.query.mes, req.query.dia);
 
             const [rows] = await pool.query(
                 `SELECT
@@ -70,7 +91,7 @@ module.exports = function criarFinanceiroSgosRoutes(pool) {
                     COUNT(DISTINCT empresa_id) AS empresas_cobradas
                  FROM empresa_cobrancas
                  WHERE DATE(criado_em) BETWEEN ? AND ?`,
-                [periodo.inicio, periodo.fim]
+                [periodo.inicioConsulta, periodo.fimConsulta]
             );
 
             const [pagamentos] = await pool.query(
@@ -80,7 +101,7 @@ module.exports = function criarFinanceiroSgosRoutes(pool) {
                  FROM empresa_cobrancas
                  WHERE status_interno = 'PAGO'
                    AND DATE(pago_em) BETWEEN ? AND ?`,
-                [periodo.inicio, periodo.fim]
+                [periodo.inicioConsulta, periodo.fimConsulta]
             );
 
             return res.json({
@@ -99,7 +120,7 @@ module.exports = function criarFinanceiroSgosRoutes(pool) {
 
     router.get('/grafico', async (req, res) => {
         try {
-            const periodo = periodoMes(req.query.mes);
+            const periodo = periodoConsulta(req.query.mes, req.query.dia);
 
             const [rows] = await pool.query(
                 `SELECT
@@ -111,7 +132,7 @@ module.exports = function criarFinanceiroSgosRoutes(pool) {
                    AND DATE(pago_em) BETWEEN ? AND ?
                  GROUP BY DATE(pago_em)
                  ORDER BY dia`,
-                [periodo.inicio, periodo.fim]
+                [periodo.inicioConsulta, periodo.fimConsulta]
             );
 
             return res.json({ periodo, dados: rows });
@@ -125,9 +146,9 @@ module.exports = function criarFinanceiroSgosRoutes(pool) {
 
     router.get('/pagamentos', async (req, res) => {
         try {
-            const periodo = periodoMes(req.query.mes);
+            const periodo = periodoConsulta(req.query.mes, req.query.dia);
             const busca = String(req.query.busca || '').trim();
-            const params = [periodo.inicio, periodo.fim];
+            const params = [periodo.inicioConsulta, periodo.fimConsulta];
             let filtroBusca = '';
 
             if (busca) {
@@ -185,10 +206,10 @@ module.exports = function criarFinanceiroSgosRoutes(pool) {
 
     router.get('/boletos', async (req, res) => {
         try {
-            const periodo = periodoMes(req.query.mes);
+            const periodo = periodoConsulta(req.query.mes, req.query.dia);
             const status = String(req.query.status || '').trim().toUpperCase();
             const busca = String(req.query.busca || '').trim();
-            const params = [periodo.inicio, periodo.fim];
+            const params = [periodo.inicioConsulta, periodo.fimConsulta];
             const filtros = [];
 
             if (status) {
@@ -255,9 +276,9 @@ module.exports = function criarFinanceiroSgosRoutes(pool) {
 
     router.get('/logs', async (req, res) => {
         try {
-            const periodo = periodoMes(req.query.mes);
+            const periodo = periodoConsulta(req.query.mes, req.query.dia);
             const busca = String(req.query.busca || '').trim();
-            const params = [periodo.inicio, periodo.fim];
+            const params = [periodo.inicioConsulta, periodo.fimConsulta];
             let filtroBusca = '';
 
             if (busca) {

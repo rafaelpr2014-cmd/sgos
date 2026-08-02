@@ -17,7 +17,25 @@ if(Number(usuario?.empresa_id)!==1||normalizar(usuario?.cargo)!=='administrador'
   return;
 }
 
-async function api(url){return fetchAuth(url)}
+async function api(url, opcoes = {}) {
+  const resposta = await fetch(url, opcoes);
+
+  let corpo = null;
+  const tipo = resposta.headers.get('content-type') || '';
+
+  if (tipo.includes('application/json')) {
+    corpo = await resposta.json();
+  } else {
+    const texto = await resposta.text();
+    corpo = texto ? { erro: texto } : {};
+  }
+
+  if (!resposta.ok) {
+    throw new Error(corpo?.erro || `Erro ${resposta.status}`);
+  }
+
+  return corpo;
+}
 
 function mesAtual(){
   const d=new Date();
@@ -27,6 +45,37 @@ function mesAtual(){
 function periodoLabel(mes){
   const [ano,m]=mes.split('-').map(Number);
   return new Date(ano,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+}
+
+function filtroPeriodo(){
+  const mes=$('mes').value;
+  const dia=$('dia').value;
+  return {
+    mes,
+    dia,
+    query:`mes=${encodeURIComponent(mes)}${dia?`&dia=${encodeURIComponent(dia)}`:''}`
+  };
+}
+
+function atualizarLimitesDia(){
+  const mes=$('mes').value;
+  const dia=$('dia');
+  dia.min=`${mes}-01`;
+  const [ano,numeroMes]=mes.split('-').map(Number);
+  const ultimo=new Date(ano,numeroMes,0).getDate();
+  dia.max=`${mes}-${String(ultimo).padStart(2,'0')}`;
+
+  if(dia.value && !dia.value.startsWith(`${mes}-`)){
+    dia.value='';
+  }
+}
+
+function periodoExibicao(){
+  const {mes,dia}=filtroPeriodo();
+  if(dia){
+    return `Exibindo somente ${data(dia)}`;
+  }
+  return `Exibindo ${periodoLabel(mes)}`;
 }
 
 function statusBadge(status){
@@ -43,9 +92,9 @@ function documentos(c){
 }
 
 async function carregarResumo(){
-  const mes=$('mes').value;
-  resumo=await api(`/api/financeiro-sgos/resumo?mes=${encodeURIComponent(mes)}`);
-  $('periodo').textContent=`Exibindo ${periodoLabel(mes)}`;
+  const {query}=filtroPeriodo();
+  resumo=await api(`/api/financeiro-sgos/resumo?${query}`);
+  $('periodo').textContent=periodoExibicao();
   $('recebido').textContent=moeda(resumo.total_entradas_pagamentos);
   $('entradas').textContent=`${Number(resumo.entradas_pagamentos||0)} pagamentos`;
   $('gerados').textContent=Number(resumo.boletos_gerados||0);
@@ -62,16 +111,21 @@ async function carregarResumo(){
 }
 
 async function carregarGrafico(){
-  const mes=$('mes').value;
-  const r=await api(`/api/financeiro-sgos/grafico?mes=${encodeURIComponent(mes)}`);
+  const {mes,dia,query}=filtroPeriodo();
+  const r=await api(`/api/financeiro-sgos/grafico?${query}`);
   const [ano,m]=mes.split('-').map(Number);
   const ultimo=new Date(ano,m,0).getDate();
   const mapa={};
   for(const item of r.dados||[])mapa[String(item.dia).slice(0,10)]=Number(item.total||0);
   const dados=[];
-  for(let dia=1;dia<=ultimo;dia++){
-    const chave=`${mes}-${String(dia).padStart(2,'0')}`;
-    dados.push({dia,valor:mapa[chave]||0,data:chave});
+  if(dia){
+    const numeroDia=Number(dia.slice(8,10));
+    dados.push({dia:numeroDia,valor:mapa[dia]||0,data:dia});
+  }else{
+    for(let numeroDia=1;numeroDia<=ultimo;numeroDia++){
+      const chave=`${mes}-${String(numeroDia).padStart(2,'0')}`;
+      dados.push({dia:numeroDia,valor:mapa[chave]||0,data:chave});
+    }
   }
   const max=Math.max(...dados.map(x=>x.valor),0);
   const total=dados.reduce((s,x)=>s+x.valor,0);
@@ -93,8 +147,8 @@ async function carregarGrafico(){
 }
 
 async function carregarPagamentos(){
-  const mes=$('mes').value,busca=$('buscaPagamentos').value.trim();
-  const r=await api(`/api/financeiro-sgos/pagamentos?mes=${encodeURIComponent(mes)}&busca=${encodeURIComponent(busca)}`);
+  const {query}=filtroPeriodo(),busca=$('buscaPagamentos').value.trim();
+  const r=await api(`/api/financeiro-sgos/pagamentos?${query}&busca=${encodeURIComponent(busca)}`);
   const lista=r.pagamentos||[];
   $('tbPagamentos').innerHTML=lista.length?lista.map(c=>`<tr>
     <td><b>${esc(c.empresa_nome)}</b></td>
@@ -109,8 +163,8 @@ async function carregarPagamentos(){
 }
 
 async function carregarBoletos(){
-  const mes=$('mes').value,busca=$('buscaBoletos').value.trim(),status=$('statusBoleto').value;
-  const r=await api(`/api/financeiro-sgos/boletos?mes=${encodeURIComponent(mes)}&busca=${encodeURIComponent(busca)}&status=${encodeURIComponent(status)}`);
+  const {query}=filtroPeriodo(),busca=$('buscaBoletos').value.trim(),status=$('statusBoleto').value;
+  const r=await api(`/api/financeiro-sgos/boletos?${query}&busca=${encodeURIComponent(busca)}&status=${encodeURIComponent(status)}`);
   const lista=r.boletos||[];
   $('tbBoletos').innerHTML=lista.length?lista.map(c=>`<tr>
     <td><b>${esc(c.empresa_nome)}</b></td>
@@ -133,8 +187,8 @@ function detalheLog(valor){
 }
 
 async function carregarLogs(){
-  const mes=$('mes').value,busca=$('buscaLogs').value.trim();
-  const r=await api(`/api/financeiro-sgos/logs?mes=${encodeURIComponent(mes)}&busca=${encodeURIComponent(busca)}`);
+  const {query}=filtroPeriodo(),busca=$('buscaLogs').value.trim();
+  const r=await api(`/api/financeiro-sgos/logs?${query}&busca=${encodeURIComponent(busca)}`);
   const lista=r.logs||[];
   $('tbLogs').innerHTML=lista.length?lista.map(l=>`<tr>
     <td>${dataHora(l.criado_em)}</td>
@@ -182,7 +236,16 @@ $('buscaBoletos').oninput=()=>debounce(carregarBoletos);
 $('statusBoleto').onchange=carregarBoletos;
 $('buscaLogs').oninput=()=>debounce(carregarLogs);
 $('mes').value=mesAtual();
-$('mes').onchange=carregarTudo;
+atualizarLimitesDia();
+$('mes').onchange=()=>{
+  atualizarLimitesDia();
+  carregarTudo();
+};
+$('dia').onchange=carregarTudo;
+$('limparDia').onclick=()=>{
+  $('dia').value='';
+  carregarTudo();
+};
 $('atualizar').onclick=carregarTudo;
 carregarTudo();
 })();

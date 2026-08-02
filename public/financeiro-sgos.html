@@ -82,6 +82,8 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);col
 <section class="content">
   <div class="toolbar">
     <div class="field"><label>Mês de exibição</label><input id="mes" type="month"></div>
+    <div class="field"><label>Dia específico (opcional)</label><input id="dia" type="date"></div>
+    <button class="btn btn-light" id="limparDia">Exibir mês completo</button>
     <button class="btn btn-primary" id="atualizar">Atualizar dados</button>
     <button class="btn btn-light" onclick="window.print()">Imprimir</button>
     <span id="periodo" class="muted"></span>
@@ -138,6 +140,6 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);col
 </section>
 </main>
 <div class="tooltip" id="tooltip"></div>
-<script src="/js/financeiro-sgos.js?v=20260802-1"></script>
+<script src="/js/financeiro-sgos.js?v=20260802-2"></script>
 </body>
 </html>
