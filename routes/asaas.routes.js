@@ -75,7 +75,7 @@ module.exports = function criarRotasAsaas(pool) {
 
     function mapearStatusInterno(statusAsaas) {
         const status = String(statusAsaas || '').toUpperCase();
-        if (['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(status)) return 'PAGO';
+        if (['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH', 'RECEIVED_WITH_OVERPAYMENT'].includes(status)) return 'PAGO';
         if (status === 'OVERDUE') return 'VENCIDO';
         if (['REFUNDED', 'REFUND_REQUESTED', 'CHARGEBACK_REQUESTED', 'CHARGEBACK_DISPUTE'].includes(status)) return 'ESTORNADO';
         if (['DELETED', 'CANCELLED'].includes(status)) return 'REMOVIDO';
@@ -281,22 +281,79 @@ module.exports = function criarRotasAsaas(pool) {
 
             const local = rows[0];
             const remoto = await asaas.consultarCobranca(local.asaas_payment_id);
-            await pool.query(`
+
+            const statusInterno = mapearStatusInterno(remoto.status);
+            const dataPagamento =
+                remoto.clientPaymentDate ||
+                remoto.paymentDate ||
+                remoto.confirmedDate ||
+                null;
+
+            const valorPago =
+                statusInterno === 'PAGO'
+                    ? Number(remoto.value ?? local.valor)
+                    : null;
+
+            console.log('STATUS ASAAS:', {
+                cobranca_local_id: local.id,
+                asaas_payment_id: local.asaas_payment_id,
+                remoto: remoto.status,
+                interno: statusInterno,
+                pagamento: dataPagamento,
+                valor_pago: valorPago
+            });
+
+            const [resultadoAtualizacao] = await pool.query(`
                 UPDATE empresa_cobrancas SET
-                    valor = ?, vencimento = ?, status_asaas = ?, status_interno = ?,
-                    invoice_url = ?, bank_slip_url = ?, atualizado_em = NOW()
+                    valor = ?,
+                    valor_pago = ?,
+                    vencimento = ?,
+                    status_asaas = ?,
+                    status_interno = ?,
+                    pago_em = ?,
+                    invoice_url = ?,
+                    bank_slip_url = ?,
+                    atualizado_em = NOW()
                 WHERE id = ?
             `, [
                 remoto.value ?? local.valor,
+                valorPago,
                 remoto.dueDate ?? local.vencimento,
                 remoto.status || local.status_asaas,
-                mapearStatusInterno(remoto.status),
+                statusInterno,
+                dataPagamento,
                 remoto.invoiceUrl || local.invoice_url,
                 remoto.bankSlipUrl || local.bank_slip_url,
                 local.id
             ]);
 
-            res.json({ sucesso: true, cobranca: remoto });
+            console.log('UPDATE COBRANÇA ASAAS:', {
+                cobranca_local_id: local.id,
+                affectedRows: resultadoAtualizacao.affectedRows,
+                changedRows: resultadoAtualizacao.changedRows
+            });
+
+            await registrarLog({
+                empresaId: local.empresa_id,
+                cobrancaId: local.id,
+                usuarioId: req.usuario.id,
+                acao: 'COBRANCA_SINCRONIZADA',
+                detalhes: JSON.stringify({
+                    payment_id: local.asaas_payment_id,
+                    status_asaas: remoto.status || null,
+                    status_interno: statusInterno,
+                    valor_pago: valorPago,
+                    pago_em: dataPagamento
+                })
+            });
+
+            res.json({
+                sucesso: true,
+                cobranca: remoto,
+                status_interno: statusInterno,
+                valor_pago: valorPago,
+                pago_em: dataPagamento
+            });
         } catch (erro) {
             return responderErroAsaas(res, erro, 'consulta da cobrança');
         }

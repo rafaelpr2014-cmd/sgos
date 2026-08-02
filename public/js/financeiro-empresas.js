@@ -50,7 +50,27 @@ function fecharModal(){$('modalCobranca').classList.remove('open');cobrancaEdita
 
 async function salvarCobranca(){const payload={empresa_id:empresaSelecionada.id,competencia:$('competencia').value,valor:Number($('valor').value),vencimento:$('vencimento').value,descricao:$('descricao').value.trim()};if(!payload.valor||!payload.vencimento)return alert('Informe valor e vencimento.');const btn=$('btnSalvarCobranca');const editando=!!cobrancaEditando;btn.disabled=true;try{if(editando){await api(`/api/asaas/cobrancas/${cobrancaEditando.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})}else{await api('/api/asaas/cobrancas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})}fecharModal();await carregarCobrancas();await carregarEmpresas();alert(editando?'Cobrança atualizada.':'Boleto emitido com sucesso.')}catch(e){console.error(e);alert(e.message||'Erro ao salvar cobrança')}finally{btn.disabled=false}}
 
-async function sincronizarCobranca(id){try{await api(`/api/asaas/cobrancas/${id}/sincronizar`);await carregarCobrancas()}catch(e){console.error(e);alert(e.message||'Erro ao atualizar cobrança')}}
+async function sincronizarCobranca(id){
+  const btn=document.querySelector(`[data-caction="sync"][data-id="${id}"]`);
+  const textoOriginal=btn?.textContent||'Atualizar';
+  if(btn){btn.disabled=true;btn.textContent='Atualizando...'}
+  try{
+    const resultado=await api(`/api/asaas/cobrancas/${id}/sincronizar`);
+    await carregarCobrancas();
+    await carregarEmpresas();
+    const status=String(resultado?.status_interno||resultado?.cobranca?.status||'').toUpperCase();
+    if(status==='PAGO'||status==='RECEIVED'||status==='CONFIRMED'){
+      alert('Pagamento identificado e cobrança atualizada como paga.');
+    }else{
+      alert(`Cobrança atualizada. Status: ${status||'não informado'}.`);
+    }
+  }catch(e){
+    console.error(e);
+    alert(e.message||'Erro ao atualizar cobrança');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=textoOriginal}
+  }
+}
 async function removerCobranca(id){const motivo=prompt('Informe o motivo da remoção do boleto:');if(motivo===null)return;if(!motivo.trim())return alert('O motivo é obrigatório.');if(!confirm('Confirma a remoção desta cobrança no Asaas?'))return;try{await api(`/api/asaas/cobrancas/${id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({motivo})});await carregarCobrancas();await carregarEmpresas()}catch(e){console.error(e);alert(e.message||'Erro ao remover cobrança')}}
 
 $('empresasBody').addEventListener('click',e=>{const b=e.target.closest('button[data-action]');if(!b)return;b.dataset.action==='sincronizar'?sincronizar(b.dataset.id):abrirCobrancas(b.dataset.id)});
