@@ -103,6 +103,13 @@ async function consultarCobranca(paymentId) {
     return requisicao('GET', `/payments/${encodeURIComponent(paymentId)}`);
 }
 
+async function consultarPixCobranca(paymentId) {
+    return requisicao(
+        'GET',
+        `/payments/${encodeURIComponent(paymentId)}/pixQrCode`
+    );
+}
+
 async function atualizarCobranca(paymentId, dados) {
     return requisicao('PUT', `/payments/${encodeURIComponent(paymentId)}`, dados);
 }
@@ -121,6 +128,7 @@ module.exports = {
     atualizarCliente,
     criarCobranca,
     consultarCobranca,
+    consultarPixCobranca,
     atualizarCobranca,
     removerCobranca
 };

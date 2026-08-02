@@ -44,6 +44,8 @@ const asaasInadimplenciaRoutesFactory = require('./routes/asaas.inadimplencia.ro
 const criarAsaasInadimplenciaService = require('./services/asaas.inadimplencia.service');
 const minhasFaturasRoutesFactory = require('./routes/minhas-faturas.routes');
 const asaasSolicitacoesPromessaRoutesFactory = require('./routes/asaas.solicitacoes-promessa.routes');
+const asaasNotificacoesRoutesFactory = require('./routes/asaas-notificacoes.routes');
+const criarAsaasNotificacoesService = require('./services/asaas-notificacoes.service');
 
 
 // ===============================
@@ -63,6 +65,23 @@ cronJobs(pool);
 require("./services/agendamento.service")(pool, io);
 
 const asaasInadimplenciaService = criarAsaasInadimplenciaService(pool);
+
+const asaasNotificacoesService = criarAsaasNotificacoesService(pool);
+
+// D-1: lembrete por WhatsApp e e-mail.
+// D0: boleto PDF + Pix por WhatsApp e e-mail.
+// A rotina roda a cada 15 minutos e evita duplicidade pelo log de comunicações.
+setTimeout(() => {
+    asaasNotificacoesService.executarRotina().catch(erro =>
+        console.error('Erro na primeira rotina de notificações Asaas:', erro)
+    );
+}, 20000);
+
+setInterval(() => {
+    asaasNotificacoesService.executarRotina().catch(erro =>
+        console.error('Erro na rotina de notificações Asaas:', erro)
+    );
+}, 15 * 60 * 1000);
 
 // Verifica vencimentos, promessas e suspensões a cada minuto.
 // A suspensão só ocorre quando suspensao_programada_em <= NOW(),
@@ -466,6 +485,11 @@ app.use("/api/empresa", empresaRoutes);
 app.use('/api/asaas', verificarAutenticacao, asaasRoutesFactory(pool));
 app.use('/api/minhas-faturas', verificarAutenticacao, minhasFaturasRoutesFactory(pool));
 app.use('/api/asaas/solicitacoes-promessa', verificarAutenticacao, asaasSolicitacoesPromessaRoutesFactory(pool));
+app.use(
+    '/api/asaas/notificacoes',
+    verificarAutenticacao,
+    asaasNotificacoesRoutesFactory(pool)
+);
 
 app.use(
     '/api/asaas/inadimplencia',
