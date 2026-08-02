@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SGOS - Financeiro SGOS</title>
+<link rel="icon" href="/img/favicon.png">
+<script src="/js/auth.js" defer></script>
+<script src="/js/init.js" defer></script>
+<style>
+:root{
+ --azul:#2563eb;--azul-escuro:#07182d;--verde:#16a34a;--vermelho:#dc2626;
+ --laranja:#ea580c;--roxo:#7c3aed;--fundo:#f5f7fb;--borda:#e2e8f0;
+ --texto:#0f172a;--muted:#64748b
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);color:var(--texto)}
+.sidebar{position:fixed;inset:0 auto 0 0;width:230px;background:linear-gradient(180deg,#081a31,#061426);color:#fff;padding:14px 12px;display:flex;flex-direction:column;z-index:30}
+.logo{padding:4px 8px 16px}.logo img{width:190px;max-height:58px;object-fit:contain}
+.menu{overflow:auto;flex:1;padding:0 5px}.menu-title{font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:800;margin:15px 10px 7px}
+.menu a{display:flex;align-items:center;gap:11px;color:#dbeafe;text-decoration:none;padding:11px 12px;border-radius:9px;margin-bottom:3px}
+.menu a:hover,.menu a.active{background:var(--azul);color:#fff}
+.menu svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9}
+.sidebar-footer{border-top:1px solid #ffffff17;padding:10px 5px 0}.sidebar-footer button{width:100%;border:1px solid #ffffff20;background:#ffffff12;color:#fff;border-radius:9px;padding:11px;cursor:pointer}
+.main{margin-left:230px;min-height:100vh}
+.header{height:86px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:20}
+.header h1{font-size:20px;margin:0}.header small{display:block;color:var(--muted);margin-top:5px}
+.content{padding:24px;max-width:1700px;margin:auto}
+.toolbar{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:14px;display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.field{display:flex;flex-direction:column;gap:6px}.field label{font-size:12px;font-weight:800}.field input,.field select{border:1px solid var(--borda);border-radius:9px;padding:10px 11px;font:inherit}
+.btn{border:0;border-radius:9px;padding:10px 13px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.btn-primary{background:var(--azul);color:#fff}.btn-light{background:#eaf0ff;color:#1e40af}
+.cards{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.card-counter{background:#fff;border:1px solid var(--borda);border-radius:15px;padding:17px;box-shadow:0 8px 24px #0f172a0d}
+.card-counter span{font-size:12px;color:var(--muted);font-weight:800}.card-counter strong{display:block;font-size:25px;margin:8px 0 4px}.card-counter small{color:var(--muted)}
+.card-counter.green{border-top:4px solid var(--verde)}.card-counter.blue{border-top:4px solid var(--azul)}.card-counter.red{border-top:4px solid var(--vermelho)}.card-counter.orange{border-top:4px solid var(--laranja)}.card-counter.purple{border-top:4px solid var(--roxo)}
+.grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px;margin-bottom:18px}
+.panel{background:#fff;border:1px solid var(--borda);border-radius:15px;box-shadow:0 8px 24px #0f172a0d;overflow:hidden}
+.panel-head{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:17px 18px;border-bottom:1px solid var(--borda)}
+.panel-head h2{font-size:17px;margin:0}.panel-head p{margin:5px 0 0;color:var(--muted);font-size:12px}
+.chart-wrap{height:330px;padding:18px 18px 10px;overflow-x:auto}
+.chart{height:100%;min-width:760px;display:flex;align-items:flex-end;gap:9px;border-left:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;padding:10px 10px 0}
+.chart-col{flex:1;height:100%;min-width:24px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+.chart-bar{width:min(34px,82%);background:linear-gradient(180deg,#2563eb,#93c5fd);border-radius:7px 7px 0 0;min-height:2px;position:relative;cursor:pointer}
+.chart-bar:hover{filter:brightness(.94);transform:translateY(-2px)}
+.chart-day{font-size:10px;color:var(--muted);margin-top:6px;height:17px}
+.chart-empty{height:100%;display:grid;place-items:center;color:var(--muted)}
+.status-list{padding:18px}.status-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid #eef2f7}.status-row:last-child{border:0}.status-row b{font-size:14px}.pill{padding:5px 9px;border-radius:999px;font-size:11px;font-weight:900}.pago{background:#dcfce7;color:#15803d}.pendente{background:#fef3c7;color:#a16207}.vencido{background:#fee2e2;color:#b91c1c}.removido{background:#e2e8f0;color:#475569}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 12px}.tabs button{border:0;border-radius:9px;padding:10px 14px;font-weight:800;cursor:pointer;background:#e2e8f0}.tabs button.active{background:var(--azul);color:#fff}
+.tab{display:none}.tab.active{display:block}
+.table-toolbar{display:flex;gap:10px;flex-wrap:wrap;padding:14px;border-bottom:1px solid var(--borda)}.table-toolbar input,.table-toolbar select{border:1px solid var(--borda);border-radius:9px;padding:10px;min-width:220px}
+.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:1150px}th,td{padding:12px 13px;border-bottom:1px solid #edf2f7;text-align:left;font-size:12px;vertical-align:middle}th{background:#0f2f5f;color:#fff;text-transform:uppercase;font-size:11px;position:sticky;top:0}tr:hover td{background:#f8fafc}
+.actions{display:flex;gap:6px;flex-wrap:wrap}.link{color:#2563eb;font-weight:800;text-decoration:none}.muted{color:var(--muted);font-size:11px}.empty{text-align:center;padding:35px;color:var(--muted)}
+.tooltip{position:fixed;display:none;background:#0f172a;color:#fff;padding:9px 11px;border-radius:8px;font-size:12px;z-index:999;pointer-events:none}
+@media(max-width:1350px){.cards{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr}}
+@media(max-width:800px){.sidebar{display:none}.main{margin-left:0}.cards{grid-template-columns:repeat(2,1fr)}.header{height:auto;padding:18px;align-items:flex-start;flex-direction:column}.content{padding:16px 10px}}
+@media(max-width:520px){.cards{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="logo"><img src="https://iili.io/CujQzXa.png" alt="SGOS"></div>
+  <nav class="menu">
+    <a href="/painel.html"><svg viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10.5V20h5v-5h4v5h5v-9.5"/></svg><span>Painel inicial</span></a>
+    <div class="menu-title">Financeiro SGOS</div>
+    <a class="active" href="/financeiro-sgos.html"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><path d="M7 12h10M9 9h6"/></svg><span>Visão mensal</span></a>
+    <a href="/financeiro-empresas.html"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg><span>Cobranças das empresas</span></a>
+    <a href="/monitor-relatorios.html"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Monitor de envios</span></a>
+    <div class="menu-title">Operação</div>
+    <a href="/relatorios.html"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg><span>Relatórios</span></a>
+    <a href="/logs_acoes.html"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>Logs do sistema</span></a>
+  </nav>
+  <div class="sidebar-footer"><button onclick="logout()">Sair</button></div>
+</aside>
+
+<main class="main">
+<header class="header">
+  <div><h1>Financeiro SGOS</h1><small>Pagamentos, boletos e auditoria mensal do Asaas</small></div>
+  <a class="btn btn-light" href="/financeiro-empresas.html">Gerenciar cobranças</a>
+</header>
+
+<section class="content">
+  <div class="toolbar">
+    <div class="field"><label>Mês de exibição</label><input id="mes" type="month"></div>
+    <button class="btn btn-primary" id="atualizar">Atualizar dados</button>
+    <button class="btn btn-light" onclick="window.print()">Imprimir</button>
+    <span id="periodo" class="muted"></span>
+  </div>
+
+  <section class="cards">
+    <article class="card-counter green"><span>Recebido no mês</span><strong id="recebido">R$ 0,00</strong><small id="entradas">0 pagamentos</small></article>
+    <article class="card-counter blue"><span>Boletos gerados</span><strong id="gerados">0</strong><small id="valorGerado">R$ 0,00 emitidos</small></article>
+    <article class="card-counter orange"><span>Em aberto</span><strong id="aberto">R$ 0,00</strong><small id="pendentes">0 pendentes</small></article>
+    <article class="card-counter red"><span>Vencidos</span><strong id="vencidos">0</strong><small>Boletos em atraso</small></article>
+    <article class="card-counter purple"><span>Empresas cobradas</span><strong id="empresas">0</strong><small>Empresas com boleto no mês</small></article>
+    <article class="card-counter blue"><span>Pagos</span><strong id="pagos">0</strong><small>Boletos liquidados</small></article>
+  </section>
+
+  <section class="grid">
+    <div class="panel">
+      <div class="panel-head"><div><h2>Entradas recebidas por dia</h2><p>Valores confirmados pelo Asaas durante o mês selecionado.</p></div><strong id="totalGrafico">R$ 0,00</strong></div>
+      <div class="chart-wrap" id="grafico"><div class="chart-empty">Carregando gráfico...</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div><h2>Situação dos boletos</h2><p>Distribuição das cobranças emitidas no mês.</p></div></div>
+      <div class="status-list">
+        <div class="status-row"><b>Pagos</b><span class="pill pago" id="statusPago">0</span></div>
+        <div class="status-row"><b>Pendentes</b><span class="pill pendente" id="statusPendente">0</span></div>
+        <div class="status-row"><b>Vencidos</b><span class="pill vencido" id="statusVencido">0</span></div>
+        <div class="status-row"><b>Removidos</b><span class="pill removido" id="statusRemovido">0</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="tabs">
+    <button class="active" data-tab="pagamentos">Pagamentos do mês</button>
+    <button data-tab="boletos">Boletos gerados</button>
+    <button data-tab="logs">Logs financeiros</button>
+  </div>
+
+  <section id="pagamentos" class="panel tab active">
+    <div class="panel-head"><div><h2>Log de entradas</h2><p>Pagamentos confirmados no mês selecionado.</p></div></div>
+    <div class="table-toolbar"><input id="buscaPagamentos" placeholder="Buscar empresa, competência ou payment ID"></div>
+    <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Competência</th><th>Descrição</th><th>Valor</th><th>Vencimento</th><th>Pago em</th><th>Status Asaas</th><th>Documentos</th></tr></thead><tbody id="tbPagamentos"></tbody></table></div>
+  </section>
+
+  <section id="boletos" class="panel tab">
+    <div class="panel-head"><div><h2>Boletos gerados</h2><p>Todas as cobranças emitidas no mês selecionado.</p></div></div>
+    <div class="table-toolbar"><input id="buscaBoletos" placeholder="Buscar empresa, competência ou payment ID"><select id="statusBoleto"><option value="">Todos os status</option><option>PAGO</option><option>PENDENTE</option><option>VENCIDO</option><option>REMOVIDO</option></select></div>
+    <div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Competência</th><th>Descrição</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Gerado em</th><th>Documentos</th></tr></thead><tbody id="tbBoletos"></tbody></table></div>
+  </section>
+
+  <section id="logs" class="panel tab">
+    <div class="panel-head"><div><h2>Auditoria financeira</h2><p>Eventos automáticos e ações administrativas do financeiro SGOS.</p></div></div>
+    <div class="table-toolbar"><input id="buscaLogs" placeholder="Buscar empresa, ação, usuário ou detalhe"></div>
+    <div class="table-wrap"><table><thead><tr><th>Data/hora</th><th>Empresa</th><th>Ação</th><th>Usuário</th><th>Cobrança</th><th>Detalhes</th></tr></thead><tbody id="tbLogs"></tbody></table></div>
+  </section>
+</section>
+</main>
+<div class="tooltip" id="tooltip"></div>
+<script src="/js/financeiro-sgos.js?v=20260802-1"></script>
+</body>
+</html>

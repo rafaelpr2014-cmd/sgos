@@ -46,6 +46,7 @@ const minhasFaturasRoutesFactory = require('./routes/minhas-faturas.routes');
 const asaasSolicitacoesPromessaRoutesFactory = require('./routes/asaas.solicitacoes-promessa.routes');
 const asaasNotificacoesRoutesFactory = require('./routes/asaas-notificacoes.routes');
 const criarAsaasNotificacoesService = require('./services/asaas-notificacoes.service');
+const financeiroSgosRoutesFactory = require('./routes/financeiro-sgos.routes');
 
 
 // ===============================
@@ -489,6 +490,11 @@ app.use(
     '/api/asaas/notificacoes',
     verificarAutenticacao,
     asaasNotificacoesRoutesFactory(pool)
+);
+app.use(
+    '/api/financeiro-sgos',
+    verificarAutenticacao,
+    financeiroSgosRoutesFactory(pool)
 );
 
 app.use(
