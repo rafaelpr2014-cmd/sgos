@@ -2798,7 +2798,8 @@ body{
         <input type="file" id="foto" accept="image/*,video/*,.pdf,application/pdf" hidden onchange="arquivoSelecionado(this)">
         <div class="anexo-acoes">
             <button type="button" class="btn-anexo-escolher" onclick="escolherAnexo()">📎 Anexar foto, vídeo ou PDF</button>
-            <button type="button" class="btn-camera" onclick="tirarFotoAgora()">📷 Tirar Foto</button>
+            <button type="button" class="btn-camera" onclick="tirarFotoAgora()">📷 Tirar Foto com GPS</button>
+            <button type="button" class="btn-camera" onclick="gravarVideoComLocalizacao()">🎥 Gravar Vídeo com GPS</button>
         </div>
         <div id="arquivoSelecionadoInfo" class="arquivo-selecionado-info">Nenhum arquivo selecionado</div>
 
@@ -5781,7 +5782,39 @@ function arquivoSelecionado(input){
     }
 }
 
-async function blobParaJpeg(blob, nomeBase="foto"){
+async function obterCarimboLocalizacao(){
+    const pos = await obterPosicaoAtual();
+    const agora = new Date();
+    return {
+        ...pos,
+        dataHora: agora.toLocaleString("pt-BR", {hour12:false}),
+        texto: `GPS: ${pos.latitude.toFixed(6)}, ${pos.longitude.toFixed(6)}  •  Precisão: ${Math.round(pos.precisao || 0)} m  •  ${agora.toLocaleString("pt-BR", {hour12:false})}`
+    };
+}
+
+function desenharCarimboGPS(ctx, largura, altura, carimbo){
+    const margem = Math.max(18, Math.round(largura * .018));
+    const fonte = Math.max(20, Math.round(largura * .022));
+    const linha = Math.round(fonte * 1.35);
+    const texto1 = `SGOS • ${carimbo.dataHora}`;
+    const texto2 = `${carimbo.latitude.toFixed(6)}, ${carimbo.longitude.toFixed(6)} • precisão ${Math.round(carimbo.precisao || 0)} m`;
+    ctx.save();
+    ctx.font = `700 ${fonte}px Arial`;
+    const larguraBox = Math.min(largura - margem * 2, Math.max(ctx.measureText(texto1).width, ctx.measureText(texto2).width) + margem * 2);
+    const alturaBox = linha * 2 + margem;
+    const x = margem;
+    const y = altura - alturaBox - margem;
+    ctx.fillStyle = "rgba(0,0,0,.68)";
+    ctx.fillRect(x, y, larguraBox, alturaBox);
+    ctx.fillStyle = "#fff";
+    ctx.textBaseline = "top";
+    ctx.fillText(texto1, x + margem, y + margem / 2);
+    ctx.font = `600 ${Math.round(fonte * .86)}px Arial`;
+    ctx.fillText(texto2, x + margem, y + margem / 2 + linha);
+    ctx.restore();
+}
+
+async function blobParaJpeg(blob, nomeBase="foto", carimbo=null){
     if(!blob || !String(blob.type || "").startsWith("image/")){
         return new File([blob], nomeBase, {type: blob?.type || "application/octet-stream"});
     }
@@ -5803,22 +5836,23 @@ async function blobParaJpeg(blob, nomeBase="foto"){
         canvas.height = altura;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(bitmap, 0, 0, largura, altura);
+        if(carimbo) desenharCarimboGPS(ctx, largura, altura, carimbo);
 
         const jpegBlob = await new Promise((resolve, reject) => {
             canvas.toBlob(
                 b => b ? resolve(b) : reject(new Error("Falha ao preparar imagem")),
                 "image/jpeg",
-                0.78
+                0.82
             );
         });
 
-        return new File([jpegBlob], `${nomeBase.replace(/\.[^.]+$/, "")}.jpg`, {
+        return new File([jpegBlob], `${nomeBase.replace(/\.[^.]+$/, "")}-gps.jpg`, {
             type:"image/jpeg",
             lastModified:Date.now()
         });
     }catch(err){
-        console.warn("Não foi possível converter a imagem; enviando original.", err);
-        return new File([blob], nomeBase, {type:blob.type || "application/octet-stream"});
+        console.warn("Não foi possível preparar a imagem com GPS.", err);
+        throw new Error("Não foi possível inserir a localização na foto.");
     }
 }
 
@@ -5870,13 +5904,84 @@ async function prepararArquivoParaEnvio(){
     }
 
     if(tipo.startsWith("image/")){
-        return await blobParaJpeg(
+        const info = document.getElementById("arquivoSelecionadoInfo");
+        if(info) info.textContent = "Obtendo GPS e inserindo localização na foto...";
+        const carimbo = await obterCarimboLocalizacao();
+        window.ultimaLocalizacaoMidia = carimbo;
+        const preparado = await blobParaJpeg(
             arquivo,
-            arquivo.name || `foto-${Date.now()}.jpg`
+            arquivo.name || `foto-${Date.now()}.jpg`,
+            carimbo
         );
+        if(info) info.textContent = `Foto com GPS: ${preparado.name}`;
+        arquivoFotoPreparado = preparado;
+        return preparado;
     }
 
     return arquivo;
+}
+
+async function gravarVideoComLocalizacao(){
+    if(!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder){
+        alert("Este aparelho não suporta gravação de vídeo com carimbo GPS pelo navegador.");
+        return;
+    }
+
+    let stream = null;
+    try{
+        const carimbo = await obterCarimboLocalizacao();
+        window.ultimaLocalizacaoMidia = carimbo;
+        stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:true});
+
+        const camada = document.createElement("div");
+        camada.style.cssText = "position:fixed;inset:0;z-index:20000;background:#000;display:flex;flex-direction:column";
+        camada.innerHTML = `<video playsinline muted style="flex:1;width:100%;object-fit:contain"></video><div style="display:flex;gap:10px;padding:14px;background:#07152c"><button id="pararVideoGps" style="flex:1;padding:14px;border:0;border-radius:14px;background:#ef4444;color:#fff;font-weight:900">■ Finalizar vídeo</button><button id="cancelarVideoGps" style="padding:14px;border:0;border-radius:14px;background:#64748b;color:#fff;font-weight:900">Cancelar</button></div>`;
+        document.body.appendChild(camada);
+        const video = camada.querySelector("video");
+        video.srcObject = stream;
+        await video.play();
+
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth || 1280;
+        canvas.height = video.videoHeight || 720;
+        const ctx = canvas.getContext("2d");
+        let ativo = true;
+        const desenhar = ()=>{
+            if(!ativo) return;
+            ctx.drawImage(video,0,0,canvas.width,canvas.height);
+            desenharCarimboGPS(ctx,canvas.width,canvas.height,{...carimbo,dataHora:new Date().toLocaleString("pt-BR",{hour12:false})});
+            requestAnimationFrame(desenhar);
+        };
+        desenhar();
+
+        const saida = canvas.captureStream(30);
+        stream.getAudioTracks().forEach(t=>saida.addTrack(t));
+        const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus") ? "video/webm;codecs=vp8,opus" : "video/webm";
+        const recorder = new MediaRecorder(saida,{mimeType:mime,videoBitsPerSecond:2500000});
+        const partes=[];
+        recorder.ondataavailable=e=>{if(e.data?.size) partes.push(e.data)};
+        recorder.start(1000);
+
+        const finalizar = cancelar => new Promise(resolve=>{
+            const concluir=()=>{ativo=false;stream.getTracks().forEach(t=>t.stop());saida.getTracks().forEach(t=>t.stop());camada.remove();resolve()};
+            if(cancelar){recorder.onstop=concluir;recorder.stop();partes.length=0;}
+            else{recorder.onstop=concluir;recorder.stop();}
+        });
+        camada.querySelector("#cancelarVideoGps").onclick=()=>finalizar(true);
+        camada.querySelector("#pararVideoGps").onclick=async()=>{
+            await finalizar(false);
+            if(!partes.length) return;
+            const blob=new Blob(partes,{type:"video/webm"});
+            if(blob.size>30*1024*1024){alert("O vídeo ultrapassou 30 MB. Grave um vídeo menor.");return;}
+            arquivoFotoPreparado=new File([blob],`video-gps-${Date.now()}.webm`,{type:"video/webm",lastModified:Date.now()});
+            const info=document.getElementById("arquivoSelecionadoInfo");
+            if(info) info.textContent=`Vídeo com GPS: ${arquivoFotoPreparado.name} • ${(blob.size/1024/1024).toFixed(1)} MB`;
+        };
+    }catch(err){
+        stream?.getTracks?.().forEach(t=>t.stop());
+        console.error(err);
+        alert(err.message || "Não foi possível gravar o vídeo com localização.");
+    }
 }
 
 const abrirModalBase = abrirModal;
@@ -6444,6 +6549,12 @@ async function enviarAcao(tipo, botao){
         }
 
         const arquivo = await prepararArquivoParaEnvio();
+        if(window.ultimaLocalizacaoMidia){
+            formData.append("midia_latitude", String(window.ultimaLocalizacaoMidia.latitude));
+            formData.append("midia_longitude", String(window.ultimaLocalizacaoMidia.longitude));
+            if(window.ultimaLocalizacaoMidia.precisao != null) formData.append("midia_precisao", String(window.ultimaLocalizacaoMidia.precisao));
+            formData.append("midia_localizacao_em", String(window.ultimaLocalizacaoMidia.dataHora || ""));
+        }
         if(arquivo){
             const nomeArquivo = arquivo.name || `anexo-${Date.now()}`;
 
