@@ -1,6 +1,205 @@
 'use strict';
 
+const { enviarMensagemCentral } = require('./whatsappService');
+
 module.exports = function criarMinhasFaturasService(pool) {
+    function dataLocalISO(data = new Date()) {
+        return [
+            data.getFullYear(),
+            String(data.getMonth() + 1).padStart(2, '0'),
+            String(data.getDate()).padStart(2, '0')
+        ].join('-');
+    }
+
+    function adicionarDias(data, dias) {
+        const copia = new Date(data.getFullYear(), data.getMonth(), data.getDate());
+        copia.setDate(copia.getDate() + dias);
+        return copia;
+    }
+
+    function validarDataSolicitada(data) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data || ''))) {
+            const erro = new Error('Informe uma data válida.');
+            erro.status = 400;
+            throw erro;
+        }
+
+        const hoje = new Date();
+        const minimo = dataLocalISO(hoje);
+        const maximo = dataLocalISO(adicionarDias(hoje, 2));
+
+        if (data < minimo || data > maximo) {
+            const erro = new Error(
+                'A promessa pode ser solicitada somente para hoje ou até dois dias à frente.'
+            );
+            erro.status = 400;
+            erro.codigo = 'PROMESSA_DATA_FORA_DO_LIMITE';
+            throw erro;
+        }
+
+        return { minimo, maximo };
+    }
+
+    async function telefoneSuporte() {
+        const configurado = String(process.env.SGOS_SUPORTE_WHATSAPP || '').trim();
+        if (configurado) return configurado;
+
+        const [rows] = await pool.query(
+            `SELECT telefone
+             FROM empresa
+             WHERE id = 1
+             LIMIT 1`
+        );
+
+        return String(rows[0]?.telefone || '').trim();
+    }
+
+    async function notificarSuporteWhatsApp({
+        empresaId,
+        cobrancaId,
+        solicitacaoId,
+        dataSolicitada,
+        observacao,
+        usuarioId
+    }) {
+        try {
+            const [rows] = await pool.query(
+                `SELECT
+                    e.nome_fantasia,
+                    e.nome_provedor,
+                    e.razao_social,
+                    c.competencia,
+                    c.descricao,
+                    c.valor,
+                    c.vencimento,
+                    u.usuario AS solicitante
+                 FROM empresa e
+                 INNER JOIN empresa_cobrancas c
+                    ON c.empresa_id = e.id
+                   AND c.id = ?
+                 LEFT JOIN usuarios u
+                    ON u.id = ?
+                 WHERE e.id = ?
+                 LIMIT 1`,
+                [cobrancaId, usuarioId || null, empresaId]
+            );
+
+            const dados = rows[0] || {};
+            const destino = await telefoneSuporte();
+
+            if (!destino) {
+                throw new Error(
+                    'Configure SGOS_SUPORTE_WHATSAPP no .env ou o telefone da empresa 1.'
+                );
+            }
+
+            const empresaNome =
+                dados.nome_fantasia ||
+                dados.nome_provedor ||
+                dados.razao_social ||
+                'Empresa não identificada';
+
+            const valor = Number(dados.valor || 0).toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            });
+
+            const mensagem = [
+                '📌 *NOVA SOLICITAÇÃO DE PROMESSA DE PAGAMENTO*',
+                '',
+                `🏢 Empresa: ${empresaNome}`,
+                `🧾 Competência: ${dados.competencia || '-'}`,
+                `📝 Fatura: ${dados.descricao || '-'}`,
+                `💰 Valor: ${valor}`,
+                `📅 Vencimento: ${dados.vencimento
+                    ? new Date(`${String(dados.vencimento).slice(0, 10)}T00:00:00`).toLocaleDateString('pt-BR')
+                    : '-'}`,
+                `🤝 Data solicitada: ${new Date(`${dataSolicitada}T00:00:00`).toLocaleDateString('pt-BR')}`,
+                `👤 Solicitante: ${dados.solicitante || 'Usuário da empresa'}`,
+                `💬 Justificativa: ${String(observacao || '').trim() || 'Não informada'}`,
+                '',
+                `🔎 Solicitação nº ${solicitacaoId}`,
+                'Acesse o Financeiro das Empresas no SGOS para aprovar ou recusar.'
+            ].join('\n');
+
+            const resultado = await enviarMensagemCentral(destino, mensagem);
+
+            await pool.query(
+                `INSERT INTO cobrancas_comunicacoes
+                 (
+                    empresa_id,
+                    cobranca_id,
+                    canal,
+                    tipo,
+                    destinatario,
+                    status,
+                    mensagem,
+                    resposta,
+                    tentativas,
+                    enviado_em,
+                    erro,
+                    criado_em
+                 )
+                 VALUES (?, ?, 'WHATSAPP', 'SOLICITACAO_PROMESSA_SUPORTE', ?, ?, ?, ?, 1, ?, ?, NOW())`,
+                [
+                    empresaId,
+                    cobrancaId,
+                    destino,
+                    resultado?.ok ? 'ENVIADO' : 'ERRO',
+                    mensagem,
+                    JSON.stringify(resultado || {}),
+                    resultado?.ok ? new Date() : null,
+                    resultado?.ok ? null : String(
+                        resultado?.detail ||
+                        resultado?.error ||
+                        'Falha ao enviar a mensagem.'
+                    )
+                ]
+            );
+
+            return {
+                enviado: Boolean(resultado?.ok),
+                destino,
+                resultado
+            };
+        } catch (erro) {
+            console.error('Erro ao enviar solicitação de promessa ao WhatsApp do SGOS:', erro);
+
+            try {
+                await pool.query(
+                    `INSERT INTO cobrancas_comunicacoes
+                     (
+                        empresa_id,
+                        cobranca_id,
+                        canal,
+                        tipo,
+                        destinatario,
+                        status,
+                        mensagem,
+                        resposta,
+                        tentativas,
+                        enviado_em,
+                        erro,
+                        criado_em
+                     )
+                     VALUES (?, ?, 'WHATSAPP', 'SOLICITACAO_PROMESSA_SUPORTE', NULL, 'ERRO',
+                             'Falha ao preparar notificação da solicitação de promessa.',
+                             NULL, 1, NULL, ?, NOW())`,
+                    [
+                        empresaId,
+                        cobrancaId,
+                        String(erro?.message || erro)
+                    ]
+                );
+            } catch {}
+
+            return {
+                enviado: false,
+                erro: erro?.message || String(erro)
+            };
+        }
+    }
+
     async function empresa(id) {
         const [rows] = await pool.query(
             `SELECT id, nome_fantasia, razao_social, nome_provedor, plano_empresa,
@@ -116,11 +315,7 @@ module.exports = function criarMinhasFaturasService(pool) {
     }
 
     async function solicitar({empresaId, cobrancaId, data, observacao, usuarioId}) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
-            const erro = new Error('Informe uma data válida.');
-            erro.status = 400;
-            throw erro;
-        }
+        validarDataSolicitada(data);
 
         const [cobrancas] = await pool.query(
             `SELECT id, status_interno
@@ -175,7 +370,20 @@ module.exports = function criarMinhasFaturasService(pool) {
             ]
         );
 
-        return { id: resultado.insertId };
+        const whatsapp = await notificarSuporteWhatsApp({
+            empresaId,
+            cobrancaId,
+            solicitacaoId: resultado.insertId,
+            dataSolicitada: data,
+            observacao,
+            usuarioId
+        });
+
+        return {
+            id: resultado.insertId,
+            whatsapp_notificado: Boolean(whatsapp?.enviado),
+            whatsapp_detalhes: whatsapp
+        };
     }
 
     async function solicitacoes(id) {

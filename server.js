@@ -657,6 +657,8 @@ async function verificarAutenticacao(req, res, next) {
         const rotaPermitidaDuranteSuspensao =
             caminho.startsWith('/api/me') ||
             caminho.startsWith('/api/minhas-faturas') ||
+            caminho.startsWith('/api/ping') ||
+            caminho.startsWith('/api/logout') ||
             caminho.startsWith('/api/suporte') ||
             caminho.startsWith('/api/health');
 

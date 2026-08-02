@@ -7,22 +7,22 @@
 <link rel="icon" type="image/png" href="/img/favicon.png">
 <script src="/js/auth.js"></script>
 <style>
-:root{--azul:#0f2f5f;--azul2:#2563eb;--texto:#0f172a;--muted:#64748b;--borda:#e2e8f0;--fundo:#f5f7fb;--vermelho:#b91c1c}
+:root{--navy:#0f2f5f;--blue:#2563eb;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--bg:#f5f7fb;--red:#b91c1c}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#eef4ff,#f8fafc);color:var(--texto);display:grid;place-items:center;padding:22px}
-.card{width:min(720px,100%);background:#fff;border:1px solid var(--borda);border-radius:22px;box-shadow:0 22px 55px rgba(15,47,95,.14);overflow:hidden}
-.top{background:var(--azul);color:#fff;padding:28px}
+body{margin:0;min-height:100vh;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#eef4ff,#f8fafc);color:var(--text);display:grid;place-items:center;padding:22px}
+.card{width:min(720px,100%);background:#fff;border:1px solid var(--border);border-radius:22px;box-shadow:0 22px 55px rgba(15,47,95,.14);overflow:hidden}
+.top{background:var(--navy);color:#fff;padding:28px}
 .top img{height:48px;max-width:170px;object-fit:contain;background:#fff;border-radius:9px;padding:5px}
 .top h1{margin:20px 0 7px;font-size:28px}
 .top p{margin:0;opacity:.9}
 .content{padding:28px}
 .alerta{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:16px;border-radius:12px;margin-bottom:20px}
 .info{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}
-.box{border:1px solid var(--borda);border-radius:12px;padding:14px}
+.box{border:1px solid var(--border);border-radius:12px;padding:14px}
 .box span{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}
 .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
 .btn{border:0;border-radius:10px;padding:12px 16px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
-.primary{background:var(--azul2);color:#fff}.light{background:#eef2ff;color:#1e40af}.danger{background:#fee2e2;color:var(--vermelho)}
+.primary{background:var(--blue);color:#fff}.light{background:#eef2ff;color:#1e40af}.danger{background:#fee2e2;color:var(--red)}
 @media(max-width:620px){.info{grid-template-columns:1fr}.actions .btn{width:100%}}
 </style>
 </head>
@@ -42,21 +42,21 @@ body{margin:0;min-height:100vh;font-family:Arial,Helvetica,sans-serif;background
       <div class="box"><span>Suspenso em</span><strong id="suspensaEm">-</strong></div>
       <div class="box" style="grid-column:1/-1"><span>Motivo</span><strong id="motivo">Pendência financeira</strong></div>
     </div>
-    <p>Quando o pagamento for confirmado pelo Asaas, o SGOS fará a reativação automaticamente, desde que não existam outras cobranças vencidas.</p>
+    <p>Você ainda pode acessar suas faturas. Quando o pagamento for confirmado pelo Asaas, o SGOS fará a reativação automaticamente, desde que não existam outras cobranças vencidas.</p>
     <div class="actions">
       <a class="btn primary" href="/minhas-faturas.html">Visualizar boletos</a>
-      <a class="btn light" href="https://wa.me/" target="_blank" rel="noopener">Falar com o suporte</a>
+      <a class="btn light" href="https://wa.me/5573999476812?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20uma%20pend%C3%AAncia%20financeira%20no%20SGOS." target="_blank" rel="noopener">Falar com o suporte</a>
       <button class="btn danger" onclick="logout()">Sair</button>
     </div>
   </section>
 </main>
 <script>
 try{
-  const d=JSON.parse(sessionStorage.getItem('sgos_suspensao_financeira')||'{}');
-  document.getElementById('status').textContent=d.financeiro_status||'SUSPENSO';
-  document.getElementById('motivo').textContent=d.motivo||'Pendência financeira';
-  if(d.suspensa_em){
-    document.getElementById('suspensaEm').textContent=new Date(d.suspensa_em).toLocaleString('pt-BR');
+  const dados=JSON.parse(sessionStorage.getItem('sgos_suspensao_financeira')||'{}');
+  document.getElementById('status').textContent=dados.financeiro_status||'SUSPENSO';
+  document.getElementById('motivo').textContent=dados.motivo||'Pendência financeira';
+  if(dados.suspensa_em){
+    document.getElementById('suspensaEm').textContent=new Date(dados.suspensa_em).toLocaleString('pt-BR');
   }
 }catch{}
 </script>

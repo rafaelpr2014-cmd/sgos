@@ -265,7 +265,11 @@ window.fetch = async function(url, opcoes = {}) {
                 );
             } catch {}
 
-            if (!window.location.pathname.includes("acesso-suspenso")) {
+            const paginaFinanceiraPermitida =
+                window.location.pathname.includes("acesso-suspenso") ||
+                window.location.pathname.includes("minhas-faturas");
+
+            if (!paginaFinanceiraPermitida) {
                 window.location.replace(body?.redirecionar || "/acesso-suspenso.html");
             }
         }
