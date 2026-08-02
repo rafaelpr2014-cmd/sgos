@@ -1,0 +1,2 @@
+'use strict';
+module.exports=function(pool){return{registrar:async d=>{const [r]=await pool.query(`INSERT INTO cobrancas_comunicacoes(empresa_id,cobranca_id,canal,tipo,destinatario,status,mensagem,resposta,tentativas,enviado_em,erro,criado_em) VALUES(?,?,?,?,?,?,?,NULL,0,?,NULL,NOW())`,[d.empresaId,d.cobrancaId||null,d.canal||'SISTEMA',d.tipo,d.destinatario||null,d.status||'PENDENTE',d.mensagem,d.status==='ENVIADO'?new Date():null]);return{id:r.insertId}}}};

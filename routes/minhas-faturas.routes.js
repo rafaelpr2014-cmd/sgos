@@ -1,0 +1,10 @@
+'use strict';
+const express=require('express');
+const serviceFactory=require('../services/minhas-faturas.service');
+module.exports=function(pool){const r=express.Router(),s=serviceFactory(pool),eid=req=>Number(req.usuario?.empresa_id||0);
+r.get('/resumo',async(req,res)=>{try{res.json(await s.resumo(eid(req)))}catch(e){res.status(e.status||500).json({erro:e.message})}});
+r.get('/faturas',async(req,res)=>{try{res.json(await s.faturas(eid(req)))}catch{res.status(500).json({erro:'Erro ao listar faturas.'})}});
+r.get('/timeline',async(req,res)=>{try{res.json(await s.timeline(eid(req)))}catch{res.status(500).json({erro:'Erro ao carregar histórico.'})}});
+r.get('/solicitacoes-promessa',async(req,res)=>{try{res.json(await s.solicitacoes(eid(req)))}catch{res.status(500).json({erro:'Erro ao carregar solicitações.'})}});
+r.post('/solicitacoes-promessa',async(req,res)=>{try{const x=await s.solicitar({empresaId:eid(req),cobrancaId:Number(req.body?.cobranca_id||0),data:String(req.body?.data_solicitada||''),observacao:req.body?.observacao,usuarioId:req.usuario?.id});res.status(201).json({sucesso:true,solicitacao:x})}catch(e){res.status(e.status||500).json({erro:e.message})}});
+return r};

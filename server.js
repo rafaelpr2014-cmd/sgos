@@ -42,6 +42,8 @@ const asaasRoutesFactory = require('./routes/asaas.routes');
 const asaasWebhookRoutesFactory = require('./routes/asaas.webhook.routes');
 const asaasInadimplenciaRoutesFactory = require('./routes/asaas.inadimplencia.routes');
 const criarAsaasInadimplenciaService = require('./services/asaas.inadimplencia.service');
+const minhasFaturasRoutesFactory = require('./routes/minhas-faturas.routes');
+const asaasSolicitacoesPromessaRoutesFactory = require('./routes/asaas.solicitacoes-promessa.routes');
 
 
 // ===============================
@@ -412,12 +414,19 @@ app.use((req, res, next) => {
 
     try {
         let html = fs.readFileSync(arquivoHtml, "utf8");
-        const script = '<script src="/js/permissoes-cargos.js" defer></script>';
+        const scriptPermissoes = '<script src="/js/permissoes-cargos.js" defer></script>';
+        const scriptFinanceiro = '<script src="/js/aviso-financeiro.js" defer></script>';
 
         if (!html.includes('/js/permissoes-cargos.js')) {
             html = html.includes("</head>")
-                ? html.replace("</head>", `${script}\n</head>`)
-                : `${script}\n${html}`;
+                ? html.replace("</head>", `${scriptPermissoes}\n</head>`)
+                : `${scriptPermissoes}\n${html}`;
+        }
+
+        if (!html.includes('/js/aviso-financeiro.js')) {
+            html = html.includes("</head>")
+                ? html.replace("</head>", `${scriptFinanceiro}\n</head>`)
+                : `${scriptFinanceiro}\n${html}`;
         }
 
         res.type("html").send(html);
@@ -455,6 +464,9 @@ app.use("/api/informativos-ia", verificarAutenticacao, somenteAdministrador);
 app.use("/api/whatsapp", verificarAutenticacao, somenteLeituraParaNaoAdministrador, whatsappRoutes);
 app.use("/api/empresa", empresaRoutes);
 app.use('/api/asaas', verificarAutenticacao, asaasRoutesFactory(pool));
+app.use('/api/minhas-faturas', verificarAutenticacao, minhasFaturasRoutesFactory(pool));
+app.use('/api/asaas/solicitacoes-promessa', verificarAutenticacao, asaasSolicitacoesPromessaRoutesFactory(pool));
+
 app.use(
     '/api/asaas/inadimplencia',
     verificarAutenticacao,
