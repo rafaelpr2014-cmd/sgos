@@ -24,9 +24,9 @@
   <a class="btn btn-light" href="/listar_empresas.html">Voltar para empresas</a>
 </header>
 <main class="page">
-  <div class="head"><div><h2>Integração Asaas</h2><div class="muted">Sincronize empresas, emita, consulte, edite e remova boletos.</div></div><div id="statusConfig" class="status-config">Verificando configuração...</div></div>
+  <div class="head"><div><h2>Integração Asaas</h2><div class="muted">Emita cobranças, registre promessas e controle suspensão e reativação financeira.</div></div><div id="statusConfig" class="status-config">Verificando configuração...</div></div>
   <div class="toolbar"><input id="busca" type="search" placeholder="Buscar empresa, CPF/CNPJ ou subdomínio..."><select id="filtroIntegracao"><option value="">Todas</option><option value="integrada">Integradas ao Asaas</option><option value="nao_integrada">Não integradas</option></select></div>
-  <div class="card"><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Documento</th><th>Contato</th><th>Plano</th><th>Cliente Asaas</th><th>Cobranças</th><th>Ações</th></tr></thead><tbody id="empresasBody"></tbody></table></div></div>
+  <div class="card"><div class="table-wrap"><table><thead><tr><th>Empresa</th><th>Documento</th><th>Contato</th><th>Plano</th><th>Cliente Asaas</th><th>Financeiro</th><th>Cobranças</th><th>Ações</th></tr></thead><tbody id="empresasBody"></tbody></table></div></div>
   <section id="secaoCobrancas" style="margin-top:22px;display:none">
     <div class="head"><div><h2 id="tituloCobrancas">Cobranças</h2><div class="muted">Histórico local das cobranças desta empresa.</div></div><button class="btn btn-primary" id="btnNovaCobranca">+ Emitir boleto</button></div>
     <div class="card"><div class="table-wrap"><table><thead><tr><th>Competência</th><th>Descrição</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Ações</th></tr></thead><tbody id="cobrancasBody"></tbody></table></div></div>
@@ -39,6 +39,17 @@
   <div class="field"><label>Vencimento</label><input type="date" id="vencimento"></div>
   <div class="field full"><label>Descrição</label><textarea id="descricao" placeholder="Mensalidade SGOS"></textarea></div>
 </div><div class="modal-actions"><button class="btn btn-light" id="btnCancelarModal">Cancelar</button><button class="btn btn-primary" id="btnSalvarCobranca">Emitir boleto</button></div></div></div>
-<script src="/js/financeiro-empresas.js"></script>
+
+<div class="modal" id="modalPromessa"><div class="modal-box"><div class="modal-head"><h3>Registrar promessa de pagamento</h3><button class="btn btn-light" id="btnFecharPromessa">Fechar</button></div>
+<div class="grid">
+  <div class="field full"><label>Empresa</label><strong id="promessaEmpresa">-</strong></div>
+  <div class="field full"><label>Cobrança</label><strong id="promessaCobranca">-</strong></div>
+  <div class="field"><label>Data prometida</label><input type="date" id="promessaData"></div>
+  <div class="field full"><label>Observação</label><textarea id="promessaObservacao" placeholder="Informe o motivo e os detalhes da promessa."></textarea></div>
+</div>
+<div class="modal-actions"><button class="btn btn-light" id="btnCancelarPromessa">Cancelar</button><button class="btn btn-primary" id="btnSalvarPromessa">Registrar promessa</button></div>
+</div></div>
+
+<script src="/js/financeiro-empresas.js?v=20260802-fase3"></script>
 </body>
 </html>

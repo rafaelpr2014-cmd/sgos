@@ -40,6 +40,8 @@ const relatoriosAutomaticosRoutes = require('./routes/relatorios-automaticos.rou
 const monitorRelatoriosRoutes = require('./routes/monitor-relatorios.routes');
 const asaasRoutesFactory = require('./routes/asaas.routes');
 const asaasWebhookRoutesFactory = require('./routes/asaas.webhook.routes');
+const asaasInadimplenciaRoutesFactory = require('./routes/asaas.inadimplencia.routes');
+const criarAsaasInadimplenciaService = require('./services/asaas.inadimplencia.service');
 
 
 // ===============================
@@ -57,6 +59,23 @@ const port = 3000;
 
 cronJobs(pool);
 require("./services/agendamento.service")(pool, io);
+
+const asaasInadimplenciaService = criarAsaasInadimplenciaService(pool);
+
+// Verifica vencimentos, promessas e suspensões a cada minuto.
+// A suspensão só ocorre quando suspensao_programada_em <= NOW(),
+// sempre calculada para 09:00 após 5 dias do aviso.
+setTimeout(() => {
+    asaasInadimplenciaService.executarRotina().catch(erro =>
+        console.error('Erro na primeira execução da rotina financeira:', erro)
+    );
+}, 10000);
+
+setInterval(() => {
+    asaasInadimplenciaService.executarRotina().catch(erro =>
+        console.error('Erro na rotina financeira periódica:', erro)
+    );
+}, 60 * 1000);
 
 // Restaura a sessão central logo na inicialização do servidor.
 // A falha não derruba o SGOS; o QR continuará disponível pela página administrativa.
@@ -436,6 +455,11 @@ app.use("/api/informativos-ia", verificarAutenticacao, somenteAdministrador);
 app.use("/api/whatsapp", verificarAutenticacao, somenteLeituraParaNaoAdministrador, whatsappRoutes);
 app.use("/api/empresa", empresaRoutes);
 app.use('/api/asaas', verificarAutenticacao, asaasRoutesFactory(pool));
+app.use(
+    '/api/asaas/inadimplencia',
+    verificarAutenticacao,
+    asaasInadimplenciaRoutesFactory(pool)
+);
 app.use("/api/escalas", verificarAutenticacao, somenteLeituraParaNaoAdministrador, escalaRoutes);
 app.use("/api/os-avulsas", osAvulsasRoutes(pool));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -600,6 +624,53 @@ async function verificarAutenticacao(req, res, next) {
         };
         req.log_id = Number(logId);
         req.sessao_app = sessaoApp;
+
+        const [empresaFinanceira] = await pool.query(
+            `SELECT
+                COALESCE(suspensa_financeiro, 0) AS suspensa_financeiro,
+                financeiro_status,
+                suspensa_em,
+                suspensa_motivo
+             FROM empresa
+             WHERE id = ?
+             LIMIT 1`,
+            [sessao.empresa_id]
+        );
+
+        const dadosFinanceiros = empresaFinanceira[0] || {};
+        req.usuario.suspensa_financeiro = Number(dadosFinanceiros.suspensa_financeiro || 0);
+        req.usuario.financeiro_status = dadosFinanceiros.financeiro_status || 'REGULAR';
+
+        const caminho = String(req.originalUrl || req.url || '').toLowerCase();
+        const rotaPermitidaDuranteSuspensao =
+            caminho.startsWith('/api/me') ||
+            caminho.startsWith('/api/minhas-faturas') ||
+            caminho.startsWith('/api/suporte') ||
+            caminho.startsWith('/api/health');
+
+        const adminEmpresa1 =
+            Number(sessao.empresa_id) === 1 &&
+            String(sessao.cargo || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .trim()
+                .toLowerCase() === 'administrador';
+
+        if (
+            Number(dadosFinanceiros.suspensa_financeiro) === 1 &&
+            !adminEmpresa1 &&
+            !rotaPermitidaDuranteSuspensao
+        ) {
+            return res.status(402).json({
+                erro: 'Acesso suspenso por pendência financeira.',
+                codigo: 'EMPRESA_SUSPENSA_FINANCEIRO',
+                financeiro_status: dadosFinanceiros.financeiro_status || 'SUSPENSO',
+                suspensa_em: dadosFinanceiros.suspensa_em || null,
+                motivo: dadosFinanceiros.suspensa_motivo || 'Pendência financeira',
+                redirecionar: '/acesso-suspenso.html'
+            });
+        }
+
         next();
     } catch (err) {
         console.error("ERRO AUTH:", err);

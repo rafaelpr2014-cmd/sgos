@@ -251,6 +251,32 @@ window.fetch = async function(url, opcoes = {}) {
         return response;
     }
 
+    if (response.status === 402) {
+        let body = {};
+        try {
+            body = await response.clone().json();
+        } catch {}
+
+        if (body?.codigo === "EMPRESA_SUSPENSA_FINANCEIRO") {
+            try {
+                sessionStorage.setItem(
+                    "sgos_suspensao_financeira",
+                    JSON.stringify(body)
+                );
+            } catch {}
+
+            if (!window.location.pathname.includes("acesso-suspenso")) {
+                window.location.replace(body?.redirecionar || "/acesso-suspenso.html");
+            }
+        }
+
+        const erro = new Error(body?.erro || "Acesso suspenso por pendência financeira");
+        erro.status = 402;
+        erro.codigo = body?.codigo || "EMPRESA_SUSPENSA_FINANCEIRO";
+        erro.detalhes = body;
+        throw erro;
+    }
+
     if (response.status === 401) {
         let motivo = "sessao_invalida";
         try {

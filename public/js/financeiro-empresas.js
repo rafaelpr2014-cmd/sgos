@@ -15,6 +15,12 @@ const dataBR=v=>{if(!v)return '-';const [a,m,d]=String(v).slice(0,10).split('-')
 function nomeEmpresa(e){return e.nome_fantasia||e.nome_provedor||e.razao_social||e.nome_completo||`Empresa ${e.id}`}
 function documento(e){return e.cnpj||e.cpf||'-'}
 function badge(status){const s=String(status||'PENDENTE').toUpperCase();const cls=s==='PAGO'?'badge-ok':s==='VENCIDO'?'badge-vencido':s==='REMOVIDO'?'badge-removido':'badge-pendente';return `<span class="badge ${cls}">${esc(s)}</span>`}
+function badgeFinanceiro(e){
+  const s=String(e.financeiro_status||'REGULAR').toUpperCase();
+  const cls=s==='REGULAR'?'badge-ok':s==='SUSPENSO'?'badge-vencido':'badge-pendente';
+  const promessa=e.promessa_ate?`<div class="muted">Até ${dataBR(e.promessa_ate)}</div>`:'';
+  return `<span class="badge ${cls}">${esc(s)}</span>${promessa}`;
+}
 
 async function api(url,opt){return fetchAuth(url,opt)}
 
@@ -27,8 +33,15 @@ function renderEmpresas(lista){const b=$('empresasBody');if(!lista.length){b.inn
 <td>${esc(documento(e))}</td><td>${esc(e.telefone||'-')}<div class="muted">${esc(e.email||'-')}</div></td>
 <td>${esc(e.plano_empresa||'-')}<div class="muted">Vencimento dia ${esc(e.vencimento||'-')}</div></td>
 <td>${e.asaas_customer_id?`<span class="badge badge-ok">Integrada</span><div class="muted">${esc(e.asaas_customer_id)}</div>`:'<span class="badge badge-pendente">Não integrada</span>'}</td>
+<td>${badgeFinanceiro(e)}</td>
 <td>${Number(e.total_cobrancas||0)}<div class="muted">${Number(e.cobrancas_pagas||0)} pagas • ${Number(e.cobrancas_vencidas||0)} vencidas</div></td>
-<td><div class="actions"><button class="btn btn-success" data-action="sincronizar" data-id="${Number(e.id)}">Sincronizar</button><button class="btn btn-primary" data-action="abrir" data-id="${Number(e.id)}">Cobranças</button></div></td></tr>`).join('')}
+<td><div class="actions">
+<button class="btn btn-success" data-action="sincronizar" data-id="${Number(e.id)}">Sincronizar</button>
+<button class="btn btn-primary" data-action="abrir" data-id="${Number(e.id)}">Cobranças</button>
+${Number(e.id)!==1?(Number(e.suspensa_financeiro)===1
+?`<button class="btn btn-success" data-action="reativar" data-id="${Number(e.id)}">Reativar</button>`
+:`<button class="btn btn-danger" data-action="suspender" data-id="${Number(e.id)}">Suspender</button>`):''}
+</div></td></tr>`).join('')}
 
 async function carregarEmpresas(){try{empresas=await api('/api/asaas/empresas');if(!Array.isArray(empresas))empresas=[];filtrar();const inicial=Number(new URLSearchParams(location.search).get('empresa_id')||0);if(inicial&&!empresaSelecionada&&empresas.some(e=>Number(e.id)===inicial))await abrirCobrancas(inicial)}catch(e){console.error(e);alert(e.message||'Erro ao carregar empresas')}}
 
@@ -42,6 +55,7 @@ function renderCobrancas(lista){const b=$('cobrancasBody');if(!lista.length){b.i
 ${c.invoice_url?`<a class="btn btn-light" href="${esc(c.invoice_url)}" target="_blank" rel="noopener">Abrir</a>`:''}
 ${c.bank_slip_url?`<a class="btn btn-light" href="${esc(c.bank_slip_url)}" target="_blank" rel="noopener">Boleto</a>`:''}
 <button class="btn btn-success" data-caction="sync" data-id="${Number(c.id)}">Atualizar</button>
+${['VENCIDO','PENDENTE'].includes(String(c.status_interno).toUpperCase())?`<button class="btn btn-warning" data-caction="promise" data-json="${encodeURIComponent(JSON.stringify(c))}">Promessa</button>`:''}
 ${String(c.status_interno).toUpperCase()!=='REMOVIDO'?`<button class="btn btn-warning" data-caction="edit" data-json="${encodeURIComponent(JSON.stringify(c))}">Editar</button><button class="btn btn-danger" data-caction="delete" data-id="${Number(c.id)}">Remover</button>`:''}
 </div></td></tr>`).join('')}
 
@@ -50,31 +64,87 @@ function fecharModal(){$('modalCobranca').classList.remove('open');cobrancaEdita
 
 async function salvarCobranca(){const payload={empresa_id:empresaSelecionada.id,competencia:$('competencia').value,valor:Number($('valor').value),vencimento:$('vencimento').value,descricao:$('descricao').value.trim()};if(!payload.valor||!payload.vencimento)return alert('Informe valor e vencimento.');const btn=$('btnSalvarCobranca');const editando=!!cobrancaEditando;btn.disabled=true;try{if(editando){await api(`/api/asaas/cobrancas/${cobrancaEditando.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})}else{await api('/api/asaas/cobrancas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})}fecharModal();await carregarCobrancas();await carregarEmpresas();alert(editando?'Cobrança atualizada.':'Boleto emitido com sucesso.')}catch(e){console.error(e);alert(e.message||'Erro ao salvar cobrança')}finally{btn.disabled=false}}
 
-async function sincronizarCobranca(id){
-  const btn=document.querySelector(`[data-caction="sync"][data-id="${id}"]`);
-  const textoOriginal=btn?.textContent||'Atualizar';
-  if(btn){btn.disabled=true;btn.textContent='Atualizando...'}
-  try{
-    const resultado=await api(`/api/asaas/cobrancas/${id}/sincronizar`);
-    await carregarCobrancas();
-    await carregarEmpresas();
-    const status=String(resultado?.status_interno||resultado?.cobranca?.status||'').toUpperCase();
-    if(status==='PAGO'||status==='RECEIVED'||status==='CONFIRMED'){
-      alert('Pagamento identificado e cobrança atualizada como paga.');
-    }else{
-      alert(`Cobrança atualizada. Status: ${status||'não informado'}.`);
-    }
-  }catch(e){
-    console.error(e);
-    alert(e.message||'Erro ao atualizar cobrança');
-  }finally{
-    if(btn){btn.disabled=false;btn.textContent=textoOriginal}
-  }
-}
+async function sincronizarCobranca(id){try{await api(`/api/asaas/cobrancas/${id}/sincronizar`);await carregarCobrancas()}catch(e){console.error(e);alert(e.message||'Erro ao atualizar cobrança')}}
 async function removerCobranca(id){const motivo=prompt('Informe o motivo da remoção do boleto:');if(motivo===null)return;if(!motivo.trim())return alert('O motivo é obrigatório.');if(!confirm('Confirma a remoção desta cobrança no Asaas?'))return;try{await api(`/api/asaas/cobrancas/${id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({motivo})});await carregarCobrancas();await carregarEmpresas()}catch(e){console.error(e);alert(e.message||'Erro ao remover cobrança')}}
 
-$('empresasBody').addEventListener('click',e=>{const b=e.target.closest('button[data-action]');if(!b)return;b.dataset.action==='sincronizar'?sincronizar(b.dataset.id):abrirCobrancas(b.dataset.id)});
-$('cobrancasBody').addEventListener('click',e=>{const b=e.target.closest('button[data-caction]');if(!b)return;const a=b.dataset.caction;if(a==='sync')sincronizarCobranca(b.dataset.id);if(a==='delete')removerCobranca(b.dataset.id);if(a==='edit')abrirModal(JSON.parse(decodeURIComponent(b.dataset.json)))});
+
+let cobrancaPromessa=null;
+function abrirModalPromessa(c){
+  cobrancaPromessa=c;
+  $('promessaEmpresa').textContent=nomeEmpresa(empresaSelecionada);
+  $('promessaCobranca').textContent=`${c.competencia||'-'} • ${moeda(c.valor)} • vence ${dataBR(c.vencimento)}`;
+  const amanha=new Date();amanha.setDate(amanha.getDate()+1);
+  $('promessaData').value=amanha.toISOString().slice(0,10);
+  $('promessaObservacao').value='';
+  $('modalPromessa').classList.add('open');
+}
+function fecharModalPromessa(){
+  $('modalPromessa').classList.remove('open');
+  cobrancaPromessa=null;
+}
+async function salvarPromessa(){
+  if(!cobrancaPromessa)return;
+  const data=$('promessaData').value;
+  if(!data)return alert('Informe a data prometida.');
+  const btn=$('btnSalvarPromessa');btn.disabled=true;
+  try{
+    await api('/api/asaas/inadimplencia/promessas',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        empresa_id:empresaSelecionada.id,
+        cobranca_id:cobrancaPromessa.id,
+        data_prometida:data,
+        observacao:$('promessaObservacao').value.trim()
+      })
+    });
+    fecharModalPromessa();
+    await carregarEmpresas();
+    await carregarCobrancas();
+    alert('Promessa de pagamento registrada. O acesso ficará liberado até a data informada.');
+  }catch(e){console.error(e);alert(e.message||'Erro ao registrar promessa')}
+  finally{btn.disabled=false}
+}
+async function suspenderEmpresa(id){
+  if(!confirm('Confirma a suspensão financeira desta empresa?'))return;
+  const motivo=prompt('Motivo da suspensão:','Pendência financeira')||'Pendência financeira';
+  try{
+    await api(`/api/asaas/inadimplencia/empresas/${id}/suspender`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({motivo})
+    });
+    await carregarEmpresas();
+  }catch(e){console.error(e);alert(e.message||'Erro ao suspender empresa')}
+}
+async function reativarEmpresa(id){
+  if(!confirm('Confirma a reativação financeira desta empresa?'))return;
+  try{
+    await api(`/api/asaas/inadimplencia/empresas/${id}/reativar`,{method:'POST'});
+    await carregarEmpresas();
+  }catch(e){console.error(e);alert(e.message||'Erro ao reativar empresa')}
+}
+
+$('empresasBody').addEventListener('click',e=>{
+ const b=e.target.closest('button[data-action]');if(!b)return;
+ const a=b.dataset.action;
+ if(a==='sincronizar')sincronizar(b.dataset.id);
+ if(a==='abrir')abrirCobrancas(b.dataset.id);
+ if(a==='suspender')suspenderEmpresa(b.dataset.id);
+ if(a==='reativar')reativarEmpresa(b.dataset.id);
+});
+$('cobrancasBody').addEventListener('click',e=>{
+ const b=e.target.closest('button[data-caction]');if(!b)return;
+ const a=b.dataset.caction;
+ if(a==='sync')sincronizarCobranca(b.dataset.id);
+ if(a==='delete')removerCobranca(b.dataset.id);
+ if(a==='edit')abrirModal(JSON.parse(decodeURIComponent(b.dataset.json)));
+ if(a==='promise')abrirModalPromessa(JSON.parse(decodeURIComponent(b.dataset.json)));
+});
 $('busca').addEventListener('input',filtrar);$('filtroIntegracao').addEventListener('change',filtrar);$('btnNovaCobranca').addEventListener('click',()=>abrirModal());$('btnFecharModal').addEventListener('click',fecharModal);$('btnCancelarModal').addEventListener('click',fecharModal);$('btnSalvarCobranca').addEventListener('click',salvarCobranca);$('modalCobranca').addEventListener('click',e=>{if(e.target===$('modalCobranca'))fecharModal()});
+$('btnFecharPromessa').addEventListener('click',fecharModalPromessa);
+$('btnCancelarPromessa').addEventListener('click',fecharModalPromessa);
+$('btnSalvarPromessa').addEventListener('click',salvarPromessa);
+$('modalPromessa').addEventListener('click',e=>{if(e.target===$('modalPromessa'))fecharModalPromessa()});
 Promise.all([carregarConfig(),carregarEmpresas()]);
 })();
