@@ -156,6 +156,7 @@ function renderResumoTopo(tecnicos, localidades, tipos){
     if(!el) return;
 
     const abertas = ordens.filter(o => o.status === "aberto" || (o.status === "reagendado" && reagendamentoEhHoje(o))).length;
+    const lancadas = ordens.filter(o => o.status === "os_lancada").length;
     const andamento = ordens.filter(o => o.status === "em_andamento").length;
     const ausentes = ordens.filter(o => o.status === "cliente_ausente").length;
     const concluidas = ordens.filter(o => o.status === "concluido").length;
@@ -188,6 +189,7 @@ function renderResumoTopo(tecnicos, localidades, tipos){
 
             <div class="contador-item"><div>Avulsas</div><span>${avulsas}</span></div>
             <div class="contador-item"><div>Abertas</div><span>${abertas}</span></div>
+            <div class="contador-item"><div>OS lançadas</div><span>${lancadas}</span></div>
             <div class="contador-item"><div>Em andamento</div><span>${andamento}</span></div>
             <div class="contador-item"><div>Ausentes</div><span>${ausentes}</span></div>
             <div class="contador-item"><div>Concluídas</div><span>${concluidas}</span></div>
@@ -221,6 +223,7 @@ function prioridadeHTML(valor) {
 
 const STATUS_MAP = {
     "aberto": ["status-aberto","Aberto"],
+    "os_lancada": ["status-agendado","OS lançada"],
     "em_andamento": ["status-andamento","Em execução"],
     "cliente_ausente": ["status-ausente","Cliente Ausente"],
     "concluido": ["status-finalizado","Finalizado"],
@@ -233,6 +236,7 @@ function normalizarStatus(status) {
 
     const s = status.toLowerCase().trim();
 
+    if (s.includes("lançada") || s.includes("lancada")) return "os_lancada";
     if (s.includes("andamento")) return "em_andamento";
     if (s.includes("ausente")) return "cliente_ausente";
     if (s.includes("concl")) return "concluido";
@@ -731,6 +735,7 @@ async function buscarClienteMikWeb() {
 // ===============================
 function atualizarCards() {
     const abertasEl = document.getElementById("abertas");
+    const lancadasEl = document.getElementById("osLancadas");
     const andamentoEl = document.getElementById("andamento");
     const finalizadasEl = document.getElementById("finalizadas");
     const ausentesEl = document.getElementById("clientesAusentes");
@@ -739,6 +744,7 @@ function atualizarCards() {
 
     if (osAvulsasEl) osAvulsasEl.innerText = osAvulsas.length + osAvulsasConcluidas.length;
     if (abertasEl) abertasEl.innerText = ordens.filter(o => o.status === "aberto" || (o.status === "reagendado" && reagendamentoEhHoje(o))).length;
+    if (lancadasEl) lancadasEl.innerText = ordens.filter(o => o.status === "os_lancada").length;
     if (andamentoEl) andamentoEl.innerText = ordens.filter(o => o.status === "em_andamento").length;
     if (finalizadasEl) finalizadasEl.innerText = ordens.filter(o => o.status === "concluido").length;
     if (ausentesEl) ausentesEl.innerText = ordens.filter(o => o.status === "cliente_ausente").length;
@@ -867,6 +873,11 @@ function popularTabelas() {
     });
 
     // ===============================
+    // 🚀 OS LANÇADAS
+    // ===============================
+    const lancadas = ordens.filter(o => o.status === "os_lancada");
+
+    // ===============================
     // 🔥 EM ANDAMENTO
     // ===============================
     const andamento = ordens.filter(o =>
@@ -891,6 +902,7 @@ function popularTabelas() {
     // 🔥 RENDER
     // ===============================
     popularTabela("tabelaAbertas", abertas);
+    popularTabela("tabelaLancadas", lancadas);
 
     popularTabelaAndamento(
         "tabelaAndamento",
@@ -964,9 +976,9 @@ function popularTabelaCompleta(id, dados) {
         `;
 
         tbody.innerHTML += `
-        <tr class="linha-os-resumo" onclick="abrirResumoOS(${os.id})">
+        <tr class="linha-os-resumo ${os.proxima_os ? "linha-proxima-os" : ""}" onclick="abrirResumoOS(${os.id})">
             <td>
-                <strong>${os.nome || "-"}</strong>
+                <strong>${os.nome || "-"}</strong>${os.proxima_os ? `<div class="badge-proxima-os">⭐ PRÓXIMA OS</div>` : ""}
             </td>
 
             <td>
@@ -1242,6 +1254,12 @@ function popularTabela(id, dados) {
                     🚀
                 </span>
             `;
+        }
+
+        if(os.status === "os_lancada"){
+            botoes += os.proxima_os
+                ? `<span class="icone-acao" title="Remover da próxima fila" onclick="removerProximaFila(${os.id})">↩️</span>`
+                : `<span class="icone-acao" title="Próxima da fila" onclick="definirProximaFila(${os.id})">⭐</span>`;
         }
 
         botoes += `
@@ -1910,7 +1928,7 @@ window.lancarAgora = async (id) => {
         return;
     }
 
-    if (!confirm("Deseja iniciar essa OS agora?")) return;
+    if (!confirm("Deseja lançar esta OS para o técnico? Ela só entrará em execução após o check-in.")) return;
 
     try{
         await apiFetch(`/api/ordens_servico/iniciar/${id}`, {
@@ -1922,6 +1940,17 @@ window.lancarAgora = async (id) => {
     }catch(err){
         alert(err.message || "Erro ao lançar OS. Verifique se existe técnico selecionado.");
     }
+};
+
+
+window.definirProximaFila = async (id) => {
+    if(!confirm('Marcar esta ordem como a próxima OS do técnico?')) return;
+    try{ await apiFetch(`/api/ordens_servico/proxima-fila/${id}`,{method:'POST'}); await carregarOS(); }
+    catch(err){ alert(err.message || 'Erro ao definir próxima OS.'); }
+};
+window.removerProximaFila = async (id) => {
+    try{ await apiFetch(`/api/ordens_servico/remover-proxima-fila/${id}`,{method:'POST'}); await carregarOS(); }
+    catch(err){ alert(err.message || 'Erro ao remover próxima OS.'); }
 };
 
 function normalizarMateriaisConclusao(os){
