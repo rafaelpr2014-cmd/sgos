@@ -2810,6 +2810,7 @@ body{
         <button id="btnInviabilidade" type="button" class="btn-inv" onclick="enviarAcao('inviabilidade', this)">Inviabilidade</button>
         <button id="btnReagendar" type="button" class="btn-reagendar" onclick="abrirReagendamento()">📅 Reagendar</button>
         <button id="btnCheckin" type="button" class="btn-checkin" onclick="fazerCheckin(this)">📍 Fazer check-in e iniciar</button>
+        <button id="btnFila" type="button" class="btn-fila-app" onclick="alternarProximaFilaApp(this)" style="display:none">⭐ Marcar como próxima da fila</button>
         <button id="btnConcluir" type="button" class="btn-ok" onclick="enviarAcao('concluir', this)">Concluir</button>
 
         <button id="btnEnviarLocalizacao" type="button" class="btn-loc" onclick="pegarLocalizacao(this)">📍 Enviar Localização</button>
@@ -6920,6 +6921,90 @@ document.addEventListener("touchend",function(e){
         evento.stopPropagation();
         window.abrirModal(chave);
     }, true);
+})();
+</script>
+
+
+<style id="sgos-restaurar-acoes-app-v2">
+.btn-fila-app{background:#7c3aed !important}
+.btn-fila-app.remover{background:#64748b !important}
+</style>
+<script id="sgos-restaurar-acoes-app-v2">
+(function(){
+  function statusAtual(os){ return String(os?.status||'').trim().toLowerCase(); }
+
+  window.alternarProximaFilaApp = async function(botao){
+    const os = typeof encontrarOS === 'function' ? encontrarOS(osSelecionada) : null;
+    if(!os || statusAtual(os)!=='os_lancada'){ alert('Apenas OS lançadas podem entrar na próxima fila.'); return; }
+    const marcada = Number(os.proxima_os)===1;
+    if(!confirm(marcada ? 'Remover esta OS da próxima fila?' : 'Marcar esta OS como próxima da fila?')) return;
+    try{
+      bloquearBotao?.(botao,true,marcada?'Removendo...':'Marcando...');
+      const rota = marcada ? `/api/ordens_servico/remover-proxima-fila/${os.id}` : `/api/ordens_servico/proxima-fila/${os.id}`;
+      const resposta = await apiFetch(rota,{method:'POST',headers:{'Accept':'application/json'},cache:'no-store'});
+      const dados = typeof lerRespostaSegura==='function' ? await lerRespostaSegura(resposta) : await resposta.json().catch(()=>({}));
+      if(!resposta.ok) throw new Error(dados.erro||dados.mensagem||'Não foi possível atualizar a fila.');
+      fecharModal?.();
+      await load?.();
+      alert(marcada?'OS removida da próxima fila.':'OS marcada como próxima da fila.');
+    }catch(e){ alert(e.message||'Erro ao atualizar a próxima fila.'); }
+    finally{ bloquearBotao?.(botao,false); }
+  };
+
+  function configurarBotoesModal(){
+    const os = typeof encontrarOS==='function' ? encontrarOS(osSelecionada) : null;
+    if(!os) return;
+    const status=statusAtual(os);
+    const lancada=status==='os_lancada';
+    const executando=status==='em_andamento';
+    const leitura=['concluido','cliente_ausente','inviabilidade'].includes(status);
+    const content=document.querySelector('#modal .modal-content');
+    content?.classList.toggle('modal-modo-leitura',leitura);
+
+    const mapa={
+      btnConcluir:executando,
+      btnAusente:executando,
+      btnInviabilidade:executando,
+      btnReagendar:executando,
+      btnEnviarLocalizacao:executando,
+      btnCheckin:lancada,
+      btnFila:lancada
+    };
+    Object.entries(mapa).forEach(([id,mostrar])=>{
+      const el=document.getElementById(id); if(!el) return;
+      el.style.display=mostrar?'block':'none';
+      el.disabled=!mostrar;
+    });
+
+    const fila=document.getElementById('btnFila');
+    if(fila && lancada){
+      const marcada=Number(os.proxima_os)===1;
+      fila.textContent=marcada?'✖ Remover da próxima fila':'⭐ Marcar como próxima da fila';
+      fila.classList.toggle('remover',marcada);
+      fila.disabled=false;
+    }
+    const checkin=document.getElementById('btnCheckin');
+    if(checkin && lancada){
+      const feito=!!os.checkin_inicio_em;
+      checkin.textContent=feito?`✓ Check-in ${typeof format==='function'?format(os.checkin_inicio_em):''}`:'📍 Fazer check-in e iniciar';
+      checkin.disabled=feito;
+      checkin.classList.toggle('realizado',feito);
+    }
+  }
+
+  const observar=new MutationObserver(()=>{
+    const modal=document.getElementById('modal');
+    if(modal && getComputedStyle(modal).display!=='none') configurarBotoesModal();
+  });
+  document.addEventListener('DOMContentLoaded',()=>observar.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']}));
+
+  const tentarEnvolver=()=>{
+    if(typeof window.abrirModal!=='function'||window.abrirModal.__sgosAcoesV2) return false;
+    const original=window.abrirModal;
+    const nova=async function(...args){ const r=await original.apply(this,args); setTimeout(configurarBotoesModal,0); setTimeout(configurarBotoesModal,180); return r; };
+    nova.__sgosAcoesV2=true; window.abrirModal=nova; return true;
+  };
+  if(!tentarEnvolver()){ const t=setInterval(()=>{if(tentarEnvolver())clearInterval(t)},250); setTimeout(()=>clearInterval(t),10000); }
 })();
 </script>
 
