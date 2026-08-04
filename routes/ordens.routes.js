@@ -148,6 +148,38 @@ async function garantirEstruturaFilaOS(){
         const [rows] = await db.query(`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='ordens_servico' AND COLUMN_NAME=? LIMIT 1`, [coluna]);
         if(!rows.length) await db.query(sql);
     };
+
+    // Garante que o status novo seja aceito mesmo quando a coluna for ENUM.
+    const [statusCols] = await db.query(`
+        SELECT DATA_TYPE, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'ordens_servico'
+          AND COLUMN_NAME = 'status'
+        LIMIT 1
+    `);
+
+    if(statusCols.length && String(statusCols[0].DATA_TYPE).toLowerCase() === 'enum'){
+        const columnType = String(statusCols[0].COLUMN_TYPE || '');
+        const valores = [...columnType.matchAll(/'((?:[^'\\]|\\.)*)'/g)]
+            .map(m => m[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\'));
+
+        for(const obrigatorio of ['aberto','agendado','reagendado','os_lancada','em_andamento','cliente_ausente','concluido']){
+            if(!valores.includes(obrigatorio)) valores.push(obrigatorio);
+        }
+
+        const enumSql = valores
+            .map(v => `'${String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`)
+            .join(',');
+        const nullSql = String(statusCols[0].IS_NULLABLE).toUpperCase() === 'YES' ? 'NULL' : 'NOT NULL';
+        const defaultAtual = statusCols[0].COLUMN_DEFAULT;
+        const defaultSql = defaultAtual == null
+            ? ''
+            : ` DEFAULT '${String(defaultAtual).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+
+        await db.query(`ALTER TABLE ordens_servico MODIFY COLUMN status ENUM(${enumSql}) ${nullSql}${defaultSql}`);
+    }
+
     await adicionar('proxima_os', `ALTER TABLE ordens_servico ADD COLUMN proxima_os TINYINT(1) NOT NULL DEFAULT 0 AFTER status`);
     await adicionar('proxima_os_definida_por', `ALTER TABLE ordens_servico ADD COLUMN proxima_os_definida_por INT NULL AFTER proxima_os`);
     await adicionar('proxima_os_definida_em', `ALTER TABLE ordens_servico ADD COLUMN proxima_os_definida_em DATETIME NULL AFTER proxima_os_definida_por`);
@@ -1620,6 +1652,7 @@ router.post(
     async (req, res) => {
 
         try {
+            await garantirEstruturaFilaOS();
 
             // ===============================
             // BUSCA OS
@@ -1765,6 +1798,7 @@ router.post(
     verificarAutenticacao,
     async (req, res) => {
         try {
+            await garantirEstruturaFilaOS();
             await garantirEstruturaCheckinOS();
 
             const latitude = Number(req.body?.latitude ?? req.body?.lat);
