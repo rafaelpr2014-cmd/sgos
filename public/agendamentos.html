@@ -2008,7 +2008,7 @@ window.abrirResumoOS = async function(id){
 
 
 
-window.imprimirAgendamento = function(id){
+window.imprimirAgendamento = async function(id){
     const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
 
     if(!usuario?.id){
@@ -2016,12 +2016,50 @@ window.imprimirAgendamento = function(id){
         return;
     }
 
-    const token = btoa(usuario.id + "_SGOS");
+    // Abre a aba imediatamente para evitar bloqueio de pop-up.
+    const abaImpressao = window.open("about:blank", "_blank");
 
-    window.open(
-        `/api/ordens_servico/imprimir/${id}?token=${token}`,
-        "_blank"
-    );
+    if(!abaImpressao){
+        alert("O navegador bloqueou a janela de impressão. Libere os pop-ups para este site.");
+        return;
+    }
+
+    try{
+        abaImpressao.document.write("<p style=\"font-family:Arial;padding:20px\">Carregando impressão...</p>");
+
+        // Usa a sessão/cookies e os cabeçalhos aplicados pelo auth.js.
+        // Não utiliza mais o token manual em Base64, que causava sessao_invalida.
+        const resposta = await fetch(`/api/ordens_servico/imprimir/${id}`, {
+            method: "GET",
+            credentials: "include",
+            headers: {
+                "x-usuario-id": String(usuario.id),
+                "Accept": "application/pdf,text/html,*/*"
+            }
+        });
+
+        if(!resposta.ok){
+            const detalhe = await resposta.text();
+            throw new Error(detalhe || `Erro ${resposta.status} ao gerar impressão`);
+        }
+
+        const arquivo = await resposta.blob();
+        const urlTemporaria = URL.createObjectURL(arquivo);
+        abaImpressao.location.href = urlTemporaria;
+
+        setTimeout(() => URL.revokeObjectURL(urlTemporaria), 60000);
+    }catch(erro){
+        console.error("Erro ao imprimir agendamento:", erro);
+        abaImpressao.close();
+
+        let mensagem = erro?.message || "Não foi possível imprimir o agendamento.";
+        try{
+            const json = JSON.parse(mensagem);
+            mensagem = json.erro || mensagem;
+        }catch(_){ }
+
+        alert(mensagem);
+    }
 };
 
 // =====================
@@ -2155,21 +2193,8 @@ document.addEventListener("DOMContentLoaded", function(){
 
     // Garante que a impressão use o mesmo modelo do painel,
     // mesmo que init.js declare outra função global.
-    window.imprimirAgendamento = function(id){
-        const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
-
-        if(!usuario?.id){
-            alert("Usuário não encontrado.");
-            return;
-        }
-
-        const token = btoa(usuario.id + "_SGOS");
-
-        window.open(
-            `/api/ordens_servico/imprimir/${id}?token=${token}`,
-            "_blank"
-        );
-    };
+    // Mantém a função corrigida acima. Não sobrescrever com token Base64.
+    // A impressão agora é carregada via fetch autenticado e aberta como Blob.
 });
 </script>
 
