@@ -603,15 +603,87 @@ function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;",
 function clienteChave(c){return String(c.id||c.login||telefoneLimpo(c.telefone)||`${c.nome}-${c.rua}-${c.bairro}`)}
 function normalizarClienteERP(c){return{id:c.id||c.cliente_id||c.codigo||"",nome:c.nome||c.name||c.full_name||c.razao_social||"Cliente sem nome",telefone:c.telefone||c.celular||c.whatsapp||c.phone||c.contato||"",cidade:c.cidade||c.localidade||c.city||"",rua:c.rua||c.logradouro||c.street||c.endereco||"",bairro:c.bairro||c.neighborhood||"",referencia:c.referencia||c.complemento||c.complement||"",numero:c.n||c.numero||c.number||"",login:c.login||c.usuario||c.user||""}}
 function clientePassaFiltros(c,f){const testa=(valor,busca)=>!busca||textoNormalizado(valor).includes(textoNormalizado(busca));return testa(c.cidade,f.localidade)&&testa(c.rua,f.rua)&&testa(c.bairro,f.bairro)&&testa(c.referencia,f.referencia)}
-async function apiJson(url,opts={}){const u=usuarioLocal();const headers={...(opts.headers||{}),"x-usuario-id":u.id||"","x-empresa-id":empresaIdAtual()||""};const r=await fetch(url,{...opts,headers});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.erro||d.error||`Erro HTTP ${r.status}`);return d}
-async function consultarERPPorTermo(termo){const d=await apiJson(`/api/integracoes/pesquisar?termo=${encodeURIComponent(termo)}`);if(d.erp)document.getElementById("erpAtivoNome").innerText=`ERP ativo: ${String(d.erp).toUpperCase()}`;return Array.isArray(d)?d:(d.clientes||d.resultados||d.data||[])}
-async function buscarClientesERP(){const f={localidade:esc(document.getElementById("filtroClienteLocalidade").value),rua:esc(document.getElementById("filtroClienteRua").value),bairro:esc(document.getElementById("filtroClienteBairro").value),referencia:esc(document.getElementById("filtroClienteReferencia").value)};const termos=[f.localidade,f.rua,f.bairro,f.referencia].filter(x=>x.length>=2);if(!termos.length){alert("Informe pelo menos um filtro com dois ou mais caracteres.");return}const box=document.getElementById("listaContatos");box.innerHTML='<div class="contato-vazio">Consultando o ERP ativo...</div>';contatosSelecionados.clear();atualizarContadorContatos();try{const respostas=await Promise.allSettled([...new Set(termos)].map(consultarERPPorTermo));const mapa=new Map();respostas.forEach(r=>{if(r.status!=="fulfilled")return;(r.value||[]).forEach(raw=>{const c=normalizarClienteERP(raw);mapa.set(clienteChave(c),c)})});clientesERPEncontrados=[...mapa.values()].filter(c=>clientePassaFiltros(c,f)).filter(c=>telefoneLimpo(c.telefone).length>=10);document.getElementById("erpTotal").innerText=`${clientesERPEncontrados.length} cliente(s)`;renderizarContatosERP()}catch(e){console.error(e);box.innerHTML=`<div class="contato-vazio" style="color:#b91c1c;">${escapeHtml(e.message||"Erro ao consultar o ERP ativo.")}</div>`}}
+async function apiJson(url,opts={}){
+    const u=usuarioLocal();
+    const headers={...(opts.headers||{}),"x-usuario-id":u.id||"","x-empresa-id":empresaIdAtual()||""};
+    const r=await fetch(url,{...opts,headers});
+    const texto=await r.text();
+    let d={};
+    if(texto){
+        try{d=JSON.parse(texto)}catch(_){d={mensagem:texto}}
+    }
+    if(!r.ok){
+        const erro=new Error(d.erro||d.error||d.message||`Erro HTTP ${r.status}`);
+        erro.status=r.status;
+        erro.url=url;
+        erro.resposta=d;
+        throw erro;
+    }
+    return d;
+}
+async function consultarERPPorTermo(termo){
+    const d=await apiJson(`/api/integracoes/pesquisar?termo=${encodeURIComponent(termo)}`);
+    if(d.erp)document.getElementById("erpAtivoNome").innerText=`ERP ativo: ${String(d.erp).toUpperCase()}`;
+    const lista=Array.isArray(d)?d:(d.clientes||d.resultados||d.data||[]);
+    if(!Array.isArray(lista))throw new Error("A integração ERP respondeu em um formato inválido.");
+    return lista;
+}
+async function buscarClientesERP(){
+    const f={localidade:esc(document.getElementById("filtroClienteLocalidade").value),rua:esc(document.getElementById("filtroClienteRua").value),bairro:esc(document.getElementById("filtroClienteBairro").value),referencia:esc(document.getElementById("filtroClienteReferencia").value)};
+    const termos=[f.localidade,f.rua,f.bairro,f.referencia].filter(x=>x.length>=2);
+    if(!termos.length){alert("Informe pelo menos um filtro com dois ou mais caracteres.");return}
+    const box=document.getElementById("listaContatos");
+    box.innerHTML='<div class="contato-vazio">Consultando o ERP ativo...</div>';
+    contatosSelecionados.clear();
+    atualizarContadorContatos();
+    try{
+        const respostas=await Promise.allSettled([...new Set(termos)].map(consultarERPPorTermo));
+        const sucessos=respostas.filter(r=>r.status==="fulfilled");
+        const falhas=respostas.filter(r=>r.status==="rejected");
+        if(!sucessos.length){
+            const motivo=falhas[0]?.reason;
+            throw motivo instanceof Error?motivo:new Error("Não foi possível consultar o ERP ativo.");
+        }
+        const mapa=new Map();
+        sucessos.forEach(r=>(r.value||[]).forEach(raw=>{const c=normalizarClienteERP(raw);mapa.set(clienteChave(c),c)}));
+        clientesERPEncontrados=[...mapa.values()].filter(c=>clientePassaFiltros(c,f)).filter(c=>telefoneLimpo(c.telefone).length>=10);
+        document.getElementById("erpTotal").innerText=`${clientesERPEncontrados.length} cliente(s)`;
+        if(falhas.length)console.warn("Alguns termos da consulta ERP falharam:",falhas.map(x=>x.reason));
+        renderizarContatosERP();
+    }catch(e){
+        console.error("Erro na consulta ERP:",e);
+        document.getElementById("erpAtivoNome").innerText="ERP ativo: erro na consulta";
+        document.getElementById("erpTotal").innerText="0 clientes";
+        box.innerHTML=`<div class="contato-vazio" style="color:#b91c1c;"><strong>Não foi possível consultar o ERP.</strong><br>${escapeHtml(e.message||"Verifique a integração e a rota /api/integracoes/pesquisar.")}</div>`;
+    }
+}
 function renderizarContatosERP(){const box=document.getElementById("listaContatos");if(!clientesERPEncontrados.length){box.innerHTML='<div class="contato-vazio">Nenhum cliente com telefone foi encontrado para os filtros informados.</div>';return}box.innerHTML=clientesERPEncontrados.map(c=>{const key=clienteChave(c);return `<label class="contato-item"><input type="checkbox" onchange="alternarContatoERP('${encodeURIComponent(key)}',this)"><span class="contato-info"><strong>${escapeHtml(c.nome)}</strong><small>${escapeHtml([c.rua,c.numero,c.bairro,c.cidade].filter(Boolean).join(", "))}${c.referencia?`<br>Referência: ${escapeHtml(c.referencia)}`:""}</small></span><span class="contato-fone">${escapeHtml(c.telefone)}</span></label>`}).join("")}
 function alternarContatoERP(encodedKey,checkbox){const marcado=checkbox.checked;const key=decodeURIComponent(encodedKey);const c=clientesERPEncontrados.find(x=>clienteChave(x)===key);if(!c)return;if(marcado&&contatosSelecionados.size>=10){checkbox.checked=false;alert("É permitido selecionar no máximo 10 contatos por envio.");return}if(marcado)contatosSelecionados.set(key,c);else contatosSelecionados.delete(key);atualizarContadorContatos()}
 function atualizarContadorContatos(){document.getElementById("contadorSelecionados").innerText=`${contatosSelecionados.size} de 10 selecionados`}
 function limparBuscaClientes(){["filtroClienteLocalidade","filtroClienteRua","filtroClienteBairro","filtroClienteReferencia"].forEach(id=>document.getElementById(id).value="");clientesERPEncontrados=[];contatosSelecionados.clear();document.getElementById("erpTotal").innerText="0 clientes";document.getElementById("listaContatos").innerHTML='<div class="contato-vazio">Use os filtros acima para consultar os clientes do ERP ativo.</div>';atualizarContadorContatos()}
 async function conectarWhatsApp(){const empresaId=empresaIdAtual();if(!empresaId){alert("Empresa do usuário não identificada.");return}const qrBox=document.getElementById("waQr");qrBox.innerHTML="Gerando QR Code...";try{const d=await apiJson(`/api/whatsapp/qr/${empresaId}`);if(!d.qr)throw new Error(d.erro||"QR Code ainda não foi gerado. Tente novamente em alguns segundos.");qrBox.innerHTML="";QRCode.toCanvas(d.qr,{width:240,margin:1},(err,canvas)=>{if(err){qrBox.innerText="Erro ao desenhar QR Code.";return}qrBox.appendChild(canvas)});verificarStatusWhatsApp()}catch(e){qrBox.innerHTML=`<div style="color:#b91c1c;">${escapeHtml(e.message)}</div>`}}
-async function verificarStatusWhatsApp(){const empresaId=empresaIdAtual();if(!empresaId)return;try{const d=await apiJson(`/api/whatsapp/status/${empresaId}`);const el=document.getElementById("waStatus");el.innerText=d.status==="conectado"?"Conectado":d.status==="aguardando"?"Aguardando QR":"Desconectado";el.classList.toggle("conectado",d.status==="conectado");if(d.status==="conectado")document.getElementById("waQr").innerHTML='<div style="color:#15803d;font-weight:800;">✓ WhatsApp conectado e pronto para envio.</div>'}catch(e){console.warn(e)}}
+let rotaStatusWhatsAppDisponivel=true;
+async function verificarStatusWhatsApp(){
+    const empresaId=empresaIdAtual();
+    if(!empresaId||!rotaStatusWhatsAppDisponivel)return;
+    const el=document.getElementById("waStatus");
+    try{
+        const d=await apiJson(`/api/whatsapp/status/${empresaId}`);
+        el.innerText=d.status==="conectado"?"Conectado":d.status==="aguardando"?"Aguardando QR":"Desconectado";
+        el.classList.toggle("conectado",d.status==="conectado");
+        if(d.status==="conectado")document.getElementById("waQr").innerHTML='<div style="color:#15803d;font-weight:800;">✓ WhatsApp conectado e pronto para envio.</div>';
+    }catch(e){
+        el.classList.remove("conectado");
+        if(e.status===404){
+            rotaStatusWhatsAppDisponivel=false;
+            el.innerText="Status indisponível";
+            document.getElementById("waQr").innerHTML='<div>O backend não possui a rota de status do WhatsApp.<br><small>A consulta ao ERP continua disponível normalmente.</small></div>';
+            return;
+        }
+        el.innerText="Desconectado";
+        console.warn("Falha ao consultar status do WhatsApp:",e);
+    }
+}
 async function enviarInformativoSelecionados(){const contatos=[...contatosSelecionados.values()];const mensagem=esc(document.getElementById("textoEditavel").value);if(!mensagem){alert("Gere ou escreva o texto do informativo antes do envio.");return}if(!contatos.length){alert("Selecione pelo menos um contato.");return}if(contatos.length>10){alert("Selecione no máximo 10 contatos.");return}const empresaId=empresaIdAtual();if(!empresaId){alert("Empresa não identificada.");return}if(!confirm(`Confirma o envio para ${contatos.length} contato(s)? O intervalo será de 45 segundos entre os envios.`))return;const btn=document.getElementById("btnEnviarLote");btn.disabled=true;try{const d=await apiJson("/api/whatsapp/enviar-lote",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({empresaId,mensagem,intervaloSegundos:45,contatos:contatos.map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}))})});jobEnvioAtual=d.jobId;document.getElementById("resumoEnvio").innerText=`Fila iniciada com ${contatos.length} contato(s).`;acompanharJobEnvio()}catch(e){btn.disabled=false;alert(e.message||"Erro ao iniciar envio.")}}
 async function acompanharJobEnvio(){clearTimeout(timerJobEnvio);if(!jobEnvioAtual)return;try{const d=await apiJson(`/api/whatsapp/envios/${encodeURIComponent(jobEnvioAtual)}`);const total=d.total||1,processados=d.processados||0;document.getElementById("barraEnvio").style.width=`${Math.min(100,(processados/total)*100)}%`;document.getElementById("resumoEnvio").innerText=`${processados} de ${total} processados • ${d.enviados||0} enviados • ${d.falhas||0} falhas${d.proximoEnvioEm?` • próximo em ${d.proximoEnvioEm}s`:""}`;document.getElementById("logEnvios").innerHTML=(d.resultados||[]).slice().reverse().map(x=>`<div class="log-linha">${x.ok?"✅":"❌"} ${escapeHtml(x.nome||x.telefone)} — ${x.ok?"enviado":escapeHtml(x.erro||"falha")}</div>`).join("");if(d.status==="concluido"||d.status==="cancelado"){document.getElementById("btnEnviarLote").disabled=false;jobEnvioAtual=null;mostrarToast("Fila de WhatsApp concluída.");return}}catch(e){console.warn(e)}timerJobEnvio=setTimeout(acompanharJobEnvio,3000)}
 
