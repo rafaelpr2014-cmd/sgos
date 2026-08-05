@@ -5777,6 +5777,7 @@ function resumoModalHTML(os){
             <b>VLAN:</b> ${valorSeguro(os.vlan)}<br>
             <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
             <b>Criada em:</b> ${valorSeguro(format(os.criado_em))}<br>
+            ${Number(os.proxima_os || 0) === 1 ? `<div class="checkin-os-box"><b>⭐ Próximo atendimento</b><br><b>Tipo de serviço:</b> ${valorSeguro(os.tipo_servico_nome || os.tipo_servico)}<br><b>Cliente:</b> ${valorSeguro(nomeClienteOS(os))}<br><b>Endereço:</b> ${valorSeguro(enderecoNormal(os))}</div>` : ""}
             ${finalizada
                 ? blocoFinalizacao
                 : normalizarStatusApp(os.status) === "cliente_ausente"
@@ -6665,13 +6666,13 @@ async function oferecerProximaOSApp(){
     if(!lancadas.length || lancadas.some(o=>Number(o.proxima_os)===1)) return;
     const camada=document.createElement('div');
     camada.className='modal-proxima-app';
-    camada.innerHTML=`<div class="caixa-proxima-app"><h3>Qual será o próximo atendimento?</h3><p>Selecione uma OS lançada ou saia sem escolher.</p><div class="lista-proxima-app">${lancadas.map(o=>`<button type="button" data-id="${o.id}"><b>OS #${o.id} — ${valorSeguro(o.nome)}</b><small>${valorSeguro(o.localidade_nome)} · ${valorSeguro(o.endereco||o.rua)}</small></button>`).join('')}</div><button type="button" class="sair-proxima-app">Sair</button></div>`;
+    camada.innerHTML=`<div class="caixa-proxima-app"><h3>Qual será o próximo atendimento?</h3><p>Selecione uma OS lançada ou saia sem escolher.</p><div class="lista-proxima-app">${lancadas.map(o=>`<button type="button" data-id="${o.id}"><b>OS #${o.id} — ${valorSeguro(nomeClienteOS(o))}</b><small><strong>Serviço:</strong> ${valorSeguro(o.tipo_servico_nome || o.tipo_servico)}</small><small><strong>Endereço:</strong> ${valorSeguro(enderecoNormal(o))}</small></button>`).join('')}</div><button type="button" class="sair-proxima-app">Sair</button></div>`;
     document.body.appendChild(camada);
     camada.querySelector('.sair-proxima-app').onclick=()=>camada.remove();
     camada.querySelectorAll('[data-id]').forEach(btn=>btn.onclick=async()=>{
         btn.disabled=true;
         try{ const r=await apiFetch(`/api/ordens_servico/proxima-fila/${btn.dataset.id}`,{method:'POST',headers:{'Accept':'application/json'},cache:'no-store'}); const d=await lerRespostaSegura(r); if(!r.ok)throw new Error(d.erro||'Erro ao definir próxima OS.'); camada.remove(); await load(); alert('Próximo atendimento definido.'); }
-        catch(e){btn.disabled=false;alert(e.message||'Erro ao definir próxima OS.');}
+        catch(e){console.error('Erro ao definir próxima OS:', e);btn.disabled=false;alert(e.message||'Erro ao definir próxima OS.');}
     });
 }
 

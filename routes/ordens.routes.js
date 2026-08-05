@@ -22,6 +22,15 @@ module.exports = (db, verificarAutenticacao, io) => {
         require("fs");
 
     // ===============================
+    // ESTRUTURA DA FILA DE OS
+    // ===============================
+    async function garantirEstruturaFilaOS() {
+        await db.query(`ALTER TABLE ordens_servico ADD COLUMN IF NOT EXISTS proxima_os TINYINT(1) NOT NULL DEFAULT 0`);
+        await db.query(`ALTER TABLE ordens_servico ADD COLUMN IF NOT EXISTS proxima_os_definida_por INT NULL`);
+        await db.query(`ALTER TABLE ordens_servico ADD COLUMN IF NOT EXISTS proxima_os_definida_em DATETIME NULL`);
+    }
+
+    // ===============================
     // 📂 BASE UPLOAD (MULTI AMBIENTE)
     // ===============================
     const baseUpload = path.join(__dirname, "../uploads");
@@ -705,7 +714,6 @@ router.get("/", verificarAutenticacao, async (req, res) => {
                             AND os.status IN (
                                 'aberto',
                                 'cliente_ausente',
-                                'os_lancada',
                                 'em_andamento'
                             )
                         )
@@ -862,7 +870,7 @@ router.get("/", verificarAutenticacao, async (req, res) => {
                     AND (
                         (
                             os.agendamento IS NULL
-                            AND os.status IN ('aberto', 'cliente_ausente', 'os_lancada', 'em_andamento')
+                            AND os.status IN ('aberto', 'cliente_ausente')
                         )
 
                         OR
@@ -1631,11 +1639,8 @@ router.post(
                 UPDATE ordens_servico
                 SET
 
-                    status = 'os_lancada',
-                    iniciado_em = NULL,
-                    proxima_os = 0,
-                    proxima_os_definida_por = NULL,
-                    proxima_os_definida_em = NULL,
+                    status = 'em_andamento',
+                    iniciado_em = NOW(),
                     enviado_por = ?
 
                 WHERE id = ?
@@ -1655,7 +1660,7 @@ router.post(
 
                 req,
 
-                "LANÇOU OS",
+                "INICIOU OS",
 
                 "OS",
 
@@ -1672,7 +1677,7 @@ router.post(
                         os.login,
 
                     Status:
-                        "OS LANÇADA"
+                        "EM ANDAMENTO"
                 }
             );
 
@@ -1704,6 +1709,82 @@ router.post(
         }
     }
 );
+
+
+    // ===============================
+    // ⭐ DEFINIR PRÓXIMA OS
+    // ===============================
+    router.post("/proxima-fila/:id", verificarAutenticacao, async (req, res) => {
+        const conn = await db.getConnection();
+        try {
+            await garantirEstruturaFilaOS();
+            await conn.beginTransaction();
+
+            const [rows] = await conn.query(`
+                SELECT id, status, tecnicos
+                FROM ordens_servico
+                WHERE id = ? AND empresa_id = ?
+                LIMIT 1
+            `, [req.params.id, req.usuario.empresa_id]);
+
+            if (!rows.length) {
+                await conn.rollback();
+                return res.status(404).json({ erro: "OS não encontrada." });
+            }
+
+            const os = rows[0];
+            if (String(os.status || "").toLowerCase() !== "os_lancada") {
+                await conn.rollback();
+                return res.status(400).json({ erro: "Somente uma OS lançada pode ser definida como próxima." });
+            }
+
+            let tecnicos = [];
+            try { tecnicos = Array.isArray(os.tecnicos) ? os.tecnicos : JSON.parse(os.tecnicos || "[]"); } catch (_) {
+                tecnicos = String(os.tecnicos || "").split(",").map(v => v.trim()).filter(Boolean);
+            }
+
+            if (tecnicos.length) {
+                const placeholders = tecnicos.map(() => "JSON_CONTAINS(COALESCE(tecnicos, '[]'), JSON_QUOTE(?))").join(" OR ");
+                await conn.query(`
+                    UPDATE ordens_servico
+                    SET proxima_os = 0, proxima_os_definida_por = NULL, proxima_os_definida_em = NULL
+                    WHERE empresa_id = ? AND id <> ? AND proxima_os = 1 AND (${placeholders})
+                `, [req.usuario.empresa_id, req.params.id, ...tecnicos.map(String)]);
+            }
+
+            await conn.query(`
+                UPDATE ordens_servico
+                SET proxima_os = 1, proxima_os_definida_por = ?, proxima_os_definida_em = NOW()
+                WHERE id = ? AND empresa_id = ?
+            `, [req.usuario.id, req.params.id, req.usuario.empresa_id]);
+
+            await conn.commit();
+            if (io) io.to(`empresa_${req.usuario.empresa_id}`).emit("ordens_atualizadas");
+            res.json({ ok: true, mensagem: "Próxima OS definida." });
+        } catch (err) {
+            try { await conn.rollback(); } catch (_) {}
+            console.error("ERRO DEFINIR PRÓXIMA OS:", err);
+            res.status(500).json({ erro: err.message || "Erro ao definir próxima OS." });
+        } finally {
+            conn.release();
+        }
+    });
+
+    router.post("/remover-proxima-fila/:id", verificarAutenticacao, async (req, res) => {
+        try {
+            await garantirEstruturaFilaOS();
+            await db.query(`
+                UPDATE ordens_servico
+                SET proxima_os = 0, proxima_os_definida_por = NULL, proxima_os_definida_em = NULL
+                WHERE id = ? AND empresa_id = ?
+            `, [req.params.id, req.usuario.empresa_id]);
+            if (io) io.to(`empresa_${req.usuario.empresa_id}`).emit("ordens_atualizadas");
+            res.json({ ok: true, mensagem: "OS removida da próxima fila." });
+        } catch (err) {
+            console.error("ERRO REMOVER PRÓXIMA OS:", err);
+            res.status(500).json({ erro: err.message || "Erro ao remover próxima OS." });
+        }
+    });
 
 // ===============================
 // 📍 CHECK-IN DE CHEGADA
@@ -1742,13 +1823,18 @@ router.post(
                 });
             }
 
-            if(!['em_andamento','aberto','agendado'].includes(String(os.status || '').toLowerCase())){
+            if(!['os_lancada','em_andamento','aberto','agendado'].includes(String(os.status || '').toLowerCase())){
                 return res.status(400).json({ erro: "O check-in não pode ser registrado no status atual da OS." });
             }
 
             await db.query(`
                 UPDATE ordens_servico
-                SET checkin_inicio_em = NOW(),
+                SET status = 'em_andamento',
+                    iniciado_em = COALESCE(iniciado_em, NOW()),
+                    proxima_os = 0,
+                    proxima_os_definida_por = NULL,
+                    proxima_os_definida_em = NULL,
+                    checkin_inicio_em = NOW(),
                     checkin_inicio_latitude = ?,
                     checkin_inicio_longitude = ?,
                     checkin_inicio_precisao = ?,
@@ -2833,12 +2919,9 @@ router.post(
                 UPDATE ordens_servico
                 SET
 
-                    status = 'os_lancada',
+                    status = 'em_andamento',
                     agendamento = NULL,
-                    iniciado_em = NULL,
-                    proxima_os = 0,
-                    proxima_os_definida_por = NULL,
-                    proxima_os_definida_em = NULL
+                    iniciado_em = NOW()
 
                 WHERE id = ?
                 AND empresa_id = ?
@@ -2854,15 +2937,15 @@ await logService.registrarLog(
     "LANÇOU AGENDAMENTO",
     "OS",
     req.params.id,
-    "OS lançada para o técnico"
+    "OS enviada para andamento"
 );
 
             io.emit("os_update");
 
             io.emit("os_andamento", {
                 os_id: req.params.id,
-                titulo: "🚀 OS lançada",
-                mensagem: `A OS agendada #${req.params.id} foi lançada para o técnico`
+                titulo: "🚀 Agendamento em andamento",
+                mensagem: `A OS agendada #${req.params.id} entrou em andamento`
             });
 
             await enviarPushOSAndamento(req, req.params.id);
