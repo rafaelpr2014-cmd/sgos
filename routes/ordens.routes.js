@@ -139,65 +139,6 @@ async function garantirEstruturaCheckinOS(){
     await adicionar('tempo_atendimento_segundos', `ALTER TABLE ordens_servico ADD COLUMN tempo_atendimento_segundos INT UNSIGNED NULL AFTER checkin_fim_por`);
 }
 
-
-// ===============================
-// 🚀 FILA OPERACIONAL DAS OS
-// ===============================
-async function garantirEstruturaFilaOS(){
-    const adicionar = async (coluna, sql) => {
-        const [rows] = await db.query(`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='ordens_servico' AND COLUMN_NAME=? LIMIT 1`, [coluna]);
-        if(!rows.length) await db.query(sql);
-    };
-
-    // Garante que o status novo seja aceito mesmo quando a coluna for ENUM.
-    const [statusCols] = await db.query(`
-        SELECT DATA_TYPE, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = 'ordens_servico'
-          AND COLUMN_NAME = 'status'
-        LIMIT 1
-    `);
-
-    if(statusCols.length && String(statusCols[0].DATA_TYPE).toLowerCase() === 'enum'){
-        const columnType = String(statusCols[0].COLUMN_TYPE || '');
-        const valores = [...columnType.matchAll(/'((?:[^'\\]|\\.)*)'/g)]
-            .map(m => m[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\'));
-
-        for(const obrigatorio of ['aberto','agendado','reagendado','os_lancada','em_andamento','cliente_ausente','concluido']){
-            if(!valores.includes(obrigatorio)) valores.push(obrigatorio);
-        }
-
-        const enumSql = valores
-            .map(v => `'${String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`)
-            .join(',');
-        const nullSql = String(statusCols[0].IS_NULLABLE).toUpperCase() === 'YES' ? 'NULL' : 'NOT NULL';
-        const defaultAtual = statusCols[0].COLUMN_DEFAULT;
-        const defaultSql = defaultAtual == null
-            ? ''
-            : ` DEFAULT '${String(defaultAtual).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
-
-        await db.query(`ALTER TABLE ordens_servico MODIFY COLUMN status ENUM(${enumSql}) ${nullSql}${defaultSql}`);
-    }
-
-    await adicionar('proxima_os', `ALTER TABLE ordens_servico ADD COLUMN proxima_os TINYINT(1) NOT NULL DEFAULT 0 AFTER status`);
-    await adicionar('proxima_os_definida_por', `ALTER TABLE ordens_servico ADD COLUMN proxima_os_definida_por INT NULL AFTER proxima_os`);
-    await adicionar('proxima_os_definida_em', `ALTER TABLE ordens_servico ADD COLUMN proxima_os_definida_em DATETIME NULL AFTER proxima_os_definida_por`);
-}
-
-function listaTecnicosFila(valor){
-    if(valor == null) return [];
-    if(Array.isArray(valor)) return valor.map(String).map(v=>v.trim()).filter(Boolean);
-    const texto=String(valor).trim();
-    if(!texto) return [];
-    try{ const p=JSON.parse(texto); if(Array.isArray(p)) return p.map(String).map(v=>v.trim()).filter(Boolean); }catch(_){ }
-    return texto.split(',').map(v=>v.trim()).filter(Boolean);
-}
-function compartilhaTecnicoFila(a,b){
-    const A=new Set(listaTecnicosFila(a));
-    return listaTecnicosFila(b).some(v=>A.has(v));
-}
-
 function coordenadaValida(latitude, longitude){
     const lat = Number(latitude);
     const lng = Number(longitude);
@@ -764,6 +705,7 @@ router.get("/", verificarAutenticacao, async (req, res) => {
                             AND os.status IN (
                                 'aberto',
                                 'cliente_ausente',
+                                'os_lancada',
                                 'em_andamento'
                             )
                         )
@@ -920,7 +862,7 @@ router.get("/", verificarAutenticacao, async (req, res) => {
                     AND (
                         (
                             os.agendamento IS NULL
-                            AND os.status IN ('aberto', 'cliente_ausente')
+                            AND os.status IN ('aberto', 'cliente_ausente', 'os_lancada', 'em_andamento')
                         )
 
                         OR
@@ -1338,8 +1280,8 @@ router.post(
             if(statusCriacao === "em_andamento"){
                 io.emit("os_andamento", {
                     os_id: resultado.id,
-                    titulo: "🚀 OS lançada",
-                    mensagem: `A OS #${resultado.id} foi lançada para o técnico${dados.nome ? " - " + dados.nome : ""}`,
+                    titulo: "🚀 OS em andamento",
+                    mensagem: `A OS #${resultado.id} entrou em andamento${dados.nome ? " - " + dados.nome : ""}`,
                     cliente: dados.nome || ""
                 });
 
@@ -1380,7 +1322,6 @@ router.delete(
     async (req, res) => {
 
         try {
-            await garantirEstruturaFilaOS();
 
             // ===============================
             // BUSCA OS
@@ -1652,7 +1593,6 @@ router.post(
     async (req, res) => {
 
         try {
-            await garantirEstruturaFilaOS();
 
             // ===============================
             // BUSCA OS
@@ -1691,11 +1631,8 @@ router.post(
                 UPDATE ordens_servico
                 SET
 
-                    status = 'os_lancada',
-                    iniciado_em = NULL,
-                    proxima_os = 0,
-                    proxima_os_definida_por = NULL,
-                    proxima_os_definida_em = NULL,
+                    status = 'em_andamento',
+                    iniciado_em = NOW(),
                     enviado_por = ?
 
                 WHERE id = ?
@@ -1715,7 +1652,7 @@ router.post(
 
                 req,
 
-                "LANÇOU OS",
+                "INICIOU OS",
 
                 "OS",
 
@@ -1732,7 +1669,7 @@ router.post(
                         os.login,
 
                     Status:
-                        "OS LANÇADA"
+                        "EM ANDAMENTO"
                 }
             );
 
@@ -1766,31 +1703,6 @@ router.post(
 );
 
 // ===============================
-// ⭐ DEFINIR / REMOVER PRÓXIMA OS
-// ===============================
-router.post('/proxima-fila/:id', verificarAutenticacao, async (req,res)=>{
-    let conn;
-    try{
-        await garantirEstruturaFilaOS();
-        conn=await db.getConnection(); await conn.beginTransaction();
-        const [[alvo]]=await conn.query(`SELECT id,nome,status,tecnico FROM ordens_servico WHERE id=? AND empresa_id=? FOR UPDATE`,[req.params.id,req.usuario.empresa_id]);
-        if(!alvo) return res.status(404).json({erro:'OS não encontrada.'});
-        if(String(alvo.status)!=='os_lancada') return res.status(400).json({erro:'Somente uma OS lançada pode ser marcada como próxima.'});
-        const [fila]=await conn.query(`SELECT id,tecnico FROM ordens_servico WHERE empresa_id=? AND status='os_lancada' AND proxima_os=1 FOR UPDATE`,[req.usuario.empresa_id]);
-        for(const atual of fila){ if(Number(atual.id)!==Number(alvo.id) && compartilhaTecnicoFila(atual.tecnico,alvo.tecnico)) await conn.query(`UPDATE ordens_servico SET proxima_os=0,proxima_os_definida_por=NULL,proxima_os_definida_em=NULL WHERE id=? AND empresa_id=?`,[atual.id,req.usuario.empresa_id]); }
-        await conn.query(`UPDATE ordens_servico SET proxima_os=1,proxima_os_definida_por=?,proxima_os_definida_em=NOW() WHERE id=? AND empresa_id=?`,[req.usuario.id,alvo.id,req.usuario.empresa_id]);
-        await conn.commit();
-        await registrarLog(req,'DEFINIU PRÓXIMA OS','OS',alvo.id,{Cliente:alvo.nome});
-        io.emit('os_update'); res.json({ok:true});
-    }catch(err){ if(conn)try{await conn.rollback()}catch(_){ } res.status(500).json({erro:err.message}); }
-    finally{if(conn)conn.release();}
-});
-router.post('/remover-proxima-fila/:id', verificarAutenticacao, async (req,res)=>{
-    try{ await garantirEstruturaFilaOS(); await db.query(`UPDATE ordens_servico SET proxima_os=0,proxima_os_definida_por=NULL,proxima_os_definida_em=NULL WHERE id=? AND empresa_id=?`,[req.params.id,req.usuario.empresa_id]); await registrarLog(req,'REMOVEU PRÓXIMA OS','OS',req.params.id,{}); io.emit('os_update'); res.json({ok:true}); }
-    catch(err){res.status(500).json({erro:err.message});}
-});
-
-// ===============================
 // 📍 CHECK-IN DE CHEGADA
 // ===============================
 router.post(
@@ -1798,7 +1710,6 @@ router.post(
     verificarAutenticacao,
     async (req, res) => {
         try {
-            await garantirEstruturaFilaOS();
             await garantirEstruturaCheckinOS();
 
             const latitude = Number(req.body?.latitude ?? req.body?.lat);
@@ -1828,18 +1739,13 @@ router.post(
                 });
             }
 
-            if(!['os_lancada'].includes(String(os.status || '').toLowerCase())){
+            if(!['em_andamento','aberto','agendado'].includes(String(os.status || '').toLowerCase())){
                 return res.status(400).json({ erro: "O check-in não pode ser registrado no status atual da OS." });
             }
 
             await db.query(`
                 UPDATE ordens_servico
-                SET status = 'em_andamento',
-                    iniciado_em = COALESCE(iniciado_em, NOW()),
-                    proxima_os = 0,
-                    proxima_os_definida_por = NULL,
-                    proxima_os_definida_em = NULL,
-                    checkin_inicio_em = NOW(),
+                SET checkin_inicio_em = NOW(),
                     checkin_inicio_latitude = ?,
                     checkin_inicio_longitude = ?,
                     checkin_inicio_precisao = ?,
@@ -1926,7 +1832,6 @@ router.post(
                 UPDATE ordens_servico
                 SET
                     status = 'cliente_ausente',
-                    proxima_os = 0, proxima_os_definida_por = NULL, proxima_os_definida_em = NULL,
                     observacao_ausente = ?,
                     anexo_ausente = ?
                 WHERE id = ?
@@ -2145,7 +2050,6 @@ router.post(
             );
             await conn.query(`UPDATE ordens_servico SET
                 status='concluido',
-                proxima_os=0, proxima_os_definida_por=NULL, proxima_os_definida_em=NULL,
                 finalizado_em=NOW(),
                 finalizado_por=?,
                 observacao_finalizado=?,

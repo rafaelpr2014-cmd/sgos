@@ -1140,8 +1140,8 @@ function popularTabelaAndamento(id, dados) {
                   🖨️
             </span>
 
-            <span class="icone-acao"
-                  title="Finalizar"
+            <span class="icone-acao sgos-acao-finalizar"
+                  title="Finalizar OS"
                   onclick="finalizarOS(${os.id})">
                   ✅
             </span>
@@ -1899,6 +1899,8 @@ window.abrirResumoOS = async function(id){
         ${podeLancar ? `<button class="btn-resumo verde" onclick="lancarAgora(${os.id})">🚀 Lançar Agora</button>` : ""}
         ${lancada ? `<button class="btn-resumo roxo" onclick="alternarProximaFilaPainel(${os.id},${proxima?1:0})">${proxima?'✖ Remover da fila':'⭐ Próxima da fila'}</button>` : ""}
         ${emExecucao ? `<button class="btn-resumo verde" onclick="finalizarOS(${os.id})">✅ Finalizar OS</button>` : ""}
+        <button class="btn-resumo azul" onclick="imprimirOS(${os.id})">🖨️ Imprimir</button>
+        <button class="btn-resumo azul" onclick="abrirLocalizacao('${os.latitude || ''}','${os.longitude || ''}')">📍 Localização</button>
         <button class="btn-resumo vermelho" onclick="excluirOS(${os.id})">🗑️ Excluir</button>
     `;
 

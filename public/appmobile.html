@@ -2651,6 +2651,11 @@ body{
 
 </style>
 
+<style id="sgos-app-fila-acoes-fix">
+.btn-fila-app{background:#7c3aed!important;color:#fff!important}
+#btnConcluir{background:#16a34a!important;color:#fff!important}
+#btnCheckin{background:#075cf6!important;color:#fff!important}
+</style>
 </head>
 
 <body>
@@ -2810,7 +2815,6 @@ body{
         <button id="btnInviabilidade" type="button" class="btn-inv" onclick="enviarAcao('inviabilidade', this)">Inviabilidade</button>
         <button id="btnReagendar" type="button" class="btn-reagendar" onclick="abrirReagendamento()">📅 Reagendar</button>
         <button id="btnCheckin" type="button" class="btn-checkin" onclick="fazerCheckin(this)">📍 Fazer check-in e iniciar</button>
-        <button id="btnFila" type="button" class="btn-fila-app" onclick="alternarProximaFilaApp(this)" style="display:none">⭐ Marcar como próxima da fila</button>
         <button id="btnConcluir" type="button" class="btn-ok" onclick="enviarAcao('concluir', this)">Concluir</button>
 
         <button id="btnEnviarLocalizacao" type="button" class="btn-loc" onclick="pegarLocalizacao(this)">📍 Enviar Localização</button>
@@ -4100,12 +4104,11 @@ function abrirModal(chave){
 
     const modalConteudo = document.querySelector("#modal .modal-content");
     const statusAtualModal = normalizarStatusApp(os.status);
+    const permiteAcao = ["em_andamento", "reagendado", "os_lancada"].includes(statusAtualModal);
     if(modalConteudo){
-        modalConteudo.classList.toggle(
-            "modal-modo-leitura",
-            statusAtualModal !== "em_andamento" && statusAtualModal !== "reagendado"
-        );
+        modalConteudo.classList.toggle("modal-modo-leitura", !permiteAcao);
     }
+    configurarAcoesModalPorStatus(os);
 
     const resumo = document.getElementById("resumoModalOS");
     if(resumo){
@@ -4123,6 +4126,54 @@ function abrirModal(chave){
 
     const modal = document.getElementById("modal");
     if(modal) modal.style.display = "flex";
+}
+
+
+function garantirBotaoFilaModal(){
+    let btn = document.getElementById("btnProximaFilaApp");
+    if(btn) return btn;
+    const btnCheckin = document.getElementById("btnCheckin");
+    const alvo = btnCheckin?.parentElement || document.querySelector("#modal .modal-content");
+    if(!alvo) return null;
+    btn = document.createElement("button");
+    btn.id = "btnProximaFilaApp";
+    btn.type = "button";
+    btn.className = "btn-fila-app";
+    btn.onclick = () => alternarProximaFilaApp(btn);
+    if(btnCheckin) btnCheckin.insertAdjacentElement("afterend", btn); else alvo.appendChild(btn);
+    return btn;
+}
+function configurarAcoesModalPorStatus(os){
+    const status = normalizarStatusApp(os?.status);
+    const lancada = status === "os_lancada";
+    const executando = status === "em_andamento" || status === "reagendado";
+    const btnConcluir = document.getElementById("btnConcluir");
+    const btnAusente = document.getElementById("btnAusente");
+    const btnInv = document.getElementById("btnInviabilidade");
+    const btnReagendar = document.getElementById("btnReagendar");
+    const btnCheckin = document.getElementById("btnCheckin");
+    const btnFila = garantirBotaoFilaModal();
+    [btnConcluir,btnAusente,btnInv,btnReagendar].forEach(btn=>{ if(btn) btn.style.display = executando ? "block" : "none"; });
+    if(btnConcluir){ btnConcluir.textContent = "✅ Finalizar OS"; btnConcluir.disabled = !executando; }
+    if(btnCheckin){ btnCheckin.style.display = lancada ? "block" : "none"; btnCheckin.disabled = !lancada || Boolean(os?.checkin_inicio_em); btnCheckin.textContent = os?.checkin_inicio_em ? "✓ Check-in realizado" : "📍 Fazer check-in e iniciar"; }
+    if(btnFila){ const marcada = Number(os?.proxima_os || 0) === 1; btnFila.style.display = lancada ? "block" : "none"; btnFila.dataset.marcada = marcada ? "1" : "0"; btnFila.textContent = marcada ? "✖ Remover da próxima fila" : "⭐ Marcar como próxima da fila"; }
+}
+async function alternarProximaFilaApp(botao){
+    const osAtual = encontrarOS(osSelecionada);
+    if(!osAtual || normalizarStatusApp(osAtual.status) !== "os_lancada") return;
+    const marcada = Number(osAtual.proxima_os || 0) === 1 || botao?.dataset?.marcada === "1";
+    bloquearBotao(botao,true,marcada?"Removendo...":"Marcando...");
+    try{
+        const rota = marcada ? "remover-proxima-fila" : "proxima-fila";
+        const res = await apiFetch(`/api/ordens_servico/${rota}/${osAtual.id}`,{method:"POST",headers:{"Accept":"application/json"},cache:"no-store"});
+        const dados = await lerRespostaSegura(res);
+        if(!res.ok) throw new Error(dados.erro || dados.mensagem || `Erro HTTP ${res.status}`);
+        await load();
+        const atualizado = encontrarOS(`normal-${osAtual.id}`) || encontrarOS(osAtual.id);
+        if(atualizado){ osSelecionada=chaveOS(atualizado); configurarAcoesModalPorStatus(atualizado); const resumo=document.getElementById("resumoModalOS"); if(resumo) resumo.innerHTML=resumoModalHTML(atualizado); }
+        alert(marcada ? "OS removida da próxima fila." : "OS marcada como próxima da fila.");
+    }catch(err){ alert(err.message || "Não foi possível atualizar a fila."); }
+    finally{ bloquearBotao(botao,false); }
 }
 
 function fecharModal(){
@@ -4926,7 +4977,7 @@ function valorSeguro(v, fallback="-"){
 }
 function tituloStatusAtual(){
     return tab === "concluido" ? "Ordens finalizadas" :
-           tab === "ausente" ? "Clientes ausentes" : "Ordens em andamento";
+           tab === "ausente" ? "Clientes ausentes" : "Atendimentos lançados e em execução";
 }
 const setTabOriginal = setTab;
 setTab = function(novaTab){
@@ -6924,90 +6975,6 @@ document.addEventListener("touchend",function(e){
 })();
 </script>
 
-
-<style id="sgos-restaurar-acoes-app-v2">
-.btn-fila-app{background:#7c3aed !important}
-.btn-fila-app.remover{background:#64748b !important}
-</style>
-<script id="sgos-restaurar-acoes-app-v2">
-(function(){
-  function statusAtual(os){ return String(os?.status||'').trim().toLowerCase(); }
-
-  window.alternarProximaFilaApp = async function(botao){
-    const os = typeof encontrarOS === 'function' ? encontrarOS(osSelecionada) : null;
-    if(!os || statusAtual(os)!=='os_lancada'){ alert('Apenas OS lançadas podem entrar na próxima fila.'); return; }
-    const marcada = Number(os.proxima_os)===1;
-    if(!confirm(marcada ? 'Remover esta OS da próxima fila?' : 'Marcar esta OS como próxima da fila?')) return;
-    try{
-      bloquearBotao?.(botao,true,marcada?'Removendo...':'Marcando...');
-      const rota = marcada ? `/api/ordens_servico/remover-proxima-fila/${os.id}` : `/api/ordens_servico/proxima-fila/${os.id}`;
-      const resposta = await apiFetch(rota,{method:'POST',headers:{'Accept':'application/json'},cache:'no-store'});
-      const dados = typeof lerRespostaSegura==='function' ? await lerRespostaSegura(resposta) : await resposta.json().catch(()=>({}));
-      if(!resposta.ok) throw new Error(dados.erro||dados.mensagem||'Não foi possível atualizar a fila.');
-      fecharModal?.();
-      await load?.();
-      alert(marcada?'OS removida da próxima fila.':'OS marcada como próxima da fila.');
-    }catch(e){ alert(e.message||'Erro ao atualizar a próxima fila.'); }
-    finally{ bloquearBotao?.(botao,false); }
-  };
-
-  function configurarBotoesModal(){
-    const os = typeof encontrarOS==='function' ? encontrarOS(osSelecionada) : null;
-    if(!os) return;
-    const status=statusAtual(os);
-    const lancada=status==='os_lancada';
-    const executando=status==='em_andamento';
-    const leitura=['concluido','cliente_ausente','inviabilidade'].includes(status);
-    const content=document.querySelector('#modal .modal-content');
-    content?.classList.toggle('modal-modo-leitura',leitura);
-
-    const mapa={
-      btnConcluir:executando,
-      btnAusente:executando,
-      btnInviabilidade:executando,
-      btnReagendar:executando,
-      btnEnviarLocalizacao:executando,
-      btnCheckin:lancada,
-      btnFila:lancada
-    };
-    Object.entries(mapa).forEach(([id,mostrar])=>{
-      const el=document.getElementById(id); if(!el) return;
-      el.style.display=mostrar?'block':'none';
-      el.disabled=!mostrar;
-    });
-
-    const fila=document.getElementById('btnFila');
-    if(fila && lancada){
-      const marcada=Number(os.proxima_os)===1;
-      fila.textContent=marcada?'✖ Remover da próxima fila':'⭐ Marcar como próxima da fila';
-      fila.classList.toggle('remover',marcada);
-      fila.disabled=false;
-    }
-    const checkin=document.getElementById('btnCheckin');
-    if(checkin && lancada){
-      const feito=!!os.checkin_inicio_em;
-      checkin.textContent=feito?`✓ Check-in ${typeof format==='function'?format(os.checkin_inicio_em):''}`:'📍 Fazer check-in e iniciar';
-      checkin.disabled=feito;
-      checkin.classList.toggle('realizado',feito);
-    }
-  }
-
-  const observar=new MutationObserver(()=>{
-    const modal=document.getElementById('modal');
-    if(modal && getComputedStyle(modal).display!=='none') configurarBotoesModal();
-  });
-  document.addEventListener('DOMContentLoaded',()=>observar.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']}));
-
-  const tentarEnvolver=()=>{
-    if(typeof window.abrirModal!=='function'||window.abrirModal.__sgosAcoesV2) return false;
-    const original=window.abrirModal;
-    const nova=async function(...args){ const r=await original.apply(this,args); setTimeout(configurarBotoesModal,0); setTimeout(configurarBotoesModal,180); return r; };
-    nova.__sgosAcoesV2=true; window.abrirModal=nova; return true;
-  };
-  if(!tentarEnvolver()){ const t=setInterval(()=>{if(tentarEnvolver())clearInterval(t)},250); setTimeout(()=>clearInterval(t),10000); }
-})();
-</script>
-
 </body>
 </html>
-<!-- force deploy appmobile 20260630005136 -->
+<!-- force deploy appmobile 20260804-fila-finalizar-v5 -->
