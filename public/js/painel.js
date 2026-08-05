@@ -188,6 +188,7 @@ function renderResumoTopo(tecnicos, localidades, tipos){
 
             <div class="contador-item"><div>Avulsas</div><span>${avulsas}</span></div>
             <div class="contador-item"><div>Abertas</div><span>${abertas}</span></div>
+            <div class="contador-item"><div>OS Lançadas</div><span>${ordens.filter(o => o.status === "os_lancada").length}</span></div>
             <div class="contador-item"><div>Em andamento</div><span>${andamento}</span></div>
             <div class="contador-item"><div>Ausentes</div><span>${ausentes}</span></div>
             <div class="contador-item"><div>Concluídas</div><span>${concluidas}</span></div>
@@ -221,7 +222,7 @@ function prioridadeHTML(valor) {
 
 const STATUS_MAP = {
     "aberto": ["status-aberto","Aberto"],
-    "os_lancada": ["status-agendado","OS Lançada"],
+    "os_lancada": ["status-lancada","OS Lançada"],
     "em_andamento": ["status-andamento","Em execução"],
     "cliente_ausente": ["status-ausente","Cliente Ausente"],
     "concluido": ["status-finalizado","Finalizado"],
@@ -234,7 +235,7 @@ function normalizarStatus(status) {
 
     const s = status.toLowerCase().trim();
 
-    if (s === "os_lancada" || s.includes("lancada")) return "os_lancada";
+    if (s.includes("lancada") || s.includes("lançada")) return "os_lancada";
     if (s.includes("andamento")) return "em_andamento";
     if (s.includes("ausente")) return "cliente_ausente";
     if (s.includes("concl")) return "concluido";
@@ -733,7 +734,8 @@ async function buscarClienteMikWeb() {
 // ===============================
 function atualizarCards() {
     const abertasEl = document.getElementById("abertas");
-    const andamentoEl = document.getElementById("andamento");
+    const andamentoEl = document.getElementById("andamento") || document.getElementById("execução");
+    const lancadasEl = document.getElementById("osLancadas");
     const finalizadasEl = document.getElementById("finalizadas");
     const ausentesEl = document.getElementById("clientesAusentes");
 
@@ -742,6 +744,7 @@ function atualizarCards() {
     if (osAvulsasEl) osAvulsasEl.innerText = osAvulsas.length + osAvulsasConcluidas.length;
     if (abertasEl) abertasEl.innerText = ordens.filter(o => o.status === "aberto" || (o.status === "reagendado" && reagendamentoEhHoje(o))).length;
     if (andamentoEl) andamentoEl.innerText = ordens.filter(o => o.status === "em_andamento").length;
+    if (lancadasEl) lancadasEl.innerText = ordens.filter(o => o.status === "os_lancada").length;
     if (finalizadasEl) finalizadasEl.innerText = ordens.filter(o => o.status === "concluido").length;
     if (ausentesEl) ausentesEl.innerText = ordens.filter(o => o.status === "cliente_ausente").length;
 }
@@ -871,7 +874,9 @@ function popularTabelas() {
     // ===============================
     // 🚀 OS LANÇADAS
     // ===============================
-    const lancadas = ordens.filter(o => o.status === "os_lancada");
+    const lancadas = ordens
+        .filter(o => o.status === "os_lancada")
+        .sort((a, b) => Number(b.proxima_os || 0) - Number(a.proxima_os || 0));
 
     // ===============================
     // 🔥 EM ANDAMENTO
@@ -1049,41 +1054,57 @@ function popularTabelaCompleta(id, dados) {
     });
 }
 
+
 // ===============================
 // TABELA OS LANÇADAS
 // ===============================
 function popularTabelaLancadas(id, dados) {
-    const tbody=document.getElementById(id);
-    if(!tbody) return;
-    tbody.innerHTML='';
-    if(!dados.length){ tbody.innerHTML='<tr><td colspan="16">Nenhuma OS lançada</td></tr>'; return; }
-    const ordenadas=[...dados].sort((a,b)=>Number(b.proxima_os||0)-Number(a.proxima_os||0));
-    ordenadas.forEach(os=>{
-      const proxima=Number(os.proxima_os)===1;
-      tbody.innerHTML += `<tr class="linha-os-resumo ${proxima?'linha-proxima-os':''}" onclick="abrirResumoOS(${os.id})">
-        <td><strong>${os.nome||'-'}</strong>${proxima?'<span class="badge-proxima-os">⭐ PRÓXIMA</span>':''}</td>
-        <td>${os.localidade_nome||'-'}</td><td>${formatarEndereco(os)}</td><td>${formatarTecnicos(os.tecnicos_nomes)}</td>
-        <td>${os.tipo_servico_nome||'-'}</td><td>${os.plano_nome||'-'}</td><td>${os.id_cliente||'-'}</td><td>${os.login||'-'}</td>
-        <td>${os.vlan||os.localidade_vlan||'-'}</td><td>${os.telefone||'-'}</td><td>${formatarData(os.criado_em||os.data_abertura)}</td>
-        <td>${os.criado_por_nome||'-'}</td><td>${formatarData(os.agendamento)}</td><td>${prioridadeHTML(os.prioridade)}</td>
-        <td><span class="status-box status-agendado">OS Lançada</span></td>
-        <td><div class="acoes" onclick="event.stopPropagation()">
-          <span class="icone-acao" title="Editar" onclick="editarOS(${os.id})">✏️</span>
-          <span class="icone-acao" title="Abrir localização" onclick="abrirLocalizacao('${os.latitude||''}','${os.longitude||''}')">📍</span>
-          <span class="icone-acao" title="${proxima?'Remover da próxima fila':'Marcar como próxima da fila'}" onclick="alternarProximaFilaPainel(${os.id},${proxima?1:0})">${proxima?'✖':'⭐'}</span>
-          <span class="icone-acao" title="Imprimir OS" onclick="imprimirOS(${os.id})">🖨️</span>
-        </div></td></tr>`;
+    const tbody = document.getElementById(id);
+    if (!tbody) {
+        console.warn("Tabela não encontrada:", id);
+        return;
+    }
+
+    tbody.innerHTML = "";
+    if (!dados.length) {
+        tbody.innerHTML = `<tr><td colspan="16">Nenhuma OS lançada</td></tr>`;
+        return;
+    }
+
+    dados.forEach(os => {
+        const [classe, texto] = STATUS_MAP[os.status] || STATUS_MAP.os_lancada;
+        const proxima = Number(os.proxima_os || 0) === 1;
+
+        const botoes = `
+            <span class="icone-acao" title="Editar" onclick="editarOS(${os.id})">✏️</span>
+            <span class="icone-acao" title="Abrir localização" onclick="abrirLocalizacao('${os.latitude || ""}', '${os.longitude || ""}')">📍</span>
+            ${os.anexo_path ? `<span class="icone-acao" title="Visualizar anexo" onclick="visualizarAnexo('${os.anexo_path}')">📎</span>` : ""}
+            <span class="icone-acao" title="Imprimir OS" onclick="imprimirOS(${os.id})">🖨️</span>
+            <span class="icone-acao" title="Finalizar OS" onclick="finalizarOS(${os.id})">✅</span>
+            <span class="icone-acao" title="Excluir" onclick="excluirOS(${os.id})">🗑️</span>
+        `;
+
+        tbody.innerHTML += `
+        <tr class="linha-os-resumo ${proxima ? "linha-proxima-os" : ""}" onclick="abrirResumoOS(${os.id})">
+            <td><strong>${os.nome || "-"}</strong>${proxima ? '<span class="badge-proxima-os">⭐ Próxima OS</span>' : ""}</td>
+            <td>${os.localidade_nome || "-"}</td>
+            <td>${formatarEndereco(os)}</td>
+            <td>${formatarTecnicos(os.tecnicos_nomes)}</td>
+            <td>${os.tipo_servico_nome || "-"}</td>
+            <td>${os.plano_nome || "-"}</td>
+            <td>${os.id_cliente || "-"}</td>
+            <td>${os.login || "-"}</td>
+            <td>${os.vlan || os.localidade_vlan || "-"}</td>
+            <td>${os.telefone || "-"}</td>
+            <td>${formatarData(os.criado_em || os.data_abertura)}</td>
+            <td>${os.criado_por_nome || os.enviado_por_nome || "-"}</td>
+            <td>${formatarData(os.agendamento)}</td>
+            <td>${prioridadeHTML(os.prioridade)}</td>
+            <td><span class="status-box ${classe}">${texto}</span></td>
+            <td><div class="acoes" onclick="event.stopPropagation()">${botoes}</div></td>
+        </tr>`;
     });
 }
-
-window.alternarProximaFilaPainel=async function(id,marcada){
-  try{
-    const texto=marcada?'remover esta OS da próxima fila':'marcar esta OS como próxima da fila';
-    if(!confirm(`Deseja ${texto}?`)) return;
-    await apiFetch(`/api/ordens_servico/${marcada?'remover-proxima-fila':'proxima-fila'}/${id}`,{method:'POST'});
-    await carregarOS();
-  }catch(e){ alert(e.message||'Não foi possível atualizar a próxima fila.'); }
-};
 
 // ===============================
 // TABELA EM ANDAMENTO
@@ -1140,8 +1161,8 @@ function popularTabelaAndamento(id, dados) {
                   🖨️
             </span>
 
-            <span class="icone-acao sgos-acao-finalizar"
-                  title="Finalizar OS"
+            <span class="icone-acao"
+                  title="Finalizar"
                   onclick="finalizarOS(${os.id})">
                   ✅
             </span>
@@ -1890,17 +1911,19 @@ window.abrirResumoOS = async function(id){
     const acoes = document.getElementById("resumoOSAcoes");
 
     const podeLancar = ["aberto", "cliente_ausente", "agendado", "reagendado"].includes(os.status);
-
     const emExecucao = os.status === "em_andamento";
-    const lancada = os.status === "os_lancada";
-    const proxima = Number(os.proxima_os) === 1;
+    const osLancada = os.status === "os_lancada";
+    const podeFinalizar = emExecucao || osLancada;
+    const possuiLocalizacao = Boolean(os.latitude && os.longitude);
+    const possuiAnexo = Boolean(os.anexo_path);
+
     acoes.innerHTML = `
         <button class="btn-resumo azul" onclick="editarOS(${os.id})">✏️ Editar</button>
-        ${podeLancar ? `<button class="btn-resumo verde" onclick="lancarAgora(${os.id})">🚀 Lançar Agora</button>` : ""}
-        ${lancada ? `<button class="btn-resumo roxo" onclick="alternarProximaFilaPainel(${os.id},${proxima?1:0})">${proxima?'✖ Remover da fila':'⭐ Próxima da fila'}</button>` : ""}
-        ${emExecucao ? `<button class="btn-resumo verde" onclick="finalizarOS(${os.id})">✅ Finalizar OS</button>` : ""}
-        <button class="btn-resumo azul" onclick="imprimirOS(${os.id})">🖨️ Imprimir</button>
-        <button class="btn-resumo azul" onclick="abrirLocalizacao('${os.latitude || ''}','${os.longitude || ''}')">📍 Localização</button>
+        ${possuiLocalizacao ? `<button class="btn-resumo azul" onclick="abrirLocalizacao('${os.latitude}','${os.longitude}')">📍 Localização</button>` : ""}
+        ${possuiAnexo ? `<button class="btn-resumo cinza" onclick="visualizarAnexo('${os.anexo_path}')">📎 Anexo</button>` : ""}
+        <button class="btn-resumo cinza" onclick="imprimirOS(${os.id})">🖨️ Imprimir</button>
+        ${podeLancar ? `<button class="btn-resumo verde" onclick="lancarAgora(${os.id})">🚀 Lançar OS</button>` : ""}
+        ${podeFinalizar ? `<button class="btn-resumo verde" onclick="finalizarOS(${os.id})">✅ Finalizar OS</button>` : ""}
         <button class="btn-resumo vermelho" onclick="excluirOS(${os.id})">🗑️ Excluir</button>
     `;
 
@@ -1962,7 +1985,7 @@ window.lancarAgora = async (id) => {
         return;
     }
 
-    if (!confirm("Deseja iniciar essa OS agora?")) return;
+    if (!confirm("Deseja lançar esta OS para o técnico?")) return;
 
     try{
         await apiFetch(`/api/ordens_servico/iniciar/${id}`, {
@@ -2119,6 +2142,27 @@ function abrirConfirmacaoEquipamentoPainel(os){
         };
     });
 }
+
+
+window.marcarProximaFila = async (id) => {
+    try {
+        await apiFetch(`/api/ordens_servico/proxima-fila/${id}`, { method: "POST", body: JSON.stringify({}) });
+        fecharResumoOS?.();
+        await carregarOS();
+    } catch (err) {
+        alert(err.message || "Não foi possível marcar a OS como próxima da fila.");
+    }
+};
+
+window.removerProximaFila = async (id) => {
+    try {
+        await apiFetch(`/api/ordens_servico/remover-proxima-fila/${id}`, { method: "POST", body: JSON.stringify({}) });
+        fecharResumoOS?.();
+        await carregarOS();
+    } catch (err) {
+        alert(err.message || "Não foi possível remover a OS da próxima fila.");
+    }
+};
 
 window.finalizarOS = async (id) => {
     try{

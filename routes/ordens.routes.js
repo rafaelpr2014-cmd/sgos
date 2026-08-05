@@ -1631,8 +1631,11 @@ router.post(
                 UPDATE ordens_servico
                 SET
 
-                    status = 'em_andamento',
-                    iniciado_em = NOW(),
+                    status = 'os_lancada',
+                    iniciado_em = NULL,
+                    proxima_os = 0,
+                    proxima_os_definida_por = NULL,
+                    proxima_os_definida_em = NULL,
                     enviado_por = ?
 
                 WHERE id = ?
@@ -1652,7 +1655,7 @@ router.post(
 
                 req,
 
-                "INICIOU OS",
+                "LANÇOU OS",
 
                 "OS",
 
@@ -1669,7 +1672,7 @@ router.post(
                         os.login,
 
                     Status:
-                        "EM ANDAMENTO"
+                        "OS LANÇADA"
                 }
             );
 
@@ -2830,9 +2833,12 @@ router.post(
                 UPDATE ordens_servico
                 SET
 
-                    status = 'em_andamento',
+                    status = 'os_lancada',
                     agendamento = NULL,
-                    iniciado_em = NOW()
+                    iniciado_em = NULL,
+                    proxima_os = 0,
+                    proxima_os_definida_por = NULL,
+                    proxima_os_definida_em = NULL
 
                 WHERE id = ?
                 AND empresa_id = ?
@@ -2848,15 +2854,15 @@ await logService.registrarLog(
     "LANÇOU AGENDAMENTO",
     "OS",
     req.params.id,
-    "OS enviada para andamento"
+    "OS lançada para o técnico"
 );
 
             io.emit("os_update");
 
             io.emit("os_andamento", {
                 os_id: req.params.id,
-                titulo: "🚀 Agendamento em andamento",
-                mensagem: `A OS agendada #${req.params.id} entrou em andamento`
+                titulo: "🚀 OS lançada",
+                mensagem: `A OS agendada #${req.params.id} foi lançada para o técnico`
             });
 
             await enviarPushOSAndamento(req, req.params.id);

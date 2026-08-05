@@ -2780,14 +2780,14 @@ body{
 </div>
 
 <section class="resumo-tipos-servico" id="resumoTiposServico" aria-live="polite">
-    <div class="resumo-tipos-titulo">Tipos de serviços em execução</div>
+    <div class="resumo-tipos-titulo">Tipos de serviços lançados e em execução</div>
     <div class="resumo-tipos-lista" id="listaTiposServico">
-        <div class="resumo-tipos-vazio">Nenhum serviço em execução no período</div>
+        <div class="resumo-tipos-vazio">Nenhum serviço lançado ou em execução no período</div>
     </div>
 </section>
 
 <div class="lista-cabecalho">
-    <strong id="tituloLista">Ordens em andamento</strong>
+    <strong id="tituloLista">Ordens lançadas e em execução</strong>
     <button type="button" onclick="mostrarTodas()">Ver todas</button>
 </div>
 <div class="container" id="lista"></div>
@@ -5199,7 +5199,10 @@ function renderizarResumoTiposServico(osPeriodo){
     const grupos = new Map();
 
     osPeriodo
-        .filter(o => String(o.status || "").toLowerCase().includes("andamento"))
+         .filter(o => {
+            const st = normalizarStatusApp(o.status);
+            return ["os_lancada", "em_andamento", "reagendado"].includes(st);
+        })
         .forEach(o => {
             const nome = String(o.tipo_servico_nome || o.tipo_servico || "Não informado").trim() || "Não informado";
             grupos.set(nome, (grupos.get(nome) || 0) + 1);
@@ -5208,7 +5211,7 @@ function renderizarResumoTiposServico(osPeriodo){
     const itens = [...grupos.entries()].sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-BR"));
 
     if(!itens.length){
-        lista.innerHTML = '<div class="resumo-tipos-vazio">Nenhum serviço em execução no período</div>';
+        lista.innerHTML = '<div class="resumo-tipos-vazio">Nenhum serviço lançado ou em execução no período</div>';
         return;
     }
 
@@ -5502,10 +5505,10 @@ function render(){
         const st = norm(o.status);
         const tipoAtual = String(o.tipo_servico_nome || o.tipo_servico || "Não informado").trim().toLowerCase();
         const matchTipo = !tipoServicoSelecionado || tipoAtual === tipoServicoSelecionado.toLowerCase();
-        return (!busca || texto.includes(busca)) && matchTipo && ((tab === "andamento" && (st.includes("andamento") || st.includes("reagend"))) || (tab === "concluido" && st.includes("concluido")) || (tab === "ausente" && st.includes("ausente"))) && dentroDoPeriodo(o);
+        return (!busca || texto.includes(busca)) && matchTipo && ((tab === "andamento" && (st.includes("andamento") || st.includes("reagend") || st.includes("os_lancada"))) || (tab === "concluido" && st.includes("concluido")) || (tab === "ausente" && st.includes("ausente"))) && dentroDoPeriodo(o);
     });
     const osPeriodo = OS.filter(dentroDoPeriodo);
-    document.getElementById("cA").innerText = osPeriodo.filter(o => { const st=norm(o.status); return st.includes("andamento") || st.includes("reagend"); }).length;
+    document.getElementById("cA").innerText = osPeriodo.filter(o => { const st=norm(o.status); return st.includes("andamento") || st.includes("reagend") || st.includes("os_lancada"); }).length;
     document.getElementById("cC").innerText = osPeriodo.filter(o => norm(o.status).includes("concluido")).length;
     document.getElementById("cX").innerText = osPeriodo.filter(o => norm(o.status).includes("ausente")).length;
     renderizarResumoTiposServico(osPeriodo);
@@ -5528,6 +5531,8 @@ function render(){
         const tecnico = o.tecnicos_nomes || o.tecnico_nome || o.tecnico || "-";
         return `<article class="os${alta ? " prioridade-alta-card" : ""}" data-os-chave="${chave}" role="button" tabindex="0" onclick="window.abrirModal('${chave}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.abrirModal('${chave}')}">
           <div class="os-main">
+            ${normalizarStatusApp(o.status) === "os_lancada" ? `<div class="badge-lancada-app">🚀 OS LANÇADA</div>` : ""}
+            ${Number(o.proxima_os || 0) === 1 ? `<div class="badge-proxima-app">⭐ PRÓXIMO ATENDIMENTO</div>` : ""}
             <div class="os-top-badges">${o._tipo === "avulsa" ? "" : badgePrioridadeApp(o.prioridade)}<span class="os-tipo-servico">${valorSeguro(o.tipo_servico_nome || o.tipo_servico || "OS Avulsa")}</span></div>
             <div class="os-cliente-linha"><strong class="os-cliente-nome">${valorSeguro(o._tipo === "avulsa" ? (o.localidade_nome || "OS Avulsa") : nomeClienteOS(o))}</strong></div>
             <div class="os-localidade">${valorSeguro(o.localidade_nome || o.localidade || "Localidade não informada")}</div>
