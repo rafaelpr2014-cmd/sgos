@@ -6662,17 +6662,62 @@ function tecnicosDaOSApp(valor){
     return String(valor||'').split(',').map(v=>v.trim()).filter(Boolean);
 }
 async function oferecerProximaOSApp(){
-    const lancadas=OS.filter(o=>o._tipo!=="avulsa" && o.status==="os_lancada");
-    if(!lancadas.length || lancadas.some(o=>Number(o.proxima_os)===1)) return;
-    const camada=document.createElement('div');
-    camada.className='modal-proxima-app';
-    camada.innerHTML=`<div class="caixa-proxima-app"><h3>Qual será o próximo atendimento?</h3><p>Selecione uma OS lançada ou saia sem escolher.</p><div class="lista-proxima-app">${lancadas.map(o=>`<button type="button" data-id="${o.id}"><b>OS #${o.id} — ${valorSeguro(nomeClienteOS(o))}</b><small><strong>Serviço:</strong> ${valorSeguro(o.tipo_servico_nome || o.tipo_servico)}</small><small><strong>Endereço:</strong> ${valorSeguro(enderecoNormal(o))}</small></button>`).join('')}</div><button type="button" class="sair-proxima-app">Sair</button></div>`;
+    // Remove uma instância antiga para impedir sobreposição de modais.
+    document.querySelectorAll('.modal-proxima-app').forEach(el => el.remove());
+
+    // A função é chamada depois de load(); usa a lista já atualizada da API.
+    const lancadas = (Array.isArray(OS) ? OS : []).filter(o =>
+        o &&
+        o._tipo !== "avulsa" &&
+        normalizarStatusApp(o.status) === "os_lancada"
+    );
+
+    // Não pergunta quando não há outra OS lançada ou quando a próxima já foi definida.
+    if(!lancadas.length || lancadas.some(o => Number(o.proxima_os || 0) === 1)) return;
+
+    const camada = document.createElement('div');
+    camada.className = 'modal-proxima-app';
+    camada.innerHTML = `
+        <div class="caixa-proxima-app">
+            <h3>Qual será o próximo atendimento?</h3>
+            <p>Selecione uma OS lançada ou saia sem escolher.</p>
+            <div class="lista-proxima-app">
+                ${lancadas.map(o => `
+                    <button type="button" data-id="${o.id}">
+                        <b>${valorSeguro(o.tipo_servico_nome || o.tipo_servico || "Serviço não informado")}</b>
+                        <small><strong>Cliente:</strong> ${valorSeguro(nomeClienteOS(o))}</small>
+                        <small><strong>Endereço:</strong> ${valorSeguro(enderecoNormal(o))}</small>
+                    </button>
+                `).join('')}
+            </div>
+            <button type="button" class="sair-proxima-app">Sair</button>
+        </div>`;
+
     document.body.appendChild(camada);
-    camada.querySelector('.sair-proxima-app').onclick=()=>camada.remove();
-    camada.querySelectorAll('[data-id]').forEach(btn=>btn.onclick=async()=>{
-        btn.disabled=true;
-        try{ const r=await apiFetch(`/api/ordens_servico/proxima-fila/${btn.dataset.id}`,{method:'POST',headers:{'Accept':'application/json'},cache:'no-store'}); const d=await lerRespostaSegura(r); if(!r.ok)throw new Error(d.erro||'Erro ao definir próxima OS.'); camada.remove(); await load(); alert('Próximo atendimento definido.'); }
-        catch(e){console.error('Erro ao definir próxima OS:', e);btn.disabled=false;alert(e.message||'Erro ao definir próxima OS.');}
+    camada.querySelector('.sair-proxima-app').onclick = () => camada.remove();
+
+    camada.querySelectorAll('[data-id]').forEach(btn => {
+        btn.onclick = async () => {
+            btn.disabled = true;
+            try{
+                const r = await apiFetch(`/api/ordens_servico/proxima-fila/${btn.dataset.id}`, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify({}),
+                    cache: 'no-store'
+                });
+                const d = await lerRespostaSegura(r);
+                if(!r.ok) throw new Error(d.erro || d.mensagem || 'Erro ao definir próxima OS.');
+
+                camada.remove();
+                await load();
+                alert('Próximo atendimento definido.');
+            }catch(e){
+                console.error('Erro ao definir próxima OS:', e);
+                btn.disabled = false;
+                alert(e.message || 'Erro ao definir próxima OS.');
+            }
+        };
     });
 }
 
@@ -6983,4 +7028,4 @@ document.addEventListener("touchend",function(e){
 
 </body>
 </html>
-<!-- force deploy appmobile 20260804-fila-finalizar-v5 -->
+<!-- force deploy appmobile 20260806-fluxo-checkin-final -->

@@ -1639,8 +1639,11 @@ router.post(
                 UPDATE ordens_servico
                 SET
 
-                    status = 'em_andamento',
-                    iniciado_em = NOW(),
+                    status = 'os_lancada',
+                    iniciado_em = NULL,
+                    proxima_os = 0,
+                    proxima_os_definida_por = NULL,
+                    proxima_os_definida_em = NULL,
                     enviado_por = ?
 
                 WHERE id = ?
@@ -1660,7 +1663,7 @@ router.post(
 
                 req,
 
-                "INICIOU OS",
+                "LANÇOU OS",
 
                 "OS",
 
@@ -1677,20 +1680,18 @@ router.post(
                         os.login,
 
                     Status:
-                        "EM ANDAMENTO"
+                        "OS LANÇADA"
                 }
             );
 
             io.emit("os_update");
 
-            io.emit("os_andamento", {
+            io.emit("os_lancada", {
                 os_id: req.params.id,
-                titulo: "🚀 OS em andamento",
-                mensagem: `A OS #${req.params.id} entrou em andamento${os.nome ? " - " + os.nome : ""}`,
+                titulo: "🚀 OS lançada",
+                mensagem: `A OS #${req.params.id} foi lançada para o técnico${os.nome ? " - " + os.nome : ""}`,
                 cliente: os.nome || ""
             });
-
-            await enviarPushOSAndamento(req, req.params.id);
 
             res.json({
                 ok: true
@@ -1721,7 +1722,7 @@ router.post(
             await conn.beginTransaction();
 
             const [rows] = await conn.query(`
-                SELECT id, status, tecnicos
+                SELECT id, status, tecnico
                 FROM ordens_servico
                 WHERE id = ? AND empresa_id = ?
                 LIMIT 1
@@ -1739,12 +1740,12 @@ router.post(
             }
 
             let tecnicos = [];
-            try { tecnicos = Array.isArray(os.tecnicos) ? os.tecnicos : JSON.parse(os.tecnicos || "[]"); } catch (_) {
-                tecnicos = String(os.tecnicos || "").split(",").map(v => v.trim()).filter(Boolean);
+            try { tecnicos = Array.isArray(os.tecnico) ? os.tecnico : JSON.parse(os.tecnico || "[]"); } catch (_) {
+                tecnicos = String(os.tecnico || "").split(",").map(v => v.trim()).filter(Boolean);
             }
 
             if (tecnicos.length) {
-                const placeholders = tecnicos.map(() => "JSON_CONTAINS(COALESCE(tecnicos, '[]'), JSON_QUOTE(?))").join(" OR ");
+                const placeholders = tecnicos.map(() => "JSON_CONTAINS(COALESCE(tecnico, '[]'), JSON_QUOTE(?))").join(" OR ");
                 await conn.query(`
                     UPDATE ordens_servico
                     SET proxima_os = 0, proxima_os_definida_por = NULL, proxima_os_definida_em = NULL
@@ -1823,8 +1824,8 @@ router.post(
                 });
             }
 
-            if(!['os_lancada','em_andamento','aberto','agendado'].includes(String(os.status || '').toLowerCase())){
-                return res.status(400).json({ erro: "O check-in não pode ser registrado no status atual da OS." });
+            if(String(os.status || '').toLowerCase() !== 'os_lancada'){
+                return res.status(400).json({ erro: "Somente uma OS lançada pode iniciar a execução pelo check-in." });
             }
 
             await db.query(`
