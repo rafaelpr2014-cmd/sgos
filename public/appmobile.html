@@ -4357,6 +4357,58 @@ function visualizarLocalizacao(){
 /* ================= LOGOUT ================= */
 let logoutAppEmAndamento = false;
 
+async function desativarPushNoLogout(usuarioAtual){
+    const tokenPush = String(localStorage.getItem("push_token_fcm") || "").trim();
+    const deviceId = String(localStorage.getItem("device_id") || "").trim();
+    const plataforma = String(localStorage.getItem("push_plataforma") || getPlataformaApp() || "").trim();
+
+    // Revoga primeiro no SGOS. Isso é o que realmente impede que o backend
+    // continue enviando notificações para o técnico que acabou de sair.
+    if((tokenPush || deviceId) && usuarioAtual?.id){
+        try{
+            const respostaPush = await apiFetch("/api/push/token/logout", {
+                method:"POST",
+                keepalive:true,
+                cache:"no-store",
+                headers:{
+                    "Content-Type":"application/json",
+                    "Accept":"application/json",
+                    "x-usuario-id":String(usuarioAtual.id),
+                    "x-empresa-id":String(usuarioAtual?.empresa_id || "")
+                },
+                body:JSON.stringify({
+                    token_fcm: tokenPush || null,
+                    device_id: deviceId || null,
+                    plataforma: plataforma || null
+                })
+            });
+
+            if(!respostaPush.ok){
+                let detalhe = "";
+                try{ detalhe = await respostaPush.text(); }catch(e){}
+                console.error("Falha ao desativar token push no logout:", respostaPush.status, detalhe);
+            }else{
+                console.log("✅ Token/dispositivo push desativado no logout");
+            }
+        }catch(err){
+            console.error("Erro ao revogar push no backend:", err);
+        }
+    }
+
+    // Também cancela o registro nativo quando o plugin oferece unregister().
+    // No próximo login o app registra novamente e associa o token ao usuário correto.
+    try{
+        const PushNotifications = getPushPlugin();
+        if(PushNotifications && typeof PushNotifications.unregister === "function"){
+            await PushNotifications.unregister();
+            pushRegistrado = false;
+            console.log("✅ Push nativo removido do dispositivo");
+        }
+    }catch(err){
+        console.warn("Não foi possível executar unregister do push nativo:", err);
+    }
+}
+
 async function logout(){
     if(logoutAppEmAndamento) return;
     logoutAppEmAndamento = true;
@@ -4368,17 +4420,17 @@ async function logout(){
         usuarioAtual = JSON.parse(localStorage.getItem("usuario") || "{}");
     }catch(e){}
 
-    // Marca antes da chamada para bloquear restauração de URL antiga.
+    // Marca antes das chamadas para bloquear restauração de URL antiga.
     try{
         localStorage.setItem("sgos_logout_bloqueado", "1");
     }catch(e){}
 
     try{
+        // IMPORTANTE: precisa acontecer antes do localStorage.clear() e antes
+        // de encerrar a sessão, pois a rota de push exige usuário autenticado.
+        await desativarPushNoLogout(usuarioAtual);
+
         if(logId){
-            // No Android/iOS a página roda em uma origem local (WebView/Capacitor).
-            // Usar fetch("/api/logout") enviava a chamada para a origem do aplicativo,
-            // e não para o servidor SGOS. apiFetch resolve a API remota e envia os
-            // cabeçalhos da sessão corretamente.
             const resposta = await apiFetch("/api/logout", {
                 method:"POST",
                 keepalive:true,
@@ -4432,12 +4484,16 @@ async function logout(){
         try{
             const provedor = localStorage.getItem("provedor") || "";
             const apiBase = localStorage.getItem("api_base") || "";
+            // device_id identifica o aparelho, não o usuário. Mantê-lo após o logout
+            // permite que o próximo login também desative vínculos antigos do mesmo aparelho.
+            const deviceIdPersistente = localStorage.getItem("device_id") || "";
 
             localStorage.clear();
             localStorage.setItem("sgos_logout_bloqueado", "1");
 
             if(provedor) localStorage.setItem("provedor", provedor);
             if(apiBase) localStorage.setItem("api_base", apiBase);
+            if(deviceIdPersistente) localStorage.setItem("device_id", deviceIdPersistente);
         }catch(e){}
 
         try{
@@ -4461,7 +4517,6 @@ async function logout(){
             console.warn("Não foi possível limpar sessão nativa", e);
         }
 
-        // Remove qualquer token antigo da URL antes de voltar ao login local.
         try{
             window.history.replaceState(
                 {},
