@@ -22,15 +22,6 @@ module.exports = (db, verificarAutenticacao, io) => {
         require("fs");
 
     // ===============================
-    // ESTRUTURA DA FILA DE OS
-    // ===============================
-    async function garantirEstruturaFilaOS() {
-        await db.query(`ALTER TABLE ordens_servico ADD COLUMN IF NOT EXISTS proxima_os TINYINT(1) NOT NULL DEFAULT 0`);
-        await db.query(`ALTER TABLE ordens_servico ADD COLUMN IF NOT EXISTS proxima_os_definida_por INT NULL`);
-        await db.query(`ALTER TABLE ordens_servico ADD COLUMN IF NOT EXISTS proxima_os_definida_em DATETIME NULL`);
-    }
-
-    // ===============================
     // 📂 BASE UPLOAD (MULTI AMBIENTE)
     // ===============================
     const baseUpload = path.join(__dirname, "../uploads");
@@ -1640,10 +1631,7 @@ router.post(
                 SET
 
                     status = 'os_lancada',
-                    iniciado_em = NULL,
-                    proxima_os = 0,
-                    proxima_os_definida_por = NULL,
-                    proxima_os_definida_em = NULL,
+                    iniciado_em = NOW(),
                     enviado_por = ?
 
                 WHERE id = ?
@@ -1688,10 +1676,12 @@ router.post(
 
             io.emit("os_lancada", {
                 os_id: req.params.id,
-                titulo: "🚀 OS lançada",
-                mensagem: `A OS #${req.params.id} foi lançada para o técnico${os.nome ? " - " + os.nome : ""}`,
+                titulo: "🚀 NOVA OS LANÇADA!",
+                mensagem: `A OS #${req.params.id} foi lançada para atendimento${os.nome ? " - " + os.nome : ""}`,
                 cliente: os.nome || ""
             });
+
+            await enviarPushOSAndamento(req, req.params.id);
 
             res.json({
                 ok: true
@@ -1710,82 +1700,6 @@ router.post(
         }
     }
 );
-
-
-    // ===============================
-    // ⭐ DEFINIR PRÓXIMA OS
-    // ===============================
-    router.post("/proxima-fila/:id", verificarAutenticacao, async (req, res) => {
-        const conn = await db.getConnection();
-        try {
-            await garantirEstruturaFilaOS();
-            await conn.beginTransaction();
-
-            const [rows] = await conn.query(`
-                SELECT id, status, tecnico
-                FROM ordens_servico
-                WHERE id = ? AND empresa_id = ?
-                LIMIT 1
-            `, [req.params.id, req.usuario.empresa_id]);
-
-            if (!rows.length) {
-                await conn.rollback();
-                return res.status(404).json({ erro: "OS não encontrada." });
-            }
-
-            const os = rows[0];
-            if (String(os.status || "").toLowerCase() !== "os_lancada") {
-                await conn.rollback();
-                return res.status(400).json({ erro: "Somente uma OS lançada pode ser definida como próxima." });
-            }
-
-            let tecnicos = [];
-            try { tecnicos = Array.isArray(os.tecnico) ? os.tecnico : JSON.parse(os.tecnico || "[]"); } catch (_) {
-                tecnicos = String(os.tecnico || "").split(",").map(v => v.trim()).filter(Boolean);
-            }
-
-            if (tecnicos.length) {
-                const placeholders = tecnicos.map(() => "JSON_CONTAINS(COALESCE(tecnico, '[]'), JSON_QUOTE(?))").join(" OR ");
-                await conn.query(`
-                    UPDATE ordens_servico
-                    SET proxima_os = 0, proxima_os_definida_por = NULL, proxima_os_definida_em = NULL
-                    WHERE empresa_id = ? AND id <> ? AND proxima_os = 1 AND (${placeholders})
-                `, [req.usuario.empresa_id, req.params.id, ...tecnicos.map(String)]);
-            }
-
-            await conn.query(`
-                UPDATE ordens_servico
-                SET proxima_os = 1, proxima_os_definida_por = ?, proxima_os_definida_em = NOW()
-                WHERE id = ? AND empresa_id = ?
-            `, [req.usuario.id, req.params.id, req.usuario.empresa_id]);
-
-            await conn.commit();
-            if (io) io.to(`empresa_${req.usuario.empresa_id}`).emit("ordens_atualizadas");
-            res.json({ ok: true, mensagem: "Próxima OS definida." });
-        } catch (err) {
-            try { await conn.rollback(); } catch (_) {}
-            console.error("ERRO DEFINIR PRÓXIMA OS:", err);
-            res.status(500).json({ erro: err.message || "Erro ao definir próxima OS." });
-        } finally {
-            conn.release();
-        }
-    });
-
-    router.post("/remover-proxima-fila/:id", verificarAutenticacao, async (req, res) => {
-        try {
-            await garantirEstruturaFilaOS();
-            await db.query(`
-                UPDATE ordens_servico
-                SET proxima_os = 0, proxima_os_definida_por = NULL, proxima_os_definida_em = NULL
-                WHERE id = ? AND empresa_id = ?
-            `, [req.params.id, req.usuario.empresa_id]);
-            if (io) io.to(`empresa_${req.usuario.empresa_id}`).emit("ordens_atualizadas");
-            res.json({ ok: true, mensagem: "OS removida da próxima fila." });
-        } catch (err) {
-            console.error("ERRO REMOVER PRÓXIMA OS:", err);
-            res.status(500).json({ erro: err.message || "Erro ao remover próxima OS." });
-        }
-    });
 
 // ===============================
 // 📍 CHECK-IN DE CHEGADA
@@ -1824,18 +1738,13 @@ router.post(
                 });
             }
 
-            if(String(os.status || '').toLowerCase() !== 'os_lancada'){
-                return res.status(400).json({ erro: "Somente uma OS lançada pode iniciar a execução pelo check-in." });
+            if(!['em_andamento','aberto','agendado'].includes(String(os.status || '').toLowerCase())){
+                return res.status(400).json({ erro: "O check-in não pode ser registrado no status atual da OS." });
             }
 
             await db.query(`
                 UPDATE ordens_servico
-                SET status = 'em_andamento',
-                    iniciado_em = COALESCE(iniciado_em, NOW()),
-                    proxima_os = 0,
-                    proxima_os_definida_por = NULL,
-                    proxima_os_definida_em = NULL,
-                    checkin_inicio_em = NOW(),
+                SET checkin_inicio_em = NOW(),
                     checkin_inicio_latitude = ?,
                     checkin_inicio_longitude = ?,
                     checkin_inicio_precisao = ?,
@@ -2715,7 +2624,7 @@ router.put(
         // ===============================
         // 🔒 REGRA TÉCNICO OBRIGATÓRIO
         // ===============================
-        if(statusFinal === "em_andamento" && !possuiTecnicoObrigatorio(tecnico)){
+        if((statusFinal === "os_lancada" || statusFinal === "em_andamento") && !possuiTecnicoObrigatorio(tecnico)){
             return res.status(400).json({
                 erro: "Selecione pelo menos um técnico para poder lançar OS."
             });
@@ -2851,12 +2760,13 @@ router.put(
         // ===============================
         io.emit("os_update");
 
-        // 🔔 FORÇA NOTIFICAÇÃO QUANDO A OS FOR ENVIADA PARA ANDAMENTO VIA EDIÇÃO/STATUS
-        if (statusFinal === "em_andamento") {
-            io.emit("os_andamento", {
+        // 🔔 NOTIFICA SOMENTE QUANDO A OS É LANÇADA PARA O TÉCNICO.
+        // O check-in muda para em_andamento, mas não deve gerar um segundo push de nova OS.
+        if (statusFinal === "os_lancada") {
+            io.emit("os_lancada", {
                 os_id: req.params.id,
-                titulo: "🚀 OS em andamento",
-                mensagem: `A OS #${req.params.id} entrou em andamento${nome ? " - " + nome : ""}`,
+                titulo: "🚀 NOVA OS LANÇADA!",
+                mensagem: `A OS #${req.params.id} foi lançada para atendimento${nome ? " - " + nome : ""}`,
                 cliente: nome || ""
             });
 
@@ -2920,7 +2830,7 @@ router.post(
                 UPDATE ordens_servico
                 SET
 
-                    status = 'em_andamento',
+                    status = 'os_lancada',
                     agendamento = NULL,
                     iniciado_em = NOW()
 
@@ -2938,15 +2848,15 @@ await logService.registrarLog(
     "LANÇOU AGENDAMENTO",
     "OS",
     req.params.id,
-    "OS enviada para andamento"
+    "OS lançada para o técnico"
 );
 
             io.emit("os_update");
 
-            io.emit("os_andamento", {
+            io.emit("os_lancada", {
                 os_id: req.params.id,
-                titulo: "🚀 Agendamento em andamento",
-                mensagem: `A OS agendada #${req.params.id} entrou em andamento`
+                titulo: "🚀 NOVA OS LANÇADA!",
+                mensagem: `A OS agendada #${req.params.id} foi lançada para atendimento`
             });
 
             await enviarPushOSAndamento(req, req.params.id);
