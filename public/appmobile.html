@@ -2728,15 +2728,10 @@ body{
 </style>
 
 
-<style id="sgos-nao-abrir-resumo-auto">
+<style id="sgos-fix-popup-anexo-video-20260808">
 .os.os-destaque-push{
     outline:3px solid rgba(255,255,255,.95) !important;
-    box-shadow:0 0 0 6px rgba(7,92,246,.22),0 12px 32px rgba(2,37,109,.24) !important;
-    animation:sgosPulsoPush .75s ease-in-out 2;
-}
-@keyframes sgosPulsoPush{
-    0%,100%{transform:scale(1)}
-    50%{transform:scale(1.012)}
+    box-shadow:0 0 0 6px rgba(7,92,246,.24),0 12px 28px rgba(2,37,109,.22) !important;
 }
 </style>
 
@@ -5064,10 +5059,9 @@ async function silenciarNotificacoesManual(){
 }
 
 function abrirOSDaNotificacaoSeExistir(){
-    // Regra SGOS:
-    // notificação/push pode levar o técnico até a lista correta,
-    // mas o RESUMO DA OS só abre quando o usuário tocar no card.
-    if(abrirOSDaNotificacaoSeExistir._consumido) return;
+    // REGRA SGOS: push/notificação nunca abre o resumo automaticamente.
+    // O resumo só pode abrir após toque/clique explícito do usuário no card.
+    if(abrirOSDaNotificacaoSeExistir._processado) return;
 
     const idNotificacao = osPushId || localStorage.getItem("abrir_os_push");
     if(!idNotificacao || !OS.length) return;
@@ -5079,32 +5073,39 @@ function abrirOSDaNotificacaoSeExistir(){
 
     if(!os) return;
 
-    abrirOSDaNotificacaoSeExistir._consumido = true;
+    abrirOSDaNotificacaoSeExistir._processado = true;
     localStorage.removeItem("abrir_os_push");
 
-    // Remove os parâmetros de abertura da URL para que load()/socket não
-    // voltem a processar a mesma OS.
+    // Limpa parâmetros para impedir reprocessamento a cada load/socket.
     try{
         const url = new URL(window.location.href);
-        url.searchParams.delete("os_id");
-        url.searchParams.delete("os");
-        url.searchParams.delete("id_os");
-        window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ""));
+        ["os_id","os","id_os"].forEach(p => url.searchParams.delete(p));
+        window.history.replaceState(
+            {},
+            document.title,
+            url.pathname + (url.search ? url.search : "")
+        );
     }catch(_){}
 
     tab = "andamento";
     render();
 
-    // Apenas leva visualmente ao card. NÃO abre o modal.
     setTimeout(() => {
-        const chave = chaveOS(os);
-        const card = document.querySelector(`.os[data-os-chave="${CSS.escape(String(chave))}"]`);
-        if(card){
-            card.classList.add("os-destaque-push");
-            card.scrollIntoView({behavior:"smooth", block:"center"});
-            setTimeout(() => card.classList.remove("os-destaque-push"), 2200);
-        }
-    }, 250);
+        try{
+            const chave = String(chaveOS(os));
+            const cards = [...document.querySelectorAll(".os[data-os-chave], .os")];
+            const card = cards.find(el =>
+                String(el.getAttribute("data-os-chave") || "") === chave ||
+                String(el.getAttribute("onclick") || "").includes(`'${chave}'`)
+            );
+
+            if(card){
+                card.classList.add("os-destaque-push");
+                card.scrollIntoView({behavior:"smooth",block:"center"});
+                setTimeout(()=>card.classList.remove("os-destaque-push"),2200);
+            }
+        }catch(_){}
+    },250);
 }
 
 
@@ -5986,6 +5987,16 @@ function arquivoSelecionado(input){
         return;
     }
 
+    const tipoArquivoSelecionado = String(arquivo.type || "").toLowerCase();
+    if(tipoArquivoSelecionado.startsWith("video/")){
+        const mb = (arquivo.size / 1024 / 1024).toFixed(1);
+        if(info){
+            info.textContent = window.ultimaLocalizacaoMidia
+                ? `Vídeo selecionado + GPS registrado • ${mb} MB`
+                : `Vídeo selecionado • ${mb} MB`;
+        }
+    }
+
     const tipo = String(arquivo.type || "").toLowerCase();
     const ehVideo = tipo.startsWith("video/");
     const limite = ehVideo ? 30 * 1024 * 1024 : 20 * 1024 * 1024;
@@ -6006,362 +6017,35 @@ function arquivoSelecionado(input){
     }
 }
 
-function coordenadaParaDMS(valor, eixo){
-    const numero = Number(valor);
-    if(!Number.isFinite(numero)) return "-";
-
-    const abs = Math.abs(numero);
-    const graus = Math.floor(abs);
-    const minutosDec = (abs - graus) * 60;
-    const minutos = Math.floor(minutosDec);
-    const segundos = (minutosDec - minutos) * 60;
-
-    const hemi = eixo === "lat"
-        ? (numero >= 0 ? "N" : "S")
-        : (numero >= 0 ? "E" : "W");
-
-    return `${graus}°${String(minutos).padStart(2,"0")}'${segundos.toFixed(1).padStart(4,"0")}"${hemi}`;
-}
-
-function limitarTextoCanvas(ctx, texto, larguraMax){
-    const valor = String(texto || "").trim();
-    if(!valor) return "";
-    if(ctx.measureText(valor).width <= larguraMax) return valor;
-
-    let saida = valor;
-    while(saida.length > 3 && ctx.measureText(saida + "…").width > larguraMax){
-        saida = saida.slice(0,-1);
-    }
-    return saida + "…";
-}
-
-function quebrarTextoCanvas(ctx, texto, larguraMax, maxLinhas=2){
-    const palavras = String(texto || "").trim().split(/\s+/).filter(Boolean);
-    if(!palavras.length) return [];
-
-    const linhas = [];
-    let atual = "";
-
-    for(const palavra of palavras){
-        const teste = atual ? `${atual} ${palavra}` : palavra;
-        if(ctx.measureText(teste).width <= larguraMax){
-            atual = teste;
-        }else{
-            if(atual) linhas.push(atual);
-            atual = palavra;
-            if(linhas.length >= maxLinhas - 1) break;
-        }
-    }
-
-    if(atual && linhas.length < maxLinhas) linhas.push(atual);
-
-    const consumido = linhas.join(" ").split(/\s+/).length;
-    if(consumido < palavras.length && linhas.length){
-        linhas[linhas.length-1] = limitarTextoCanvas(
-            ctx,
-            linhas[linhas.length-1] + " " + palavras.slice(consumido).join(" "),
-            larguraMax
-        );
-    }
-
-    return linhas.slice(0,maxLinhas);
-}
-
-async function obterEnderecoGPS(latitude, longitude){
-    const controller = new AbortController();
-    const timeout = setTimeout(()=>controller.abort(), 7000);
-
-    try{
-        const url =
-            `https://nominatim.openstreetmap.org/reverse?format=jsonv2` +
-            `&lat=${encodeURIComponent(latitude)}` +
-            `&lon=${encodeURIComponent(longitude)}` +
-            `&zoom=18&addressdetails=1&accept-language=pt-BR`;
-
-        const res = await fetch(url, {
-            headers:{"Accept":"application/json"},
-            signal:controller.signal,
-            cache:"no-store"
-        });
-
-        if(!res.ok) throw new Error(`Geocodificação HTTP ${res.status}`);
-
-        const dados = await res.json();
-        const a = dados?.address || {};
-
-        const rua = a.road || a.pedestrian || a.residential || a.footway || a.path || "";
-        const numero = a.house_number || "";
-        const bairro = a.suburb || a.neighbourhood || a.quarter || a.city_district || "";
-        const cidade = a.city || a.town || a.village || a.municipality || a.county || "";
-        const estado = a.state || "";
-        const uf = a["ISO3166-2-lvl4"] ? String(a["ISO3166-2-lvl4"]).split("-").pop() : "";
-        const cep = a.postcode || "";
-
-        const linhaEndereco = [
-            [rua, numero].filter(Boolean).join(", "),
-            bairro
-        ].filter(Boolean).join(" • ");
-
-        return {
-            endereco: linhaEndereco || dados?.display_name || "",
-            cidade,
-            estado,
-            uf,
-            cep,
-            display_name:dados?.display_name || ""
-        };
-    }catch(err){
-        console.warn("Geocodificação reversa indisponível:", err);
-        return null;
-    }finally{
-        clearTimeout(timeout);
-    }
-}
-
-async function gerarMiniMapaOSM(latitude, longitude, zoom=16, largura=520, altura=360){
-    try{
-        const tileSize = 256;
-        const n = Math.pow(2, zoom);
-        const latRad = latitude * Math.PI / 180;
-
-        const worldX = ((longitude + 180) / 360) * n * tileSize;
-        const worldY = (
-            (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2
-        ) * n * tileSize;
-
-        const esquerda = worldX - largura / 2;
-        const topo = worldY - altura / 2;
-
-        const xInicio = Math.floor(esquerda / tileSize);
-        const yInicio = Math.floor(topo / tileSize);
-        const xFim = Math.floor((esquerda + largura) / tileSize);
-        const yFim = Math.floor((topo + altura) / tileSize);
-
-        const canvas = document.createElement("canvas");
-        canvas.width = largura;
-        canvas.height = altura;
-        const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#e5e7eb";
-        ctx.fillRect(0,0,largura,altura);
-
-        const tarefas = [];
-
-        for(let x=xInicio; x<=xFim; x++){
-            for(let y=yInicio; y<=yFim; y++){
-                if(y < 0 || y >= n) continue;
-                const xNorm = ((x % n) + n) % n;
-                tarefas.push((async()=>{
-                    const controller = new AbortController();
-                    const timeout = setTimeout(()=>controller.abort(), 7000);
-                    try{
-                        const res = await fetch(
-                            `https://tile.openstreetmap.org/${zoom}/${xNorm}/${y}.png`,
-                            {signal:controller.signal, mode:"cors", cache:"force-cache"}
-                        );
-                        if(!res.ok) return;
-                        const blob = await res.blob();
-                        const bmp = await createImageBitmap(blob);
-                        const dx = x * tileSize - esquerda;
-                        const dy = y * tileSize - topo;
-                        ctx.drawImage(bmp, dx, dy, tileSize, tileSize);
-                        bmp.close?.();
-                    }catch(_){}
-                    finally{ clearTimeout(timeout); }
-                })());
-            }
-        }
-
-        await Promise.all(tarefas);
-
-        // Marcador central
-        const px = largura / 2;
-        const py = altura / 2;
-        ctx.save();
-        ctx.shadowColor = "rgba(0,0,0,.35)";
-        ctx.shadowBlur = 8;
-        ctx.fillStyle = "#dc2626";
-        ctx.beginPath();
-        ctx.arc(px, py - 9, 17, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(px - 10, py + 1);
-        ctx.lineTo(px, py + 22);
-        ctx.lineTo(px + 10, py + 1);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = "#fff";
-        ctx.beginPath();
-        ctx.arc(px, py - 9, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-
-        // atribuição OSM
-        ctx.font = "600 12px Arial";
-        const atrib = "© OpenStreetMap";
-        const w = ctx.measureText(atrib).width + 12;
-        ctx.fillStyle = "rgba(255,255,255,.82)";
-        ctx.fillRect(largura-w-4, altura-22, w, 18);
-        ctx.fillStyle = "#334155";
-        ctx.fillText(atrib, largura-w+2, altura-9);
-
-        return canvas;
-    }catch(err){
-        console.warn("Mini mapa indisponível:", err);
-        return null;
-    }
-}
-
 async function obterCarimboLocalizacao(){
     const pos = await obterPosicaoAtual();
     const agora = new Date();
-
-    const [geo, mapa] = await Promise.all([
-        obterEnderecoGPS(pos.latitude, pos.longitude),
-        gerarMiniMapaOSM(pos.latitude, pos.longitude).catch(()=>null)
-    ]);
-
-    const osAtual = encontrarOS(osSelecionada);
-    const enderecoOS = osAtual && osAtual._tipo !== "avulsa"
-        ? enderecoNormal(osAtual)
-        : "";
-
-    const empresaNome = String(
-        user?.empresa_nome ||
-        document.getElementById("nomeEmpresa")?.textContent ||
-        "SGOS"
-    ).trim() || "SGOS";
-
     return {
         ...pos,
-        dataHora: agora.toLocaleString("pt-BR", {
-            day:"2-digit",
-            month:"2-digit",
-            year:"numeric",
-            hour:"2-digit",
-            minute:"2-digit",
-            second:"2-digit",
-            hour12:false
-        }),
-        latitudeDMS:coordenadaParaDMS(pos.latitude,"lat"),
-        longitudeDMS:coordenadaParaDMS(pos.longitude,"lon"),
-        endereco:geo?.endereco || enderecoOS || "",
-        cidade:geo?.cidade || osAtual?.localidade_nome || "",
-        estado:geo?.estado || "",
-        uf:geo?.uf || "",
-        cep:geo?.cep || "",
-        empresaNome,
-        osId:osAtual?.id || "",
-        mapaCanvas:mapa
+        dataHora: agora.toLocaleString("pt-BR", {hour12:false}),
+        texto: `GPS: ${pos.latitude.toFixed(6)}, ${pos.longitude.toFixed(6)}  •  Precisão: ${Math.round(pos.precisao || 0)} m  •  ${agora.toLocaleString("pt-BR", {hour12:false})}`
     };
 }
 
 function desenharCarimboGPS(ctx, largura, altura, carimbo){
-    const margem = Math.max(14, Math.round(largura * .012));
-    const alturaPainel = Math.max(230, Math.round(altura * .30));
-    const y = altura - alturaPainel;
-
+    const margem = Math.max(18, Math.round(largura * .018));
+    const fonte = Math.max(20, Math.round(largura * .022));
+    const linha = Math.round(fonte * 1.35);
+    const texto1 = `SGOS • ${carimbo.dataHora}`;
+    const texto2 = `${carimbo.latitude.toFixed(6)}, ${carimbo.longitude.toFixed(6)} • precisão ${Math.round(carimbo.precisao || 0)} m`;
     ctx.save();
-
-    // Painel principal no rodapé
-    const grad = ctx.createLinearGradient(0,y,0,altura);
-    grad.addColorStop(0,"rgba(4,18,38,.78)");
-    grad.addColorStop(1,"rgba(4,18,38,.92)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0,y,largura,alturaPainel);
-
-    const mapW = carimbo.mapaCanvas
-        ? Math.min(Math.round(largura * .35), Math.round(alturaPainel * 1.38))
-        : 0;
-
-    if(carimbo.mapaCanvas && mapW > 0){
-        const mapH = alturaPainel - margem * 2;
-        ctx.save();
-        ctx.beginPath();
-        ctx.roundRect?.(margem, y+margem, mapW, mapH, Math.max(10,margem*.6));
-        if(ctx.roundRect) ctx.clip();
-        ctx.drawImage(carimbo.mapaCanvas, margem, y+margem, mapW, mapH);
-        ctx.restore();
-
-        ctx.strokeStyle = "rgba(255,255,255,.55)";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(margem, y+margem, mapW, mapH);
-    }
-
-    const xTexto = mapW > 0 ? margem*2 + mapW : margem*1.4;
-    const larguraTexto = largura - xTexto - margem*1.3;
-
-    const fTitulo = Math.max(22, Math.round(largura * .021));
-    const fNormal = Math.max(17, Math.round(largura * .016));
-    const fPeq = Math.max(14, Math.round(largura * .0135));
-
-    let ty = y + margem + 2;
-
+    ctx.font = `700 ${fonte}px Arial`;
+    const larguraBox = Math.min(largura - margem * 2, Math.max(ctx.measureText(texto1).width, ctx.measureText(texto2).width) + margem * 2);
+    const alturaBox = linha * 2 + margem;
+    const x = margem;
+    const y = altura - alturaBox - margem;
+    ctx.fillStyle = "rgba(0,0,0,.68)";
+    ctx.fillRect(x, y, larguraBox, alturaBox);
+    ctx.fillStyle = "#fff";
     ctx.textBaseline = "top";
-    ctx.fillStyle = "#fff";
-    ctx.font = `800 ${fTitulo}px Arial`;
-    ctx.fillText(
-        limitarTextoCanvas(ctx, `📍 ${carimbo.dataHora}`, larguraTexto),
-        xTexto, ty
-    );
-    ty += Math.round(fTitulo * 1.35);
-
-    ctx.font = `800 ${fNormal}px Arial`;
-    ctx.fillStyle = "#f8fafc";
-    const coord = `${carimbo.latitudeDMS}  ${carimbo.longitudeDMS}`;
-    ctx.fillText(limitarTextoCanvas(ctx, coord, larguraTexto), xTexto, ty);
-    ty += Math.round(fNormal * 1.42);
-
-    ctx.font = `700 ${fPeq}px Arial`;
-    ctx.fillStyle = "#bfdbfe";
-    ctx.fillText(
-        limitarTextoCanvas(
-            ctx,
-            `GPS decimal: ${carimbo.latitude.toFixed(6)}, ${carimbo.longitude.toFixed(6)}  •  precisão ±${Math.round(carimbo.precisao || 0)} m`,
-            larguraTexto
-        ),
-        xTexto, ty
-    );
-    ty += Math.round(fPeq * 1.45);
-
-    ctx.font = `800 ${fNormal}px Arial`;
-    ctx.fillStyle = "#fff";
-    const enderecoLinhas = quebrarTextoCanvas(
-        ctx,
-        carimbo.endereco || "Endereço não identificado",
-        larguraTexto,
-        2
-    );
-    enderecoLinhas.forEach(l=>{
-        ctx.fillText(l,xTexto,ty);
-        ty += Math.round(fNormal*1.25);
-    });
-
-    const cidadeEstado = [
-        carimbo.cidade,
-        carimbo.uf || carimbo.estado,
-        carimbo.cep ? `CEP ${carimbo.cep}` : ""
-    ].filter(Boolean).join(" • ");
-
-    if(cidadeEstado){
-        ctx.font = `700 ${fPeq}px Arial`;
-        ctx.fillStyle = "#dbeafe";
-        ctx.fillText(limitarTextoCanvas(ctx,cidadeEstado,larguraTexto),xTexto,ty);
-        ty += Math.round(fPeq*1.45);
-    }
-
-    const rodape = [
-        carimbo.osId ? `OS #${carimbo.osId}` : "",
-        carimbo.empresaNome || "SGOS"
-    ].filter(Boolean).join("  •  ");
-
-    ctx.font = `900 ${fNormal}px Arial`;
-    ctx.fillStyle = "#fff";
-    ctx.fillText(
-        limitarTextoCanvas(ctx, rodape, larguraTexto),
-        xTexto,
-        Math.min(altura - margem - fNormal, ty + Math.round(fPeq*.25))
-    );
-
+    ctx.fillText(texto1, x + margem, y + margem / 2);
+    ctx.font = `600 ${Math.round(fonte * .86)}px Arial`;
+    ctx.fillText(texto2, x + margem, y + margem / 2 + linha);
     ctx.restore();
 }
 
@@ -6473,66 +6157,48 @@ async function prepararArquivoParaEnvio(){
 }
 
 async function gravarVideoComLocalizacao(){
-    if(!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder){
-        alert("Este aparelho não suporta gravação de vídeo com carimbo GPS pelo navegador.");
+    const input = document.getElementById("foto");
+    const info = document.getElementById("arquivoSelecionadoInfo");
+
+    if(!input){
+        alert("Campo de vídeo não encontrado.");
         return;
     }
 
-    let stream = null;
+    arquivoFotoPreparado = null;
+
+    // Captura GPS antes de abrir a câmera. Não impede a gravação se o GPS falhar.
     try{
-        const carimbo = await obterCarimboLocalizacao();
-        window.ultimaLocalizacaoMidia = carimbo;
-        stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:true});
+        if(info) info.textContent = "Obtendo localização para o vídeo...";
+        const pos = await obterPosicaoAtual();
 
-        const camada = document.createElement("div");
-        camada.style.cssText = "position:fixed;inset:0;z-index:20000;background:#000;display:flex;flex-direction:column";
-        camada.innerHTML = `<video playsinline muted style="flex:1;width:100%;object-fit:contain"></video><div style="display:flex;gap:10px;padding:14px;background:#07152c"><button id="pararVideoGps" style="flex:1;padding:14px;border:0;border-radius:14px;background:#ef4444;color:#fff;font-weight:900">■ Finalizar vídeo</button><button id="cancelarVideoGps" style="padding:14px;border:0;border-radius:14px;background:#64748b;color:#fff;font-weight:900">Cancelar</button></div>`;
-        document.body.appendChild(camada);
-        const video = camada.querySelector("video");
-        video.srcObject = stream;
-        await video.play();
-
-        const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth || 1280;
-        canvas.height = video.videoHeight || 720;
-        const ctx = canvas.getContext("2d");
-        let ativo = true;
-        const desenhar = ()=>{
-            if(!ativo) return;
-            ctx.drawImage(video,0,0,canvas.width,canvas.height);
-            desenharCarimboGPS(ctx,canvas.width,canvas.height,{...carimbo,dataHora:new Date().toLocaleString("pt-BR",{hour12:false})});
-            requestAnimationFrame(desenhar);
-        };
-        desenhar();
-
-        const saida = canvas.captureStream(30);
-        stream.getAudioTracks().forEach(t=>saida.addTrack(t));
-        const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus") ? "video/webm;codecs=vp8,opus" : "video/webm";
-        const recorder = new MediaRecorder(saida,{mimeType:mime,videoBitsPerSecond:2500000});
-        const partes=[];
-        recorder.ondataavailable=e=>{if(e.data?.size) partes.push(e.data)};
-        recorder.start(1000);
-
-        const finalizar = cancelar => new Promise(resolve=>{
-            const concluir=()=>{ativo=false;stream.getTracks().forEach(t=>t.stop());saida.getTracks().forEach(t=>t.stop());camada.remove();resolve()};
-            if(cancelar){recorder.onstop=concluir;recorder.stop();partes.length=0;}
-            else{recorder.onstop=concluir;recorder.stop();}
-        });
-        camada.querySelector("#cancelarVideoGps").onclick=()=>finalizar(true);
-        camada.querySelector("#pararVideoGps").onclick=async()=>{
-            await finalizar(false);
-            if(!partes.length) return;
-            const blob=new Blob(partes,{type:"video/webm"});
-            if(blob.size>30*1024*1024){alert("O vídeo ultrapassou 30 MB. Grave um vídeo menor.");return;}
-            arquivoFotoPreparado=new File([blob],`video-gps-${Date.now()}.webm`,{type:"video/webm",lastModified:Date.now()});
-            const info=document.getElementById("arquivoSelecionadoInfo");
-            if(info) info.textContent=`Vídeo com GPS: ${arquivoFotoPreparado.name} • ${(blob.size/1024/1024).toFixed(1)} MB`;
+        window.ultimaLocalizacaoMidia = {
+            latitude:pos.latitude,
+            longitude:pos.longitude,
+            precisao:pos.precisao,
+            dataHora:new Date().toLocaleString("pt-BR",{hour12:false})
         };
     }catch(err){
-        stream?.getTracks?.().forEach(t=>t.stop());
-        console.error(err);
-        alert(err.message || "Não foi possível gravar o vídeo com localização.");
+        console.warn("GPS do vídeo indisponível:", err);
+        window.ultimaLocalizacaoMidia = null;
     }
+
+    /*
+     * Usa a câmera/gravador NATIVO do Android/iOS.
+     * Evita canvas.captureStream + MediaRecorder dentro do WebView,
+     * que consome muita memória e pode encerrar o app no iPhone.
+     */
+    input.accept = "video/*";
+    input.setAttribute("capture","environment");
+    input.value = "";
+
+    if(info){
+        info.textContent = window.ultimaLocalizacaoMidia
+            ? "GPS registrado. Grave o vídeo pela câmera do aparelho."
+            : "Grave o vídeo pela câmera do aparelho.";
+    }
+
+    input.click();
 }
 
 const abrirModalBase = abrirModal;
@@ -6931,8 +6597,10 @@ function abrirReagendamento(){
     if(!osAtual){ alert("OS não encontrada"); return; }
     if(osAtual._tipo === "avulsa"){ alert("Reagendamento disponível somente para OS de clientes."); return; }
 
-    // O resumo da OS não permanece aberto durante uma ação.
-    fecharModal();
+    // Fecha somente o resumo principal; osSelecionada continua disponível
+    // para o modal de reagendamento.
+    const modalResumo = document.getElementById("modal");
+    if(modalResumo) modalResumo.style.display = "none";
     const campoData = document.getElementById("novaDataReagendamento");
     const agora = new Date();
     agora.setMinutes(agora.getMinutes() + 30);
@@ -7005,7 +6673,6 @@ async function enviarAcao(tipo, botao){
 
     if(osAtual._tipo === "avulsa"){
         if(tipo !== "concluir"){ alert("Para OS Avulsa, use apenas Concluir."); return; }
-        fecharModal();
         bloquearBotao(botao, true);
         try{
             const res = await apiFetch(`/api/os-avulsas/${osAtual.id}/status`,{
@@ -7028,11 +6695,13 @@ async function enviarAcao(tipo, botao){
     };
     if(!rotas[tipo]) return;
 
-    // Cliente ausente e inviabilidade não precisam de confirmação adicional:
-    // o resumo fecha assim que o técnico toca na ação.
-    if(tipo === "ausente" || tipo === "inviabilidade"){
-        fecharModal();
-    }
+    // Guarda os dados do resumo ANTES de fechá-lo.
+    // fecharModal() limpa input e arquivoFotoPreparado, então nunca podemos
+    // depender do DOM depois deste ponto.
+    const observacaoDigitadaSnapshot =
+        String(document.getElementById("obs")?.value || "");
+
+    let arquivoAnexoSnapshot = null;
 
     let equipamentoUtilizado = "";
     let observacaoEquipamento = "";
@@ -7045,10 +6714,6 @@ async function enviarAcao(tipo, botao){
             alert("Registre o check-in de chegada antes de concluir a OS.");
             return;
         }
-
-        // A partir daqui a ação é válida: fecha o resumo imediatamente.
-        fecharModal();
-
         try{
             bloquearBotao(botao, true, "Obtendo GPS final...");
             checkinFinal = await obterPosicaoAtual();
@@ -7059,6 +6724,19 @@ async function enviarAcao(tipo, botao){
         }
         bloquearBotao(botao, false);
     }
+
+    // Prepara/copia o arquivo ANTES de fechar o resumo.
+    // Para foto, isso gera o JPEG com carimbo GPS.
+    try{
+        arquivoAnexoSnapshot = await prepararArquivoParaEnvio();
+    }catch(err){
+        alert(err.message || "Não foi possível preparar o anexo.");
+        return;
+    }
+
+    // O resumo deve desaparecer assim que a ação válida foi iniciada,
+    // sem perder o arquivo já copiado para arquivoAnexoSnapshot.
+    fecharModal();
 
     if(tipo === "concluir" && materiaisOSApp(osAtual).length){
         const confirmacaoEquipamento = await abrirConfirmacaoEquipamento();
@@ -7076,7 +6754,7 @@ async function enviarAcao(tipo, botao){
     bloquearBotao(botao,true);
     try{
         const formData = new FormData();
-        const observacaoDigitada = document.getElementById("obs").value || "";
+        const observacaoDigitada = observacaoDigitadaSnapshot;
 
         // Mantém compatibilidade com a rota antiga e envia também o campo
         // específico da coluna correta conforme a ação executada.
@@ -7113,7 +6791,7 @@ async function enviarAcao(tipo, botao){
             }
         }
 
-        const arquivo = await prepararArquivoParaEnvio();
+        const arquivo = arquivoAnexoSnapshot;
         if(window.ultimaLocalizacaoMidia){
             formData.append("midia_latitude", String(window.ultimaLocalizacaoMidia.latitude));
             formData.append("midia_longitude", String(window.ultimaLocalizacaoMidia.longitude));
