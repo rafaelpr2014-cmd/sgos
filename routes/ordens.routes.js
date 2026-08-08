@@ -1753,7 +1753,6 @@ router.post(
                 UPDATE ordens_servico
                 SET status = 'em_andamento',
                     iniciado_em = COALESCE(iniciado_em, NOW()),
-                    iniciado_por = COALESCE(iniciado_por, ?),
                     checkin_inicio_em = NOW(),
                     checkin_inicio_latitude = ?,
                     checkin_inicio_longitude = ?,
@@ -1762,7 +1761,6 @@ router.post(
                     proxima_os = 0
                 WHERE id = ? AND empresa_id = ? AND checkin_inicio_em IS NULL
             `, [
-                req.usuario.id,
                 latitude,
                 longitude,
                 Number.isFinite(precisao) && precisao >= 0 ? precisao : null,
