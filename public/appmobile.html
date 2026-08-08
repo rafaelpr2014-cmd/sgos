@@ -2727,6 +2727,19 @@ body{
 }
 </style>
 
+
+<style id="sgos-nao-abrir-resumo-auto">
+.os.os-destaque-push{
+    outline:3px solid rgba(255,255,255,.95) !important;
+    box-shadow:0 0 0 6px rgba(7,92,246,.22),0 12px 32px rgba(2,37,109,.24) !important;
+    animation:sgosPulsoPush .75s ease-in-out 2;
+}
+@keyframes sgosPulsoPush{
+    0%,100%{transform:scale(1)}
+    50%{transform:scale(1.012)}
+}
+</style>
+
 </head>
 
 <body>
@@ -5051,24 +5064,47 @@ async function silenciarNotificacoesManual(){
 }
 
 function abrirOSDaNotificacaoSeExistir(){
-    const idNotificacao = osPushId || localStorage.getItem("abrir_os_push");
+    // Regra SGOS:
+    // notificação/push pode levar o técnico até a lista correta,
+    // mas o RESUMO DA OS só abre quando o usuário tocar no card.
+    if(abrirOSDaNotificacaoSeExistir._consumido) return;
 
+    const idNotificacao = osPushId || localStorage.getItem("abrir_os_push");
     if(!idNotificacao || !OS.length) return;
 
-    const os = OS.find(o => o._tipo === 'normal' && String(o.id) === String(idNotificacao));
+    const os = OS.find(o =>
+        o._tipo === "normal" &&
+        String(o.id) === String(idNotificacao)
+    );
 
     if(!os) return;
 
+    abrirOSDaNotificacaoSeExistir._consumido = true;
     localStorage.removeItem("abrir_os_push");
+
+    // Remove os parâmetros de abertura da URL para que load()/socket não
+    // voltem a processar a mesma OS.
+    try{
+        const url = new URL(window.location.href);
+        url.searchParams.delete("os_id");
+        url.searchParams.delete("os");
+        url.searchParams.delete("id_os");
+        window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ""));
+    }catch(_){}
 
     tab = "andamento";
     render();
 
+    // Apenas leva visualmente ao card. NÃO abre o modal.
     setTimeout(() => {
-        abrirModal(chaveOS(os));
-        const card = null;
-        if(card) card.scrollIntoView({ behavior:"smooth", block:"center" });
-    }, 300);
+        const chave = chaveOS(os);
+        const card = document.querySelector(`.os[data-os-chave="${CSS.escape(String(chave))}"]`);
+        if(card){
+            card.classList.add("os-destaque-push");
+            card.scrollIntoView({behavior:"smooth", block:"center"});
+            setTimeout(() => card.classList.remove("os-destaque-push"), 2200);
+        }
+    }, 250);
 }
 
 
@@ -5970,35 +6006,362 @@ function arquivoSelecionado(input){
     }
 }
 
+function coordenadaParaDMS(valor, eixo){
+    const numero = Number(valor);
+    if(!Number.isFinite(numero)) return "-";
+
+    const abs = Math.abs(numero);
+    const graus = Math.floor(abs);
+    const minutosDec = (abs - graus) * 60;
+    const minutos = Math.floor(minutosDec);
+    const segundos = (minutosDec - minutos) * 60;
+
+    const hemi = eixo === "lat"
+        ? (numero >= 0 ? "N" : "S")
+        : (numero >= 0 ? "E" : "W");
+
+    return `${graus}°${String(minutos).padStart(2,"0")}'${segundos.toFixed(1).padStart(4,"0")}"${hemi}`;
+}
+
+function limitarTextoCanvas(ctx, texto, larguraMax){
+    const valor = String(texto || "").trim();
+    if(!valor) return "";
+    if(ctx.measureText(valor).width <= larguraMax) return valor;
+
+    let saida = valor;
+    while(saida.length > 3 && ctx.measureText(saida + "…").width > larguraMax){
+        saida = saida.slice(0,-1);
+    }
+    return saida + "…";
+}
+
+function quebrarTextoCanvas(ctx, texto, larguraMax, maxLinhas=2){
+    const palavras = String(texto || "").trim().split(/\s+/).filter(Boolean);
+    if(!palavras.length) return [];
+
+    const linhas = [];
+    let atual = "";
+
+    for(const palavra of palavras){
+        const teste = atual ? `${atual} ${palavra}` : palavra;
+        if(ctx.measureText(teste).width <= larguraMax){
+            atual = teste;
+        }else{
+            if(atual) linhas.push(atual);
+            atual = palavra;
+            if(linhas.length >= maxLinhas - 1) break;
+        }
+    }
+
+    if(atual && linhas.length < maxLinhas) linhas.push(atual);
+
+    const consumido = linhas.join(" ").split(/\s+/).length;
+    if(consumido < palavras.length && linhas.length){
+        linhas[linhas.length-1] = limitarTextoCanvas(
+            ctx,
+            linhas[linhas.length-1] + " " + palavras.slice(consumido).join(" "),
+            larguraMax
+        );
+    }
+
+    return linhas.slice(0,maxLinhas);
+}
+
+async function obterEnderecoGPS(latitude, longitude){
+    const controller = new AbortController();
+    const timeout = setTimeout(()=>controller.abort(), 7000);
+
+    try{
+        const url =
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2` +
+            `&lat=${encodeURIComponent(latitude)}` +
+            `&lon=${encodeURIComponent(longitude)}` +
+            `&zoom=18&addressdetails=1&accept-language=pt-BR`;
+
+        const res = await fetch(url, {
+            headers:{"Accept":"application/json"},
+            signal:controller.signal,
+            cache:"no-store"
+        });
+
+        if(!res.ok) throw new Error(`Geocodificação HTTP ${res.status}`);
+
+        const dados = await res.json();
+        const a = dados?.address || {};
+
+        const rua = a.road || a.pedestrian || a.residential || a.footway || a.path || "";
+        const numero = a.house_number || "";
+        const bairro = a.suburb || a.neighbourhood || a.quarter || a.city_district || "";
+        const cidade = a.city || a.town || a.village || a.municipality || a.county || "";
+        const estado = a.state || "";
+        const uf = a["ISO3166-2-lvl4"] ? String(a["ISO3166-2-lvl4"]).split("-").pop() : "";
+        const cep = a.postcode || "";
+
+        const linhaEndereco = [
+            [rua, numero].filter(Boolean).join(", "),
+            bairro
+        ].filter(Boolean).join(" • ");
+
+        return {
+            endereco: linhaEndereco || dados?.display_name || "",
+            cidade,
+            estado,
+            uf,
+            cep,
+            display_name:dados?.display_name || ""
+        };
+    }catch(err){
+        console.warn("Geocodificação reversa indisponível:", err);
+        return null;
+    }finally{
+        clearTimeout(timeout);
+    }
+}
+
+async function gerarMiniMapaOSM(latitude, longitude, zoom=16, largura=520, altura=360){
+    try{
+        const tileSize = 256;
+        const n = Math.pow(2, zoom);
+        const latRad = latitude * Math.PI / 180;
+
+        const worldX = ((longitude + 180) / 360) * n * tileSize;
+        const worldY = (
+            (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2
+        ) * n * tileSize;
+
+        const esquerda = worldX - largura / 2;
+        const topo = worldY - altura / 2;
+
+        const xInicio = Math.floor(esquerda / tileSize);
+        const yInicio = Math.floor(topo / tileSize);
+        const xFim = Math.floor((esquerda + largura) / tileSize);
+        const yFim = Math.floor((topo + altura) / tileSize);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = largura;
+        canvas.height = altura;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#e5e7eb";
+        ctx.fillRect(0,0,largura,altura);
+
+        const tarefas = [];
+
+        for(let x=xInicio; x<=xFim; x++){
+            for(let y=yInicio; y<=yFim; y++){
+                if(y < 0 || y >= n) continue;
+                const xNorm = ((x % n) + n) % n;
+                tarefas.push((async()=>{
+                    const controller = new AbortController();
+                    const timeout = setTimeout(()=>controller.abort(), 7000);
+                    try{
+                        const res = await fetch(
+                            `https://tile.openstreetmap.org/${zoom}/${xNorm}/${y}.png`,
+                            {signal:controller.signal, mode:"cors", cache:"force-cache"}
+                        );
+                        if(!res.ok) return;
+                        const blob = await res.blob();
+                        const bmp = await createImageBitmap(blob);
+                        const dx = x * tileSize - esquerda;
+                        const dy = y * tileSize - topo;
+                        ctx.drawImage(bmp, dx, dy, tileSize, tileSize);
+                        bmp.close?.();
+                    }catch(_){}
+                    finally{ clearTimeout(timeout); }
+                })());
+            }
+        }
+
+        await Promise.all(tarefas);
+
+        // Marcador central
+        const px = largura / 2;
+        const py = altura / 2;
+        ctx.save();
+        ctx.shadowColor = "rgba(0,0,0,.35)";
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = "#dc2626";
+        ctx.beginPath();
+        ctx.arc(px, py - 9, 17, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(px - 10, py + 1);
+        ctx.lineTo(px, py + 22);
+        ctx.lineTo(px + 10, py + 1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(px, py - 9, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // atribuição OSM
+        ctx.font = "600 12px Arial";
+        const atrib = "© OpenStreetMap";
+        const w = ctx.measureText(atrib).width + 12;
+        ctx.fillStyle = "rgba(255,255,255,.82)";
+        ctx.fillRect(largura-w-4, altura-22, w, 18);
+        ctx.fillStyle = "#334155";
+        ctx.fillText(atrib, largura-w+2, altura-9);
+
+        return canvas;
+    }catch(err){
+        console.warn("Mini mapa indisponível:", err);
+        return null;
+    }
+}
+
 async function obterCarimboLocalizacao(){
     const pos = await obterPosicaoAtual();
     const agora = new Date();
+
+    const [geo, mapa] = await Promise.all([
+        obterEnderecoGPS(pos.latitude, pos.longitude),
+        gerarMiniMapaOSM(pos.latitude, pos.longitude).catch(()=>null)
+    ]);
+
+    const osAtual = encontrarOS(osSelecionada);
+    const enderecoOS = osAtual && osAtual._tipo !== "avulsa"
+        ? enderecoNormal(osAtual)
+        : "";
+
+    const empresaNome = String(
+        user?.empresa_nome ||
+        document.getElementById("nomeEmpresa")?.textContent ||
+        "SGOS"
+    ).trim() || "SGOS";
+
     return {
         ...pos,
-        dataHora: agora.toLocaleString("pt-BR", {hour12:false}),
-        texto: `GPS: ${pos.latitude.toFixed(6)}, ${pos.longitude.toFixed(6)}  •  Precisão: ${Math.round(pos.precisao || 0)} m  •  ${agora.toLocaleString("pt-BR", {hour12:false})}`
+        dataHora: agora.toLocaleString("pt-BR", {
+            day:"2-digit",
+            month:"2-digit",
+            year:"numeric",
+            hour:"2-digit",
+            minute:"2-digit",
+            second:"2-digit",
+            hour12:false
+        }),
+        latitudeDMS:coordenadaParaDMS(pos.latitude,"lat"),
+        longitudeDMS:coordenadaParaDMS(pos.longitude,"lon"),
+        endereco:geo?.endereco || enderecoOS || "",
+        cidade:geo?.cidade || osAtual?.localidade_nome || "",
+        estado:geo?.estado || "",
+        uf:geo?.uf || "",
+        cep:geo?.cep || "",
+        empresaNome,
+        osId:osAtual?.id || "",
+        mapaCanvas:mapa
     };
 }
 
 function desenharCarimboGPS(ctx, largura, altura, carimbo){
-    const margem = Math.max(18, Math.round(largura * .018));
-    const fonte = Math.max(20, Math.round(largura * .022));
-    const linha = Math.round(fonte * 1.35);
-    const texto1 = `SGOS • ${carimbo.dataHora}`;
-    const texto2 = `${carimbo.latitude.toFixed(6)}, ${carimbo.longitude.toFixed(6)} • precisão ${Math.round(carimbo.precisao || 0)} m`;
+    const margem = Math.max(14, Math.round(largura * .012));
+    const alturaPainel = Math.max(230, Math.round(altura * .30));
+    const y = altura - alturaPainel;
+
     ctx.save();
-    ctx.font = `700 ${fonte}px Arial`;
-    const larguraBox = Math.min(largura - margem * 2, Math.max(ctx.measureText(texto1).width, ctx.measureText(texto2).width) + margem * 2);
-    const alturaBox = linha * 2 + margem;
-    const x = margem;
-    const y = altura - alturaBox - margem;
-    ctx.fillStyle = "rgba(0,0,0,.68)";
-    ctx.fillRect(x, y, larguraBox, alturaBox);
-    ctx.fillStyle = "#fff";
+
+    // Painel principal no rodapé
+    const grad = ctx.createLinearGradient(0,y,0,altura);
+    grad.addColorStop(0,"rgba(4,18,38,.78)");
+    grad.addColorStop(1,"rgba(4,18,38,.92)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,y,largura,alturaPainel);
+
+    const mapW = carimbo.mapaCanvas
+        ? Math.min(Math.round(largura * .35), Math.round(alturaPainel * 1.38))
+        : 0;
+
+    if(carimbo.mapaCanvas && mapW > 0){
+        const mapH = alturaPainel - margem * 2;
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect?.(margem, y+margem, mapW, mapH, Math.max(10,margem*.6));
+        if(ctx.roundRect) ctx.clip();
+        ctx.drawImage(carimbo.mapaCanvas, margem, y+margem, mapW, mapH);
+        ctx.restore();
+
+        ctx.strokeStyle = "rgba(255,255,255,.55)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(margem, y+margem, mapW, mapH);
+    }
+
+    const xTexto = mapW > 0 ? margem*2 + mapW : margem*1.4;
+    const larguraTexto = largura - xTexto - margem*1.3;
+
+    const fTitulo = Math.max(22, Math.round(largura * .021));
+    const fNormal = Math.max(17, Math.round(largura * .016));
+    const fPeq = Math.max(14, Math.round(largura * .0135));
+
+    let ty = y + margem + 2;
+
     ctx.textBaseline = "top";
-    ctx.fillText(texto1, x + margem, y + margem / 2);
-    ctx.font = `600 ${Math.round(fonte * .86)}px Arial`;
-    ctx.fillText(texto2, x + margem, y + margem / 2 + linha);
+    ctx.fillStyle = "#fff";
+    ctx.font = `800 ${fTitulo}px Arial`;
+    ctx.fillText(
+        limitarTextoCanvas(ctx, `📍 ${carimbo.dataHora}`, larguraTexto),
+        xTexto, ty
+    );
+    ty += Math.round(fTitulo * 1.35);
+
+    ctx.font = `800 ${fNormal}px Arial`;
+    ctx.fillStyle = "#f8fafc";
+    const coord = `${carimbo.latitudeDMS}  ${carimbo.longitudeDMS}`;
+    ctx.fillText(limitarTextoCanvas(ctx, coord, larguraTexto), xTexto, ty);
+    ty += Math.round(fNormal * 1.42);
+
+    ctx.font = `700 ${fPeq}px Arial`;
+    ctx.fillStyle = "#bfdbfe";
+    ctx.fillText(
+        limitarTextoCanvas(
+            ctx,
+            `GPS decimal: ${carimbo.latitude.toFixed(6)}, ${carimbo.longitude.toFixed(6)}  •  precisão ±${Math.round(carimbo.precisao || 0)} m`,
+            larguraTexto
+        ),
+        xTexto, ty
+    );
+    ty += Math.round(fPeq * 1.45);
+
+    ctx.font = `800 ${fNormal}px Arial`;
+    ctx.fillStyle = "#fff";
+    const enderecoLinhas = quebrarTextoCanvas(
+        ctx,
+        carimbo.endereco || "Endereço não identificado",
+        larguraTexto,
+        2
+    );
+    enderecoLinhas.forEach(l=>{
+        ctx.fillText(l,xTexto,ty);
+        ty += Math.round(fNormal*1.25);
+    });
+
+    const cidadeEstado = [
+        carimbo.cidade,
+        carimbo.uf || carimbo.estado,
+        carimbo.cep ? `CEP ${carimbo.cep}` : ""
+    ].filter(Boolean).join(" • ");
+
+    if(cidadeEstado){
+        ctx.font = `700 ${fPeq}px Arial`;
+        ctx.fillStyle = "#dbeafe";
+        ctx.fillText(limitarTextoCanvas(ctx,cidadeEstado,larguraTexto),xTexto,ty);
+        ty += Math.round(fPeq*1.45);
+    }
+
+    const rodape = [
+        carimbo.osId ? `OS #${carimbo.osId}` : "",
+        carimbo.empresaNome || "SGOS"
+    ].filter(Boolean).join("  •  ");
+
+    ctx.font = `900 ${fNormal}px Arial`;
+    ctx.fillStyle = "#fff";
+    ctx.fillText(
+        limitarTextoCanvas(ctx, rodape, larguraTexto),
+        xTexto,
+        Math.min(altura - margem - fNormal, ty + Math.round(fPeq*.25))
+    );
+
     ctx.restore();
 }
 
@@ -6567,6 +6930,9 @@ function abrirReagendamento(){
     const osAtual = encontrarOS(osSelecionada);
     if(!osAtual){ alert("OS não encontrada"); return; }
     if(osAtual._tipo === "avulsa"){ alert("Reagendamento disponível somente para OS de clientes."); return; }
+
+    // O resumo da OS não permanece aberto durante uma ação.
+    fecharModal();
     const campoData = document.getElementById("novaDataReagendamento");
     const agora = new Date();
     agora.setMinutes(agora.getMinutes() + 30);
@@ -6639,6 +7005,7 @@ async function enviarAcao(tipo, botao){
 
     if(osAtual._tipo === "avulsa"){
         if(tipo !== "concluir"){ alert("Para OS Avulsa, use apenas Concluir."); return; }
+        fecharModal();
         bloquearBotao(botao, true);
         try{
             const res = await apiFetch(`/api/os-avulsas/${osAtual.id}/status`,{
@@ -6661,6 +7028,12 @@ async function enviarAcao(tipo, botao){
     };
     if(!rotas[tipo]) return;
 
+    // Cliente ausente e inviabilidade não precisam de confirmação adicional:
+    // o resumo fecha assim que o técnico toca na ação.
+    if(tipo === "ausente" || tipo === "inviabilidade"){
+        fecharModal();
+    }
+
     let equipamentoUtilizado = "";
     let observacaoEquipamento = "";
     let statusPagamentoConfirmado = "";
@@ -6672,6 +7045,10 @@ async function enviarAcao(tipo, botao){
             alert("Registre o check-in de chegada antes de concluir a OS.");
             return;
         }
+
+        // A partir daqui a ação é válida: fecha o resumo imediatamente.
+        fecharModal();
+
         try{
             bloquearBotao(botao, true, "Obtendo GPS final...");
             checkinFinal = await obterPosicaoAtual();
@@ -7066,15 +7443,8 @@ async function fazerCheckin(botao){
         const data = await lerRespostaSegura(res);
         if(!res.ok) throw new Error(data.erro || data.mensagem || `Erro HTTP ${res.status}`);
         alert("Check-in registrado com horário e localização.");
+        fecharModal();
         await load();
-        const atualizado = encontrarOS(`normal-${osAtual.id}`) || encontrarOS(osAtual.id);
-        if(atualizado){
-            osSelecionada = chaveOS(atualizado);
-            const resumo = document.getElementById("resumoModalOS");
-            if(resumo) resumo.innerHTML = resumoModalHTML(atualizado);
-            const btn = document.getElementById("btnCheckin");
-            if(btn){ btn.textContent = "✓ Check-in realizado"; btn.classList.add("realizado"); btn.disabled = true; }
-        }
     }catch(err){
         console.error("Erro no check-in:", err);
         alert(err.message || "Não foi possível registrar o check-in.");
