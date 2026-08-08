@@ -3,9 +3,6 @@ const express = require("express");
 module.exports = (pool, verificarAutenticacao) => {
     const router = express.Router();
 
-    // =========================================================
-    // REGISTRAR / ATUALIZAR TOKEN PUSH
-    // =========================================================
     router.post("/token", verificarAutenticacao, async (req, res) => {
         try {
             const usuarioId = req.usuario.id;
@@ -27,27 +24,12 @@ module.exports = (pool, verificarAutenticacao) => {
                 : "web";
 
             /*
-             * PROTEÇÃO IMPORTANTE:
-             * Antes de associar o token/dispositivo ao usuário atual,
-             * desativa vínculos antigos do MESMO aparelho/token.
+             * Mantém o comportamento original do cadastro do token.
+             * A única limpeza automática aqui é pelo MESMO token, nunca
+             * desativando outros tokens do aparelho antes do novo cadastro.
              *
-             * Isso evita que, após logout e novo login com outro técnico,
-             * o mesmo celular continue recebendo push do usuário anterior.
+             * Isso evita interromper notificações legítimas após login.
              */
-            if(device_id){
-                await pool.query(`
-                    UPDATE usuarios_push_tokens
-                    SET ativo = 0,
-                        atualizado_em = NOW()
-                    WHERE device_id = ?
-                      AND (
-                          usuario_id <> ?
-                          OR empresa_id <> ?
-                          OR token_fcm <> ?
-                      )
-                `, [device_id, usuarioId, empresaId, token_fcm]);
-            }
-
             await pool.query(`
                 UPDATE usuarios_push_tokens
                 SET ativo = 0,
@@ -85,9 +67,7 @@ module.exports = (pool, verificarAutenticacao) => {
     });
 
 
-    // =========================================================
-    // DESATIVAR TOKEN PUSH NO LOGOUT
-    // =========================================================
+    // Desativa o vínculo push somente quando o usuário realmente faz logout.
     router.post("/token/logout", verificarAutenticacao, async (req, res) => {
         try {
             const usuarioId = req.usuario.id;
@@ -107,34 +87,28 @@ module.exports = (pool, verificarAutenticacao) => {
                 });
             }
 
-            const condicoes = [
-                "usuario_id = ?",
-                "empresa_id = ?",
-                "ativo = 1"
-            ];
-
-            const parametros = [
-                usuarioId,
-                empresaId
-            ];
-
-            if(token_fcm && device_id){
-                condicoes.push("(token_fcm = ? OR device_id = ?)");
-                parametros.push(token_fcm, device_id);
-            }else if(token_fcm){
-                condicoes.push("token_fcm = ?");
-                parametros.push(token_fcm);
-            }else{
-                condicoes.push("device_id = ?");
-                parametros.push(device_id);
-            }
-
-            const [resultado] = await pool.query(`
+            let sql = `
                 UPDATE usuarios_push_tokens
                 SET ativo = 0,
                     atualizado_em = NOW()
-                WHERE ${condicoes.join("\n                  AND ")}
-            `, parametros);
+                WHERE usuario_id = ?
+                  AND empresa_id = ?
+                  AND ativo = 1
+            `;
+            const params = [usuarioId, empresaId];
+
+            if(token_fcm && device_id){
+                sql += ` AND (token_fcm = ? OR device_id = ?)`;
+                params.push(token_fcm, device_id);
+            }else if(token_fcm){
+                sql += ` AND token_fcm = ?`;
+                params.push(token_fcm);
+            }else{
+                sql += ` AND device_id = ?`;
+                params.push(device_id);
+            }
+
+            const [resultado] = await pool.query(sql, params);
 
             return res.json({
                 ok: true,
@@ -147,21 +121,10 @@ module.exports = (pool, verificarAutenticacao) => {
         }
     });
 
-
-    // =========================================================
-    // ROTA DE TESTE
-    // =========================================================
-    // Envia uma notificação para o usuário logado.
+    // Rota de teste: envia uma notificação para o usuário logado.
     router.post("/teste", verificarAutenticacao, async (req, res) => {
         try {
             const pushService = req.app.get("pushService");
-
-            if(!pushService || typeof pushService.enviarPushNovaOS !== "function"){
-                return res.status(503).json({
-                    erro: "Serviço de push indisponível"
-                });
-            }
-
             const osId = req.body?.os_id || "teste";
 
             const resultado = await pushService.enviarPushNovaOS({
@@ -174,7 +137,6 @@ module.exports = (pool, verificarAutenticacao) => {
             });
 
             return res.json({ ok:true, resultado });
-
         } catch(err){
             console.error("ERRO /api/push/teste:", err);
             return res.status(500).json({ erro: err.message });

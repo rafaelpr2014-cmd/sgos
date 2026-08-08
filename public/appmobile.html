@@ -2656,6 +2656,77 @@ body{
 #btnConcluir{background:#16a34a!important;color:#fff!important}
 #btnCheckin{background:#075cf6!important;color:#fff!important}
 </style>
+
+<style id="sgos-ajustes-proxima-checkin-20260807">
+.lista-proxima-app button{
+    cursor:pointer;
+    position:relative;
+    transition:border-color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.lista-proxima-app button.selecionada{
+    border:2px solid #1769ff !important;
+    background:#eaf2ff !important;
+    box-shadow:0 0 0 4px rgba(23,105,255,.12);
+    transform:translateY(-1px);
+}
+.lista-proxima-app button.selecionada::after{
+    content:"✓";
+    position:absolute;
+    right:12px;
+    top:12px;
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:#1769ff;
+    color:#fff;
+    font-weight:900;
+}
+.acoes-proxima-app{
+    display:grid;
+    grid-template-columns:1fr 1.35fr;
+    gap:10px;
+    margin-top:14px;
+}
+.confirmar-proxima-app,
+.sair-proxima-app{
+    width:100%;
+    margin:0 !important;
+    padding:13px;
+    border:0;
+    border-radius:14px;
+    font-weight:900;
+}
+.confirmar-proxima-app{background:#1769ff;color:#fff}
+.confirmar-proxima-app:disabled{opacity:.45;cursor:not-allowed}
+.sair-proxima-app{background:#e2e8f0;color:#334155}
+
+.os.os-checkin-execucao{
+    background:#ecfdf5 !important;
+    border:2px solid #10b981 !important;
+    box-shadow:0 8px 22px rgba(16,185,129,.16) !important;
+}
+.os.os-checkin-execucao .os-cliente-nome,
+.os.os-checkin-execucao .os-localidade,
+.os.os-checkin-execucao .os-endereco,
+.os.os-checkin-execucao .os-meta-item span{
+    color:#064e3b !important;
+}
+.badge-checkin-execucao{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    margin:6px 5px 0 0;
+    padding:5px 9px;
+    border-radius:999px;
+    background:#10b981;
+    color:#fff;
+    font-size:10px;
+    font-weight:900;
+}
+</style>
+
 </head>
 
 <body>
@@ -5584,9 +5655,11 @@ function render(){
         const tel = formatarTelefoneApp(o.telefone);
         const href = telefoneHref(o.telefone);
         const tecnico = o.tecnicos_nomes || o.tecnico_nome || o.tecnico || "-";
-        return `<article class="os${alta ? " prioridade-alta-card" : ""}" data-os-chave="${chave}" role="button" tabindex="0" onclick="window.abrirModal('${chave}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.abrirModal('${chave}')}">
+        const checkinEmExecucao = !!o.checkin_inicio_em && !o.checkin_fim_em && normalizarStatusApp(o.status) === "em_andamento";
+        return `<article class="os${alta ? " prioridade-alta-card" : ""}${checkinEmExecucao ? " os-checkin-execucao" : ""}" data-os-chave="${chave}" role="button" tabindex="0" onclick="window.abrirModal('${chave}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.abrirModal('${chave}')}">
           <div class="os-main">
             ${normalizarStatusApp(o.status) === "os_lancada" ? `<div class="badge-lancada-app">🚀 OS LANÇADA</div>` : ""}
+            ${checkinEmExecucao ? `<div class="badge-checkin-execucao">✓ EM EXECUÇÃO · CHECK-IN</div>` : ""}
             ${Number(o.proxima_os || 0) === 1 ? `<div class="badge-proxima-app">⭐ PRÓXIMO ATENDIMENTO</div>` : ""}
             <div class="os-top-badges">${o._tipo === "avulsa" ? "" : badgePrioridadeApp(o.prioridade)}<span class="os-tipo-servico">${valorSeguro(o.tipo_servico_nome || o.tipo_servico || "OS Avulsa")}</span></div>
             <div class="os-cliente-linha"><strong class="os-cliente-nome">${valorSeguro(o._tipo === "avulsa" ? (o.localidade_nome || "OS Avulsa") : nomeClienteOS(o))}</strong></div>
@@ -6717,63 +6790,111 @@ function tecnicosDaOSApp(valor){
     return String(valor||'').split(',').map(v=>v.trim()).filter(Boolean);
 }
 async function oferecerProximaOSApp(){
-    // Remove uma instância antiga para impedir sobreposição de modais.
-    document.querySelectorAll('.modal-proxima-app').forEach(el => el.remove());
+    document.querySelectorAll(".modal-proxima-app").forEach(el => el.remove());
 
-    // A função é chamada depois de load(); usa a lista já atualizada da API.
     const lancadas = (Array.isArray(OS) ? OS : []).filter(o =>
         o &&
         o._tipo !== "avulsa" &&
         normalizarStatusApp(o.status) === "os_lancada"
     );
 
-    // Não pergunta quando não há outra OS lançada ou quando a próxima já foi definida.
     if(!lancadas.length || lancadas.some(o => Number(o.proxima_os || 0) === 1)) return;
 
-    const camada = document.createElement('div');
-    camada.className = 'modal-proxima-app';
+    let osProximaSelecionadaId = null;
+
+    const camada = document.createElement("div");
+    camada.className = "modal-proxima-app";
     camada.innerHTML = `
         <div class="caixa-proxima-app">
             <h3>Qual será o próximo atendimento?</h3>
-            <p>Selecione uma OS lançada ou saia sem escolher.</p>
+            <p>Toque na OS desejada para selecioná-la. Confira os dados e depois clique em <b>Confirmar atendimento</b>.</p>
+
             <div class="lista-proxima-app">
                 ${lancadas.map(o => `
-                    <button type="button" data-id="${o.id}">
+                    <button type="button" class="opcao-proxima-app" data-id="${o.id}">
                         <b>${valorSeguro(o.tipo_servico_nome || o.tipo_servico || "Serviço não informado")}</b>
+                        <small><strong>OS:</strong> #${valorSeguro(o.id)}</small>
                         <small><strong>Cliente:</strong> ${valorSeguro(nomeClienteOS(o))}</small>
                         <small><strong>Endereço:</strong> ${valorSeguro(enderecoNormal(o))}</small>
                     </button>
-                `).join('')}
+                `).join("")}
             </div>
-            <button type="button" class="sair-proxima-app">Sair</button>
+
+            <div class="acoes-proxima-app">
+                <button type="button" class="sair-proxima-app">Sair</button>
+                <button type="button" class="confirmar-proxima-app" disabled>Confirmar atendimento</button>
+            </div>
         </div>`;
 
     document.body.appendChild(camada);
-    camada.querySelector('.sair-proxima-app').onclick = () => camada.remove();
 
-    camada.querySelectorAll('[data-id]').forEach(btn => {
-        btn.onclick = async () => {
-            btn.disabled = true;
-            try{
-                const r = await apiFetch(`/api/ordens_servico/proxima-fila/${btn.dataset.id}`, {
-                    method: 'POST',
-                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                    body: JSON.stringify({}),
-                    cache: 'no-store'
-                });
-                const d = await lerRespostaSegura(r);
-                if(!r.ok) throw new Error(d.erro || d.mensagem || 'Erro ao definir próxima OS.');
+    const btnConfirmar = camada.querySelector(".confirmar-proxima-app");
+    const btnSair = camada.querySelector(".sair-proxima-app");
+    const opcoes = [...camada.querySelectorAll(".opcao-proxima-app")];
 
-                camada.remove();
-                await load();
-                alert('Próximo atendimento definido.');
-            }catch(e){
-                console.error('Erro ao definir próxima OS:', e);
-                btn.disabled = false;
-                alert(e.message || 'Erro ao definir próxima OS.');
-            }
+    btnSair.onclick = () => camada.remove();
+
+    opcoes.forEach(btn => {
+        btn.onclick = () => {
+            osProximaSelecionadaId = String(btn.dataset.id || "");
+
+            opcoes.forEach(item => {
+                item.classList.toggle(
+                    "selecionada",
+                    String(item.dataset.id || "") === osProximaSelecionadaId
+                );
+            });
+
+            btnConfirmar.disabled = !osProximaSelecionadaId;
         };
     });
+
+    btnConfirmar.onclick = async () => {
+        if(!osProximaSelecionadaId){
+            alert("Selecione uma OS antes de confirmar.");
+            return;
+        }
+
+        const osEscolhida = lancadas.find(o => String(o.id) === String(osProximaSelecionadaId));
+        if(!osEscolhida){
+            alert("A OS selecionada não está mais disponível.");
+            return;
+        }
+
+        btnConfirmar.disabled = true;
+        btnSair.disabled = true;
+        opcoes.forEach(item => item.disabled = true);
+
+        const textoOriginal = btnConfirmar.textContent;
+        btnConfirmar.textContent = "Confirmando...";
+
+        try{
+            const r = await apiFetch(`/api/ordens_servico/proxima-fila/${encodeURIComponent(osProximaSelecionadaId)}`, {
+                method:"POST",
+                headers:{
+                    "Accept":"application/json",
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({}),
+                cache:"no-store"
+            });
+
+            const d = await lerRespostaSegura(r);
+            if(!r.ok) throw new Error(d.erro || d.mensagem || "Erro ao definir próxima OS.");
+
+            camada.remove();
+            await load();
+
+            alert(`Próximo atendimento confirmado:\nOS #${osEscolhida.id} - ${nomeClienteOS(osEscolhida)}`);
+        }catch(e){
+            console.error("Erro ao definir próxima OS:", e);
+            btnConfirmar.disabled = false;
+            btnSair.disabled = false;
+            opcoes.forEach(item => item.disabled = false);
+            btnConfirmar.textContent = textoOriginal;
+            alert(e.message || "Erro ao definir próxima OS.");
+        }
+    };
 }
 
 async function abrirUrlExterna(url){
