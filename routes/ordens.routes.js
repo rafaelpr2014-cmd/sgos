@@ -1702,6 +1702,145 @@ router.post(
 );
 
 // ===============================
+// ⭐ PRÓXIMA OS DA FILA
+// ===============================
+router.post(
+    "/proxima-fila/:id",
+    verificarAutenticacao,
+    async (req, res) => {
+        try {
+            const osId = Number(req.params.id);
+
+            if(!Number.isInteger(osId) || osId <= 0){
+                return res.status(400).json({ erro: "OS inválida." });
+            }
+
+            // Busca a OS e a equipe/técnico vinculada a ela.
+            const [rows] = await db.query(`
+                SELECT id, status, tecnico, proxima_os
+                FROM ordens_servico
+                WHERE id = ?
+                  AND empresa_id = ?
+                LIMIT 1
+            `, [osId, req.usuario.empresa_id]);
+
+            if(!rows.length){
+                return res.status(404).json({ erro: "OS não encontrada." });
+            }
+
+            const os = rows[0];
+            const status = String(os.status || "").toLowerCase().trim();
+
+            if(status !== "os_lancada"){
+                return res.status(400).json({
+                    erro: "Somente uma OS lançada pode ser marcada como próximo atendimento."
+                });
+            }
+
+            /*
+             * Remove a marcação anterior somente da mesma equipe técnica.
+             * Não limpa a fila inteira da empresa, evitando que um técnico
+             * apague o próximo atendimento definido para outro técnico.
+             */
+            await db.query(`
+                UPDATE ordens_servico
+                SET proxima_os = 0
+                WHERE empresa_id = ?
+                  AND status = 'os_lancada'
+                  AND id <> ?
+                  AND (
+                      (tecnico = ?)
+                      OR (tecnico IS NULL AND ? IS NULL)
+                  )
+            `, [
+                req.usuario.empresa_id,
+                osId,
+                os.tecnico,
+                os.tecnico
+            ]);
+
+            const [resultado] = await db.query(`
+                UPDATE ordens_servico
+                SET proxima_os = 1
+                WHERE id = ?
+                  AND empresa_id = ?
+                  AND status = 'os_lancada'
+            `, [osId, req.usuario.empresa_id]);
+
+            if(!resultado.affectedRows){
+                return res.status(409).json({
+                    erro: "A OS não está mais disponível para ser marcada como próximo atendimento."
+                });
+            }
+
+            io.emit("os_update");
+
+            return res.json({
+                ok: true,
+                os_id: osId,
+                proxima_os: 1
+            });
+
+        } catch(err){
+            console.error("ERRO PROXIMA FILA:", err);
+            return res.status(500).json({ erro: err.message });
+        }
+    }
+);
+
+
+// ===============================
+// ✖ REMOVER PRÓXIMA OS DA FILA
+// ===============================
+router.post(
+    "/remover-proxima-fila/:id",
+    verificarAutenticacao,
+    async (req, res) => {
+        try {
+            const osId = Number(req.params.id);
+
+            if(!Number.isInteger(osId) || osId <= 0){
+                return res.status(400).json({ erro: "OS inválida." });
+            }
+
+            const [resultado] = await db.query(`
+                UPDATE ordens_servico
+                SET proxima_os = 0
+                WHERE id = ?
+                  AND empresa_id = ?
+            `, [osId, req.usuario.empresa_id]);
+
+            if(!resultado.affectedRows){
+                const [existe] = await db.query(`
+                    SELECT id
+                    FROM ordens_servico
+                    WHERE id = ?
+                      AND empresa_id = ?
+                    LIMIT 1
+                `, [osId, req.usuario.empresa_id]);
+
+                if(!existe.length){
+                    return res.status(404).json({ erro: "OS não encontrada." });
+                }
+            }
+
+            io.emit("os_update");
+
+            return res.json({
+                ok: true,
+                os_id: osId,
+                proxima_os: 0
+            });
+
+        } catch(err){
+            console.error("ERRO REMOVER PROXIMA FILA:", err);
+            return res.status(500).json({ erro: err.message });
+        }
+    }
+);
+
+
+// ===============================
 // 📍 CHECK-IN DE CHEGADA
 // ===============================
 router.post(
