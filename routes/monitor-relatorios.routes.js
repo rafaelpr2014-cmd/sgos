@@ -133,7 +133,7 @@ module.exports = (pool) => {
 
   router.get('/resumo', async (req, res) => {
     try {
-      const periodo = Math.max(1, Math.min(3650, Number(req.query.dias || 30)));
+      const periodo = Math.max(1, Math.min(7, Number(req.query.dias || 7)));
       const empresaId = Number(req.query.empresa_id || 0);
       const canalFiltro = String(req.query.canal || '').toLowerCase();
       const statusFiltro = String(req.query.status || '').toLowerCase();
@@ -246,7 +246,7 @@ module.exports = (pool) => {
       if (canal === 'whatsapp') {
         const buffer = fs.readFileSync(arquivo);
         const resultado = await enviarMidiaCentral(
-          1,
+          Number(row.empresa_id || 1),
           destino,
           buffer,
           nomeArquivo,
