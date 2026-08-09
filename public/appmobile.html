@@ -4256,6 +4256,8 @@ async function alternarProximaFilaApp(botao){
 }
 
 function fecharModal(){
+    window.arquivoVideoPreparado = null;
+    window.modoCapturaGPS = null;
     const modal = document.getElementById("modal");
     if(modal) modal.style.display = "none";
     arquivoFotoPreparado = null;
@@ -6012,6 +6014,9 @@ let arquivoFotoPreparado = null;
 
 function escolherAnexo(){
     arquivoFotoPreparado = null;
+    window.arquivoVideoPreparado = null;
+    window.modoCapturaGPS = null;
+    window.ultimaLocalizacaoMidia = null;
     const input = document.getElementById("foto");
     if(!input) return;
     input.removeAttribute("capture");
@@ -6020,7 +6025,7 @@ function escolherAnexo(){
     input.click();
 }
 
-function arquivoSelecionado(input){
+async function arquivoSelecionado(input){
     arquivoFotoPreparado = null;
 
     const info = document.getElementById("arquivoSelecionadoInfo");
@@ -6032,6 +6037,39 @@ function arquivoSelecionado(input){
     }
 
     const tipoArquivoSelecionado = String(arquivo.type || "").toLowerCase();
+
+    // Se veio do botão "Tirar Foto com GPS" no fallback HTML,
+    // usa o GPS obtido ANTES da câmera e já prepara a foto agora.
+    if(
+        tipoArquivoSelecionado.startsWith("image/") &&
+        window.modoCapturaGPS === "foto" &&
+        window.ultimaLocalizacaoMidia
+    ){
+        try{
+            if(info) info.textContent = "Processando foto com o GPS capturado...";
+            arquivoFotoPreparado = await blobParaJpeg(
+                arquivo,
+                arquivo.name || `foto-os-${(encontrarOS(osSelecionada)||{}).id || "sgos"}-${Date.now()}.jpg`,
+                window.ultimaLocalizacaoMidia
+            );
+
+            window.modoCapturaGPS = null;
+
+            if(info){
+                const mb = arquivoFotoPreparado.size / 1024 / 1024;
+                info.textContent = `Foto com GPS atual pronta • ${mb.toFixed(1)} MB`;
+            }
+            return;
+        }catch(err){
+            console.error("Erro ao preparar foto com GPS:", err);
+            arquivoFotoPreparado = null;
+            window.modoCapturaGPS = null;
+            if(info) info.textContent = "Erro ao inserir GPS na foto.";
+            alert(err?.message || "Não foi possível inserir o GPS na foto.");
+            return;
+        }
+    }
+
     if(tipoArquivoSelecionado.startsWith("video/")){
         const mb = (arquivo.size / 1024 / 1024).toFixed(1);
         if(info){
@@ -6471,16 +6509,44 @@ async function blobParaJpeg(blob, nomeBase="foto", carimbo=null){
 async function tirarFotoAgora(){
     arquivoFotoPreparado = null;
     window.ultimaLocalizacaoMidia = null;
+    window.modoCapturaGPS = "foto";
 
     const input = document.getElementById("foto");
     const info = document.getElementById("arquivoSelecionadoInfo");
 
-    if(info) info.textContent = "Abrindo câmera...";
+    // REGRA: a própria foto captura a posição atual ANTES de abrir a câmera.
+    // Não usa latitude/longitude da OS e não usa localização do check-in.
+    let carimboCaptura;
+    try{
+        if(info) info.textContent = "Obtendo GPS atual da foto...";
+        carimboCaptura = await obterCarimboLocalizacao();
+        window.ultimaLocalizacaoMidia = carimboCaptura;
 
-    // No app nativo, usa o plugin Capacitor Camera. Isso evita depender do
-    // retorno de <input capture>, que pode perder o arquivo dentro do WebView.
+        if(info){
+            const enderecoGps = [
+                carimboCaptura.endereco,
+                carimboCaptura.bairro,
+                [carimboCaptura.localidade, carimboCaptura.estado].filter(Boolean).join(" - "),
+                carimboCaptura.cep
+            ].filter(Boolean).join(" • ");
+
+            info.textContent = enderecoGps
+                ? `GPS atual obtido: ${enderecoGps}. Abrindo câmera...`
+                : `GPS atual obtido. Abrindo câmera...`;
+        }
+    }catch(err){
+        console.error("Não foi possível obter o GPS antes da foto:", err);
+        window.modoCapturaGPS = null;
+        window.ultimaLocalizacaoMidia = null;
+        if(info) info.textContent = "Não foi possível obter a localização atual.";
+        alert(err?.message || "Não foi possível obter a localização atual. Ative o GPS e tente novamente.");
+        return;
+    }
+
+    // No app nativo, usa Capacitor Camera depois que o GPS já está congelado.
     try{
         const Camera = window.Capacitor?.Plugins?.Camera;
+
         if(Camera && typeof Camera.getPhoto === "function"){
             const foto = await Camera.getPhoto({
                 quality: 88,
@@ -6495,51 +6561,61 @@ async function tirarFotoAgora(){
             const uri = foto?.webPath || foto?.path;
             if(!uri) throw new Error("A câmera não retornou a foto.");
 
-            if(info) info.textContent = "Obtendo foto e localização...";
+            if(info) info.textContent = "Processando foto com o GPS capturado...";
             const respostaFoto = await fetch(uri);
             if(!respostaFoto.ok) throw new Error("Não foi possível ler a foto capturada.");
             const blobOriginal = await respostaFoto.blob();
 
-            const carimbo = await obterCarimboLocalizacao();
-            window.ultimaLocalizacaoMidia = carimbo;
-
+            // Usa exatamente o GPS capturado ANTES da abertura da câmera.
             const nomeBase = `foto-os-${(encontrarOS(osSelecionada)||{}).id || "sgos"}-${Date.now()}.jpg`;
-            arquivoFotoPreparado = await blobParaJpeg(blobOriginal, nomeBase, carimbo);
+            arquivoFotoPreparado = await blobParaJpeg(
+                blobOriginal,
+                nomeBase,
+                carimboCaptura
+            );
 
-            // Limpa o input para não haver conflito entre arquivo antigo e a
-            // foto capturada pelo plugin nativo.
             if(input) input.value = "";
+            window.modoCapturaGPS = null;
 
             if(info){
                 const mb = arquivoFotoPreparado.size / 1024 / 1024;
-                info.textContent = `Foto com GPS pronta • ${mb.toFixed(1)} MB`;
+                info.textContent = `Foto com GPS atual pronta • ${mb.toFixed(1)} MB`;
             }
             return;
         }
     }catch(err){
-        console.warn("Câmera nativa não disponível/falhou; usando fallback HTML:", err);
-        // Cancelamento do usuário não deve abrir outra câmera automaticamente.
+        console.warn("Câmera nativa não disponível/falhou; usando câmera HTML:", err);
+
         if(/cancel|cancelled|canceled|user/i.test(String(err?.message || ""))){
-            if(info) info.textContent = "Nenhuma foto selecionada";
+            window.modoCapturaGPS = null;
+            if(info) info.textContent = "Captura cancelada.";
             return;
         }
     }
 
-    // Fallback para navegador/PWA.
+    // Fallback navegador/PWA: a localização já foi capturada acima.
+    // Quando o arquivo voltar da câmera, arquivoSelecionado() usará
+    // window.ultimaLocalizacaoMidia, sem consultar a OS/check-in.
     if(!input){
+        window.modoCapturaGPS = null;
         alert("Campo de câmera não encontrado.");
         return;
     }
+
     input.value = "";
     input.accept = "image/*";
     input.setAttribute("capture", "environment");
-    if(info) info.textContent = "Tire a foto pela câmera do aparelho.";
+
+    if(info) info.textContent = "GPS atual registrado. Tire a foto.";
     input.click();
 }
-
 async function prepararArquivoParaEnvio(){
     if(arquivoFotoPreparado){
         return arquivoFotoPreparado;
+    }
+
+    if(window.arquivoVideoPreparado){
+        return window.arquivoVideoPreparado;
     }
 
     const arquivo = document.getElementById("foto")?.files?.[0];
@@ -6576,42 +6652,88 @@ async function prepararArquivoParaEnvio(){
 }
 
 async function gravarVideoComLocalizacao(){
-    const input = document.getElementById("foto");
     const info = document.getElementById("arquivoSelecionadoInfo");
 
-    if(!input){
-        alert("Campo de vídeo não encontrado.");
-        return;
-    }
-
     arquivoFotoPreparado = null;
+    window.modoCapturaGPS = "video";
+    window.ultimaLocalizacaoMidia = null;
 
-    // Obtém o GPS antes de selecionar o vídeo. A identificação é enviada
-    // junto com a mídia, mas não força a abertura do gravador dentro do WebView.
+    // GPS é obtido ANTES da seleção do vídeo.
     try{
-        if(info) info.textContent = "Obtendo localização para o vídeo...";
+        if(info) info.textContent = "Obtendo GPS atual para o vídeo...";
         window.ultimaLocalizacaoMidia = await obterCarimboLocalizacao();
     }catch(err){
         console.warn("GPS do vídeo indisponível:", err);
-        window.ultimaLocalizacaoMidia = null;
+        window.modoCapturaGPS = null;
+        if(info) info.textContent = "Não foi possível obter GPS para o vídeo.";
+        alert(err?.message || "Não foi possível obter a localização atual.");
+        return;
     }
 
-    // IMPORTANTE: sem capture="environment".
-    // Em Android/iOS WebView, ACTION_VIDEO_CAPTURE pode destruir/recriar a
-    // Activity e aparentar que o SGOS "fechou". O seletor de mídia é estável.
-    input.removeAttribute("capture");
-    input.accept = "video/mp4,video/webm,video/quicktime,video/3gpp,video/*";
-    input.value = "";
+    /*
+     * MODO SEGURO:
+     * não usa input capture e não usa accept="video/*" no input principal.
+     * Alguns Androids interpretam video/* como intenção de câmera e recriam
+     * a Activity/WebView, causando a impressão de que o SGOS fechou.
+     *
+     * Criamos um file picker temporário com MIME específicos. Ele serve
+     * somente para selecionar vídeo já gravado.
+     */
+    const seletor = document.createElement("input");
+    seletor.type = "file";
+    seletor.accept = "video/mp4,video/quicktime,video/webm,video/3gpp";
+    seletor.style.position = "fixed";
+    seletor.style.left = "-9999px";
+    seletor.style.width = "1px";
+    seletor.style.height = "1px";
+
+    seletor.onchange = async () => {
+        const arquivo = seletor.files?.[0] || null;
+        try{
+            if(!arquivo){
+                window.modoCapturaGPS = null;
+                if(info) info.textContent = "Nenhum vídeo selecionado.";
+                return;
+            }
+
+            const limite = 30 * 1024 * 1024;
+            if(arquivo.size > limite){
+                window.modoCapturaGPS = null;
+                if(info) info.textContent = "Nenhum vídeo selecionado.";
+                alert("O vídeo deve ter no máximo 30 MB.");
+                return;
+            }
+
+            // Transfere o arquivo para o input real usado pelo FormData.
+            const inputReal = document.getElementById("foto");
+            if(!inputReal) throw new Error("Campo de anexo não encontrado.");
+
+            try{
+                const dt = new DataTransfer();
+                dt.items.add(arquivo);
+                inputReal.files = dt.files;
+            }catch(err){
+                // Caso o WebView não permita atribuir files, mantém o arquivo
+                // em memória e prepararArquivoParaEnvio o utilizará.
+                window.arquivoVideoPreparado = arquivo;
+            }
+
+            const mb = arquivo.size / 1024 / 1024;
+            if(info) info.textContent = `Vídeo selecionado + GPS atual • ${mb.toFixed(1)} MB`;
+        }finally{
+            seletor.remove();
+            window.modoCapturaGPS = null;
+        }
+    };
+
+    document.body.appendChild(seletor);
 
     if(info){
-        info.textContent = window.ultimaLocalizacaoMidia
-            ? "GPS registrado. Selecione um vídeo já gravado no aparelho."
-            : "Selecione um vídeo já gravado no aparelho.";
+        info.textContent = "GPS atual registrado. Selecione um vídeo já gravado.";
     }
 
-    input.click();
+    seletor.click();
 }
-
 const abrirModalBase = abrirModal;
 abrirModal = async function(chave){
     let os = encontrarOS(chave);
