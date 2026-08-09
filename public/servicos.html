@@ -770,6 +770,7 @@ textarea:focus{
 .anexo-preview{margin-top:14px;border:1px solid var(--borda);border-radius:12px;padding:14px;background:#fff}
 .anexo-preview h4,.localizacao-box h4{margin:0 0 10px;font-size:14px}
 .preview-midia{width:100%;max-height:320px;object-fit:contain;border-radius:10px;background:#f8fafc;border:1px solid var(--borda)}
+.preview-midia.anexo-clicavel{cursor:zoom-in}
 .preview-pdf{width:100%;height:330px;border:1px solid var(--borda);border-radius:10px}
 .localizacao-box{margin-top:14px;border:1px solid #bfdbfe;border-radius:12px;padding:14px;background:#eff6ff}
 .localizacao-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
@@ -794,6 +795,12 @@ textarea:focus{
     border:0;
     display:block;
 }
+.mapa-tipo-acoes{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 10px}
+.btn-mapa-tipo{background:#475569}
+.btn-mapa-tipo.ativo{background:#2563eb}
+#modalResumoServico{z-index:10000}
+#modalAnexo{z-index:10030}
+#modalLocalizacao{z-index:10040}
 
 
 @media print{
@@ -1422,7 +1429,25 @@ function classePrioridade(v){const p=String(v||"").toLowerCase();return p.includ
 function classeStatus(v){return String(v||"").toLowerCase()==="realizado"?"badge badge-realizado":"badge badge-pendente";}
 function nomesTecnicos(i){if(Array.isArray(i.tecnicos_nomes))return i.tecnicos_nomes.join(", ");if(i.tecnicos_nomes)return String(i.tecnicos_nomes);return "-";}
 function nomeLocalidade(i){const v=String(i?.localidade??"").trim();if(!v)return "-";const c=localidadesCadastradas.find(l=>String(l.id??l.localidade_id??"")===v);return c?String(c.nome||c.localidade||c.descricao||v):v;}
-function possuiLocalizacao(i){return Number.isFinite(Number(i.latitude))&&Number.isFinite(Number(i.longitude));}
+function normalizarCoordenada(valor){
+    if(valor===null||valor===undefined)return null;
+    const texto=String(valor).trim().replace(",", ".");
+    if(!texto)return null;
+    const numero=Number(texto);
+    return Number.isFinite(numero)?numero:null;
+}
+function possuiLocalizacao(i){return normalizarCoordenada(i.latitude)!==null&&normalizarCoordenada(i.longitude)!==null;}
+function urlGoogleMaps(i){
+    if(!possuiLocalizacao(i))return "";
+    const lat=normalizarCoordenada(i.latitude),lng=normalizarCoordenada(i.longitude);
+    return `https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}`;
+}
+function abrirGoogleMaps(id){
+    const i=servicosPendentes.find(x=>Number(x.id)===Number(id));
+    if(!i)return alert("Serviço não encontrado.");
+    if(!possuiLocalizacao(i))return abrirModalLocalizacao(id);
+    window.open(urlGoogleMaps(i),"_blank","noopener,noreferrer");
+}
 function atualizarCards(d){cardTotal.innerText=d.length;cardPendentes.innerText=d.filter(i=>String(i.status||"").toLowerCase()==="pendente").length;cardRealizados.innerText=d.filter(i=>String(i.status||"").toLowerCase()==="realizado").length;}
 
 async function carregarCadastros(){const tentar=async u=>{try{const d=await fetchAuth(u);return Array.isArray(d)?d:(d?.dados||d?.data||[]);}catch{return[];}};[localidadesCadastradas,tecnicosCadastrados]=await Promise.all([tentar("/api/localidades"),tentar("/api/tecnicos")]);preencherTecnicos();}
@@ -1485,7 +1510,7 @@ function montarLinha(i){
         <td onclick="event.stopPropagation()"><div class="acoes acoes-tabela">
             <button class="btn btn-editar btn-icone" title="Editar" aria-label="Editar" onclick="abrirModalEditar(${i.id})">${iconeSvg("editar")}</button>
             ${temAnexo?`<button class="btn btn-anexo btn-icone" title="Visualizar anexo" aria-label="Visualizar anexo" onclick="visualizarAnexo(${i.id})">${iconeSvg("anexo")}</button>`:""}
-            <button class="btn btn-localizacao btn-icone" title="${temLocal?"Editar localização":"Adicionar localização"}" aria-label="Localização" onclick="abrirModalLocalizacao(${i.id})">${iconeSvg("localizacao")}</button>
+            <button class="btn btn-localizacao btn-icone" title="${temLocal?"Abrir no Google Maps":"Adicionar localização"}" aria-label="Localização" onclick="${temLocal?`abrirGoogleMaps(${i.id})`:`abrirModalLocalizacao(${i.id})`}">${iconeSvg("localizacao")}</button>
             <button class="btn btn-imprimir btn-icone" title="Imprimir" aria-label="Imprimir" onclick="imprimirServico(${i.id})">${iconeSvg("imprimir")}</button>
             <button class="btn btn-excluir btn-icone" title="Excluir" aria-label="Excluir" onclick="excluir(${i.id})">${iconeSvg("excluir")}</button>
         </div></td>
@@ -1503,7 +1528,17 @@ function normalizarUrlAnexo(url){
     return "/"+x.replace(/^\/+/,"");
 }
 function tipoAnexo(url){const x=String(url||"").toLowerCase().split("?")[0];if(/\.(png|jpe?g|webp|gif)$/.test(x))return"imagem";if(/\.(mp4|mov|webm)$/.test(x))return"video";if(x.endsWith(".pdf"))return"pdf";return"outro";}
-function previaAnexo(i){if(!i.anexo)return `<div class="anexo-preview"><h4>Prévia do anexo</h4><div style="color:#64748b">Nenhum anexo enviado.</div></div>`;const u=escapeHTML(normalizarUrlAnexo(i.anexo)),t=tipoAnexo(i.anexo);let midia=t==="imagem"?`<img class="preview-midia" src="${u}" alt="Prévia do anexo" onerror="this.style.display='none'">`:t==="video"?`<video class="preview-midia" controls preload="metadata" src="${u}"></video>`:t==="pdf"?`<iframe class="preview-pdf" src="${u}" title="Prévia do PDF"></iframe>`:`<a href="${u}" target="_blank" rel="noopener">Abrir anexo</a>`;return `<div class="anexo-preview"><h4>Prévia do anexo</h4>${midia}<div style="margin-top:10px"><button class="btn btn-anexo" onclick="visualizarAnexo(${i.id})">Abrir anexo</button></div></div>`;}
+function previaAnexo(i){if(!i.anexo)return `<div class="anexo-preview"><h4>Prévia do anexo</h4><div style="color:#64748b">Nenhum anexo enviado.</div></div>`;const u=escapeHTML(normalizarUrlAnexo(i.anexo)),t=tipoAnexo(i.anexo);let midia=t==="imagem"?`<img class="preview-midia anexo-clicavel" src="${u}" alt="Prévia do anexo" title="Clique para ampliar" onclick="visualizarAnexo(${i.id})" onerror="this.style.display='none'">`:t==="video"?`<video class="preview-midia" controls preload="metadata" src="${u}"></video>`:t==="pdf"?`<iframe class="preview-pdf" src="${u}" title="Prévia do PDF"></iframe>`:`<a href="${u}" target="_blank" rel="noopener">Abrir anexo</a>`;return `<div class="anexo-preview"><h4>Prévia do anexo</h4>${midia}<div style="margin-top:10px"><button class="btn btn-anexo" onclick="visualizarAnexo(${i.id})">Abrir anexo</button></div></div>`;}
+function alterarTipoMapa(id,tipo){
+    const i=servicosPendentes.find(x=>Number(x.id)===Number(id));
+    if(!i||!possuiLocalizacao(i))return;
+    const lat=normalizarCoordenada(i.latitude),lng=normalizarCoordenada(i.longitude);
+    const frame=document.getElementById(`mapaServico_${id}`);
+    if(!frame)return;
+    const t=tipo==="satelite"?"k":"m";
+    frame.src=`https://maps.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&z=17&output=embed&t=${t}`;
+    document.querySelectorAll(`[data-mapa-servico="${id}"]`).forEach(b=>b.classList.toggle("ativo",b.dataset.tipoMapa===tipo));
+}
 function blocoLocalizacao(i){
     if(!possuiLocalizacao(i)){
         return `<div class="localizacao-box">
@@ -1513,18 +1548,10 @@ function blocoLocalizacao(i){
         </div>`;
     }
 
-    const lat=Number(i.latitude);
-    const lng=Number(i.longitude);
-    const delta=0.008;
-    const bbox=[
-        (lng-delta).toFixed(6),
-        (lat-delta).toFixed(6),
-        (lng+delta).toFixed(6),
-        (lat+delta).toFixed(6)
-    ].join("%2C");
-
-    const mapaEmbed=`https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${encodeURIComponent(lat)}%2C${encodeURIComponent(lng)}`;
-    const maps=`https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}`;
+    const lat=normalizarCoordenada(i.latitude);
+    const lng=normalizarCoordenada(i.longitude);
+    const mapaEmbed=`https://maps.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&z=17&output=embed&t=m`;
+    const maps=urlGoogleMaps(i);
 
     return `<div class="localizacao-box">
         <h4>📍 Localização</h4>
@@ -1540,13 +1567,13 @@ function blocoLocalizacao(i){
             </div>
         </div>
 
+        <div class="mapa-tipo-acoes">
+            <button class="btn btn-mapa-tipo ativo" data-mapa-servico="${i.id}" data-tipo-mapa="mapa" onclick="alterarTipoMapa(${i.id},'mapa')">Mapa</button>
+            <button class="btn btn-mapa-tipo" data-mapa-servico="${i.id}" data-tipo-mapa="satelite" onclick="alterarTipoMapa(${i.id},'satelite')">Satélite</button>
+        </div>
+
         <div class="mapa-localizacao">
-            <iframe
-                src="${mapaEmbed}"
-                loading="lazy"
-                referrerpolicy="no-referrer-when-downgrade"
-                title="Mapa da localização do serviço">
-            </iframe>
+            <iframe id="mapaServico_${i.id}" src="${mapaEmbed}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Mapa da localização do serviço"></iframe>
         </div>
 
         <div style="font-size:12px;color:#64748b;margin-bottom:12px">
@@ -1560,7 +1587,7 @@ function blocoLocalizacao(i){
         </div>
     </div>`;
 }
-function abrirResumoServico(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i)return alert("Serviço não encontrado.");resumoServicoId=Number(id);resumoTitulo.innerText=i.servico||"Resumo do Serviço";resumoConteudo.innerHTML=`<div class="resumo-grid"><div class="resumo-item"><small>Localidade</small><strong>${escapeHTML(nomeLocalidade(i))}</strong></div><div class="resumo-item"><small>Técnicos responsáveis</small><strong style="color:#1d4ed8">${escapeHTML(nomesTecnicos(i))}</strong></div><div class="resumo-item"><small>Agendamento</small><div>${formatarData(i.data_agendamento)}</div></div><div class="resumo-item"><small>Status</small><span class="${classeStatus(i.status)}">${escapeHTML(i.status||"Pendente")}</span></div><div class="resumo-item"><small>Prioridade</small><span class="${classePrioridade(i.prioridade)}">${escapeHTML(i.prioridade||"Média")}</span></div><div class="resumo-item"><small>Enviado por</small><div>${escapeHTML(i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Registrado em</small><div>${formatarData(i.criado_em)}</div></div><div class="resumo-item"><small>Atualizado em</small><div>${formatarData(i.atualizado_em)}</div></div><div class="resumo-item"><small>Atualizado por</small><div>${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Nova viabilidade</small><div>${i.nova_viabilidade?'Sim':'Não'}</div></div><div class="resumo-item full"><small>Descrição</small><div>${escapeHTML(i.descricao||"-")}</div></div></div>${previaAnexo(i)}${blocoLocalizacao(i)}`;resumoAcoes.innerHTML=`<button class="btn btn-editar" onclick="fecharResumoServico();abrirModalEditar(${i.id})">Editar</button>${i.anexo?`<button class="btn btn-anexo" onclick="visualizarAnexo(${i.id})">Anexo</button>`:""}<button class="btn btn-localizacao" onclick="abrirModalLocalizacao(${i.id})">Localização</button><button class="btn btn-imprimir" onclick="imprimirServico(${i.id})">Imprimir</button><button class="btn btn-excluir" onclick="fecharResumoServico();excluir(${i.id})">Excluir</button>`;modalResumoServico.style.display="flex";}
+function abrirResumoServico(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i)return alert("Serviço não encontrado.");resumoServicoId=Number(id);resumoTitulo.innerText=i.servico||"Resumo do Serviço";resumoConteudo.innerHTML=`<div class="resumo-grid"><div class="resumo-item"><small>Localidade</small><strong>${escapeHTML(nomeLocalidade(i))}</strong></div><div class="resumo-item"><small>Técnicos responsáveis</small><strong style="color:#1d4ed8">${escapeHTML(nomesTecnicos(i))}</strong></div><div class="resumo-item"><small>Agendamento</small><div>${formatarData(i.data_agendamento)}</div></div><div class="resumo-item"><small>Status</small><span class="${classeStatus(i.status)}">${escapeHTML(i.status||"Pendente")}</span></div><div class="resumo-item"><small>Prioridade</small><span class="${classePrioridade(i.prioridade)}">${escapeHTML(i.prioridade||"Média")}</span></div><div class="resumo-item"><small>Enviado por</small><div>${escapeHTML(i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Registrado em</small><div>${formatarData(i.criado_em)}</div></div><div class="resumo-item"><small>Atualizado em</small><div>${formatarData(i.atualizado_em)}</div></div><div class="resumo-item"><small>Atualizado por</small><div>${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Nova viabilidade</small><div>${i.nova_viabilidade?'Sim':'Não'}</div></div><div class="resumo-item full"><small>Descrição</small><div>${escapeHTML(i.descricao||"-")}</div></div></div>${previaAnexo(i)}${blocoLocalizacao(i)}`;resumoAcoes.innerHTML=`<button class="btn btn-editar" onclick="fecharResumoServico();abrirModalEditar(${i.id})">Editar</button>${i.anexo?`<button class="btn btn-anexo" onclick="visualizarAnexo(${i.id})">Anexo</button>`:""}<button class="btn btn-localizacao" onclick="${possuiLocalizacao(i)?`abrirGoogleMaps(${i.id})`:`abrirModalLocalizacao(${i.id})`}">Localização</button><button class="btn btn-imprimir" onclick="imprimirServico(${i.id})">Imprimir</button><button class="btn btn-excluir" onclick="fecharResumoServico();excluir(${i.id})">Excluir</button>`;modalResumoServico.style.display="flex";}
 function fecharResumoServico(){modalResumoServico.style.display="none";resumoServicoId=null;}
 function visualizarAnexo(id){
     const i=servicosPendentes.find(x=>Number(x.id)===Number(id));
@@ -1585,10 +1612,17 @@ function abrirModalLocalizacao(id){
     setTimeout(()=>campoLatitude.focus(),50);
 }
 function fecharModalLocalizacao(){modalLocalizacao.style.display="none";}
+document.addEventListener("keydown",e=>{
+    if(e.key!=="Escape")return;
+    if(modalAnexo.style.display==="flex"){fecharModalAnexo();return;}
+    if(modalLocalizacao.style.display==="flex"){fecharModalLocalizacao();return;}
+    if(modalServico.style.display==="flex"){fecharModalServico();return;}
+    if(modalResumoServico.style.display==="flex"){fecharResumoServico();}
+});
 async function salvarLocalizacaoManual(){
     const id=Number(localizacaoServicoId.value);
-    const latitude=Number(campoLatitude.value);
-    const longitude=Number(campoLongitude.value);
+    const latitude=normalizarCoordenada(campoLatitude.value);
+    const longitude=normalizarCoordenada(campoLongitude.value);
     if(!Number.isFinite(latitude)||latitude < -90||latitude > 90)return alert("Informe uma latitude válida entre -90 e 90.");
     if(!Number.isFinite(longitude)||longitude < -180||longitude > 180)return alert("Informe uma longitude válida entre -180 e 180.");
     try{
@@ -1655,12 +1689,18 @@ async function salvarServico(){
     if(!nome)return alert("Informe o serviço.");
     if(!localidadeValor)return alert("Informe a localidade.");
 
-    const latitudeTexto=document.getElementById("latitudeServico").value.trim();
-    const longitudeTexto=document.getElementById("longitudeServico").value.trim();
+    const latitudeBruta=document.getElementById("latitudeServico").value.trim();
+    const longitudeBruta=document.getElementById("longitudeServico").value.trim();
+    const latitudeNumero=normalizarCoordenada(latitudeBruta);
+    const longitudeNumero=normalizarCoordenada(longitudeBruta);
+    const latitudeTexto=latitudeNumero===null?"":String(latitudeNumero);
+    const longitudeTexto=longitudeNumero===null?"":String(longitudeNumero);
 
-    if((latitudeTexto&&!longitudeTexto)||(!latitudeTexto&&longitudeTexto)){
+    if((latitudeBruta&&!longitudeBruta)||(!latitudeBruta&&longitudeBruta)){
         return alert("Preencha latitude e longitude juntas.");
     }
+    if(latitudeBruta&&(latitudeNumero===null||latitudeNumero < -90||latitudeNumero > 90))return alert("Informe uma latitude válida entre -90 e 90.");
+    if(longitudeBruta&&(longitudeNumero===null||longitudeNumero < -180||longitudeNumero > 180))return alert("Informe uma longitude válida entre -180 e 180.");
 
     const fd=new FormData();
     fd.append("servico",nome);

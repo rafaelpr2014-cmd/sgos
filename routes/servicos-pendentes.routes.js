@@ -92,7 +92,7 @@ function dataHoraValidaOuNull(v) {
 }
 function numeroOuNull(v, min, max) {
     if (v === "" || v === null || v === undefined) return null;
-    const n = Number(v);
+    const n = Number(typeof v === "string" ? v.trim().replace(",", ".") : v);
     if (!Number.isFinite(n) || n < min || n > max) return null;
     return n;
 }
@@ -244,7 +244,7 @@ router.put("/:id", upload.single("anexo"), async (req, res) => {
         if (!result.affectedRows) return res.status(404).json({ erro: "Serviço não encontrado" });
         if (req.file && anexoAntigo && anexoAntigo !== caminhoAnexo) removerArquivo(anexoAntigo);
         const [atualizado] = await pool.query(
-            "SELECT id, status, atualizado_por, DATE_FORMAT(data_agendamento, '%Y-%m-%d %H:%i:%s') AS data_agendamento, DATE_FORMAT(atualizado_em, '%Y-%m-%d %H:%i:%s') AS atualizado_em FROM servicos_pendentes WHERE id=? AND empresa_id=? LIMIT 1",
+            "SELECT id, status, latitude, longitude, altitude, atualizado_por, DATE_FORMAT(data_agendamento, '%Y-%m-%d %H:%i:%s') AS data_agendamento, DATE_FORMAT(atualizado_em, '%Y-%m-%d %H:%i:%s') AS atualizado_em FROM servicos_pendentes WHERE id=? AND empresa_id=? LIMIT 1",
             [id, usuario.empresa_id]
         );
         res.json({ sucesso: true, servico: atualizado[0] || { id, status: normalizarStatus(req.body.status) } });
