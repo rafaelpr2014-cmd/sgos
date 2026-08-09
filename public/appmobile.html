@@ -6141,8 +6141,8 @@ async function obterEnderecoMapa(latitude, longitude){
                         "administrative_area_level_4"
                     );
                     const cidade = pegar(
-                        "administrative_area_level_2",
-                        "locality"
+                        "locality",
+                        "administrative_area_level_2"
                     );
                     const estado = pegar("administrative_area_level_1");
                     const cep = pegar("postal_code");
@@ -6265,143 +6265,162 @@ function quebrarTextoCanvas(ctx, texto, larguraMax){
 }
 
 function desenharCarimboGPS(ctx, largura, altura, carimbo){
-    // Modelo SGOS GPS: faixa compacta no rodapé, com endereço à esquerda
-    // e data/hora + coordenadas + identificação da OS à direita.
-    const margem = Math.max(10, Math.round(largura * .010));
+    /*
+     * CARIMBO GPS COMPACTO SGOS
+     * IMPORTANTE: os campos de endereço abaixo vêm exclusivamente de
+     * obterEnderecoMapa(latitude, longitude), isto é, da geocodificação
+     * reversa das coordenadas capturadas. Nenhum dado cadastrado na OS
+     * é usado para Rua/Bairro/Cidade/CEP.
+     */
+    const margem = Math.max(8, Math.round(largura * .008));
     const boxW = largura - margem * 2;
-    const boxH = Math.max(118, Math.min(210, Math.round(altura * .155)));
+
+    // Faixa pequena: cerca de 9% da imagem, limitada para não cobrir a foto.
+    const boxH = Math.max(86, Math.min(138, Math.round(altura * .095)));
     const x = margem;
     const y = altura - boxH - margem;
-    const pad = Math.max(12, Math.round(largura * .012));
+    const pad = Math.max(8, Math.round(largura * .008));
 
     ctx.save();
-
-    // Fundo único translúcido.
-    ctx.fillStyle = "rgba(0,0,0,.70)";
+    ctx.fillStyle = "rgba(0,0,0,.68)";
     ctx.fillRect(x, y, boxW, boxH);
 
-    const fonteBase = Math.max(14, Math.round(largura * .016));
-    const fonteSec = Math.max(12, Math.round(fonteBase * .80));
-    const fonteMini = Math.max(10, Math.round(fonteBase * .67));
-    const gap = Math.max(10, Math.round(largura * .010));
+    const fonte = Math.max(11, Math.round(largura * .0125));
+    const fontePeq = Math.max(9, Math.round(fonte * .80));
+    const fonteMini = Math.max(8, Math.round(fonte * .70));
+    const amarelo = "#FFD84D";
+    const branco = "#FFFFFF";
 
-    // Em imagens mais estreitas, mantém 52/48; em paisagem, 46/54.
-    const proporcaoEsq = largura >= altura ? .46 : .52;
-    const leftW = Math.round((boxW - pad * 2 - gap) * proporcaoEsq);
-    const rightW = boxW - pad * 2 - gap - leftW;
+    // Colunas: endereço 62%, dados técnicos 38%.
+    const gap = Math.max(10, Math.round(largura * .009));
+    const conteudoW = boxW - pad * 2;
+    const leftW = Math.round((conteudoW - gap) * .62);
+    const rightW = conteudoW - gap - leftW;
     const leftX = x + pad;
     const rightX = leftX + leftW + gap;
 
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
-    ctx.fillStyle = "#fff";
 
-    // =========================
-    // COLUNA ESQUERDA — MAPA
-    // =========================
-    const iconR = Math.max(13, Math.round(fonteBase * .90));
-    const iconCx = leftX + iconR;
-    const iconCy = y + pad + iconR;
-
-    // Ícone simples de localização (sem depender de fonte/emoji).
-    ctx.strokeStyle = "#5ee7f4";
-    ctx.fillStyle = "#5ee7f4";
-    ctx.lineWidth = Math.max(2, Math.round(largura * .002));
+    // Pin bem pequeno, apenas como referência visual.
+    const pinR = Math.max(5, Math.round(fonte * .43));
+    const pinX = leftX + pinR;
+    const pinY = y + pad + pinR;
+    ctx.strokeStyle = amarelo;
+    ctx.fillStyle = amarelo;
+    ctx.lineWidth = Math.max(1.2, largura * .0012);
     ctx.beginPath();
-    ctx.arc(iconCx, iconCy - iconR * .22, iconR * .55, 0, Math.PI * 2);
+    ctx.arc(pinX, pinY - pinR * .18, pinR * .52, 0, Math.PI * 2);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(iconCx - iconR * .35, iconCy + iconR * .10);
-    ctx.lineTo(iconCx, iconCy + iconR * .72);
-    ctx.lineTo(iconCx + iconR * .35, iconCy + iconR * .10);
+    ctx.moveTo(pinX - pinR * .30, pinY + pinR * .08);
+    ctx.lineTo(pinX, pinY + pinR * .64);
+    ctx.lineTo(pinX + pinR * .30, pinY + pinR * .08);
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(iconCx, iconCy - iconR * .22, iconR * .14, 0, Math.PI * 2);
+    ctx.arc(pinX, pinY - pinR * .18, Math.max(1.2, pinR * .13), 0, Math.PI * 2);
     ctx.fill();
 
-    const enderecoX = leftX + iconR * 2 + Math.max(8, Math.round(fonteBase * .45));
-    const enderecoW = Math.max(80, leftW - (enderecoX - leftX));
+    const tx = leftX + pinR * 2 + Math.max(6, Math.round(fonte * .40));
+    const tw = Math.max(90, leftW - (tx - leftX));
 
-    ctx.fillStyle = "#fff";
-    ctx.font = `700 ${fonteBase}px Arial`;
+    // Endereço do MAPA, dividido por campo e todo amarelo.
+    ctx.fillStyle = amarelo;
+    ctx.font = `700 ${fonte}px Arial`;
 
-    const enderecoMapa = carimbo.endereco || "Endereço do mapa indisponível";
-    const linhasEndereco = quebrarTextoCanvas(ctx, enderecoMapa, enderecoW).slice(0,2);
+    const rua = String(carimbo.endereco || "").trim();
+    const bairro = String(carimbo.bairro || "").trim();
+    const cidade = String(carimbo.localidade || "").trim();
+    const estado = String(carimbo.estado || "").trim();
+    const cep = String(carimbo.cep || "").trim();
+
     let ly = y + pad;
-    linhasEndereco.forEach(linha => {
-        ctx.fillText(linha, enderecoX, ly);
-        ly += Math.round(fonteBase * 1.12);
-    });
 
-    ctx.font = `500 ${fonteSec}px Arial`;
-    if(carimbo.localLinha){
-        const linhasLocal = quebrarTextoCanvas(ctx, carimbo.localLinha, enderecoW).slice(0,2);
-        linhasLocal.forEach(linha => {
-            if(ly < y + boxH - pad - fonteMini * 1.8){
-                ctx.fillText(linha, enderecoX, ly);
-                ly += Math.round(fonteSec * 1.12);
+    const escreverLinha = (rotulo, valor, maxLinhas=1) => {
+        if(!valor) return;
+        ctx.font = `700 ${fonte}px Arial`;
+        const prefixo = `${rotulo}: `;
+        const prefixW = ctx.measureText(prefixo).width;
+        ctx.fillText(prefixo, tx, ly);
+
+        const linhas = quebrarTextoCanvas(
+            ctx,
+            valor,
+            Math.max(45, tw - prefixW)
+        ).slice(0, maxLinhas);
+
+        if(linhas.length){
+            ctx.fillText(linhas[0], tx + prefixW, ly);
+            ly += Math.round(fonte * 1.08);
+
+            for(let i=1; i<linhas.length; i++){
+                if(ly > y + boxH - pad - fonte) break;
+                ctx.fillText(linhas[i], tx, ly);
+                ly += Math.round(fonte * 1.08);
             }
-        });
-    }
+        }
+    };
 
-    // Fonte do endereço.
+    escreverLinha("RUA", rua || "Não identificada", 1);
+    escreverLinha("BAIRRO", bairro || "Não identificado", 1);
+
+    const cidadeEstado = [cidade, estado].filter(Boolean).join(" - ");
+    escreverLinha("CIDADE", cidadeEstado || "Não identificada", 1);
+    escreverLinha("CEP", cep || "Não identificado", 1);
+
+    // Fonte da localização, pequena e discreta.
+    ctx.fillStyle = "rgba(255,216,77,.78)";
     ctx.font = `600 ${fonteMini}px Arial`;
-    ctx.fillStyle = "#cbd5e1";
-    ctx.fillText(carimbo.fonteMapa || "GPS / mapa", leftX, y + boxH - pad - fonteMini);
+    const fonteMapa = String(carimbo.fonteMapa || "GPS / mapa");
+    ctx.fillText(fonteMapa, leftX, y + boxH - pad - fonteMini);
 
-    // =========================
-    // DIVISOR
-    // =========================
+    // Divisor sutil.
     const divX = rightX - Math.round(gap / 2);
-    ctx.strokeStyle = "rgba(255,255,255,.24)";
+    ctx.strokeStyle = "rgba(255,255,255,.20)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(divX, y + pad);
     ctx.lineTo(divX, y + boxH - pad);
     ctx.stroke();
 
-    // =========================
-    // COLUNA DIREITA — DADOS
-    // =========================
-    ctx.fillStyle = "#fff";
-    let ry = y + pad;
-
-    // Separa data e hora para ficar como o modelo visual aprovado.
+    // Dados técnicos compactos à direita.
     let dataTxt = "";
     let horaTxt = "";
     try{
         const d = carimbo.dataHoraISO ? new Date(carimbo.dataHoraISO) : new Date();
         dataTxt = d.toLocaleDateString("pt-BR");
-        horaTxt = d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+        horaTxt = d.toLocaleTimeString("pt-BR", {
+            hour:"2-digit",
+            minute:"2-digit",
+            second:"2-digit"
+        });
     }catch(_){
         const partes = String(carimbo.dataHora || "").split(",");
         dataTxt = (partes[0] || "").trim();
         horaTxt = (partes[1] || "").trim();
     }
 
-    ctx.font = `700 ${fonteBase}px Arial`;
-    ctx.fillText(`DATA  ${dataTxt}`, rightX, ry);
-    ry += Math.round(fonteBase * 1.18);
+    ctx.fillStyle = branco;
+    ctx.font = `700 ${fontePeq}px Arial`;
+    let ry = y + pad;
+    ctx.fillText(`${dataTxt}  ${horaTxt}`, rightX, ry);
+    ry += Math.round(fontePeq * 1.18);
 
-    ctx.fillText(`HORA  ${horaTxt}`, rightX, ry);
-    ry += Math.round(fonteBase * 1.18);
-
-    ctx.font = `600 ${fonteSec}px Arial`;
-    const coordTexto = `${carimbo.latitudeDMS || "-"}  ${carimbo.longitudeDMS || "-"}`;
-    const linhasCoord = quebrarTextoCanvas(ctx, coordTexto, rightW).slice(0,2);
-    linhasCoord.forEach(linha => {
+    ctx.font = `600 ${fontePeq}px Arial`;
+    const coord = `${carimbo.latitudeDMS || "-"}  ${carimbo.longitudeDMS || "-"}`;
+    const coordLinhas = quebrarTextoCanvas(ctx, coord, rightW).slice(0,2);
+    coordLinhas.forEach(linha => {
         ctx.fillText(linha, rightX, ry);
-        ry += Math.round(fonteSec * 1.15);
+        ry += Math.round(fontePeq * 1.12);
     });
 
-    // Empresa + OS fixados na base.
     const empresa = String(carimbo.empresa || "SGOS").toUpperCase();
-    const empresaTexto = `${empresa}${carimbo.osId ? ` • OS #${carimbo.osId}` : ""}`;
-    ctx.font = `800 ${Math.max(12, Math.round(fonteBase * .84))}px Arial`;
+    const osTxt = `${empresa}${carimbo.osId ? ` • OS #${carimbo.osId}` : ""}`;
+    ctx.font = `800 ${fontePeq}px Arial`;
     ctx.fillText(
-        empresaTexto,
+        osTxt,
         rightX,
-        y + boxH - pad - Math.max(12, Math.round(fonteBase * .84))
+        y + boxH - pad - fontePeq
     );
 
     ctx.restore();
