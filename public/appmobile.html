@@ -6130,10 +6130,18 @@ async function obterEnderecoMapa(latitude, longitude){
     const lng = Number(longitude);
     if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
-    // 1) GOOGLE MAPS GEOCODING — prioridade.
-    // Configure a chave em uma destas formas:
-    // window.SGOS_GOOGLE_MAPS_API_KEY = "SUA_CHAVE";
-    // ou <meta name="google-maps-api-key" content="SUA_CHAVE">
+    /*
+     * ENDEREÇO DA FOTO = COORDENADAS GPS DA PRÓPRIA CAPTURA.
+     * Nunca usa rua, bairro, localidade, referência ou CEP cadastrados na OS.
+     *
+     * Para ficar IGUAL ao Google Maps, configure uma chave da
+     * Google Maps Geocoding API:
+     *
+     * window.SGOS_GOOGLE_MAPS_API_KEY = "SUA_CHAVE";
+     *
+     * ou:
+     * <meta name="google-maps-api-key" content="SUA_CHAVE">
+     */
     const chaveGoogle = String(
         window.SGOS_GOOGLE_MAPS_API_KEY ||
         document.querySelector('meta[name="google-maps-api-key"]')?.content ||
@@ -6142,75 +6150,94 @@ async function obterEnderecoMapa(latitude, longitude){
 
     if(chaveGoogle){
         try{
-            const urlGoogle = new URL("https://maps.googleapis.com/maps/api/geocode/json");
-            urlGoogle.searchParams.set("latlng", `${lat},${lng}`);
-            urlGoogle.searchParams.set("language", "pt-BR");
-            urlGoogle.searchParams.set("region", "br");
-            urlGoogle.searchParams.set("key", chaveGoogle);
+            const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+            url.searchParams.set("latlng", `${lat},${lng}`);
+            url.searchParams.set("language", "pt-BR");
+            url.searchParams.set("region", "br");
+            url.searchParams.set("result_type", "street_address|premise|subpremise");
+            url.searchParams.set("key", chaveGoogle);
 
-            const respGoogle = await fetch(urlGoogle.toString(), {
+            const resp = await fetch(url.toString(), {
                 method:"GET",
                 headers:{"Accept":"application/json"},
                 cache:"no-store"
             });
 
-            if(respGoogle.ok){
-                const dadosGoogle = await respGoogle.json();
-                const resultado = Array.isArray(dadosGoogle?.results) ? dadosGoogle.results[0] : null;
+            if(resp.ok){
+                const dados = await resp.json();
+                const resultados = Array.isArray(dados?.results) ? dados.results : [];
+
+                // Prefere um endereço de rua completo.
+                const resultado =
+                    resultados.find(r => Array.isArray(r.types) && r.types.includes("street_address")) ||
+                    resultados.find(r => Array.isArray(r.types) && (r.types.includes("premise") || r.types.includes("subpremise"))) ||
+                    resultados[0];
 
                 if(resultado){
                     const componentes = Array.isArray(resultado.address_components)
                         ? resultado.address_components
                         : [];
 
-                    const pegar = (...tipos) => {
+                    const pegarComponente = (tipo, usarCurto=false) => {
                         const item = componentes.find(c =>
-                            Array.isArray(c.types) && tipos.some(t => c.types.includes(t))
+                            Array.isArray(c.types) && c.types.includes(tipo)
                         );
-                        return item?.long_name || "";
+                        if(!item) return "";
+                        return usarCurto ? (item.short_name || item.long_name || "") : (item.long_name || "");
                     };
 
-                    const rua = pegar("route");
-                    const numero = pegar("street_number");
-                    const bairro = pegar(
-                        "sublocality_level_1",
-                        "sublocality",
-                        "neighborhood",
-                        "administrative_area_level_4"
-                    );
-                    const cidade = pegar(
-                        "locality",
-                        "administrative_area_level_2"
-                    );
-                    const estado = pegar("administrative_area_level_1");
-                    const cep = pegar("postal_code");
+                    const numero = pegarComponente("street_number");
+                    const rua = pegarComponente("route");
+                    const bairro =
+                        pegarComponente("sublocality_level_1") ||
+                        pegarComponente("sublocality") ||
+                        pegarComponente("neighborhood") ||
+                        pegarComponente("administrative_area_level_4");
 
-                    const endereco = [rua, numero].filter(Boolean).join(", ");
-                    const localLinha = [
-                        bairro,
-                        cidade && estado ? `${cidade} - ${estado}` : (cidade || estado),
-                        cep
-                    ].filter(Boolean).join(", ");
+                    const cidade =
+                        pegarComponente("locality") ||
+                        pegarComponente("administrative_area_level_2");
+
+                    const uf = pegarComponente("administrative_area_level_1", true);
+                    const cep = pegarComponente("postal_code");
+                    const pais = pegarComponente("country");
+
+                    // Mesmo estilo visual do Maps: número primeiro.
+                    const linhaEndereco = [numero, rua].filter(Boolean).join(", ");
+
+                    const cidadeUf = cidade && uf
+                        ? `${cidade} - ${uf}`
+                        : (cidade || uf);
+
+                    const linhaLocal = [cidadeUf, cep].filter(Boolean).join(", ");
 
                     return {
-                        endereco: endereco || resultado.formatted_address || "",
+                        numero,
+                        rua,
+                        endereco: linhaEndereco || resultado.formatted_address || "",
                         bairro,
                         localidade: cidade,
-                        estado,
+                        estado: uf,
                         cep,
-                        localLinha,
+                        pais,
+                        localLinha: linhaLocal,
                         enderecoCompleto: resultado.formatted_address || "",
-                        fonte: "Google Maps"
+                        fonte: "Google Maps",
+                        google: true
                     };
                 }
+            }else{
+                console.warn("Google Geocoding HTTP:", resp.status);
             }
         }catch(err){
-            console.warn("Google Maps Geocoding falhou; usando fallback:", err);
+            console.warn("Google Maps Geocoding falhou:", err);
         }
     }
 
-    // 2) FALLBACK — continua sendo obtido pelas coordenadas reais do GPS.
-    // Nunca utiliza rua/bairro/localidade cadastrados na OS.
+    /*
+     * Fallback apenas se a chave Google não estiver disponível ou a consulta falhar.
+     * Continua usando SOMENTE as coordenadas GPS atuais.
+     */
     try{
         const url = new URL("https://nominatim.openstreetmap.org/reverse");
         url.searchParams.set("format", "jsonv2");
@@ -6225,41 +6252,56 @@ async function obterEnderecoMapa(latitude, longitude){
             headers:{"Accept":"application/json"},
             cache:"no-store"
         });
+
         if(!resp.ok) throw new Error(`Geocodificação HTTP ${resp.status}`);
 
         const dados = await resp.json();
         const a = dados?.address || {};
 
-        const logradouro = a.road || a.pedestrian || a.residential || a.path || "";
         const numero = a.house_number || "";
+        const rua = a.road || a.pedestrian || a.residential || a.path || "";
         const bairro = a.suburb || a.neighbourhood || a.quarter || a.city_district || "";
         const cidade = a.city || a.town || a.village || a.municipality || "";
-        const estado = a.state || "";
+        const uf = a["ISO3166-2-lvl4"] ? String(a["ISO3166-2-lvl4"]).split("-").pop() : (a.state || "");
         const cep = a.postcode || "";
+        const pais = a.country || "";
 
-        const enderecoLinha = [logradouro, numero].filter(Boolean).join(", ");
-        const localLinha = [
-            bairro,
-            cidade && estado ? `${cidade} - ${estado}` : (cidade || estado),
-            cep
-        ].filter(Boolean).join(", ");
+        const linhaEndereco = [numero, rua].filter(Boolean).join(", ");
+        const cidadeUf = cidade && uf ? `${cidade} - ${uf}` : (cidade || uf);
+        const linhaLocal = [cidadeUf, cep].filter(Boolean).join(", ");
 
         return {
-            endereco: enderecoLinha || String(dados?.display_name || "").split(",").slice(0,3).join(", ").trim(),
+            numero,
+            rua,
+            endereco: linhaEndereco || "",
             bairro,
             localidade: cidade,
-            estado,
+            estado: uf,
             cep,
-            localLinha,
+            pais,
+            localLinha: linhaLocal,
             enderecoCompleto: dados?.display_name || "",
-            fonte: "GPS / mapa"
+            fonte: "GPS",
+            google: false
         };
     }catch(err){
         console.warn("Não foi possível obter endereço pelas coordenadas:", err);
-        return null;
+        return {
+            numero:"",
+            rua:"",
+            endereco:"",
+            bairro:"",
+            localidade:"",
+            estado:"",
+            cep:"",
+            pais:"",
+            localLinha:"",
+            enderecoCompleto:"",
+            fonte:"GPS",
+            google:false
+        };
     }
 }
-
 async function obterCarimboLocalizacao(){
     const pos = await obterPosicaoAtual();
     const agora = new Date();
@@ -6269,12 +6311,16 @@ async function obterCarimboLocalizacao(){
     return {
         ...pos,
         ...identificacao,
+        numeroMapa: enderecoMapa?.numero || "",
+        ruaMapa: enderecoMapa?.rua || "",
         endereco: enderecoMapa?.endereco || "",
         bairro: enderecoMapa?.bairro || "",
         localidade: enderecoMapa?.localidade || "",
         estado: enderecoMapa?.estado || "",
         cep: enderecoMapa?.cep || "",
-        fonteMapa: enderecoMapa?.fonte || "GPS / mapa",
+        paisMapa: enderecoMapa?.pais || "",
+        enderecoGoogle: Boolean(enderecoMapa?.google),
+        fonteMapa: enderecoMapa?.fonte || "GPS",
         localLinha: enderecoMapa?.localLinha || "",
         enderecoCompletoMapa: enderecoMapa?.enderecoCompleto || "",
         dataHora: agora.toLocaleString("pt-BR", {hour12:false}),
@@ -6304,124 +6350,121 @@ function quebrarTextoCanvas(ctx, texto, larguraMax){
 
 function desenharCarimboGPS(ctx, largura, altura, carimbo){
     /*
-     * CARIMBO GPS COMPACTO SGOS
-     * IMPORTANTE: os campos de endereço abaixo vêm exclusivamente de
-     * obterEnderecoMapa(latitude, longitude), isto é, da geocodificação
-     * reversa das coordenadas capturadas. Nenhum dado cadastrado na OS
-     * é usado para Rua/Bairro/Cidade/CEP.
+     * CARIMBO SGOS ULTRACOMPACTO
+     * - SEM mini mapa
+     * - SEM quadro GPS
+     * - endereço em amarelo
+     * - endereço vindo somente do reverse geocoding do GPS da foto
      */
-    const margem = Math.max(8, Math.round(largura * .008));
+    const margem = Math.max(6, Math.round(largura * .006));
     const boxW = largura - margem * 2;
 
-    // Faixa pequena: cerca de 9% da imagem, limitada para não cobrir a foto.
-    const boxH = Math.max(86, Math.min(138, Math.round(altura * .095)));
+    // Aproximadamente 6,5% da altura da foto.
+    const boxH = Math.max(68, Math.min(108, Math.round(altura * .065)));
     const x = margem;
     const y = altura - boxH - margem;
-    const pad = Math.max(8, Math.round(largura * .008));
+    const padX = Math.max(9, Math.round(largura * .009));
+    const padY = Math.max(7, Math.round(boxH * .10));
 
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,.68)";
+    ctx.fillStyle = "rgba(0,0,0,.74)";
     ctx.fillRect(x, y, boxW, boxH);
 
-    const fonte = Math.max(11, Math.round(largura * .0125));
-    const fontePeq = Math.max(9, Math.round(fonte * .80));
-    const fonteMini = Math.max(8, Math.round(fonte * .70));
-    const amarelo = "#FFD84D";
+    const amarelo = "#FFD400";
     const branco = "#FFFFFF";
+    const cinza = "#D8DEE9";
 
-    // Colunas: endereço 62%, dados técnicos 38%.
-    const gap = Math.max(10, Math.round(largura * .009));
-    const conteudoW = boxW - pad * 2;
-    const leftW = Math.round((conteudoW - gap) * .62);
+    const fonteEndereco = Math.max(12, Math.round(largura * .013));
+    const fonteLocal = Math.max(10, Math.round(fonteEndereco * .82));
+    const fonteInfo = Math.max(9, Math.round(fonteEndereco * .74));
+
+    const gap = Math.max(10, Math.round(largura * .010));
+    const conteudoW = boxW - padX * 2;
+    const leftW = Math.round((conteudoW - gap) * .61);
     const rightW = conteudoW - gap - leftW;
-    const leftX = x + pad;
+    const leftX = x + padX;
     const rightX = leftX + leftW + gap;
 
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
 
-    // Pin bem pequeno, apenas como referência visual.
-    const pinR = Math.max(5, Math.round(fonte * .43));
+    // PIN MINÚSCULO — não existe mais mini mapa.
+    const pinR = Math.max(4, Math.round(fonteEndereco * .34));
     const pinX = leftX + pinR;
-    const pinY = y + pad + pinR;
+    const pinY = y + padY + pinR;
+
     ctx.strokeStyle = amarelo;
     ctx.fillStyle = amarelo;
-    ctx.lineWidth = Math.max(1.2, largura * .0012);
+    ctx.lineWidth = Math.max(1.2, largura * .001);
     ctx.beginPath();
-    ctx.arc(pinX, pinY - pinR * .18, pinR * .52, 0, Math.PI * 2);
+    ctx.arc(pinX, pinY - pinR * .18, pinR * .50, 0, Math.PI * 2);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(pinX - pinR * .30, pinY + pinR * .08);
-    ctx.lineTo(pinX, pinY + pinR * .64);
-    ctx.lineTo(pinX + pinR * .30, pinY + pinR * .08);
+    ctx.moveTo(pinX - pinR * .28, pinY + pinR * .08);
+    ctx.lineTo(pinX, pinY + pinR * .58);
+    ctx.lineTo(pinX + pinR * .28, pinY + pinR * .08);
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(pinX, pinY - pinR * .18, Math.max(1.2, pinR * .13), 0, Math.PI * 2);
+    ctx.arc(pinX, pinY - pinR * .18, Math.max(1, pinR * .12), 0, Math.PI * 2);
     ctx.fill();
 
-    const tx = leftX + pinR * 2 + Math.max(6, Math.round(fonte * .40));
-    const tw = Math.max(90, leftW - (tx - leftX));
+    const tx = leftX + pinR * 2 + Math.max(6, Math.round(fonteEndereco * .36));
+    const tw = Math.max(80, leftW - (tx - leftX));
 
-    // Endereço do MAPA, dividido por campo e todo amarelo.
-    ctx.fillStyle = amarelo;
-    ctx.font = `700 ${fonte}px Arial`;
-
-    const rua = String(carimbo.endereco || "").trim();
-    const bairro = String(carimbo.bairro || "").trim();
+    /*
+     * FORMATO DE ENDEREÇO:
+     * 126, R. Maximiliano Silva
+     * Itamari - BA, 45455-000
+     *
+     * Tudo abaixo vem de carimbo.numeroMapa/ruaMapa/localidade/estado/cep,
+     * preenchidos exclusivamente por obterEnderecoMapa(GPS).
+     */
+    const numero = String(carimbo.numeroMapa || "").trim();
+    const rua = String(carimbo.ruaMapa || "").trim();
     const cidade = String(carimbo.localidade || "").trim();
-    const estado = String(carimbo.estado || "").trim();
+    const uf = String(carimbo.estado || "").trim();
     const cep = String(carimbo.cep || "").trim();
 
-    let ly = y + pad;
+    const linha1 = [numero, rua].filter(Boolean).join(", ") ||
+        String(carimbo.endereco || "").trim() ||
+        "Endereço não identificado";
 
-    const escreverLinha = (rotulo, valor, maxLinhas=1) => {
-        if(!valor) return;
-        ctx.font = `700 ${fonte}px Arial`;
-        const prefixo = `${rotulo}: `;
-        const prefixW = ctx.measureText(prefixo).width;
-        ctx.fillText(prefixo, tx, ly);
+    const cidadeUf = cidade && uf ? `${cidade} - ${uf}` : (cidade || uf);
+    const linha2 = [cidadeUf, cep].filter(Boolean).join(", ");
 
-        const linhas = quebrarTextoCanvas(
-            ctx,
-            valor,
-            Math.max(45, tw - prefixW)
-        ).slice(0, maxLinhas);
+    ctx.fillStyle = amarelo;
+    ctx.font = `800 ${fonteEndereco}px Arial`;
+    const linhas1 = quebrarTextoCanvas(ctx, linha1, tw).slice(0,1);
+    ctx.fillText(linhas1[0] || linha1, tx, y + padY);
 
-        if(linhas.length){
-            ctx.fillText(linhas[0], tx + prefixW, ly);
-            ly += Math.round(fonte * 1.08);
+    ctx.font = `700 ${fonteLocal}px Arial`;
+    if(linha2){
+        ctx.fillText(
+            quebrarTextoCanvas(ctx, linha2, tw)[0] || linha2,
+            tx,
+            y + padY + Math.round(fonteEndereco * 1.18)
+        );
+    }
 
-            for(let i=1; i<linhas.length; i++){
-                if(ly > y + boxH - pad - fonte) break;
-                ctx.fillText(linhas[i], tx, ly);
-                ly += Math.round(fonte * 1.08);
-            }
-        }
-    };
+    // Se não for Google, deixa explícito sem inventar endereço do Maps.
+    ctx.font = `600 ${Math.max(8, Math.round(fonteInfo * .84))}px Arial`;
+    ctx.fillStyle = carimbo.enderecoGoogle ? "rgba(255,212,0,.75)" : "rgba(255,255,255,.55)";
+    ctx.fillText(
+        carimbo.enderecoGoogle ? "Google Maps" : "GPS",
+        tx,
+        y + boxH - padY - Math.max(8, Math.round(fonteInfo * .84))
+    );
 
-    escreverLinha("RUA", rua || "Não identificada", 1);
-    escreverLinha("BAIRRO", bairro || "Não identificado", 1);
-
-    const cidadeEstado = [cidade, estado].filter(Boolean).join(" - ");
-    escreverLinha("CIDADE", cidadeEstado || "Não identificada", 1);
-    escreverLinha("CEP", cep || "Não identificado", 1);
-
-    // Fonte da localização, pequena e discreta.
-    ctx.fillStyle = "rgba(255,216,77,.78)";
-    ctx.font = `600 ${fonteMini}px Arial`;
-    const fonteMapa = String(carimbo.fonteMapa || "GPS / mapa");
-    ctx.fillText(fonteMapa, leftX, y + boxH - pad - fonteMini);
-
-    // Divisor sutil.
+    // Separador fino.
     const divX = rightX - Math.round(gap / 2);
-    ctx.strokeStyle = "rgba(255,255,255,.20)";
+    ctx.strokeStyle = "rgba(255,255,255,.22)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(divX, y + pad);
-    ctx.lineTo(divX, y + boxH - pad);
+    ctx.moveTo(divX, y + padY);
+    ctx.lineTo(divX, y + boxH - padY);
     ctx.stroke();
 
-    // Dados técnicos compactos à direita.
+    // Data/hora + coordenadas + empresa/OS.
     let dataTxt = "";
     let horaTxt = "";
     try{
@@ -6439,31 +6482,30 @@ function desenharCarimboGPS(ctx, largura, altura, carimbo){
     }
 
     ctx.fillStyle = branco;
-    ctx.font = `700 ${fontePeq}px Arial`;
-    let ry = y + pad;
-    ctx.fillText(`${dataTxt}  ${horaTxt}`, rightX, ry);
-    ry += Math.round(fontePeq * 1.18);
+    ctx.font = `700 ${fonteInfo}px Arial`;
+    let ry = y + padY;
+    ctx.fillText(`${dataTxt} • ${horaTxt}`, rightX, ry);
+    ry += Math.round(fonteInfo * 1.22);
 
-    ctx.font = `600 ${fontePeq}px Arial`;
+    ctx.fillStyle = cinza;
+    ctx.font = `600 ${fonteInfo}px Arial`;
     const coord = `${carimbo.latitudeDMS || "-"}  ${carimbo.longitudeDMS || "-"}`;
-    const coordLinhas = quebrarTextoCanvas(ctx, coord, rightW).slice(0,2);
-    coordLinhas.forEach(linha => {
-        ctx.fillText(linha, rightX, ry);
-        ry += Math.round(fontePeq * 1.12);
-    });
+    const coordLinha = quebrarTextoCanvas(ctx, coord, rightW)[0] || coord;
+    ctx.fillText(coordLinha, rightX, ry);
 
     const empresa = String(carimbo.empresa || "SGOS").toUpperCase();
     const osTxt = `${empresa}${carimbo.osId ? ` • OS #${carimbo.osId}` : ""}`;
-    ctx.font = `800 ${fontePeq}px Arial`;
+
+    ctx.fillStyle = branco;
+    ctx.font = `800 ${fonteInfo}px Arial`;
     ctx.fillText(
         osTxt,
         rightX,
-        y + boxH - pad - fontePeq
+        y + boxH - padY - fonteInfo
     );
 
     ctx.restore();
 }
-
 async function blobParaJpeg(blob, nomeBase="foto", carimbo=null){
     if(!blob || !String(blob.type || "").startsWith("image/")){
         return new File([blob], nomeBase, {type: blob?.type || "application/octet-stream"});
