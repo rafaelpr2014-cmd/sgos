@@ -551,6 +551,12 @@ textarea:focus{
     flex-wrap:wrap;
 }
 
+.acoes-tabela{
+    flex-wrap:nowrap;
+    align-items:center;
+    min-width:220px;
+}
+
 .btn{
     border:none;
     padding:9px 12px;
@@ -674,13 +680,35 @@ textarea:focus{
     margin:0;
 }
 
-#frameAnexo{
+#conteudoAnexo{
     width:100%;
-    height:100%;
+    flex:1;
+    min-height:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:auto;
     border:1px solid var(--borda);
     border-radius:12px;
     background:#f8fafc;
+    padding:10px;
 }
+#conteudoAnexo img,
+#conteudoAnexo video{
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
+    border-radius:8px;
+}
+#conteudoAnexo iframe{
+    width:100%;
+    height:100%;
+    min-height:60vh;
+    border:0;
+    border-radius:8px;
+    background:white;
+}
+.anexo-acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 
 @media(max-width:1300px){
     .top-actions{
@@ -1222,15 +1250,13 @@ textarea:focus{
                         <th>Registrado em</th>
                         <th>Atualizado em</th>
                         <th>Atualizado por</th>
-                        <th>Anexos</th>
-                        <th>Localização</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
 
                 <tbody id="tabelaPendentes">
                     <tr>
-                        <td colspan="15">Carregando...</td>
+                        <td colspan="13">Carregando...</td>
                     </tr>
                 </tbody>
             </table>
@@ -1315,9 +1341,12 @@ textarea:focus{
     <div class="modal-content anexo-modal-content">
         <div class="anexo-topo">
             <h3>Visualizar Anexo</h3>
-            <button class="btn btn-cancelar" onclick="fecharModalAnexo()">Fechar</button>
+            <div class="anexo-acoes">
+                <a class="btn btn-anexo" id="abrirAnexoNovaAba" href="#" target="_blank" rel="noopener">Abrir em nova aba</a>
+                <button class="btn btn-cancelar" onclick="fecharModalAnexo()">Fechar</button>
+            </div>
         </div>
-        <iframe id="frameAnexo" src=""></iframe>
+        <div id="conteudoAnexo"></div>
     </div>
 </div>
 
@@ -1453,22 +1482,28 @@ function montarLinha(i){
         <td>${formatarData(i.criado_em)}</td>
         <td>${formatarData(i.atualizado_em)}</td>
         <td>${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</td>
-        <td onclick="event.stopPropagation()">${temAnexo?`<button class="btn btn-anexo btn-icone" title="Visualizar anexo" aria-label="Visualizar anexo" onclick="visualizarAnexo(${i.id})">${iconeSvg("anexo")}</button>`:"-"}</td>
-        <td onclick="event.stopPropagation()"><button class="btn btn-localizacao btn-icone" title="${temLocal?"Editar localização":"Adicionar localização"}" aria-label="Localização" onclick="abrirModalLocalizacao(${i.id})">${iconeSvg("localizacao")}</button></td>
-        <td onclick="event.stopPropagation()"><div class="acoes">
-            <button class="btn btn-imprimir btn-icone" title="Imprimir" aria-label="Imprimir" onclick="imprimirServico(${i.id})">${iconeSvg("imprimir")}</button>
+        <td onclick="event.stopPropagation()"><div class="acoes acoes-tabela">
             <button class="btn btn-editar btn-icone" title="Editar" aria-label="Editar" onclick="abrirModalEditar(${i.id})">${iconeSvg("editar")}</button>
+            ${temAnexo?`<button class="btn btn-anexo btn-icone" title="Visualizar anexo" aria-label="Visualizar anexo" onclick="visualizarAnexo(${i.id})">${iconeSvg("anexo")}</button>`:""}
+            <button class="btn btn-localizacao btn-icone" title="${temLocal?"Editar localização":"Adicionar localização"}" aria-label="Localização" onclick="abrirModalLocalizacao(${i.id})">${iconeSvg("localizacao")}</button>
+            <button class="btn btn-imprimir btn-icone" title="Imprimir" aria-label="Imprimir" onclick="imprimirServico(${i.id})">${iconeSvg("imprimir")}</button>
             <button class="btn btn-excluir btn-icone" title="Excluir" aria-label="Excluir" onclick="excluir(${i.id})">${iconeSvg("excluir")}</button>
         </div></td>
     </tr>`;
 }
-function renderizarTabela(){const d=filtrarDados();tabelaPendentes.innerHTML=d.length?d.map(montarLinha).join(""):'<tr><td colspan="15">Nenhum serviço encontrado</td></tr>';atualizarContadorSelecionados();}
+function renderizarTabela(){const d=filtrarDados();tabelaPendentes.innerHTML=d.length?d.map(montarLinha).join(""):'<tr><td colspan="13">Nenhum serviço encontrado</td></tr>';atualizarContadorSelecionados();}
 function alternarSelecao(id,m){m?servicosSelecionados.add(Number(id)):servicosSelecionados.delete(Number(id));atualizarContadorSelecionados();}
 function selecionarTodos(el){document.querySelectorAll(".item-selecao").forEach(c=>{c.checked=el.checked;alternarSelecao(Number(c.value),el.checked);});}
 function atualizarContadorSelecionados(){contadorSelecionados.innerText=servicosSelecionados.size;}
 
+function normalizarUrlAnexo(url){
+    const x=String(url||"").trim();
+    if(!x)return "";
+    if(/^https?:\/\//i.test(x)||x.startsWith("blob:")||x.startsWith("data:"))return x;
+    return "/"+x.replace(/^\/+/,"");
+}
 function tipoAnexo(url){const x=String(url||"").toLowerCase().split("?")[0];if(/\.(png|jpe?g|webp|gif)$/.test(x))return"imagem";if(/\.(mp4|mov|webm)$/.test(x))return"video";if(x.endsWith(".pdf"))return"pdf";return"outro";}
-function previaAnexo(i){if(!i.anexo)return `<div class="anexo-preview"><h4>Prévia do anexo</h4><div style="color:#64748b">Nenhum anexo enviado.</div></div>`;const u=escapeHTML(i.anexo),t=tipoAnexo(i.anexo);let midia=t==="imagem"?`<img class="preview-midia" src="${u}" alt="Prévia do anexo">`:t==="video"?`<video class="preview-midia" controls src="${u}"></video>`:t==="pdf"?`<iframe class="preview-pdf" src="${u}"></iframe>`:`<a href="${u}" target="_blank" rel="noopener">Abrir anexo</a>`;return `<div class="anexo-preview"><h4>Prévia do anexo</h4>${midia}<div style="margin-top:10px"><button class="btn btn-anexo" onclick="visualizarAnexo(${i.id})">Abrir anexo</button></div></div>`;}
+function previaAnexo(i){if(!i.anexo)return `<div class="anexo-preview"><h4>Prévia do anexo</h4><div style="color:#64748b">Nenhum anexo enviado.</div></div>`;const u=escapeHTML(normalizarUrlAnexo(i.anexo)),t=tipoAnexo(i.anexo);let midia=t==="imagem"?`<img class="preview-midia" src="${u}" alt="Prévia do anexo" onerror="this.style.display='none'">`:t==="video"?`<video class="preview-midia" controls preload="metadata" src="${u}"></video>`:t==="pdf"?`<iframe class="preview-pdf" src="${u}" title="Prévia do PDF"></iframe>`:`<a href="${u}" target="_blank" rel="noopener">Abrir anexo</a>`;return `<div class="anexo-preview"><h4>Prévia do anexo</h4>${midia}<div style="margin-top:10px"><button class="btn btn-anexo" onclick="visualizarAnexo(${i.id})">Abrir anexo</button></div></div>`;}
 function blocoLocalizacao(i){
     if(!possuiLocalizacao(i)){
         return `<div class="localizacao-box">
@@ -1525,10 +1560,21 @@ function blocoLocalizacao(i){
         </div>
     </div>`;
 }
-function abrirResumoServico(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i)return alert("Serviço não encontrado.");resumoServicoId=Number(id);resumoTitulo.innerText=i.servico||"Resumo do Serviço";resumoConteudo.innerHTML=`<div class="resumo-grid"><div class="resumo-item"><small>Localidade</small><strong>${escapeHTML(nomeLocalidade(i))}</strong></div><div class="resumo-item"><small>Técnicos responsáveis</small><strong style="color:#1d4ed8">${escapeHTML(nomesTecnicos(i))}</strong></div><div class="resumo-item"><small>Agendamento</small><div>${formatarData(i.data_agendamento)}</div></div><div class="resumo-item"><small>Status</small><span class="${classeStatus(i.status)}">${escapeHTML(i.status||"Pendente")}</span></div><div class="resumo-item"><small>Prioridade</small><span class="${classePrioridade(i.prioridade)}">${escapeHTML(i.prioridade||"Média")}</span></div><div class="resumo-item"><small>Enviado por</small><div>${escapeHTML(i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Registrado em</small><div>${formatarData(i.criado_em)}</div></div><div class="resumo-item"><small>Atualizado em</small><div>${formatarData(i.atualizado_em)}</div></div><div class="resumo-item"><small>Atualizado por</small><div>${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Nova viabilidade</small><div>${i.nova_viabilidade?'Sim':'Não'}</div></div><div class="resumo-item full"><small>Descrição</small><div>${escapeHTML(i.descricao||"-")}</div></div></div>${previaAnexo(i)}${blocoLocalizacao(i)}`;resumoAcoes.innerHTML=`<button class="btn btn-editar" onclick="fecharResumoServico();abrirModalEditar(${i.id})">Editar</button><button class="btn btn-imprimir" onclick="imprimirServico(${i.id})">Imprimir</button><button class="btn btn-localizacao" onclick="abrirModalLocalizacao(${i.id})">Localização</button><button class="btn btn-excluir" onclick="fecharResumoServico();excluir(${i.id})">Excluir</button>`;modalResumoServico.style.display="flex";}
+function abrirResumoServico(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i)return alert("Serviço não encontrado.");resumoServicoId=Number(id);resumoTitulo.innerText=i.servico||"Resumo do Serviço";resumoConteudo.innerHTML=`<div class="resumo-grid"><div class="resumo-item"><small>Localidade</small><strong>${escapeHTML(nomeLocalidade(i))}</strong></div><div class="resumo-item"><small>Técnicos responsáveis</small><strong style="color:#1d4ed8">${escapeHTML(nomesTecnicos(i))}</strong></div><div class="resumo-item"><small>Agendamento</small><div>${formatarData(i.data_agendamento)}</div></div><div class="resumo-item"><small>Status</small><span class="${classeStatus(i.status)}">${escapeHTML(i.status||"Pendente")}</span></div><div class="resumo-item"><small>Prioridade</small><span class="${classePrioridade(i.prioridade)}">${escapeHTML(i.prioridade||"Média")}</span></div><div class="resumo-item"><small>Enviado por</small><div>${escapeHTML(i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Registrado em</small><div>${formatarData(i.criado_em)}</div></div><div class="resumo-item"><small>Atualizado em</small><div>${formatarData(i.atualizado_em)}</div></div><div class="resumo-item"><small>Atualizado por</small><div>${escapeHTML(i.atualizado_por||i.enviado_por||"-")}</div></div><div class="resumo-item"><small>Nova viabilidade</small><div>${i.nova_viabilidade?'Sim':'Não'}</div></div><div class="resumo-item full"><small>Descrição</small><div>${escapeHTML(i.descricao||"-")}</div></div></div>${previaAnexo(i)}${blocoLocalizacao(i)}`;resumoAcoes.innerHTML=`<button class="btn btn-editar" onclick="fecharResumoServico();abrirModalEditar(${i.id})">Editar</button>${i.anexo?`<button class="btn btn-anexo" onclick="visualizarAnexo(${i.id})">Anexo</button>`:""}<button class="btn btn-localizacao" onclick="abrirModalLocalizacao(${i.id})">Localização</button><button class="btn btn-imprimir" onclick="imprimirServico(${i.id})">Imprimir</button><button class="btn btn-excluir" onclick="fecharResumoServico();excluir(${i.id})">Excluir</button>`;modalResumoServico.style.display="flex";}
 function fecharResumoServico(){modalResumoServico.style.display="none";resumoServicoId=null;}
-function visualizarAnexo(id){const i=servicosPendentes.find(x=>Number(x.id)===Number(id));if(!i?.anexo)return alert("Este serviço não possui anexo.");frameAnexo.src=i.anexo;modalAnexo.style.display="flex";}
-function fecharModalAnexo(){frameAnexo.src="";modalAnexo.style.display="none";}
+function visualizarAnexo(id){
+    const i=servicosPendentes.find(x=>Number(x.id)===Number(id));
+    if(!i?.anexo)return alert("Este serviço não possui anexo.");
+    const url=normalizarUrlAnexo(i.anexo);
+    const tipo=tipoAnexo(i.anexo);
+    abrirAnexoNovaAba.href=url;
+    if(tipo==="imagem") conteudoAnexo.innerHTML=`<img src="${escapeHTML(url)}" alt="Anexo do serviço">`;
+    else if(tipo==="video") conteudoAnexo.innerHTML=`<video controls autoplay preload="metadata" src="${escapeHTML(url)}"></video>`;
+    else if(tipo==="pdf") conteudoAnexo.innerHTML=`<iframe src="${escapeHTML(url)}" title="Anexo PDF"></iframe>`;
+    else conteudoAnexo.innerHTML=`<div style="text-align:center"><p>Pré-visualização indisponível para este tipo de arquivo.</p><a class="btn btn-anexo" href="${escapeHTML(url)}" target="_blank" rel="noopener">Abrir arquivo</a></div>`;
+    modalAnexo.style.display="flex";
+}
+function fecharModalAnexo(){conteudoAnexo.innerHTML="";abrirAnexoNovaAba.href="#";modalAnexo.style.display="none";}
 function abrirModalLocalizacao(id){
     const i=servicosPendentes.find(x=>Number(x.id)===Number(id));
     if(!i)return alert("Serviço não encontrado.");
