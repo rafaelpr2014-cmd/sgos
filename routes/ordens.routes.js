@@ -1743,7 +1743,7 @@ router.post(
                 });
             }
 
-            if(!['em_andamento','aberto','agendado'].includes(String(os.status || '').toLowerCase())){
+            if(!['os_lancada','em_andamento','aberto','agendado'].includes(String(os.status || '').toLowerCase())){
                 return res.status(400).json({ erro: "O check-in não pode ser registrado no status atual da OS." });
             }
 
@@ -1753,13 +1753,19 @@ router.post(
                     checkin_inicio_latitude = ?,
                     checkin_inicio_longitude = ?,
                     checkin_inicio_precisao = ?,
-                    checkin_inicio_por = ?
+                    checkin_inicio_por = ?,
+                    latitude = ?,
+                    longitude = ?,
+                    data_localizacao = NOW(),
+                    status = 'em_andamento' 
                 WHERE id = ? AND empresa_id = ? AND checkin_inicio_em IS NULL
             `, [
                 latitude,
                 longitude,
                 Number.isFinite(precisao) && precisao >= 0 ? precisao : null,
                 req.usuario.id,
+                latitude,
+                longitude,
                 req.params.id,
                 req.usuario.empresa_id
             ]);
