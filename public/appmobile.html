@@ -4297,15 +4297,17 @@ async function compartilharNativo(e,id){
 function verAnexo(){
 
     const os = encontrarOS(osSelecionada);
+    const anexo = obterAnexoOS(os);
 
-    if(!os || !os.anexo_path){
+    if(!os || !anexo){
         alert("Nenhum anexo encontrado");
         return;
     }
 
-    const url = os.anexo_path.startsWith("http")
-        ? os.anexo_path
-        : getApiBase() + os.anexo_path;
+    const caminho = String(anexo);
+    const url = caminho.startsWith("http")
+        ? caminho
+        : getApiBase() + (caminho.startsWith("/") ? caminho : `/${caminho}`);
 
     abrirModalAnexo(url, os.id);
 }
@@ -5179,11 +5181,14 @@ function obterAnexoOS(os){
 
     // Cada status exibe exclusivamente o anexo correspondente.
     if(status === "cliente_ausente"){
-        return os.anexo_ausente || os.anexo_ausente_path || "";
+        return os.anexo_ausente || os.anexo_ausente_path ||
+               os.anexo_path || os.anexo || os.foto || os.foto_path || os.arquivo || "";
     }
 
     if(status === "concluido"){
-        return os.anexo_finalizado || os.anexo_finalizado_path || "";
+        return os.anexo_finalizado || os.anexo_finalizado_path ||
+               os.anexo_conclusao || os.anexo_conclusao_path ||
+               os.anexo_path || os.anexo || os.foto || os.foto_path || os.arquivo || "";
     }
 
     // OS aberta/em andamento: anexo inicial do cadastro.
@@ -5217,12 +5222,28 @@ function detalheStatusOS(os){
 }
 function obterCoordenadasOS(os){
     if(!os) return null;
-    const lat = os.latitude ?? os.lat ?? os.latitude_tecnico;
-    const lng = os.longitude ?? os.lng ?? os.lon ?? os.longitude_tecnico;
-    const latitude = Number(String(lat ?? "").replace(",", "."));
-    const longitude = Number(String(lng ?? "").replace(",", "."));
-    return Number.isFinite(latitude) && Number.isFinite(longitude)
-        ? {latitude, longitude} : null;
+
+    // Ordem de prioridade: localização explícita/mais nova da OS; depois GPS do
+    // check-in. Assim uma nova localização substitui o fallback herdado do
+    // check-in, mas OS antigas/recicladas continuam tendo um ponto útil.
+    const candidatos = [
+        [os.latitude, os.longitude],
+        [os.lat, os.lng ?? os.lon],
+        [os.latitude_tecnico, os.longitude_tecnico],
+        [os.localizacao_latitude, os.localizacao_longitude],
+        [os.checkin_inicio_latitude, os.checkin_inicio_longitude],
+        [os.checkin_latitude, os.checkin_longitude]
+    ];
+
+    for(const [lat, lng] of candidatos){
+        const latitude = Number(String(lat ?? "").replace(",", "."));
+        const longitude = Number(String(lng ?? "").replace(",", "."));
+        if(Number.isFinite(latitude) && Number.isFinite(longitude)){
+            return {latitude, longitude};
+        }
+    }
+
+    return null;
 }
 
 

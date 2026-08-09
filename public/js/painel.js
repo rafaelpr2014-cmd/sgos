@@ -961,10 +961,10 @@ function popularTabelaCompleta(id, dados) {
             </span>
 
             <!-- 📎 ANEXO -->
-            ${os.anexo_path ? `
+            ${anexoAtualResumo(os) ? `
             <span class="icone-acao"
                   title="Visualizar anexo"
-                  onclick="visualizarAnexo('${os.anexo_path}')">
+                  onclick="visualizarAnexo('${anexoAtualResumo(os)}')">
                   📎
             </span>
             ` : ""}
@@ -1078,7 +1078,7 @@ function popularTabelaLancadas(id, dados) {
         const botoes = `
             <span class="icone-acao" title="Editar" onclick="editarOS(${os.id})">✏️</span>
             <span class="icone-acao" title="Abrir localização" onclick="abrirLocalizacao('${os.latitude || ""}', '${os.longitude || ""}')">📍</span>
-            ${os.anexo_path ? `<span class="icone-acao" title="Visualizar anexo" onclick="visualizarAnexo('${os.anexo_path}')">📎</span>` : ""}
+            ${anexoAtualResumo(os) ? `<span class="icone-acao" title="Visualizar anexo" onclick="visualizarAnexo('${anexoAtualResumo(os)}')">📎</span>` : ""}
             <span class="icone-acao" title="Imprimir OS" onclick="imprimirOS(${os.id})">🖨️</span>
             <span class="icone-acao" title="Finalizar OS" onclick="finalizarOS(${os.id})">✅</span>
             <span class="icone-acao" title="Excluir" onclick="excluirOS(${os.id})">🗑️</span>
@@ -1147,10 +1147,10 @@ function popularTabelaAndamento(id, dados) {
                   📍
             </span>
 
-            ${os.anexo_path ? `
+            ${anexoAtualResumo(os) ? `
             <span class="icone-acao"
                   title="Visualizar anexo"
-                  onclick="visualizarAnexo('${os.anexo_path}')">
+                  onclick="visualizarAnexo('${anexoAtualResumo(os)}')">
                   📎
             </span>
             ` : ""}
@@ -1285,10 +1285,10 @@ function popularTabela(id, dados) {
                 📍
             </span>
 
-            ${os.anexo_path ? `
+            ${anexoAtualResumo(os) ? `
             <span class="icone-acao"
                 title="Visualizar anexo"
-                onclick="visualizarAnexo('${os.anexo_path}')">
+                onclick="visualizarAnexo('${anexoAtualResumo(os)}')">
                 📎
             </span>
             ` : ""}
@@ -1441,14 +1441,35 @@ function anexoAtualResumo(os){
     const status = normalizarStatus(os?.status);
 
     if(status === "cliente_ausente"){
-        return os?.anexo_ausente || os?.anexo_ausente_path || "";
+        return os?.anexo_ausente || os?.anexo_ausente_path ||
+               os?.anexo_path || os?.anexo || os?.foto || os?.foto_path || os?.arquivo || "";
     }
 
     if(status === "concluido"){
-        return os?.anexo_finalizado || os?.anexo_finalizado_path || "";
+        return os?.anexo_finalizado || os?.anexo_finalizado_path ||
+               os?.anexo_conclusao || os?.anexo_conclusao_path ||
+               os?.anexo_path || os?.anexo || os?.foto || os?.foto_path || os?.arquivo || "";
     }
 
-    return os?.anexo_path || os?.anexo || "";
+    return os?.anexo_path || os?.anexo || os?.foto || os?.foto_path || os?.arquivo || "";
+}
+
+function coordenadasAtuaisOS(os){
+    if(!os) return null;
+    const candidatos = [
+        [os.latitude, os.longitude],
+        [os.lat, os.lng ?? os.lon],
+        [os.latitude_tecnico, os.longitude_tecnico],
+        [os.localizacao_latitude, os.localizacao_longitude],
+        [os.checkin_inicio_latitude, os.checkin_inicio_longitude],
+        [os.checkin_latitude, os.checkin_longitude]
+    ];
+    for(const [lat,lng] of candidatos){
+        const latitude=Number(String(lat ?? "").replace(",","."));
+        const longitude=Number(String(lng ?? "").replace(",","."));
+        if(Number.isFinite(latitude) && Number.isFinite(longitude)) return {latitude,longitude};
+    }
+    return null;
 }
 
 function detalheAtualResumo(os){
@@ -1506,10 +1527,11 @@ function anexosResumo(os){
 }
 
 function localizacaoResumo(os){
-    const lat = os.latitude;
-    const lng = os.longitude;
+    const coords = coordenadasAtuaisOS(os);
+    const lat = coords?.latitude;
+    const lng = coords?.longitude;
 
-    if(!lat || !lng){
+    if(!Number.isFinite(lat) || !Number.isFinite(lng)){
         return `<div class="resumo-vazio">Localização não cadastrada.</div>`;
     }
 
@@ -1914,13 +1936,15 @@ window.abrirResumoOS = async function(id){
     const emExecucao = os.status === "em_andamento";
     const osLancada = os.status === "os_lancada";
     const podeFinalizar = emExecucao || osLancada;
-    const possuiLocalizacao = Boolean(os.latitude && os.longitude);
-    const possuiAnexo = Boolean(os.anexo_path);
+    const coordsResumo = coordenadasAtuaisOS(os);
+    const anexoResumoAtual = anexoAtualResumo(os);
+    const possuiLocalizacao = Boolean(coordsResumo);
+    const possuiAnexo = Boolean(anexoResumoAtual);
 
     acoes.innerHTML = `
         <button class="btn-resumo azul" onclick="editarOS(${os.id})">✏️ Editar</button>
-        ${possuiLocalizacao ? `<button class="btn-resumo azul" onclick="abrirLocalizacao('${os.latitude}','${os.longitude}')">📍 Localização</button>` : ""}
-        ${possuiAnexo ? `<button class="btn-resumo cinza" onclick="visualizarAnexo('${os.anexo_path}')">📎 Anexo</button>` : ""}
+        ${possuiLocalizacao ? `<button class="btn-resumo azul" onclick="abrirLocalizacao('${coordsResumo.latitude}','${coordsResumo.longitude}')">📍 Localização</button>` : ""}
+        ${possuiAnexo ? `<button class="btn-resumo cinza" onclick="visualizarAnexo('${escapeResumo(anexoResumoAtual)}')">📎 Anexo</button>` : ""}
         <button class="btn-resumo cinza" onclick="imprimirOS(${os.id})">🖨️ Imprimir</button>
         ${podeLancar ? `<button class="btn-resumo verde" onclick="lancarAgora(${os.id})">🚀 Lançar OS</button>` : ""}
         ${podeFinalizar ? `<button class="btn-resumo verde" onclick="finalizarOS(${os.id})">✅ Finalizar OS</button>` : ""}
@@ -2185,7 +2209,15 @@ window.finalizarOS = async (id) => {
 
         await apiFetch(`/api/ordens_servico/concluir/${id}`, {
             method: "POST",
-            body: JSON.stringify(confirmacao)
+            headers: {
+                "x-sgos-origem": "painel",
+                "x-sgos-ignorar-checkin": "1"
+            },
+            body: JSON.stringify({
+                ...confirmacao,
+                origem_finalizacao: "painel",
+                ignorar_checkin: true
+            })
         });
 
         fecharResumoOS?.();
@@ -2213,7 +2245,15 @@ window.excluirOS = async (id) => {
 // A nova OS somente será criada quando o usuário clicar em salvar.
 // ===============================
 window.reclicarAtendimento = (id) => {
-    window.location.href = `editar-os.html?id=${id}&reciclar=1`;
+    const os = (ordens || []).find(item => Number(item.id) === Number(id));
+    const coords = coordenadasAtuaisOS(os);
+    const params = new URLSearchParams({ id:String(id), reciclar:"1" });
+    if(coords){
+        params.set("latitude", String(coords.latitude));
+        params.set("longitude", String(coords.longitude));
+        params.set("localizacao_origem", (os?.latitude && os?.longitude) ? "os" : "checkin");
+    }
+    window.location.href = `editar-os.html?${params.toString()}`;
 };
 
 // ===============================
