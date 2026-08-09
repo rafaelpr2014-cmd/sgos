@@ -291,23 +291,90 @@ async function obterChatId(client, telefone) {
     return { chatId: numberId._serialized, numero };
 }
 
-async function executarEnvioSeguro({ tipo, empresaId, operacao }) {
-    const chave = resolverChaveSessao({ tipo, empresaId });
-    const client = await obterClientePronto({ tipo, empresaId });
+async function aguardarConexao({ tipo = "cliente", empresaId, timeoutMs = 30000 } = {}) {
+    const limite = Date.now() + timeoutMs;
+    while (Date.now() < limite) {
+        const status = await obterStatus({ tipo, empresaId });
+        if (status?.conectado) return status;
+        if (status?.status === "aguardando_qr") {
+            throw new Error(tipo === "central"
+                ? "WhatsApp central precisa de nova leitura do QR Code."
+                : "WhatsApp da empresa precisa de nova leitura do QR Code.");
+        }
+        await esperar(750);
+    }
+    throw new Error(tipo === "central"
+        ? "WhatsApp central não reconectou dentro do tempo esperado."
+        : "WhatsApp da empresa não reconectou dentro do tempo esperado.");
+}
 
+async function reconectarSessao({ tipo = "cliente", empresaId, timeoutMs = 30000 } = {}) {
+    const chave = resolverChaveSessao({ tipo, empresaId });
+    const escopo = dadosEscopo(tipo, empresaId);
+    const atual = await obterStatus({ tipo, empresaId });
+    if (atual?.conectado) return { ok: true, ...atual, reconectado: false };
+
+    registrarLog("alerta", "Reconexão automática do WhatsApp iniciada.", escopo);
+
+    // destroy() encerra apenas a instância atual do navegador; não faz logout e
+    // preserva a autenticação do LocalAuth para tentar reconectar sem QR.
+    await destruirCliente(chave, "Reconexão automática");
+    criarSessao({ tipo, empresaId });
+
+    try {
+        const status = await aguardarConexao({ tipo, empresaId, timeoutMs });
+        registrarLog("sucesso", "WhatsApp reconectado automaticamente.", escopo);
+        return { ok: true, ...status, reconectado: true };
+    } catch (err) {
+        const qr = obterQr({ tipo, empresaId });
+        registrarLog("erro", "A reconexão automática do WhatsApp não foi concluída.", {
+            ...escopo,
+            erro: err.message,
+            precisaQr: Boolean(qr)
+        });
+        return {
+            ok: false,
+            status: qr ? "aguardando_qr" : "desconectado",
+            conectado: false,
+            precisa_qr: Boolean(qr),
+            erro: err.message
+        };
+    }
+}
+
+async function executarEnvioSeguro({ tipo, empresaId, operacao }) {
+    const escopo = dadosEscopo(tipo, empresaId);
+    let client;
+
+    // 1) Antes do envio: se estiver offline, tenta recuperar a sessão automaticamente.
+    try {
+        client = await obterClientePronto({ tipo, empresaId, timeoutMs: 12000 });
+    } catch (primeiroErro) {
+        registrarLog("alerta", "WhatsApp indisponível antes do envio. Tentando reconectar.", {
+            ...escopo, erro: primeiroErro.message
+        });
+        const reconexao = await reconectarSessao({ tipo, empresaId, timeoutMs: 30000 });
+        if (!reconexao.ok) throw new Error(reconexao.erro || "WhatsApp desconectado.");
+        client = await obterClientePronto({ tipo, empresaId, timeoutMs: 10000 });
+    }
+
+    // 2) Tenta enviar. Se o navegador cair durante a operação, reinicia e REPETE UMA VEZ.
     try {
         return await operacao(client);
     } catch (err) {
-        if (erroNavegadorInvalido(err)) {
-            registrarLog("erro", "Falha do navegador durante o envio. A sessão foi reinicializada.", {
-                ...dadosEscopo(tipo, empresaId),
-                erro: err.message
-            });
-            await destruirCliente(chave, err.message);
-            criarSessao({ tipo, empresaId });
-            throw new Error("A sessão do WhatsApp foi reiniciada porque perdeu a conexão com o navegador. Aguarde alguns segundos e tente novamente.");
-        }
-        throw err;
+        if (!erroNavegadorInvalido(err)) throw err;
+
+        registrarLog("alerta", "Falha do navegador durante o envio. Reconectando e repetindo o envio.", {
+            ...escopo, erro: err.message
+        });
+
+        const reconexao = await reconectarSessao({ tipo, empresaId, timeoutMs: 30000 });
+        if (!reconexao.ok) throw new Error(reconexao.erro || "Falha ao reconectar o WhatsApp.");
+
+        const novoClient = await obterClientePronto({ tipo, empresaId, timeoutMs: 10000 });
+        const resultado = await operacao(novoClient);
+        registrarLog("sucesso", "Envio concluído após reconexão automática.", escopo);
+        return resultado;
     }
 }
 
@@ -472,6 +539,8 @@ module.exports = {
     getClienteEmpresa,
     obterStatus,
     obterQr,
+    aguardarConexao,
+    reconectarSessao,
     desconectarSessao,
     enviarMensagem,
     enviarMensagemCentral,

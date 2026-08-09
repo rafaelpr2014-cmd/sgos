@@ -3,6 +3,8 @@ const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
 
+const { enviarMidiaCentral } = require('../services/whatsappService');
+
 module.exports = (pool) => {
   const router = express.Router();
 
@@ -85,6 +87,48 @@ module.exports = (pool) => {
       path.join(raiz, 'public', 'relatorios', nome)
     ];
     return candidatos.find(a => fs.existsSync(a) && fs.statSync(a).isFile()) || null;
+  }
+
+  async function obterRegistroParaReenvio(fonte, id) {
+    let row = null;
+    let arquivo = null;
+
+    if (fonte === 'novo') {
+      const [rows] = await pool.query(`SELECT * FROM relatorios_logs WHERE id=? LIMIT 1`, [id]);
+      row = rows[0] || null;
+      arquivo = row ? arquivoNovo(row) : null;
+    } else if (fonte === 'legado') {
+      const [rows] = await pool.query(`SELECT * FROM relatorios_envios WHERE id=? LIMIT 1`, [id]);
+      row = rows[0] || null;
+      arquivo = row ? localizarArquivoLegado(row) : null;
+    }
+
+    return { row, arquivo };
+  }
+
+  async function atualizarResultadoReenvio(fonte, id, { sucesso, erro = null }) {
+    try {
+      if (fonte === 'novo' && await tabelaExiste('relatorios_logs')) {
+        const cols = await colunasTabela('relatorios_logs');
+        const sets = [];
+        const params = [];
+        if (cols.has('status')) { sets.push('status=?'); params.push(sucesso ? 'sucesso' : 'falha'); }
+        if (cols.has('mensagem_erro')) { sets.push('mensagem_erro=?'); params.push(sucesso ? null : erro); }
+        if (cols.has('erro')) { sets.push('erro=?'); params.push(sucesso ? null : erro); }
+        if (cols.has('finalizado_em')) sets.push('finalizado_em=NOW()');
+        if (sets.length) { params.push(id); await pool.query(`UPDATE relatorios_logs SET ${sets.join(', ')} WHERE id=?`, params); }
+      } else if (fonte === 'legado' && await tabelaExiste('relatorios_envios')) {
+        const cols = await colunasTabela('relatorios_envios');
+        const sets = [];
+        const params = [];
+        if (cols.has('status')) { sets.push('status=?'); params.push(sucesso ? 'ENVIADO' : 'ERRO'); }
+        if (cols.has('erro')) { sets.push('erro=?'); params.push(sucesso ? null : erro); }
+        if (cols.has('enviado_em')) sets.push('enviado_em=NOW()');
+        if (sets.length) { params.push(id); await pool.query(`UPDATE relatorios_envios SET ${sets.join(', ')} WHERE id=?`, params); }
+      }
+    } catch (err) {
+      console.error('Falha ao atualizar resultado do reenvio:', err);
+    }
   }
 
   router.get('/resumo', async (req, res) => {
@@ -171,6 +215,75 @@ module.exports = (pool) => {
       if(!row || !arquivo) return res.status(404).json({erro:'Arquivo PDF não está mais disponível no servidor.'});
       return res.download(arquivo, path.basename(row.nome_arquivo || arquivo));
     }catch(err){return res.status(500).json({erro:err.message});}
+  });
+
+  router.post('/reenviar/:fonte/:id', async (req, res) => {
+    const inicio = Date.now();
+    const fonte = String(req.params.fonte || '').toLowerCase();
+    const id = Number(req.params.id);
+
+    if (!['novo', 'legado'].includes(fonte) || !id) {
+      return res.status(400).json({ erro: 'Registro de envio inválido.' });
+    }
+
+    try {
+      const { row, arquivo } = await obterRegistroParaReenvio(fonte, id);
+      if (!row) return res.status(404).json({ erro: 'Envio não encontrado.' });
+      if (!arquivo) return res.status(404).json({ erro: 'O PDF deste relatório não está mais disponível no servidor.' });
+
+      const canal = String(row.canal || (row.cliente_telefone ? 'whatsapp' : 'email')).toLowerCase();
+      const destino = String(
+        canal === 'whatsapp'
+          ? (row.destinatario || row.cliente_telefone || row.telefone || '')
+          : (row.destinatario || row.cliente_email || row.email || '')
+      ).trim();
+
+      if (!destino) return res.status(400).json({ erro: 'O registro não possui destinatário para reenvio.' });
+
+      const nomeArquivo = path.basename(row.nome_arquivo || arquivo || 'relatorio.pdf');
+      const tipo = row.tipo_relatorio || row.tipo || 'relatório';
+
+      if (canal === 'whatsapp') {
+        const buffer = fs.readFileSync(arquivo);
+        const resultado = await enviarMidiaCentral(
+          1,
+          destino,
+          buffer,
+          nomeArquivo,
+          `📊 Reenvio de ${tipo} - SGOS`
+        );
+        if (resultado && resultado.ok === false) {
+          throw new Error(resultado.detail || resultado.error || 'Falha ao reenviar pelo WhatsApp.');
+        }
+      } else if (canal === 'email') {
+        const { transporter } = criarTransporter();
+        const from = process.env.SMTP_FROM || process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER;
+        await transporter.sendMail({
+          from,
+          to: destino,
+          subject: `Reenvio de ${tipo} - SGOS`,
+          html: '<p>Segue novamente em anexo o relatório solicitado pelo SGOS.</p>',
+          attachments: [{ filename: nomeArquivo, path: arquivo }]
+        });
+      } else {
+        return res.status(400).json({ erro: `Canal de reenvio não suportado: ${canal || 'não informado'}.` });
+      }
+
+      await atualizarResultadoReenvio(fonte, id, { sucesso: true });
+      return res.json({
+        ok: true,
+        mensagem: canal === 'whatsapp'
+          ? 'Relatório reenviado pelo WhatsApp com sucesso.'
+          : 'Relatório reenviado por e-mail com sucesso.',
+        canal,
+        destino,
+        tempo_ms: Date.now() - inicio
+      });
+    } catch (err) {
+      await atualizarResultadoReenvio(fonte, id, { sucesso: false, erro: err.message });
+      console.error('Erro ao reenviar relatório:', err);
+      return res.status(500).json({ erro: err.message || 'Erro ao reenviar relatório.', tempo_ms: Date.now() - inicio });
+    }
   });
 
   router.get('/status-email', async (req,res)=>{
