@@ -2885,7 +2885,6 @@ body{
         <div class="anexo-acoes">
             <button type="button" class="btn-anexo-escolher" onclick="escolherAnexo()">📎 Anexar foto, vídeo ou PDF</button>
             <button type="button" class="btn-camera" onclick="tirarFotoAgora()">📷 Tirar Foto com GPS</button>
-            <button type="button" class="btn-camera" onclick="gravarVideoComLocalizacao()">🎥 Anexar Vídeo com GPS</button>
         </div>
         <div id="arquivoSelecionadoInfo" class="arquivo-selecionado-info">Nenhum arquivo selecionado</div>
 
@@ -4256,11 +4255,14 @@ async function alternarProximaFilaApp(botao){
 }
 
 function fecharModal(){
+    // A foto GPS NÃO é apagada aqui.
+    // Ela permanece no IndexedDB até a OS receber uma ação concluída.
     window.arquivoVideoPreparado = null;
     window.modoCapturaGPS = null;
+
     const modal = document.getElementById("modal");
     if(modal) modal.style.display = "none";
-    arquivoFotoPreparado = null;
+
     const foto = document.getElementById("foto");
     if(foto) foto.value = "";
 }
@@ -6010,7 +6012,165 @@ function resumoModalHTML(os){
         </div>`;
 }
 
+
 let arquivoFotoPreparado = null;
+
+/* =========================================================
+   CACHE PERSISTENTE DA FOTO COM GPS
+   - fica salvo mesmo fechando modal/app
+   - chave por empresa + OS
+   - só é removido após ação concluída com sucesso
+   ========================================================= */
+const SGOS_MIDIA_DB_NOME = "sgos_midia_pendente";
+const SGOS_MIDIA_DB_VERSAO = 1;
+const SGOS_MIDIA_STORE = "fotos_gps";
+
+function chaveCacheFotoOS(osOuId){
+    const os = (typeof osOuId === "object" && osOuId) ? osOuId : encontrarOS(osOuId);
+    const osId = String(os?.id ?? osOuId ?? "").trim();
+    const empresaId = String(
+        user?.empresa_id ??
+        user?.empresaId ??
+        localStorage.getItem("empresa_id") ??
+        "0"
+    ).trim();
+    return `${empresaId}:${osId}`;
+}
+
+function abrirBancoMidiaSGOS(){
+    return new Promise((resolve, reject) => {
+        if(!window.indexedDB){
+            reject(new Error("IndexedDB não disponível neste aparelho."));
+            return;
+        }
+
+        const req = indexedDB.open(SGOS_MIDIA_DB_NOME, SGOS_MIDIA_DB_VERSAO);
+
+        req.onupgradeneeded = () => {
+            const db = req.result;
+            if(!db.objectStoreNames.contains(SGOS_MIDIA_STORE)){
+                db.createObjectStore(SGOS_MIDIA_STORE, { keyPath:"chave" });
+            }
+        };
+
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error || new Error("Falha ao abrir cache de mídia."));
+    });
+}
+
+async function salvarFotoGPSCache(os, arquivo, localizacao){
+    if(!os?.id || !arquivo) return;
+
+    try{
+        const db = await abrirBancoMidiaSGOS();
+        const chave = chaveCacheFotoOS(os);
+
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(SGOS_MIDIA_STORE, "readwrite");
+            const store = tx.objectStore(SGOS_MIDIA_STORE);
+
+            store.put({
+                chave,
+                osId: String(os.id),
+                empresaId: String(user?.empresa_id ?? localStorage.getItem("empresa_id") ?? "0"),
+                nome: arquivo.name || `foto-os-${os.id}.jpg`,
+                tipo: arquivo.type || "image/jpeg",
+                blob: arquivo,
+                localizacao: localizacao || window.ultimaLocalizacaoMidia || null,
+                salvoEm: new Date().toISOString()
+            });
+
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error("Falha ao salvar foto no cache."));
+            tx.onabort = () => reject(tx.error || new Error("Cache da foto foi interrompido."));
+        });
+
+        db.close();
+        console.log("📷 Foto GPS salva no cache da OS", os.id);
+    }catch(err){
+        console.warn("Não foi possível persistir a foto no cache:", err);
+    }
+}
+
+async function lerFotoGPSCache(os){
+    if(!os?.id) return null;
+
+    try{
+        const db = await abrirBancoMidiaSGOS();
+        const chave = chaveCacheFotoOS(os);
+
+        const registro = await new Promise((resolve, reject) => {
+            const tx = db.transaction(SGOS_MIDIA_STORE, "readonly");
+            const req = tx.objectStore(SGOS_MIDIA_STORE).get(chave);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => reject(req.error || new Error("Falha ao recuperar foto do cache."));
+        });
+
+        db.close();
+        return registro;
+    }catch(err){
+        console.warn("Não foi possível recuperar foto do cache:", err);
+        return null;
+    }
+}
+
+async function removerFotoGPSCache(osOuId){
+    const os = (typeof osOuId === "object" && osOuId) ? osOuId : encontrarOS(osOuId);
+    const osId = String(os?.id ?? osOuId ?? "").trim();
+    if(!osId) return;
+
+    try{
+        const db = await abrirBancoMidiaSGOS();
+        const chave = chaveCacheFotoOS(os || osId);
+
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(SGOS_MIDIA_STORE, "readwrite");
+            tx.objectStore(SGOS_MIDIA_STORE).delete(chave);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error("Falha ao excluir cache."));
+        });
+
+        db.close();
+    }catch(err){
+        console.warn("Não foi possível remover foto do cache:", err);
+    }
+}
+
+async function restaurarFotoGPSCache(os){
+    if(!os?.id) return false;
+
+    const registro = await lerFotoGPSCache(os);
+    if(!registro?.blob) return false;
+
+    const tipo = registro.tipo || registro.blob.type || "image/jpeg";
+    const nome = registro.nome || `foto-os-${os.id}.jpg`;
+
+    try{
+        arquivoFotoPreparado = new File([registro.blob], nome, {
+            type: tipo,
+            lastModified: Date.now()
+        });
+    }catch(_){
+        arquivoFotoPreparado = registro.blob;
+        try{
+            Object.defineProperty(arquivoFotoPreparado, "name", { value:nome });
+        }catch(__){}
+    }
+
+    if(registro.localizacao){
+        window.ultimaLocalizacaoMidia = registro.localizacao;
+    }
+
+    const info = document.getElementById("arquivoSelecionadoInfo");
+    if(info){
+        const mb = Number(arquivoFotoPreparado.size || 0) / 1024 / 1024;
+        info.textContent = `📷 Foto com GPS recuperada do cache • ${mb.toFixed(1)} MB`;
+    }
+
+    console.log("📷 Foto GPS restaurada do cache da OS", os.id);
+    return true;
+}
+
 
 function escolherAnexo(){
     arquivoFotoPreparado = null;
@@ -6052,6 +6212,15 @@ async function arquivoSelecionado(input){
                 arquivo.name || `foto-os-${(encontrarOS(osSelecionada)||{}).id || "sgos"}-${Date.now()}.jpg`,
                 window.ultimaLocalizacaoMidia
             );
+
+            const osAtualFoto = encontrarOS(osSelecionada);
+            if(osAtualFoto){
+                await salvarFotoGPSCache(
+                    osAtualFoto,
+                    arquivoFotoPreparado,
+                    window.ultimaLocalizacaoMidia
+                );
+            }
 
             window.modoCapturaGPS = null;
 
@@ -6130,20 +6299,48 @@ async function obterEnderecoMapa(latitude, longitude){
     const lng = Number(longitude);
     if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
-    /*
-     * ENDEREÇO DA FOTO = COORDENADAS GPS DA PRÓPRIA CAPTURA.
-     * Nunca usa rua, bairro, localidade, referência ou CEP cadastrados na OS.
-     *
-     * Para ficar IGUAL ao Google Maps, configure uma chave da
-     * Google Maps Geocoding API:
-     *
-     * window.SGOS_GOOGLE_MAPS_API_KEY = "SUA_CHAVE";
-     *
-     * ou:
-     * <meta name="google-maps-api-key" content="SUA_CHAVE">
-     */
+    const normalizarUF = (valor) => {
+        const v = String(valor || "").trim();
+        if(!v) return "";
+        const mapa = {
+            "Bahia":"BA","São Paulo":"SP","Rio de Janeiro":"RJ","Minas Gerais":"MG",
+            "Espírito Santo":"ES","Paraná":"PR","Santa Catarina":"SC",
+            "Rio Grande do Sul":"RS","Goiás":"GO","Distrito Federal":"DF",
+            "Mato Grosso":"MT","Mato Grosso do Sul":"MS","Pernambuco":"PE",
+            "Ceará":"CE","Paraíba":"PB","Rio Grande do Norte":"RN","Alagoas":"AL",
+            "Sergipe":"SE","Maranhão":"MA","Piauí":"PI","Pará":"PA","Amazonas":"AM",
+            "Acre":"AC","Amapá":"AP","Rondônia":"RO","Roraima":"RR","Tocantins":"TO"
+        };
+        return mapa[v] || (v.length <= 3 ? v.toUpperCase() : v);
+    };
+
+    const montar = ({numero="", rua="", bairro="", cidade="", estado="", cep="", pais="", fonte="", google=false, completo=""}) => {
+        const uf = normalizarUF(estado);
+        const linhaEndereco = [numero, rua].filter(Boolean).join(", ");
+        const cidadeUf = cidade && uf ? `${cidade} - ${uf}` : (cidade || uf);
+        const linhaLocal = [bairro, cidadeUf, cep].filter(Boolean).join(", ");
+
+        return {
+            numero:String(numero || "").trim(),
+            rua:String(rua || "").trim(),
+            endereco:String(linhaEndereco || "").trim(),
+            bairro:String(bairro || "").trim(),
+            localidade:String(cidade || "").trim(),
+            estado:String(uf || "").trim(),
+            cep:String(cep || "").trim(),
+            pais:String(pais || "").trim(),
+            localLinha,
+            enderecoCompleto:String(completo || "").trim(),
+            fonte,
+            google:Boolean(google)
+        };
+    };
+
+    // 1) GOOGLE MAPS GEOCODING — quando houver chave configurada.
     const chaveGoogle = String(
         window.SGOS_GOOGLE_MAPS_API_KEY ||
+        window.GOOGLE_MAPS_API_KEY ||
+        localStorage.getItem("google_maps_api_key") ||
         document.querySelector('meta[name="google-maps-api-key"]')?.content ||
         ""
     ).trim();
@@ -6154,90 +6351,84 @@ async function obterEnderecoMapa(latitude, longitude){
             url.searchParams.set("latlng", `${lat},${lng}`);
             url.searchParams.set("language", "pt-BR");
             url.searchParams.set("region", "br");
-            url.searchParams.set("result_type", "street_address|premise|subpremise");
             url.searchParams.set("key", chaveGoogle);
 
-            const resp = await fetch(url.toString(), {
-                method:"GET",
-                headers:{"Accept":"application/json"},
-                cache:"no-store"
-            });
-
+            const resp = await fetch(url.toString(), { cache:"no-store" });
             if(resp.ok){
                 const dados = await resp.json();
                 const resultados = Array.isArray(dados?.results) ? dados.results : [];
-
-                // Prefere um endereço de rua completo.
                 const resultado =
-                    resultados.find(r => Array.isArray(r.types) && r.types.includes("street_address")) ||
-                    resultados.find(r => Array.isArray(r.types) && (r.types.includes("premise") || r.types.includes("subpremise"))) ||
+                    resultados.find(r => r.types?.includes("street_address")) ||
+                    resultados.find(r => r.types?.includes("premise")) ||
                     resultados[0];
 
                 if(resultado){
-                    const componentes = Array.isArray(resultado.address_components)
-                        ? resultado.address_components
-                        : [];
-
-                    const pegarComponente = (tipo, usarCurto=false) => {
-                        const item = componentes.find(c =>
-                            Array.isArray(c.types) && c.types.includes(tipo)
-                        );
-                        if(!item) return "";
-                        return usarCurto ? (item.short_name || item.long_name || "") : (item.long_name || "");
+                    const cs = resultado.address_components || [];
+                    const pegar = (tipo, curto=false) => {
+                        const c = cs.find(x => x.types?.includes(tipo));
+                        return c ? (curto ? (c.short_name || c.long_name) : c.long_name) : "";
                     };
 
-                    const numero = pegarComponente("street_number");
-                    const rua = pegarComponente("route");
-                    const bairro =
-                        pegarComponente("sublocality_level_1") ||
-                        pegarComponente("sublocality") ||
-                        pegarComponente("neighborhood") ||
-                        pegarComponente("administrative_area_level_4");
+                    const r = montar({
+                        numero:pegar("street_number"),
+                        rua:pegar("route"),
+                        bairro:pegar("sublocality_level_1") || pegar("neighborhood"),
+                        cidade:pegar("locality") || pegar("administrative_area_level_2"),
+                        estado:pegar("administrative_area_level_1", true),
+                        cep:pegar("postal_code"),
+                        pais:pegar("country"),
+                        fonte:"Google Maps",
+                        google:true,
+                        completo:resultado.formatted_address || ""
+                    });
 
-                    const cidade =
-                        pegarComponente("locality") ||
-                        pegarComponente("administrative_area_level_2");
-
-                    const uf = pegarComponente("administrative_area_level_1", true);
-                    const cep = pegarComponente("postal_code");
-                    const pais = pegarComponente("country");
-
-                    // Mesmo estilo visual do Maps: número primeiro.
-                    const linhaEndereco = [numero, rua].filter(Boolean).join(", ");
-
-                    const cidadeUf = cidade && uf
-                        ? `${cidade} - ${uf}`
-                        : (cidade || uf);
-
-                    const linhaLocal = [cidadeUf, cep].filter(Boolean).join(", ");
-
-                    return {
-                        numero,
-                        rua,
-                        endereco: linhaEndereco || resultado.formatted_address || "",
-                        bairro,
-                        localidade: cidade,
-                        estado: uf,
-                        cep,
-                        pais,
-                        localLinha: linhaLocal,
-                        enderecoCompleto: resultado.formatted_address || "",
-                        fonte: "Google Maps",
-                        google: true
-                    };
+                    if(r.rua || r.numero || r.enderecoCompleto) return r;
                 }
-            }else{
-                console.warn("Google Geocoding HTTP:", resp.status);
             }
         }catch(err){
-            console.warn("Google Maps Geocoding falhou:", err);
+            console.warn("Google reverse geocoding falhou:", err);
         }
     }
 
-    /*
-     * Fallback apenas se a chave Google não estiver disponível ou a consulta falhar.
-     * Continua usando SOMENTE as coordenadas GPS atuais.
-     */
+    // 2) PHOTON / KOMOOT — ótimo fallback para rua, número e CEP.
+    try{
+        const url = new URL("https://photon.komoot.io/reverse");
+        url.searchParams.set("lat", String(lat));
+        url.searchParams.set("lon", String(lng));
+        url.searchParams.set("lang", "pt");
+
+        const resp = await fetch(url.toString(), {
+            headers:{"Accept":"application/json"},
+            cache:"no-store"
+        });
+
+        if(resp.ok){
+            const dados = await resp.json();
+            const p = dados?.features?.[0]?.properties || {};
+
+            const r = montar({
+                numero:p.housenumber || "",
+                rua:p.street || p.name || "",
+                bairro:p.district || p.locality || "",
+                cidade:p.city || p.county || "",
+                estado:p.state || "",
+                cep:p.postcode || "",
+                pais:p.country || "",
+                fonte:"GPS",
+                google:false,
+                completo:[
+                    p.housenumber, p.street || p.name, p.district,
+                    p.city || p.county, p.state, p.postcode
+                ].filter(Boolean).join(", ")
+            });
+
+            if(r.rua || r.numero || r.enderecoCompleto) return r;
+        }
+    }catch(err){
+        console.warn("Photon reverse geocoding falhou:", err);
+    }
+
+    // 3) NOMINATIM — último fallback, ainda usando SOMENTE o GPS da foto.
     try{
         const url = new URL("https://nominatim.openstreetmap.org/reverse");
         url.searchParams.set("format", "jsonv2");
@@ -6248,59 +6439,38 @@ async function obterEnderecoMapa(latitude, longitude){
         url.searchParams.set("accept-language", "pt-BR");
 
         const resp = await fetch(url.toString(), {
-            method:"GET",
             headers:{"Accept":"application/json"},
             cache:"no-store"
         });
 
-        if(!resp.ok) throw new Error(`Geocodificação HTTP ${resp.status}`);
+        if(resp.ok){
+            const dados = await resp.json();
+            const a = dados?.address || {};
 
-        const dados = await resp.json();
-        const a = dados?.address || {};
+            const r = montar({
+                numero:a.house_number || "",
+                rua:a.road || a.pedestrian || a.residential || a.path || "",
+                bairro:a.suburb || a.neighbourhood || a.quarter || a.city_district || "",
+                cidade:a.city || a.town || a.village || a.municipality || "",
+                estado:a["ISO3166-2-lvl4"] ? String(a["ISO3166-2-lvl4"]).split("-").pop() : (a.state || ""),
+                cep:a.postcode || "",
+                pais:a.country || "",
+                fonte:"GPS",
+                google:false,
+                completo:dados?.display_name || ""
+            });
 
-        const numero = a.house_number || "";
-        const rua = a.road || a.pedestrian || a.residential || a.path || "";
-        const bairro = a.suburb || a.neighbourhood || a.quarter || a.city_district || "";
-        const cidade = a.city || a.town || a.village || a.municipality || "";
-        const uf = a["ISO3166-2-lvl4"] ? String(a["ISO3166-2-lvl4"]).split("-").pop() : (a.state || "");
-        const cep = a.postcode || "";
-        const pais = a.country || "";
-
-        const linhaEndereco = [numero, rua].filter(Boolean).join(", ");
-        const cidadeUf = cidade && uf ? `${cidade} - ${uf}` : (cidade || uf);
-        const linhaLocal = [cidadeUf, cep].filter(Boolean).join(", ");
-
-        return {
-            numero,
-            rua,
-            endereco: linhaEndereco || "",
-            bairro,
-            localidade: cidade,
-            estado: uf,
-            cep,
-            pais,
-            localLinha: linhaLocal,
-            enderecoCompleto: dados?.display_name || "",
-            fonte: "GPS",
-            google: false
-        };
+            if(r.rua || r.numero || r.enderecoCompleto) return r;
+        }
     }catch(err){
-        console.warn("Não foi possível obter endereço pelas coordenadas:", err);
-        return {
-            numero:"",
-            rua:"",
-            endereco:"",
-            bairro:"",
-            localidade:"",
-            estado:"",
-            cep:"",
-            pais:"",
-            localLinha:"",
-            enderecoCompleto:"",
-            fonte:"GPS",
-            google:false
-        };
+        console.warn("Nominatim reverse geocoding falhou:", err);
     }
+
+    // Nunca substitui pelo endereço cadastrado na OS.
+    return montar({
+        fonte:"GPS",
+        completo:`${lat.toFixed(6)}, ${lng.toFixed(6)}`
+    });
 }
 async function obterCarimboLocalizacao(){
     const pos = await obterPosicaoAtual();
@@ -6349,36 +6519,29 @@ function quebrarTextoCanvas(ctx, texto, larguraMax){
 }
 
 function desenharCarimboGPS(ctx, largura, altura, carimbo){
-    /*
-     * CARIMBO SGOS ULTRACOMPACTO
-     * - SEM mini mapa
-     * - SEM quadro GPS
-     * - endereço em amarelo
-     * - endereço vindo somente do reverse geocoding do GPS da foto
-     */
-    const margem = Math.max(6, Math.round(largura * .006));
+    // Faixa compacta, SEM mini mapa.
+    const margem = Math.max(7, Math.round(largura * .007));
     const boxW = largura - margem * 2;
-
-    // Aproximadamente 6,5% da altura da foto.
-    const boxH = Math.max(68, Math.min(108, Math.round(altura * .065)));
+    const boxH = Math.max(92, Math.min(150, Math.round(altura * .085)));
     const x = margem;
     const y = altura - boxH - margem;
-    const padX = Math.max(9, Math.round(largura * .009));
-    const padY = Math.max(7, Math.round(boxH * .10));
+    const padX = Math.max(12, Math.round(largura * .012));
+    const padY = Math.max(10, Math.round(boxH * .11));
 
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,.74)";
+    ctx.fillStyle = "rgba(0,0,0,.76)";
     ctx.fillRect(x, y, boxW, boxH);
 
     const amarelo = "#FFD400";
     const branco = "#FFFFFF";
-    const cinza = "#D8DEE9";
+    const cinza = "#E5E7EB";
 
-    const fonteEndereco = Math.max(12, Math.round(largura * .013));
-    const fonteLocal = Math.max(10, Math.round(fonteEndereco * .82));
-    const fonteInfo = Math.max(9, Math.round(fonteEndereco * .74));
+    // Fontes maiores para leitura real no anexo.
+    const fonteEndereco = Math.max(18, Math.round(largura * .020));
+    const fonteLocal = Math.max(15, Math.round(largura * .016));
+    const fonteInfo = Math.max(13, Math.round(largura * .014));
 
-    const gap = Math.max(10, Math.round(largura * .010));
+    const gap = Math.max(16, Math.round(largura * .014));
     const conteudoW = boxW - padX * 2;
     const leftW = Math.round((conteudoW - gap) * .61);
     const rightW = conteudoW - gap - leftW;
@@ -6388,121 +6551,102 @@ function desenharCarimboGPS(ctx, largura, altura, carimbo){
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
 
-    // PIN MINÚSCULO — não existe mais mini mapa.
-    const pinR = Math.max(4, Math.round(fonteEndereco * .34));
+    // Pin minúsculo; não há mapa.
+    const pinR = Math.max(6, Math.round(fonteEndereco * .34));
     const pinX = leftX + pinR;
     const pinY = y + padY + pinR;
 
     ctx.strokeStyle = amarelo;
     ctx.fillStyle = amarelo;
-    ctx.lineWidth = Math.max(1.2, largura * .001);
+    ctx.lineWidth = Math.max(2, largura * .0015);
     ctx.beginPath();
     ctx.arc(pinX, pinY - pinR * .18, pinR * .50, 0, Math.PI * 2);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(pinX - pinR * .28, pinY + pinR * .08);
-    ctx.lineTo(pinX, pinY + pinR * .58);
-    ctx.lineTo(pinX + pinR * .28, pinY + pinR * .08);
+    ctx.moveTo(pinX - pinR * .30, pinY + pinR * .10);
+    ctx.lineTo(pinX, pinY + pinR * .66);
+    ctx.lineTo(pinX + pinR * .30, pinY + pinR * .10);
     ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(pinX, pinY - pinR * .18, Math.max(1, pinR * .12), 0, Math.PI * 2);
-    ctx.fill();
 
-    const tx = leftX + pinR * 2 + Math.max(6, Math.round(fonteEndereco * .36));
-    const tw = Math.max(80, leftW - (tx - leftX));
+    const tx = leftX + pinR * 2 + Math.max(9, Math.round(fonteEndereco * .40));
+    const tw = Math.max(100, leftW - (tx - leftX));
 
-    /*
-     * FORMATO DE ENDEREÇO:
-     * 126, R. Maximiliano Silva
-     * Itamari - BA, 45455-000
-     *
-     * Tudo abaixo vem de carimbo.numeroMapa/ruaMapa/localidade/estado/cep,
-     * preenchidos exclusivamente por obterEnderecoMapa(GPS).
-     */
     const numero = String(carimbo.numeroMapa || "").trim();
     const rua = String(carimbo.ruaMapa || "").trim();
+    const bairro = String(carimbo.bairro || "").trim();
     const cidade = String(carimbo.localidade || "").trim();
     const uf = String(carimbo.estado || "").trim();
     const cep = String(carimbo.cep || "").trim();
 
-    const linha1 = [numero, rua].filter(Boolean).join(", ") ||
-        String(carimbo.endereco || "").trim() ||
-        "Endereço não identificado";
+    let linha1 = [numero, rua].filter(Boolean).join(", ");
+
+    // Se o provedor de reverse geocoding trouxe somente formatted/display name,
+    // usa esse texto do MAPA/GPS — nunca endereço cadastrado na OS.
+    if(!linha1){
+        const completo = String(carimbo.enderecoCompletoMapa || "").trim();
+        if(completo && !/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(completo)){
+            linha1 = completo.split(",").slice(0,2).join(", ").trim();
+        }
+    }
+    if(!linha1) linha1 = "Localização GPS";
 
     const cidadeUf = cidade && uf ? `${cidade} - ${uf}` : (cidade || uf);
-    const linha2 = [cidadeUf, cep].filter(Boolean).join(", ");
+    const linha2 = [bairro, cidadeUf, cep].filter(Boolean).join(" • ");
 
     ctx.fillStyle = amarelo;
     ctx.font = `800 ${fonteEndereco}px Arial`;
-    const linhas1 = quebrarTextoCanvas(ctx, linha1, tw).slice(0,1);
-    ctx.fillText(linhas1[0] || linha1, tx, y + padY);
+    const l1 = quebrarTextoCanvas(ctx, linha1, tw).slice(0,2);
+    let ly = y + padY;
+    l1.forEach(linha => {
+        ctx.fillText(linha, tx, ly);
+        ly += Math.round(fonteEndereco * 1.08);
+    });
 
-    ctx.font = `700 ${fonteLocal}px Arial`;
-    if(linha2){
-        ctx.fillText(
-            quebrarTextoCanvas(ctx, linha2, tw)[0] || linha2,
-            tx,
-            y + padY + Math.round(fonteEndereco * 1.18)
-        );
+    if(linha2 && ly < y + boxH - padY - fonteInfo * 1.5){
+        ctx.font = `700 ${fonteLocal}px Arial`;
+        const l2 = quebrarTextoCanvas(ctx, linha2, tw).slice(0,1);
+        ctx.fillText(l2[0] || linha2, tx, ly);
     }
 
-    // Se não for Google, deixa explícito sem inventar endereço do Maps.
-    ctx.font = `600 ${Math.max(8, Math.round(fonteInfo * .84))}px Arial`;
-    ctx.fillStyle = carimbo.enderecoGoogle ? "rgba(255,212,0,.75)" : "rgba(255,255,255,.55)";
-    ctx.fillText(
-        carimbo.enderecoGoogle ? "Google Maps" : "GPS",
-        tx,
-        y + boxH - padY - Math.max(8, Math.round(fonteInfo * .84))
-    );
-
-    // Separador fino.
+    // divisor
     const divX = rightX - Math.round(gap / 2);
-    ctx.strokeStyle = "rgba(255,255,255,.22)";
+    ctx.strokeStyle = "rgba(255,255,255,.24)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(divX, y + padY);
     ctx.lineTo(divX, y + boxH - padY);
     ctx.stroke();
 
-    // Data/hora + coordenadas + empresa/OS.
     let dataTxt = "";
     let horaTxt = "";
     try{
         const d = carimbo.dataHoraISO ? new Date(carimbo.dataHoraISO) : new Date();
         dataTxt = d.toLocaleDateString("pt-BR");
         horaTxt = d.toLocaleTimeString("pt-BR", {
-            hour:"2-digit",
-            minute:"2-digit",
-            second:"2-digit"
+            hour:"2-digit", minute:"2-digit", second:"2-digit"
         });
-    }catch(_){
-        const partes = String(carimbo.dataHora || "").split(",");
-        dataTxt = (partes[0] || "").trim();
-        horaTxt = (partes[1] || "").trim();
-    }
+    }catch(_){}
 
     ctx.fillStyle = branco;
     ctx.font = `700 ${fonteInfo}px Arial`;
     let ry = y + padY;
-    ctx.fillText(`${dataTxt} • ${horaTxt}`, rightX, ry);
-    ry += Math.round(fonteInfo * 1.22);
+    ctx.fillText(`${dataTxt}  ${horaTxt}`, rightX, ry);
+    ry += Math.round(fonteInfo * 1.30);
 
     ctx.fillStyle = cinza;
     ctx.font = `600 ${fonteInfo}px Arial`;
     const coord = `${carimbo.latitudeDMS || "-"}  ${carimbo.longitudeDMS || "-"}`;
-    const coordLinha = quebrarTextoCanvas(ctx, coord, rightW)[0] || coord;
-    ctx.fillText(coordLinha, rightX, ry);
+    const cl = quebrarTextoCanvas(ctx, coord, rightW).slice(0,2);
+    cl.forEach(linha => {
+        ctx.fillText(linha, rightX, ry);
+        ry += Math.round(fonteInfo * 1.18);
+    });
 
     const empresa = String(carimbo.empresa || "SGOS").toUpperCase();
     const osTxt = `${empresa}${carimbo.osId ? ` • OS #${carimbo.osId}` : ""}`;
-
     ctx.fillStyle = branco;
     ctx.font = `800 ${fonteInfo}px Arial`;
-    ctx.fillText(
-        osTxt,
-        rightX,
-        y + boxH - padY - fonteInfo
-    );
+    ctx.fillText(osTxt, rightX, y + boxH - padY - fonteInfo);
 
     ctx.restore();
 }
@@ -6616,6 +6760,11 @@ async function tirarFotoAgora(){
                 carimboCaptura
             );
 
+            const osAtualFoto = encontrarOS(osSelecionada);
+            if(osAtualFoto){
+                await salvarFotoGPSCache(osAtualFoto, arquivoFotoPreparado, carimboCaptura);
+            }
+
             if(input) input.value = "";
             window.modoCapturaGPS = null;
 
@@ -6687,95 +6836,24 @@ async function prepararArquivoParaEnvio(){
         );
         if(info) info.textContent = `Foto com GPS: ${preparado.name}`;
         arquivoFotoPreparado = preparado;
+
+        const osAtualFoto = encontrarOS(osSelecionada);
+        if(osAtualFoto){
+            await salvarFotoGPSCache(
+                osAtualFoto,
+                arquivoFotoPreparado,
+                carimbo
+            );
+        }
+
         return preparado;
     }
 
     return arquivo;
 }
 
-async function gravarVideoComLocalizacao(){
-    const info = document.getElementById("arquivoSelecionadoInfo");
 
-    arquivoFotoPreparado = null;
-    window.modoCapturaGPS = "video";
-    window.ultimaLocalizacaoMidia = null;
 
-    // GPS é obtido ANTES da seleção do vídeo.
-    try{
-        if(info) info.textContent = "Obtendo GPS atual para o vídeo...";
-        window.ultimaLocalizacaoMidia = await obterCarimboLocalizacao();
-    }catch(err){
-        console.warn("GPS do vídeo indisponível:", err);
-        window.modoCapturaGPS = null;
-        if(info) info.textContent = "Não foi possível obter GPS para o vídeo.";
-        alert(err?.message || "Não foi possível obter a localização atual.");
-        return;
-    }
-
-    /*
-     * MODO SEGURO:
-     * não usa input capture e não usa accept="video/*" no input principal.
-     * Alguns Androids interpretam video/* como intenção de câmera e recriam
-     * a Activity/WebView, causando a impressão de que o SGOS fechou.
-     *
-     * Criamos um file picker temporário com MIME específicos. Ele serve
-     * somente para selecionar vídeo já gravado.
-     */
-    const seletor = document.createElement("input");
-    seletor.type = "file";
-    seletor.accept = "video/mp4,video/quicktime,video/webm,video/3gpp";
-    seletor.style.position = "fixed";
-    seletor.style.left = "-9999px";
-    seletor.style.width = "1px";
-    seletor.style.height = "1px";
-
-    seletor.onchange = async () => {
-        const arquivo = seletor.files?.[0] || null;
-        try{
-            if(!arquivo){
-                window.modoCapturaGPS = null;
-                if(info) info.textContent = "Nenhum vídeo selecionado.";
-                return;
-            }
-
-            const limite = 30 * 1024 * 1024;
-            if(arquivo.size > limite){
-                window.modoCapturaGPS = null;
-                if(info) info.textContent = "Nenhum vídeo selecionado.";
-                alert("O vídeo deve ter no máximo 30 MB.");
-                return;
-            }
-
-            // Transfere o arquivo para o input real usado pelo FormData.
-            const inputReal = document.getElementById("foto");
-            if(!inputReal) throw new Error("Campo de anexo não encontrado.");
-
-            try{
-                const dt = new DataTransfer();
-                dt.items.add(arquivo);
-                inputReal.files = dt.files;
-            }catch(err){
-                // Caso o WebView não permita atribuir files, mantém o arquivo
-                // em memória e prepararArquivoParaEnvio o utilizará.
-                window.arquivoVideoPreparado = arquivo;
-            }
-
-            const mb = arquivo.size / 1024 / 1024;
-            if(info) info.textContent = `Vídeo selecionado + GPS atual • ${mb.toFixed(1)} MB`;
-        }finally{
-            seletor.remove();
-            window.modoCapturaGPS = null;
-        }
-    };
-
-    document.body.appendChild(seletor);
-
-    if(info){
-        info.textContent = "GPS atual registrado. Selecione um vídeo já gravado.";
-    }
-
-    seletor.click();
-}
 const abrirModalBase = abrirModal;
 abrirModal = async function(chave){
     let os = encontrarOS(chave);
@@ -6810,6 +6888,8 @@ abrirModal = async function(chave){
     }
 
     osSelecionada = chaveOS(os);
+
+    // Não zera a foto: tenta recuperar a evidência pendente desta OS.
     arquivoFotoPreparado = null;
 
     const resumo = document.getElementById("resumoModalOS");
@@ -6825,7 +6905,11 @@ abrirModal = async function(chave){
     if(foto) foto.value = "";
 
     const info = document.getElementById("arquivoSelecionadoInfo");
-    if(info) info.textContent = "Nenhum arquivo selecionado";
+    if(info) info.textContent = "Verificando foto pendente...";
+
+    // Se o técnico fechou o modal ou o app, recupera a foto salva.
+    const fotoRestaurada = await restaurarFotoGPSCache(os);
+    if(!fotoRestaurada && info) info.textContent = "Nenhum arquivo selecionado";
 
     const modal = document.getElementById("modal");
     const content = modal?.querySelector(".modal-content");
@@ -7409,6 +7493,13 @@ async function enviarAcao(tipo, botao){
                 nomeExecutor,
                 new Date().toISOString()
             );
+        }
+
+        // A foto só sai do cache depois que o servidor confirmou a ação.
+        if(["concluir","ausente","inviabilidade"].includes(tipo)){
+            await removerFotoGPSCache(osAtual);
+            arquivoFotoPreparado = null;
+            window.ultimaLocalizacaoMidia = null;
         }
 
         alert("OS atualizada com sucesso");
