@@ -70,7 +70,9 @@ module.exports = (pool, verificarAutenticacao) => {
         try {
             const [rows] = await pool.query(`
                 SELECT * FROM relatorios_envios
-                WHERE empresa_id = ? ORDER BY id DESC LIMIT 300
+                WHERE empresa_id = ?
+                  AND enviado_em >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                ORDER BY id DESC LIMIT 300
             `, [req.usuario.empresa_id]);
             res.json(rows);
         } catch (err) {
