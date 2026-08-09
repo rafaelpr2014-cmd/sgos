@@ -2885,7 +2885,7 @@ body{
         <div class="anexo-acoes">
             <button type="button" class="btn-anexo-escolher" onclick="escolherAnexo()">📎 Anexar foto, vídeo ou PDF</button>
             <button type="button" class="btn-camera" onclick="tirarFotoAgora()">📷 Tirar Foto com GPS</button>
-            <button type="button" class="btn-camera" onclick="gravarVideoComLocalizacao()">🎥 Gravar Vídeo com GPS</button>
+            <button type="button" class="btn-camera" onclick="gravarVideoComLocalizacao()">🎥 Anexar Vídeo com GPS</button>
         </div>
         <div id="arquivoSelecionadoInfo" class="arquivo-selecionado-info">Nenhum arquivo selecionado</div>
 
@@ -6220,28 +6220,70 @@ async function blobParaJpeg(blob, nomeBase="foto", carimbo=null){
 
 async function tirarFotoAgora(){
     arquivoFotoPreparado = null;
+    window.ultimaLocalizacaoMidia = null;
 
     const input = document.getElementById("foto");
     const info = document.getElementById("arquivoSelecionadoInfo");
 
+    if(info) info.textContent = "Abrindo câmera...";
+
+    // No app nativo, usa o plugin Capacitor Camera. Isso evita depender do
+    // retorno de <input capture>, que pode perder o arquivo dentro do WebView.
+    try{
+        const Camera = window.Capacitor?.Plugins?.Camera;
+        if(Camera && typeof Camera.getPhoto === "function"){
+            const foto = await Camera.getPhoto({
+                quality: 88,
+                allowEditing: false,
+                resultType: "uri",
+                source: "camera",
+                direction: "rear",
+                saveToGallery: false,
+                correctOrientation: true
+            });
+
+            const uri = foto?.webPath || foto?.path;
+            if(!uri) throw new Error("A câmera não retornou a foto.");
+
+            if(info) info.textContent = "Obtendo foto e localização...";
+            const respostaFoto = await fetch(uri);
+            if(!respostaFoto.ok) throw new Error("Não foi possível ler a foto capturada.");
+            const blobOriginal = await respostaFoto.blob();
+
+            const carimbo = await obterCarimboLocalizacao();
+            window.ultimaLocalizacaoMidia = carimbo;
+
+            const nomeBase = `foto-os-${(encontrarOS(osSelecionada)||{}).id || "sgos"}-${Date.now()}.jpg`;
+            arquivoFotoPreparado = await blobParaJpeg(blobOriginal, nomeBase, carimbo);
+
+            // Limpa o input para não haver conflito entre arquivo antigo e a
+            // foto capturada pelo plugin nativo.
+            if(input) input.value = "";
+
+            if(info){
+                const mb = arquivoFotoPreparado.size / 1024 / 1024;
+                info.textContent = `Foto com GPS pronta • ${mb.toFixed(1)} MB`;
+            }
+            return;
+        }
+    }catch(err){
+        console.warn("Câmera nativa não disponível/falhou; usando fallback HTML:", err);
+        // Cancelamento do usuário não deve abrir outra câmera automaticamente.
+        if(/cancel|cancelled|canceled|user/i.test(String(err?.message || ""))){
+            if(info) info.textContent = "Nenhuma foto selecionada";
+            return;
+        }
+    }
+
+    // Fallback para navegador/PWA.
     if(!input){
         alert("Campo de câmera não encontrado.");
         return;
     }
-
-    /*
-      Captura direta somente de FOTO. Abrir gravação de vídeo por input
-      capture dentro do WebView pode encerrar o processo no Android/iOS.
-      Vídeos continuam disponíveis pelo botão “Anexar foto, vídeo ou PDF”.
-    */
     input.value = "";
     input.accept = "image/*";
     input.setAttribute("capture", "environment");
-
-    if(info){
-        info.textContent = "Abra a câmera para tirar uma foto. Para vídeo, use o botão Anexar.";
-    }
-
+    if(info) info.textContent = "Tire a foto pela câmera do aparelho.";
     input.click();
 }
 
@@ -6294,11 +6336,11 @@ async function gravarVideoComLocalizacao(){
 
     arquivoFotoPreparado = null;
 
-    // Captura GPS antes de abrir a câmera. Não impede a gravação se o GPS falhar.
+    // Obtém o GPS antes de selecionar o vídeo. A identificação é enviada
+    // junto com a mídia, mas não força a abertura do gravador dentro do WebView.
     try{
         if(info) info.textContent = "Obtendo localização para o vídeo...";
         const pos = await obterPosicaoAtual();
-
         const identificacao = dadosIdentificacaoMidia();
         window.ultimaLocalizacaoMidia = {
             latitude:pos.latitude,
@@ -6314,19 +6356,17 @@ async function gravarVideoComLocalizacao(){
         window.ultimaLocalizacaoMidia = null;
     }
 
-    /*
-     * Usa a câmera/gravador NATIVO do Android/iOS.
-     * Evita canvas.captureStream + MediaRecorder dentro do WebView,
-     * que consome muita memória e pode encerrar o app no iPhone.
-     */
-    input.accept = "video/*";
-    input.setAttribute("capture","environment");
+    // IMPORTANTE: sem capture="environment".
+    // Em Android/iOS WebView, ACTION_VIDEO_CAPTURE pode destruir/recriar a
+    // Activity e aparentar que o SGOS "fechou". O seletor de mídia é estável.
+    input.removeAttribute("capture");
+    input.accept = "video/mp4,video/webm,video/quicktime,video/3gpp,video/*";
     input.value = "";
 
     if(info){
         info.textContent = window.ultimaLocalizacaoMidia
-            ? "GPS registrado. Grave o vídeo pela câmera do aparelho."
-            : "Grave o vídeo pela câmera do aparelho.";
+            ? "GPS registrado. Selecione um vídeo já gravado no aparelho."
+            : "Selecione um vídeo já gravado no aparelho.";
     }
 
     input.click();
@@ -6923,6 +6963,12 @@ async function enviarAcao(tipo, botao){
         }
 
         const arquivo = arquivoAnexoSnapshot;
+        console.log("📎 SGOS anexo preparado:", arquivo ? {
+            nome: arquivo.name || "sem-nome",
+            tipo: arquivo.type || "sem-mime",
+            tamanho: arquivo.size || 0,
+            origem: arquivoFotoPreparado ? "camera-nativa/preparado" : "input"
+        } : "sem anexo");
         if(window.ultimaLocalizacaoMidia){
             formData.append("midia_latitude", String(window.ultimaLocalizacaoMidia.latitude));
             formData.append("midia_longitude", String(window.ultimaLocalizacaoMidia.longitude));

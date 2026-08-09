@@ -93,9 +93,14 @@ module.exports = (db, verificarAutenticacao, io) => {
                 "image/jpeg",
                 "image/png",
                 "image/webp",
+                "image/heic",
+                "image/heif",
                 "video/mp4",
                 "video/webm",
                 "video/quicktime",
+                "video/3gpp",
+                "video/3gp",
+                "application/octet-stream",
                 "application/pdf"
             ];
 
@@ -1702,145 +1707,6 @@ router.post(
 );
 
 // ===============================
-// ⭐ PRÓXIMA OS DA FILA
-// ===============================
-router.post(
-    "/proxima-fila/:id",
-    verificarAutenticacao,
-    async (req, res) => {
-        try {
-            const osId = Number(req.params.id);
-
-            if(!Number.isInteger(osId) || osId <= 0){
-                return res.status(400).json({ erro: "OS inválida." });
-            }
-
-            // Busca a OS e a equipe/técnico vinculada a ela.
-            const [rows] = await db.query(`
-                SELECT id, status, tecnico, proxima_os
-                FROM ordens_servico
-                WHERE id = ?
-                  AND empresa_id = ?
-                LIMIT 1
-            `, [osId, req.usuario.empresa_id]);
-
-            if(!rows.length){
-                return res.status(404).json({ erro: "OS não encontrada." });
-            }
-
-            const os = rows[0];
-            const status = String(os.status || "").toLowerCase().trim();
-
-            if(status !== "os_lancada"){
-                return res.status(400).json({
-                    erro: "Somente uma OS lançada pode ser marcada como próximo atendimento."
-                });
-            }
-
-            /*
-             * Remove a marcação anterior somente da mesma equipe técnica.
-             * Não limpa a fila inteira da empresa, evitando que um técnico
-             * apague o próximo atendimento definido para outro técnico.
-             */
-            await db.query(`
-                UPDATE ordens_servico
-                SET proxima_os = 0
-                WHERE empresa_id = ?
-                  AND status = 'os_lancada'
-                  AND id <> ?
-                  AND (
-                      (tecnico = ?)
-                      OR (tecnico IS NULL AND ? IS NULL)
-                  )
-            `, [
-                req.usuario.empresa_id,
-                osId,
-                os.tecnico,
-                os.tecnico
-            ]);
-
-            const [resultado] = await db.query(`
-                UPDATE ordens_servico
-                SET proxima_os = 1
-                WHERE id = ?
-                  AND empresa_id = ?
-                  AND status = 'os_lancada'
-            `, [osId, req.usuario.empresa_id]);
-
-            if(!resultado.affectedRows){
-                return res.status(409).json({
-                    erro: "A OS não está mais disponível para ser marcada como próximo atendimento."
-                });
-            }
-
-            io.emit("os_update");
-
-            return res.json({
-                ok: true,
-                os_id: osId,
-                proxima_os: 1
-            });
-
-        } catch(err){
-            console.error("ERRO PROXIMA FILA:", err);
-            return res.status(500).json({ erro: err.message });
-        }
-    }
-);
-
-
-// ===============================
-// ✖ REMOVER PRÓXIMA OS DA FILA
-// ===============================
-router.post(
-    "/remover-proxima-fila/:id",
-    verificarAutenticacao,
-    async (req, res) => {
-        try {
-            const osId = Number(req.params.id);
-
-            if(!Number.isInteger(osId) || osId <= 0){
-                return res.status(400).json({ erro: "OS inválida." });
-            }
-
-            const [resultado] = await db.query(`
-                UPDATE ordens_servico
-                SET proxima_os = 0
-                WHERE id = ?
-                  AND empresa_id = ?
-            `, [osId, req.usuario.empresa_id]);
-
-            if(!resultado.affectedRows){
-                const [existe] = await db.query(`
-                    SELECT id
-                    FROM ordens_servico
-                    WHERE id = ?
-                      AND empresa_id = ?
-                    LIMIT 1
-                `, [osId, req.usuario.empresa_id]);
-
-                if(!existe.length){
-                    return res.status(404).json({ erro: "OS não encontrada." });
-                }
-            }
-
-            io.emit("os_update");
-
-            return res.json({
-                ok: true,
-                os_id: osId,
-                proxima_os: 0
-            });
-
-        } catch(err){
-            console.error("ERRO REMOVER PROXIMA FILA:", err);
-            return res.status(500).json({ erro: err.message });
-        }
-    }
-);
-
-
-// ===============================
 // 📍 CHECK-IN DE CHEGADA
 // ===============================
 router.post(
@@ -1877,27 +1743,17 @@ router.post(
                 });
             }
 
-            const statusAtualCheckin = String(os.status || '').toLowerCase().trim();
-
-            // Fluxo SGOS:
-            // OS lançada -> check-in -> em andamento
-            // Mantidos os status antigos por compatibilidade.
-            if(!['os_lancada','em_andamento','aberto','agendado'].includes(statusAtualCheckin)){
-                return res.status(400).json({
-                    erro: "O check-in não pode ser registrado no status atual da OS."
-                });
+            if(!['em_andamento','aberto','agendado'].includes(String(os.status || '').toLowerCase())){
+                return res.status(400).json({ erro: "O check-in não pode ser registrado no status atual da OS." });
             }
 
             await db.query(`
                 UPDATE ordens_servico
-                SET status = 'em_andamento',
-                    iniciado_em = COALESCE(iniciado_em, NOW()),
-                    checkin_inicio_em = NOW(),
+                SET checkin_inicio_em = NOW(),
                     checkin_inicio_latitude = ?,
                     checkin_inicio_longitude = ?,
                     checkin_inicio_precisao = ?,
-                    checkin_inicio_por = ?,
-                    proxima_os = 0
+                    checkin_inicio_por = ?
                 WHERE id = ? AND empresa_id = ? AND checkin_inicio_em IS NULL
             `, [
                 latitude,
@@ -2227,7 +2083,7 @@ router.post(
             await conn.commit();
             await registrarLog(req,"CONCLUIU OS","OS",req.params.id,{Cliente:os.nome,Telefone:os.telefone,Login:os.login,Status:"CONCLUÍDO","Observação de conclusão":observacaoFinalizado,Anexo:req.file?"SIM":"NÃO","Check-in inicial":checkinFinal?.checkin_inicio_em,"Check-in final":checkinFinal?.checkin_fim_em,"Tempo de atendimento (segundos)":checkinFinal?.tempo_atendimento_segundos,"Latitude final":latitudeFim,"Longitude final":longitudeFim,"Equipamentos utilizados":resultadoEquipamentos.utilizado==='sim'?"SIM":resultadoEquipamentos.utilizado==='nao'?"NÃO":"SEM EQUIPAMENTO","Itens devolvidos ao estoque":resultadoEquipamentos.estoqueDevolvido,"Lançamentos financeiros estornados":resultadoEquipamentos.financeiroEstornado});
             io.emit("os_update");
-            res.json({ok:true,equipamentos:resultadoEquipamentos,checkin:checkinFinal});
+            res.json({ok:true,equipamentos:resultadoEquipamentos,checkin:checkinFinal,anexo_finalizado:anexoFinalizado,anexo:anexoFinalizado});
         } catch (err) {
             if(conn){ try{ await conn.rollback(); }catch(_){ } }
             console.error("ERRO CONCLUIR:",err);
