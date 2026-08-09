@@ -4333,11 +4333,24 @@ function abrirModalAnexo(url, osId){
     if(isImagem){
         viewer.innerHTML = `<img src="${url}" alt="Anexo da OS" onerror="this.outerHTML='<div class=&quot;anexo-msg&quot;>Não foi possível carregar este anexo.</div>'">`;
     }else if(isVideo){
+        const osMidia = encontrarOS(`normal-${osId}`) || encontrarOS(osId);
+        const coordsMidia = obterCoordenadasOS(osMidia);
+        const enderecoMidia = osMidia ? enderecoNormal(osMidia) : "";
+        const dataMidia = osMidia?.finalizado_em || osMidia?.atualizado_em || osMidia?.checkin_inicio_em || "";
+        const carimboVideo = coordsMidia ? `
+            <div style="position:absolute;left:12px;right:12px;bottom:54px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.68);color:#fff;font:700 12px/1.35 Arial;pointer-events:none;text-align:left;">
+                <div>SGOS${osId ? ` • OS #${valorSeguro(osId)}` : ""}${dataMidia ? ` • ${valorSeguro(format(dataMidia))}` : ""}</div>
+                <div>${valorSeguro(coordenadaParaDMS(coordsMidia.latitude,"lat"))} ${valorSeguro(coordenadaParaDMS(coordsMidia.longitude,"lng"))}</div>
+                <div>${valorSeguro(enderecoMidia || osMidia?.localidade_nome || "Endereço não informado")}</div>
+            </div>` : "";
         viewer.innerHTML = `
-            <video controls playsinline preload="metadata" style="width:100%;height:100%;background:#000">
-                <source src="${url}">
-                Seu dispositivo não conseguiu reproduzir este vídeo.
-            </video>`;
+            <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000;">
+                <video controls playsinline preload="metadata" style="width:100%;height:100%;background:#000;object-fit:contain">
+                    <source src="${url}">
+                    Seu dispositivo não conseguiu reproduzir este vídeo.
+                </video>
+                ${carimboVideo}
+            </div>`;
     }else{
         viewer.innerHTML = `<iframe src="${url}" title="Anexo da OS"></iframe>`;
     }
@@ -6038,35 +6051,128 @@ function arquivoSelecionado(input){
     }
 }
 
+function coordenadaParaDMS(valor, eixo){
+    const numero = Number(valor);
+    if(!Number.isFinite(numero)) return "-";
+    const abs = Math.abs(numero);
+    const graus = Math.floor(abs);
+    const minFloat = (abs - graus) * 60;
+    const minutos = Math.floor(minFloat);
+    const segundos = ((minFloat - minutos) * 60).toFixed(0);
+    const hemisferio = eixo === "lat"
+        ? (numero < 0 ? "S" : "N")
+        : (numero < 0 ? "W" : "E");
+    return `${graus}°${String(minutos).padStart(2,"0")}'${String(segundos).padStart(2,"0")}"${hemisferio}`;
+}
+
+function dadosIdentificacaoMidia(){
+    const os = encontrarOS(osSelecionada) || {};
+    const empresaEl = document.getElementById("nomeEmpresa");
+    const empresa = String(
+        user?.empresa_nome || user?.empresa || empresaEl?.textContent || "SGOS"
+    ).trim() || "SGOS";
+    const endereco = enderecoNormal(os) || os.endereco || os.rua || "Endereço não informado";
+    const localidade = os.localidade_nome || os.localidade || os.cidade || "";
+    const bairro = os.bairro || "";
+    return { empresa, endereco, localidade, bairro, osId: os.id || "" };
+}
+
 async function obterCarimboLocalizacao(){
     const pos = await obterPosicaoAtual();
     const agora = new Date();
+    const identificacao = dadosIdentificacaoMidia();
     return {
         ...pos,
+        ...identificacao,
         dataHora: agora.toLocaleString("pt-BR", {hour12:false}),
-        texto: `GPS: ${pos.latitude.toFixed(6)}, ${pos.longitude.toFixed(6)}  •  Precisão: ${Math.round(pos.precisao || 0)} m  •  ${agora.toLocaleString("pt-BR", {hour12:false})}`
+        dataHoraISO: agora.toISOString(),
+        latitudeDMS: coordenadaParaDMS(pos.latitude, "lat"),
+        longitudeDMS: coordenadaParaDMS(pos.longitude, "lng"),
+        texto: `GPS: ${pos.latitude.toFixed(6)}, ${pos.longitude.toFixed(6)} • Precisão: ${Math.round(pos.precisao || 0)} m`
     };
+}
+
+function quebrarTextoCanvas(ctx, texto, larguraMax){
+    const palavras = String(texto || "").split(/\s+/).filter(Boolean);
+    const linhas = [];
+    let atual = "";
+    for(const palavra of palavras){
+        const teste = atual ? `${atual} ${palavra}` : palavra;
+        if(atual && ctx.measureText(teste).width > larguraMax){
+            linhas.push(atual);
+            atual = palavra;
+        }else{
+            atual = teste;
+        }
+    }
+    if(atual) linhas.push(atual);
+    return linhas;
 }
 
 function desenharCarimboGPS(ctx, largura, altura, carimbo){
     const margem = Math.max(18, Math.round(largura * .018));
-    const fonte = Math.max(20, Math.round(largura * .022));
-    const linha = Math.round(fonte * 1.35);
-    const texto1 = `SGOS • ${carimbo.dataHora}`;
-    const texto2 = `${carimbo.latitude.toFixed(6)}, ${carimbo.longitude.toFixed(6)} • precisão ${Math.round(carimbo.precisao || 0)} m`;
-    ctx.save();
-    ctx.font = `700 ${fonte}px Arial`;
-    const larguraBox = Math.min(largura - margem * 2, Math.max(ctx.measureText(texto1).width, ctx.measureText(texto2).width) + margem * 2);
-    const alturaBox = linha * 2 + margem;
+    const boxH = Math.max(190, Math.round(altura * .255));
+    const y = altura - boxH - margem;
     const x = margem;
-    const y = altura - alturaBox - margem;
-    ctx.fillStyle = "rgba(0,0,0,.68)";
-    ctx.fillRect(x, y, larguraBox, alturaBox);
-    ctx.fillStyle = "#fff";
+    const w = largura - margem * 2;
+    const miniW = Math.max(180, Math.round(w * .31));
+    const gap = Math.max(12, Math.round(largura * .012));
+
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,.62)";
+    ctx.fillRect(x, y, w, boxH);
+
+    // Mini painel de localização (visual de mapa/GPS sem depender de internet).
+    ctx.fillStyle = "rgba(235,240,245,.94)";
+    ctx.fillRect(x + gap, y + gap, miniW - gap * 2, boxH - gap * 2);
+    ctx.strokeStyle = "rgba(80,100,120,.24)";
+    ctx.lineWidth = Math.max(1, Math.round(largura * .0015));
+    for(let i=1;i<5;i++){
+        const gx = x + gap + ((miniW-gap*2)/5)*i;
+        ctx.beginPath(); ctx.moveTo(gx,y+gap); ctx.lineTo(gx,y+boxH-gap); ctx.stroke();
+    }
+    for(let i=1;i<4;i++){
+        const gy = y + gap + ((boxH-gap*2)/4)*i;
+        ctx.beginPath(); ctx.moveTo(x+gap,gy); ctx.lineTo(x+miniW-gap,gy); ctx.stroke();
+    }
+    const pinX = x + miniW/2;
+    const pinY = y + boxH/2 - 8;
+    ctx.fillStyle = "#d92d20";
+    ctx.beginPath(); ctx.arc(pinX,pinY,Math.max(10,Math.round(largura*.011)),0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(pinX-7,pinY+7); ctx.lineTo(pinX,pinY+22); ctx.lineTo(pinX+7,pinY+7); ctx.fill();
+    ctx.fillStyle = "#26384a";
+    ctx.textAlign = "center";
+    ctx.font = `700 ${Math.max(13,Math.round(largura*.012))}px Arial`;
+    ctx.fillText("GPS", pinX, y + boxH - gap - 26);
+    ctx.font = `600 ${Math.max(11,Math.round(largura*.0095))}px Arial`;
+    ctx.fillText(`${Number(carimbo.latitude).toFixed(5)}, ${Number(carimbo.longitude).toFixed(5)}`, pinX, y + boxH - gap - 8);
+
+    const tx = x + miniW + gap;
+    const tw = w - miniW - gap * 2;
+    const fonteBase = Math.max(20, Math.round(largura * .021));
+    const fonteMenor = Math.max(16, Math.round(fonteBase * .78));
+    const line = Math.round(fonteBase * 1.17);
+    let ty = y + gap + 2;
+
+    ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillText(texto1, x + margem, y + margem / 2);
-    ctx.font = `600 ${Math.round(fonte * .86)}px Arial`;
-    ctx.fillText(texto2, x + margem, y + margem / 2 + linha);
+    ctx.fillStyle = "#fff";
+    ctx.font = `700 ${fonteBase}px Arial`;
+    ctx.fillText(carimbo.dataHora || "", tx, ty); ty += line;
+    ctx.fillText(`${carimbo.latitudeDMS || "-"}  ${carimbo.longitudeDMS || "-"}`, tx, ty); ty += line;
+
+    ctx.font = `600 ${fonteMenor}px Arial`;
+    const linhasEndereco = quebrarTextoCanvas(ctx, carimbo.endereco || "Endereço não informado", tw).slice(0,2);
+    for(const linhaTexto of linhasEndereco){ ctx.fillText(linhaTexto, tx, ty); ty += Math.round(fonteMenor*1.18); }
+    if(carimbo.bairro){ ctx.fillText(String(carimbo.bairro), tx, ty); ty += Math.round(fonteMenor*1.18); }
+    if(carimbo.localidade){ ctx.fillText(String(carimbo.localidade), tx, ty); ty += Math.round(fonteMenor*1.18); }
+
+    const empresa = String(carimbo.empresa || "SGOS").toUpperCase();
+    ctx.font = `800 ${Math.max(17,Math.round(fonteBase*.86))}px Arial`;
+    const empresaTexto = `#${empresa}${carimbo.osId ? ` • OS #${carimbo.osId}` : ""}`;
+    const empresaLinhas = quebrarTextoCanvas(ctx, empresaTexto, tw).slice(0,2);
+    const baseEmpresa = y + boxH - gap - (empresaLinhas.length * Math.round(fonteBase*.98));
+    empresaLinhas.forEach((linhaTexto,idx)=>ctx.fillText(linhaTexto,tx,baseEmpresa+idx*Math.round(fonteBase*.98)));
     ctx.restore();
 }
 
@@ -6193,11 +6299,15 @@ async function gravarVideoComLocalizacao(){
         if(info) info.textContent = "Obtendo localização para o vídeo...";
         const pos = await obterPosicaoAtual();
 
+        const identificacao = dadosIdentificacaoMidia();
         window.ultimaLocalizacaoMidia = {
             latitude:pos.latitude,
             longitude:pos.longitude,
             precisao:pos.precisao,
-            dataHora:new Date().toLocaleString("pt-BR",{hour12:false})
+            dataHora:new Date().toLocaleString("pt-BR",{hour12:false}),
+            latitudeDMS:coordenadaParaDMS(pos.latitude,"lat"),
+            longitudeDMS:coordenadaParaDMS(pos.longitude,"lng"),
+            ...identificacao
         };
     }catch(err){
         console.warn("GPS do vídeo indisponível:", err);
@@ -7141,7 +7251,34 @@ async function fazerCheckin(botao){
         });
         const data = await lerRespostaSegura(res);
         if(!res.ok) throw new Error(data.erro || data.mensagem || `Erro HTTP ${res.status}`);
-        alert("Check-in registrado com horário e localização.");
+
+        // O check-in também passa a ser a localização principal da OS.
+        // Isso garante que app, painel, mapa e futuras reciclagens recebam
+        // imediatamente a posição de chegada. Um novo check-in/localização
+        // sobrescreve os valores anteriores.
+        const resLocalizacao = await apiFetch(`/api/ordens_servico/localizacao/${osAtual.id}`, {
+            method:"POST",
+            headers:{"Content-Type":"application/json","Accept":"application/json"},
+            body:JSON.stringify({
+                latitude:coords.latitude,
+                longitude:coords.longitude,
+                lat:coords.latitude,
+                lng:coords.longitude,
+                origem:"checkin"
+            }),
+            cache:"no-store"
+        });
+        const dadosLocalizacao = await lerRespostaSegura(resLocalizacao);
+        if(!resLocalizacao.ok){
+            throw new Error(dadosLocalizacao.erro || dadosLocalizacao.mensagem || `Check-in salvo, mas não foi possível atualizar a localização da OS (HTTP ${resLocalizacao.status}).`);
+        }
+
+        osAtual.latitude = coords.latitude;
+        osAtual.longitude = coords.longitude;
+        osAtual.checkin_inicio_latitude = coords.latitude;
+        osAtual.checkin_inicio_longitude = coords.longitude;
+
+        alert("Check-in registrado e localização da OS atualizada.");
         fecharModal();
         await load();
     }catch(err){

@@ -1472,6 +1472,35 @@ function coordenadasAtuaisOS(os){
     return null;
 }
 
+function coordenadaParaDMSPainel(valor, eixo){
+    const numero = Number(valor);
+    if(!Number.isFinite(numero)) return "-";
+    const abs = Math.abs(numero);
+    const graus = Math.floor(abs);
+    const minFloat = (abs - graus) * 60;
+    const minutos = Math.floor(minFloat);
+    const segundos = ((minFloat - minutos) * 60).toFixed(0);
+    const hemisferio = eixo === "lat" ? (numero < 0 ? "S" : "N") : (numero < 0 ? "W" : "E");
+    return `${graus}°${String(minutos).padStart(2,"0")}'${String(segundos).padStart(2,"0")}"${hemisferio}`;
+}
+
+function dadosMidiaPainelPorArquivo(arquivo){
+    const alvo = String(arquivo || "");
+    const os = (ordens || []).find(item => String(anexoAtualResumo(item) || "") === alvo) || null;
+    if(!os) return null;
+    const coords = coordenadasAtuaisOS(os);
+    if(!coords) return null;
+    const data = os.finalizado_em || os.ausente_em || os.atualizado_em || os.checkin_inicio_em || os.criado_em;
+    return {
+        os,
+        coords,
+        dataTexto: data ? formatarData(data) : "-",
+        latDMS: coordenadaParaDMSPainel(coords.latitude,"lat"),
+        lngDMS: coordenadaParaDMSPainel(coords.longitude,"lng"),
+        endereco: [os.rua || os.endereco, os.n, os.bairro, os.localidade_nome].filter(Boolean).join(" • ")
+    };
+}
+
 function detalheAtualResumo(os){
     const status = normalizarStatus(os?.status);
 
@@ -2516,6 +2545,48 @@ window.visualizarAnexo = (arquivo) => {
         elemento.style.maxHeight = "80vh";
 
         elemento.style.borderRadius = "8px";
+    }
+
+    // vídeo
+    else if (["mp4","mov","m4v","webm","avi","mpeg","mpg","3gp"].includes(ext)) {
+        const wrapper = document.createElement("div");
+        wrapper.style.position = "relative";
+        wrapper.style.maxWidth = "88vw";
+        wrapper.style.maxHeight = "82vh";
+        wrapper.style.background = "#000";
+        wrapper.style.borderRadius = "8px";
+        wrapper.style.overflow = "hidden";
+
+        const video = document.createElement("video");
+        video.src = arquivo;
+        video.controls = true;
+        video.playsInline = true;
+        video.style.display = "block";
+        video.style.maxWidth = "88vw";
+        video.style.maxHeight = "82vh";
+        video.style.background = "#000";
+
+        const dados = dadosMidiaPainelPorArquivo(arquivo);
+        if(dados){
+            const carimbo = document.createElement("div");
+            carimbo.style.position = "absolute";
+            carimbo.style.left = "12px";
+            carimbo.style.right = "12px";
+            carimbo.style.bottom = "48px";
+            carimbo.style.padding = "10px 12px";
+            carimbo.style.borderRadius = "8px";
+            carimbo.style.background = "rgba(0,0,0,.66)";
+            carimbo.style.color = "#fff";
+            carimbo.style.font = "600 13px Arial";
+            carimbo.style.lineHeight = "1.35";
+            carimbo.style.pointerEvents = "none";
+            carimbo.innerHTML = `<strong>SGOS • OS #${dados.os.id} • ${dados.dataTexto}</strong><br>${dados.latDMS} ${dados.lngDMS}<br>${String(dados.endereco || "Endereço não informado")}`;
+            wrapper.appendChild(video);
+            wrapper.appendChild(carimbo);
+        }else{
+            wrapper.appendChild(video);
+        }
+        elemento = wrapper;
     }
 
     // pdf
