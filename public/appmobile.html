@@ -4335,13 +4335,13 @@ function abrirModalAnexo(url, osId){
     }else if(isVideo){
         const osMidia = encontrarOS(`normal-${osId}`) || encontrarOS(osId);
         const coordsMidia = obterCoordenadasOS(osMidia);
-        const enderecoMidia = osMidia ? enderecoNormal(osMidia) : "";
+        const enderecoMidia = "";
         const dataMidia = osMidia?.finalizado_em || osMidia?.atualizado_em || osMidia?.checkin_inicio_em || "";
         const carimboVideo = coordsMidia ? `
             <div style="position:absolute;left:12px;right:12px;bottom:54px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.68);color:#fff;font:700 12px/1.35 Arial;pointer-events:none;text-align:left;">
                 <div>SGOS${osId ? ` • OS #${valorSeguro(osId)}` : ""}${dataMidia ? ` • ${valorSeguro(format(dataMidia))}` : ""}</div>
                 <div>${valorSeguro(coordenadaParaDMS(coordsMidia.latitude,"lat"))} ${valorSeguro(coordenadaParaDMS(coordsMidia.longitude,"lng"))}</div>
-                <div>${valorSeguro(enderecoMidia || osMidia?.localidade_nome || "Endereço não informado")}</div>
+                <div id="enderecoMapaVideo-${valorSeguro(osId || "midia")}">Consultando endereço pelas coordenadas...</div>
             </div>` : "";
         viewer.innerHTML = `
             <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000;">
@@ -4351,6 +4351,16 @@ function abrirModalAnexo(url, osId){
                 </video>
                 ${carimboVideo}
             </div>`;
+        if(coordsMidia){
+            obterEnderecoMapa(coordsMidia.latitude, coordsMidia.longitude).then(infoMapa => {
+                const alvo = document.getElementById(`enderecoMapaVideo-${osId || "midia"}`);
+                if(alvo){
+                    alvo.textContent = infoMapa?.endereco
+                        ? [infoMapa.endereco, infoMapa.localLinha].filter(Boolean).join(" • ")
+                        : "Endereço do mapa indisponível";
+                }
+            }).catch(()=>{});
+        }
     }else{
         viewer.innerHTML = `<iframe src="${url}" title="Anexo da OS"></iframe>`;
     }
@@ -6071,19 +6081,77 @@ function dadosIdentificacaoMidia(){
     const empresa = String(
         user?.empresa_nome || user?.empresa || empresaEl?.textContent || "SGOS"
     ).trim() || "SGOS";
-    const endereco = enderecoNormal(os) || os.endereco || os.rua || "Endereço não informado";
-    const localidade = os.localidade_nome || os.localidade || os.cidade || "";
-    const bairro = os.bairro || "";
-    return { empresa, endereco, localidade, bairro, osId: os.id || "" };
+
+    // IMPORTANTE: endereço/localidade NÃO vêm mais do cadastro da OS.
+    // Esses dados serão obtidos por geocodificação reversa das coordenadas GPS.
+    return { empresa, osId: os.id || "" };
+}
+
+async function obterEnderecoMapa(latitude, longitude){
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+    try{
+        // Geocodificação reversa a partir do GPS capturado no momento da mídia.
+        // Não reutiliza rua/bairro/localidade cadastrados na OS.
+        const url = new URL("https://nominatim.openstreetmap.org/reverse");
+        url.searchParams.set("format", "jsonv2");
+        url.searchParams.set("lat", String(lat));
+        url.searchParams.set("lon", String(lng));
+        url.searchParams.set("zoom", "18");
+        url.searchParams.set("addressdetails", "1");
+        url.searchParams.set("accept-language", "pt-BR");
+
+        const resp = await fetch(url.toString(), {
+            method:"GET",
+            headers:{"Accept":"application/json"},
+            cache:"no-store"
+        });
+        if(!resp.ok) throw new Error(`Geocodificação HTTP ${resp.status}`);
+
+        const dados = await resp.json();
+        const a = dados?.address || {};
+
+        const logradouro = a.road || a.pedestrian || a.residential || a.path || a.neighbourhood || "";
+        const numero = a.house_number || "";
+        const bairro = a.suburb || a.neighbourhood || a.quarter || a.city_district || "";
+        const cidade = a.city || a.town || a.village || a.municipality || "";
+        const estado = a.state || "";
+
+        const enderecoLinha = [logradouro, numero].filter(Boolean).join(", ");
+        const localLinha = [bairro, cidade, estado].filter(Boolean).join(" • ");
+        const endereco = enderecoLinha || String(dados?.display_name || "").split(",").slice(0,3).join(", ").trim();
+
+        return {
+            endereco: endereco || "",
+            bairro,
+            localidade: cidade,
+            estado,
+            localLinha,
+            enderecoCompleto: dados?.display_name || ""
+        };
+    }catch(err){
+        console.warn("Não foi possível obter endereço pelas coordenadas do mapa:", err);
+        return null;
+    }
 }
 
 async function obterCarimboLocalizacao(){
     const pos = await obterPosicaoAtual();
     const agora = new Date();
     const identificacao = dadosIdentificacaoMidia();
+    const enderecoMapa = await obterEnderecoMapa(pos.latitude, pos.longitude);
+
     return {
         ...pos,
         ...identificacao,
+        endereco: enderecoMapa?.endereco || "",
+        bairro: enderecoMapa?.bairro || "",
+        localidade: enderecoMapa?.localidade || "",
+        estado: enderecoMapa?.estado || "",
+        localLinha: enderecoMapa?.localLinha || "",
+        enderecoCompletoMapa: enderecoMapa?.enderecoCompleto || "",
         dataHora: agora.toLocaleString("pt-BR", {hour12:false}),
         dataHoraISO: agora.toISOString(),
         latitudeDMS: coordenadaParaDMS(pos.latitude, "lat"),
@@ -6110,69 +6178,61 @@ function quebrarTextoCanvas(ctx, texto, larguraMax){
 }
 
 function desenharCarimboGPS(ctx, largura, altura, carimbo){
-    const margem = Math.max(18, Math.round(largura * .018));
-    const boxH = Math.max(190, Math.round(altura * .255));
-    const y = altura - boxH - margem;
+    // Carimbo compacto: aproximadamente 12–15% da altura e no máximo 72% da largura.
+    const margem = Math.max(12, Math.round(largura * .012));
+    const w = Math.min(
+        largura - margem * 2,
+        Math.max(360, Math.round(largura * .70))
+    );
+    const boxH = Math.max(108, Math.min(180, Math.round(altura * .135)));
     const x = margem;
-    const w = largura - margem * 2;
-    const miniW = Math.max(180, Math.round(w * .31));
-    const gap = Math.max(12, Math.round(largura * .012));
+    const y = altura - boxH - margem;
+    const pad = Math.max(10, Math.round(largura * .009));
 
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,.62)";
+    ctx.fillStyle = "rgba(0,0,0,.64)";
     ctx.fillRect(x, y, w, boxH);
 
-    // Mini painel de localização (visual de mapa/GPS sem depender de internet).
-    ctx.fillStyle = "rgba(235,240,245,.94)";
-    ctx.fillRect(x + gap, y + gap, miniW - gap * 2, boxH - gap * 2);
-    ctx.strokeStyle = "rgba(80,100,120,.24)";
-    ctx.lineWidth = Math.max(1, Math.round(largura * .0015));
-    for(let i=1;i<5;i++){
-        const gx = x + gap + ((miniW-gap*2)/5)*i;
-        ctx.beginPath(); ctx.moveTo(gx,y+gap); ctx.lineTo(gx,y+boxH-gap); ctx.stroke();
-    }
-    for(let i=1;i<4;i++){
-        const gy = y + gap + ((boxH-gap*2)/4)*i;
-        ctx.beginPath(); ctx.moveTo(x+gap,gy); ctx.lineTo(x+miniW-gap,gy); ctx.stroke();
-    }
-    const pinX = x + miniW/2;
-    const pinY = y + boxH/2 - 8;
-    ctx.fillStyle = "#d92d20";
-    ctx.beginPath(); ctx.arc(pinX,pinY,Math.max(10,Math.round(largura*.011)),0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(pinX-7,pinY+7); ctx.lineTo(pinX,pinY+22); ctx.lineTo(pinX+7,pinY+7); ctx.fill();
-    ctx.fillStyle = "#26384a";
-    ctx.textAlign = "center";
-    ctx.font = `700 ${Math.max(13,Math.round(largura*.012))}px Arial`;
-    ctx.fillText("GPS", pinX, y + boxH - gap - 26);
-    ctx.font = `600 ${Math.max(11,Math.round(largura*.0095))}px Arial`;
-    ctx.fillText(`${Number(carimbo.latitude).toFixed(5)}, ${Number(carimbo.longitude).toFixed(5)}`, pinX, y + boxH - gap - 8);
-
-    const tx = x + miniW + gap;
-    const tw = w - miniW - gap * 2;
-    const fonteBase = Math.max(20, Math.round(largura * .021));
-    const fonteMenor = Math.max(16, Math.round(fonteBase * .78));
-    const line = Math.round(fonteBase * 1.17);
-    let ty = y + gap + 2;
+    const fonteBase = Math.max(14, Math.round(largura * .0145));
+    const fonteMenor = Math.max(12, Math.round(fonteBase * .82));
+    const line = Math.round(fonteBase * 1.16);
+    const textoX = x + pad;
+    const textoW = w - pad * 2;
+    let ty = y + pad;
 
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillStyle = "#fff";
+
     ctx.font = `700 ${fonteBase}px Arial`;
-    ctx.fillText(carimbo.dataHora || "", tx, ty); ty += line;
-    ctx.fillText(`${carimbo.latitudeDMS || "-"}  ${carimbo.longitudeDMS || "-"}`, tx, ty); ty += line;
+    ctx.fillText(carimbo.dataHora || "", textoX, ty);
+    ty += line;
+
+    ctx.fillText(`${carimbo.latitudeDMS || "-"}  ${carimbo.longitudeDMS || "-"}`, textoX, ty);
+    ty += line;
 
     ctx.font = `600 ${fonteMenor}px Arial`;
-    const linhasEndereco = quebrarTextoCanvas(ctx, carimbo.endereco || "Endereço não informado", tw).slice(0,2);
-    for(const linhaTexto of linhasEndereco){ ctx.fillText(linhaTexto, tx, ty); ty += Math.round(fonteMenor*1.18); }
-    if(carimbo.bairro){ ctx.fillText(String(carimbo.bairro), tx, ty); ty += Math.round(fonteMenor*1.18); }
-    if(carimbo.localidade){ ctx.fillText(String(carimbo.localidade), tx, ty); ty += Math.round(fonteMenor*1.18); }
+    const enderecoMapa = carimbo.endereco || "Endereço do mapa indisponível";
+    const linhasEndereco = quebrarTextoCanvas(ctx, enderecoMapa, textoW).slice(0,2);
+    for(const linhaTexto of linhasEndereco){
+        if(ty > y + boxH - pad - line) break;
+        ctx.fillText(linhaTexto, textoX, ty);
+        ty += Math.round(fonteMenor * 1.14);
+    }
+
+    if(carimbo.localLinha && ty <= y + boxH - pad - line){
+        const linhasLocal = quebrarTextoCanvas(ctx, carimbo.localLinha, textoW).slice(0,1);
+        for(const linhaTexto of linhasLocal){
+            ctx.fillText(linhaTexto, textoX, ty);
+            ty += Math.round(fonteMenor * 1.14);
+        }
+    }
 
     const empresa = String(carimbo.empresa || "SGOS").toUpperCase();
-    ctx.font = `800 ${Math.max(17,Math.round(fonteBase*.86))}px Arial`;
     const empresaTexto = `#${empresa}${carimbo.osId ? ` • OS #${carimbo.osId}` : ""}`;
-    const empresaLinhas = quebrarTextoCanvas(ctx, empresaTexto, tw).slice(0,2);
-    const baseEmpresa = y + boxH - gap - (empresaLinhas.length * Math.round(fonteBase*.98));
-    empresaLinhas.forEach((linhaTexto,idx)=>ctx.fillText(linhaTexto,tx,baseEmpresa+idx*Math.round(fonteBase*.98)));
+    ctx.font = `800 ${Math.max(13, Math.round(fonteBase * .88))}px Arial`;
+    ctx.fillText(empresaTexto, textoX, y + boxH - pad - Math.max(13, Math.round(fonteBase * .88)));
+
     ctx.restore();
 }
 
@@ -6340,17 +6400,7 @@ async function gravarVideoComLocalizacao(){
     // junto com a mídia, mas não força a abertura do gravador dentro do WebView.
     try{
         if(info) info.textContent = "Obtendo localização para o vídeo...";
-        const pos = await obterPosicaoAtual();
-        const identificacao = dadosIdentificacaoMidia();
-        window.ultimaLocalizacaoMidia = {
-            latitude:pos.latitude,
-            longitude:pos.longitude,
-            precisao:pos.precisao,
-            dataHora:new Date().toLocaleString("pt-BR",{hour12:false}),
-            latitudeDMS:coordenadaParaDMS(pos.latitude,"lat"),
-            longitudeDMS:coordenadaParaDMS(pos.longitude,"lng"),
-            ...identificacao
-        };
+        window.ultimaLocalizacaoMidia = await obterCarimboLocalizacao();
     }catch(err){
         console.warn("GPS do vídeo indisponível:", err);
         window.ultimaLocalizacaoMidia = null;
