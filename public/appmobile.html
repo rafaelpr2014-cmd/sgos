@@ -978,6 +978,118 @@ button{touch-action:manipulation}
     word-break:break-word;
 }
 
+
+.anexo-acoes{
+    grid-template-columns:1fr !important;
+}
+.anexo-pendente-box{
+    display:none;
+    margin:8px 0 12px;
+    padding:12px;
+    border:1px solid #bfdbfe;
+    border-radius:14px;
+    background:#eff6ff;
+}
+.anexo-pendente-box.ativo{display:block}
+.anexo-pendente-topo{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+}
+.anexo-pendente-info{
+    min-width:0;
+    color:#1e3a8a;
+    font-size:12px;
+    font-weight:800;
+    line-height:1.45;
+    word-break:break-word;
+}
+.anexo-pendente-info strong{
+    display:block;
+    color:#0f172a;
+    font-size:13px;
+    margin-bottom:3px;
+}
+.btn-remover-anexo-pendente{
+    width:auto !important;
+    min-width:42px;
+    margin:0 !important;
+    padding:8px 10px !important;
+    border-radius:10px !important;
+    background:#fee2e2 !important;
+    color:#b91c1c !important;
+    border:1px solid #fecaca !important;
+    font-size:12px !important;
+    flex:0 0 auto;
+}
+.seletor-anexo-modal{
+    position:fixed;
+    inset:0;
+    z-index:14000;
+    display:none;
+    align-items:flex-end;
+    justify-content:center;
+    background:rgba(6,20,38,.64);
+    padding:16px;
+}
+.seletor-anexo-modal.ativo{display:flex}
+.seletor-anexo-card{
+    width:min(460px,100%);
+    background:#fff;
+    border-radius:24px;
+    padding:18px;
+    box-shadow:0 28px 70px rgba(0,0,0,.32);
+}
+.seletor-anexo-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+}
+.seletor-anexo-head strong{
+    color:#0f172a;
+    font-size:18px;
+}
+.seletor-anexo-fechar{
+    width:38px !important;
+    height:38px;
+    margin:0 !important;
+    padding:0 !important;
+    border-radius:12px !important;
+    background:#eef2f7 !important;
+    color:#334155 !important;
+    font-size:22px !important;
+}
+.seletor-anexo-opcoes{
+    display:grid;
+    gap:10px;
+}
+.seletor-anexo-opcoes button{
+    width:100%;
+    min-height:56px;
+    margin:0 !important;
+    border-radius:15px !important;
+    background:#f8fafc !important;
+    color:#0f172a !important;
+    border:1px solid #dbe3ef !important;
+    text-align:left;
+    padding:13px 15px !important;
+    font-size:15px !important;
+}
+.seletor-anexo-opcoes button strong{
+    display:block;
+    font-size:15px;
+}
+.seletor-anexo-opcoes button small{
+    display:block;
+    margin-top:3px;
+    color:#64748b;
+    font-size:11px;
+    font-weight:700;
+}
+
 .checkin-os-box{margin-top:12px;padding:13px;border:1px solid #bfdbfe;border-radius:14px;background:#eff6ff;color:#1e3a8a;line-height:1.55}
 .checkin-os-box.checkin-concluido{border-color:#bbf7d0;background:#f0fdf4;color:#166534}
 .checkin-os-box b{color:inherit}
@@ -987,6 +1099,7 @@ button{touch-action:manipulation}
 
 .modal-modo-leitura .anexo-acoes,
 .modal-modo-leitura #arquivoSelecionadoInfo,
+.modal-modo-leitura #anexoPendenteBox,
 .modal-modo-leitura #obs,
 .modal-modo-leitura #btnAusente,
 .modal-modo-leitura #btnInviabilidade,
@@ -2882,11 +2995,22 @@ body{
 
         <textarea id="obs" placeholder="Digite a observação correspondente ao status..."></textarea>
         <input type="file" id="foto" accept="image/*,video/*,.pdf,application/pdf" hidden onchange="arquivoSelecionado(this)">
+        <input type="file" id="anexoGaleria" accept="image/*,video/*" hidden onchange="arquivoSelecionado(this)">
+        <input type="file" id="anexoAgora" accept="image/*,video/*" capture="environment" hidden onchange="arquivoSelecionado(this)">
+        <input type="file" id="anexoArquivos" accept="image/*,video/*,.pdf,application/pdf" hidden onchange="arquivoSelecionado(this)">
+
         <div class="anexo-acoes">
             <button type="button" class="btn-anexo-escolher" onclick="escolherAnexo()">📎 Anexar foto, vídeo ou PDF</button>
-            <button type="button" class="btn-camera" onclick="tirarFotoAgora()">📷 Tirar Foto com GPS</button>
         </div>
+
         <div id="arquivoSelecionadoInfo" class="arquivo-selecionado-info">Nenhum arquivo selecionado</div>
+
+        <div id="anexoPendenteBox" class="anexo-pendente-box">
+            <div class="anexo-pendente-topo">
+                <div id="anexoPendenteInfo" class="anexo-pendente-info"></div>
+                <button type="button" class="btn-remover-anexo-pendente" onclick="removerAnexoPendente()">🗑 Remover</button>
+            </div>
+        </div>
 
         <button id="btnVerAnexo" type="button" class="btn-loc" onclick="verAnexo()">📎 Ver Anexo</button>
         <button id="btnAusente" type="button" class="btn-ausente" onclick="enviarAcao('ausente', this)">Cliente Ausente</button>
@@ -2904,6 +3028,30 @@ body{
 
 
 
+
+
+<div id="seletorAnexoModal" class="seletor-anexo-modal" aria-hidden="true">
+    <div class="seletor-anexo-card" role="dialog" aria-modal="true" aria-label="Selecionar anexo">
+        <div class="seletor-anexo-head">
+            <strong>Selecionar anexo</strong>
+            <button type="button" class="seletor-anexo-fechar" onclick="fecharSeletorAnexo()" aria-label="Fechar">×</button>
+        </div>
+        <div class="seletor-anexo-opcoes">
+            <button type="button" onclick="selecionarOrigemAnexo('galeria')">
+                <strong>🖼️ Galeria</strong>
+                <small>Escolher foto ou vídeo já salvo no aparelho</small>
+            </button>
+            <button type="button" onclick="selecionarOrigemAnexo('agora')">
+                <strong>📷 Foto ou vídeo de Agora</strong>
+                <small>Abrir a câmera do aparelho para uma nova captura</small>
+            </button>
+            <button type="button" onclick="selecionarOrigemAnexo('arquivos')">
+                <strong>📁 Arquivos</strong>
+                <small>Escolher foto, vídeo, PDF ou outro arquivo permitido</small>
+            </button>
+        </div>
+    </div>
+</div>
 
 <div class="modal-confirmacao-equipamento" id="modalConfirmacaoEquipamento" aria-hidden="true" inert>
   <div class="confirmacao-equipamento-card" role="dialog" aria-modal="true" aria-labelledby="tituloConfirmacaoEquipamento">
@@ -4255,16 +4403,18 @@ async function alternarProximaFilaApp(botao){
 }
 
 function fecharModal(){
-    // A foto GPS NÃO é apagada aqui.
-    // Ela permanece no IndexedDB até a OS receber uma ação concluída.
+    // O anexo pendente NÃO é apagado aqui.
+    // Check-in, fechar modal e fechar/reabrir o app preservam o IndexedDB.
     window.arquivoVideoPreparado = null;
     window.modoCapturaGPS = null;
 
     const modal = document.getElementById("modal");
     if(modal) modal.style.display = "none";
 
-    const foto = document.getElementById("foto");
-    if(foto) foto.value = "";
+    ["foto","anexoGaleria","anexoAgora","anexoArquivos"].forEach(id => {
+        const input = document.getElementById(id);
+        if(input) input.value = "";
+    });
 }
 
 /* ================= UTIL ================= */
@@ -6016,10 +6166,12 @@ function resumoModalHTML(os){
 let arquivoFotoPreparado = null;
 
 /* =========================================================
-   CACHE PERSISTENTE DA FOTO COM GPS
+   CACHE PERSISTENTE DO ANEXO DA OS
+   - foto, vídeo ou PDF
    - fica salvo mesmo fechando modal/app
-   - chave por empresa + OS
-   - só é removido após ação concluída com sucesso
+   - check-in e outras ações não apagam
+   - só é removido após conclusão/ausente/inviabilidade
+     confirmada pelo servidor ou por remoção manual
    ========================================================= */
 const SGOS_MIDIA_DB_NOME = "sgos_midia_pendente";
 const SGOS_MIDIA_DB_VERSAO = 1;
@@ -6058,7 +6210,7 @@ function abrirBancoMidiaSGOS(){
     });
 }
 
-async function salvarFotoGPSCache(os, arquivo, localizacao){
+async function salvarAnexoCacheOS(os, arquivo, localizacao=null){
     if(!os?.id || !arquivo) return;
 
     try{
@@ -6086,13 +6238,13 @@ async function salvarFotoGPSCache(os, arquivo, localizacao){
         });
 
         db.close();
-        console.log("📷 Foto GPS salva no cache da OS", os.id);
+        console.log("📎 Anexo salvo no cache da OS", os.id);
     }catch(err){
-        console.warn("Não foi possível persistir a foto no cache:", err);
+        console.warn("Não foi possível persistir o anexo no cache:", err);
     }
 }
 
-async function lerFotoGPSCache(os){
+async function lerAnexoCacheOS(os){
     if(!os?.id) return null;
 
     try{
@@ -6114,7 +6266,7 @@ async function lerFotoGPSCache(os){
     }
 }
 
-async function removerFotoGPSCache(osOuId){
+async function removerAnexoCacheOS(osOuId){
     const os = (typeof osOuId === "object" && osOuId) ? osOuId : encontrarOS(osOuId);
     const osId = String(os?.id ?? osOuId ?? "").trim();
     if(!osId) return;
@@ -6136,10 +6288,10 @@ async function removerFotoGPSCache(osOuId){
     }
 }
 
-async function restaurarFotoGPSCache(os){
+async function restaurarAnexoCacheOS(os){
     if(!os?.id) return false;
 
-    const registro = await lerFotoGPSCache(os);
+    const registro = await lerAnexoCacheOS(os);
     if(!registro?.blob) return false;
 
     const tipo = registro.tipo || registro.blob.type || "image/jpeg";
@@ -6161,126 +6313,160 @@ async function restaurarFotoGPSCache(os){
         window.ultimaLocalizacaoMidia = registro.localizacao;
     }
 
-    const info = document.getElementById("arquivoSelecionadoInfo");
-    if(info){
-        const mb = Number(arquivoFotoPreparado.size || 0) / 1024 / 1024;
-        info.textContent = `📷 Foto com GPS recuperada do cache • ${mb.toFixed(1)} MB`;
-    }
-
-    console.log("📷 Foto GPS restaurada do cache da OS", os.id);
+    atualizarAnexoPendenteUI(arquivoFotoPreparado, true);
+    console.log("📎 Anexo restaurado do cache da OS", os.id);
     return true;
 }
 
 
+function tipoAnexoRotulo(arquivo){
+    const tipo = String(arquivo?.type || "").toLowerCase();
+    if(tipo.startsWith("image/")) return "Foto";
+    if(tipo.startsWith("video/")) return "Vídeo";
+    if(tipo === "application/pdf" || String(arquivo?.name || "").toLowerCase().endsWith(".pdf")) return "PDF";
+    return "Arquivo";
+}
+
+function atualizarAnexoPendenteUI(arquivo, recuperado=false){
+    const info = document.getElementById("arquivoSelecionadoInfo");
+    const box = document.getElementById("anexoPendenteBox");
+    const detalhe = document.getElementById("anexoPendenteInfo");
+
+    if(!arquivo){
+        if(info) info.textContent = "Nenhum arquivo selecionado";
+        if(box) box.classList.remove("ativo");
+        if(detalhe) detalhe.innerHTML = "";
+        return;
+    }
+
+    const mb = Number(arquivo.size || 0) / 1024 / 1024;
+    const tipo = tipoAnexoRotulo(arquivo);
+    const nome = String(arquivo.name || `anexo-${Date.now()}`);
+
+    if(info){
+        info.textContent = recuperado
+            ? "Anexo recuperado e preparado para envio"
+            : "Anexo preparado para envio";
+    }
+
+    if(detalhe){
+        detalhe.innerHTML = `
+            <strong>📎 ${tipo} preparado para envio</strong>
+            ${escapeHtml(nome)} • ${mb.toFixed(1)} MB
+            <br><span style="color:#64748b;font-weight:700">Ficará salvo nesta OS até a ação final.</span>
+        `;
+    }
+    if(box) box.classList.add("ativo");
+}
+
 function escolherAnexo(){
-    arquivoFotoPreparado = null;
-    window.arquivoVideoPreparado = null;
-    window.modoCapturaGPS = null;
-    window.ultimaLocalizacaoMidia = null;
-    const input = document.getElementById("foto");
+    // Não limpa o anexo atual ao abrir o menu.
+    // Se o técnico cancelar, o arquivo já preparado continua intacto.
+    const modal = document.getElementById("seletorAnexoModal");
+    if(modal){
+        modal.classList.add("ativo");
+        modal.setAttribute("aria-hidden","false");
+    }
+}
+
+function fecharSeletorAnexo(){
+    const modal = document.getElementById("seletorAnexoModal");
+    if(modal){
+        modal.classList.remove("ativo");
+        modal.setAttribute("aria-hidden","true");
+    }
+}
+
+function selecionarOrigemAnexo(origem){
+    fecharSeletorAnexo();
+
+    let input = null;
+    if(origem === "galeria") input = document.getElementById("anexoGaleria");
+    if(origem === "agora") input = document.getElementById("anexoAgora");
+    if(origem === "arquivos") input = document.getElementById("anexoArquivos");
     if(!input) return;
-    input.removeAttribute("capture");
-    input.accept = "image/*,video/*,.pdf,application/pdf";
+
+    // Limpa apenas o input que será aberto, não o anexo pendente já salvo.
     input.value = "";
     input.click();
 }
 
 async function arquivoSelecionado(input){
-    arquivoFotoPreparado = null;
-
     const info = document.getElementById("arquivoSelecionadoInfo");
     const arquivo = input?.files?.[0];
 
+    // Cancelou o seletor: mantém o anexo anterior.
     if(!arquivo){
-        if(info) info.textContent = "Nenhum arquivo selecionado";
+        if(arquivoFotoPreparado){
+            atualizarAnexoPendenteUI(arquivoFotoPreparado);
+        }else if(info){
+            info.textContent = "Nenhum arquivo selecionado";
+        }
         return;
-    }
-
-    const tipoArquivoSelecionado = String(arquivo.type || "").toLowerCase();
-
-    // Se veio do botão "Tirar Foto com GPS" no fallback HTML,
-    // usa o GPS obtido ANTES da câmera e já prepara a foto agora.
-    if(
-        tipoArquivoSelecionado.startsWith("image/") &&
-        window.modoCapturaGPS === "foto" &&
-        window.ultimaLocalizacaoMidia
-    ){
-        try{
-            if(info) info.textContent = "Processando foto com o GPS capturado...";
-            arquivoFotoPreparado = await blobParaJpeg(
-                arquivo,
-                arquivo.name || `foto-os-${(encontrarOS(osSelecionada)||{}).id || "sgos"}-${Date.now()}.jpg`,
-                window.ultimaLocalizacaoMidia
-            );
-
-            const osAtualFoto = encontrarOS(osSelecionada);
-            if(osAtualFoto){
-                await salvarFotoGPSCache(
-                    osAtualFoto,
-                    arquivoFotoPreparado,
-                    window.ultimaLocalizacaoMidia
-                );
-            }
-
-            window.modoCapturaGPS = null;
-
-            if(info){
-                const mb = arquivoFotoPreparado.size / 1024 / 1024;
-                info.textContent = `Foto com GPS atual pronta • ${mb.toFixed(1)} MB`;
-            }
-            return;
-        }catch(err){
-            console.error("Erro ao preparar foto com GPS:", err);
-            arquivoFotoPreparado = null;
-            window.modoCapturaGPS = null;
-            if(info) info.textContent = "Erro ao inserir GPS na foto.";
-            alert(err?.message || "Não foi possível inserir o GPS na foto.");
-            return;
-        }
-    }
-
-    if(tipoArquivoSelecionado.startsWith("video/")){
-        const mb = (arquivo.size / 1024 / 1024).toFixed(1);
-        if(info){
-            info.textContent = window.ultimaLocalizacaoMidia
-                ? `Vídeo selecionado + GPS registrado • ${mb} MB`
-                : `Vídeo selecionado • ${mb} MB`;
-        }
     }
 
     const tipo = String(arquivo.type || "").toLowerCase();
+    const nome = String(arquivo.name || "").toLowerCase();
+    const ehImagem = tipo.startsWith("image/");
     const ehVideo = tipo.startsWith("video/");
-    const limite = ehVideo ? 30 * 1024 * 1024 : 20 * 1024 * 1024;
-    const limiteMb = ehVideo ? 30 : 20;
+    const ehPdf = tipo === "application/pdf" || nome.endsWith(".pdf");
 
-    if(arquivo.size > limite){
+    if(!ehImagem && !ehVideo && !ehPdf){
+        alert("Selecione uma foto, vídeo ou arquivo PDF.");
         input.value = "";
-        if(info) info.textContent = "Nenhum arquivo selecionado";
-        alert(`O ${ehVideo ? "vídeo" : "arquivo"} deve ter no máximo ${limiteMb} MB.`);
         return;
     }
 
-    const tamanhoMb = arquivo.size / (1024 * 1024);
-    const rotulo = ehVideo ? "Vídeo" : (tipo.startsWith("image/") ? "Foto" : "Arquivo");
+    const limite = ehVideo ? 30 * 1024 * 1024 : 20 * 1024 * 1024;
+    const limiteMb = ehVideo ? 30 : 20;
 
-    if(info){
-        info.textContent = `${rotulo}: ${arquivo.name || "sem nome"} • ${tamanhoMb.toFixed(1)} MB`;
+    if(Number(arquivo.size || 0) > limite){
+        alert(`O ${ehVideo ? "vídeo" : "anexo"} deve ter no máximo ${limiteMb} MB.`);
+        input.value = "";
+        return;
     }
+
+    // O arquivo selecionado passa a ser o anexo pendente desta OS.
+    // Não há mais processamento/carimbo GPS automático.
+    arquivoFotoPreparado = arquivo;
+    window.arquivoVideoPreparado = null;
+    window.modoCapturaGPS = null;
+    window.ultimaLocalizacaoMidia = null;
+
+    const osAtual = encontrarOS(osSelecionada);
+    if(osAtual){
+        await salvarAnexoCacheOS(osAtual, arquivoFotoPreparado, null);
+    }
+
+    atualizarAnexoPendenteUI(arquivoFotoPreparado);
 }
 
-function coordenadaParaDMS(valor, eixo){
-    const numero = Number(valor);
-    if(!Number.isFinite(numero)) return "-";
-    const abs = Math.abs(numero);
-    const graus = Math.floor(abs);
-    const minFloat = (abs - graus) * 60;
-    const minutos = Math.floor(minFloat);
-    const segundos = ((minFloat - minutos) * 60).toFixed(0);
-    const hemisferio = eixo === "lat"
-        ? (numero < 0 ? "S" : "N")
-        : (numero < 0 ? "W" : "E");
-    return `${graus}°${String(minutos).padStart(2,"0")}'${String(segundos).padStart(2,"0")}"${hemisferio}`;
+async function removerAnexoPendente(){
+    const osAtual = encontrarOS(osSelecionada);
+    if(!arquivoFotoPreparado){
+        if(osAtual) await removerAnexoCacheOS(osAtual);
+        atualizarAnexoPendenteUI(null);
+        return;
+    }
+
+    const confirmar = window.confirm("Remover o anexo preparado desta OS?");
+    if(!confirmar) return;
+
+    if(osAtual) await removerAnexoCacheOS(osAtual);
+
+    arquivoFotoPreparado = null;
+    window.arquivoVideoPreparado = null;
+    window.ultimaLocalizacaoMidia = null;
+    window.modoCapturaGPS = null;
+
+    ["foto","anexoGaleria","anexoAgora","anexoArquivos"].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.value = "";
+    });
+
+    atualizarAnexoPendenteUI(null);
 }
+
 
 function dadosIdentificacaoMidia(){
     const os = encontrarOS(osSelecionada) || {};
@@ -6692,166 +6878,35 @@ async function blobParaJpeg(blob, nomeBase="foto", carimbo=null){
     }
 }
 
-async function tirarFotoAgora(){
-    arquivoFotoPreparado = null;
-    window.ultimaLocalizacaoMidia = null;
-    window.modoCapturaGPS = "foto";
 
-    const input = document.getElementById("foto");
-    const info = document.getElementById("arquivoSelecionadoInfo");
 
-    // REGRA: a própria foto captura a posição atual ANTES de abrir a câmera.
-    // Não usa latitude/longitude da OS e não usa localização do check-in.
-    let carimboCaptura;
-    try{
-        if(info) info.textContent = "Obtendo GPS atual da foto...";
-        carimboCaptura = await obterCarimboLocalizacao();
-        window.ultimaLocalizacaoMidia = carimboCaptura;
-
-        if(info){
-            const enderecoGps = [
-                carimboCaptura.endereco,
-                carimboCaptura.bairro,
-                [carimboCaptura.localidade, carimboCaptura.estado].filter(Boolean).join(" - "),
-                carimboCaptura.cep
-            ].filter(Boolean).join(" • ");
-
-            info.textContent = enderecoGps
-                ? `GPS atual obtido: ${enderecoGps}. Abrindo câmera...`
-                : `GPS atual obtido. Abrindo câmera...`;
-        }
-    }catch(err){
-        console.error("Não foi possível obter o GPS antes da foto:", err);
-        window.modoCapturaGPS = null;
-        window.ultimaLocalizacaoMidia = null;
-        if(info) info.textContent = "Não foi possível obter a localização atual.";
-        alert(err?.message || "Não foi possível obter a localização atual. Ative o GPS e tente novamente.");
-        return;
-    }
-
-    // No app nativo, usa Capacitor Camera depois que o GPS já está congelado.
-    try{
-        const Camera = window.Capacitor?.Plugins?.Camera;
-
-        if(Camera && typeof Camera.getPhoto === "function"){
-            const foto = await Camera.getPhoto({
-                quality: 88,
-                allowEditing: false,
-                resultType: "uri",
-                source: "camera",
-                direction: "rear",
-                saveToGallery: false,
-                correctOrientation: true
-            });
-
-            const uri = foto?.webPath || foto?.path;
-            if(!uri) throw new Error("A câmera não retornou a foto.");
-
-            if(info) info.textContent = "Processando foto com o GPS capturado...";
-            const respostaFoto = await fetch(uri);
-            if(!respostaFoto.ok) throw new Error("Não foi possível ler a foto capturada.");
-            const blobOriginal = await respostaFoto.blob();
-
-            // Usa exatamente o GPS capturado ANTES da abertura da câmera.
-            const nomeBase = `foto-os-${(encontrarOS(osSelecionada)||{}).id || "sgos"}-${Date.now()}.jpg`;
-            arquivoFotoPreparado = await blobParaJpeg(
-                blobOriginal,
-                nomeBase,
-                carimboCaptura
-            );
-
-            const osAtualFoto = encontrarOS(osSelecionada);
-            if(osAtualFoto){
-                await salvarFotoGPSCache(osAtualFoto, arquivoFotoPreparado, carimboCaptura);
-            }
-
-            if(input) input.value = "";
-            window.modoCapturaGPS = null;
-
-            if(info){
-                const mb = arquivoFotoPreparado.size / 1024 / 1024;
-                info.textContent = `Foto com GPS atual pronta • ${mb.toFixed(1)} MB`;
-            }
-            return;
-        }
-    }catch(err){
-        console.warn("Câmera nativa não disponível/falhou; usando câmera HTML:", err);
-
-        if(/cancel|cancelled|canceled|user/i.test(String(err?.message || ""))){
-            window.modoCapturaGPS = null;
-            if(info) info.textContent = "Captura cancelada.";
-            return;
-        }
-    }
-
-    // Fallback navegador/PWA: a localização já foi capturada acima.
-    // Quando o arquivo voltar da câmera, arquivoSelecionado() usará
-    // window.ultimaLocalizacaoMidia, sem consultar a OS/check-in.
-    if(!input){
-        window.modoCapturaGPS = null;
-        alert("Campo de câmera não encontrado.");
-        return;
-    }
-
-    input.value = "";
-    input.accept = "image/*";
-    input.setAttribute("capture", "environment");
-
-    if(info) info.textContent = "GPS atual registrado. Tire a foto.";
-    input.click();
-}
 async function prepararArquivoParaEnvio(){
     if(arquivoFotoPreparado){
         return arquivoFotoPreparado;
     }
 
-    if(window.arquivoVideoPreparado){
-        return window.arquivoVideoPreparado;
-    }
-
-    const arquivo = document.getElementById("foto")?.files?.[0];
-    if(!arquivo) return null;
-
-    const tipo = String(arquivo.type || "").toLowerCase();
-    const ehVideo = tipo.startsWith("video/");
-    const limite = ehVideo ? 30 * 1024 * 1024 : 20 * 1024 * 1024;
-
-    if(arquivo.size > limite){
-        throw new Error(
-            ehVideo
-                ? "O vídeo deve ter no máximo 30 MB."
-                : "O anexo deve ter no máximo 20 MB."
-        );
-    }
-
-    if(tipo.startsWith("image/")){
-        const info = document.getElementById("arquivoSelecionadoInfo");
-        if(info) info.textContent = "Obtendo GPS e inserindo localização na foto...";
-        const carimbo = await obterCarimboLocalizacao();
-        window.ultimaLocalizacaoMidia = carimbo;
-        const preparado = await blobParaJpeg(
-            arquivo,
-            arquivo.name || `foto-${Date.now()}.jpg`,
-            carimbo
-        );
-        if(info) info.textContent = `Foto com GPS: ${preparado.name}`;
-        arquivoFotoPreparado = preparado;
-
-        const osAtualFoto = encontrarOS(osSelecionada);
-        if(osAtualFoto){
-            await salvarFotoGPSCache(
-                osAtualFoto,
-                arquivoFotoPreparado,
-                carimbo
-            );
+    const osAtual = encontrarOS(osSelecionada);
+    if(osAtual){
+        const restaurado = await restaurarAnexoCacheOS(osAtual);
+        if(restaurado && arquivoFotoPreparado){
+            return arquivoFotoPreparado;
         }
-
-        return preparado;
     }
 
-    return arquivo;
-}
+    // Compatibilidade: caso algum input ainda tenha um arquivo selecionado.
+    const ids = ["foto","anexoGaleria","anexoAgora","anexoArquivos"];
+    for(const id of ids){
+        const arquivo = document.getElementById(id)?.files?.[0];
+        if(arquivo){
+            arquivoFotoPreparado = arquivo;
+            if(osAtual) await salvarAnexoCacheOS(osAtual, arquivo, null);
+            atualizarAnexoPendenteUI(arquivo);
+            return arquivo;
+        }
+    }
 
+    return null;
+}
 
 
 const abrirModalBase = abrirModal;
@@ -6901,15 +6956,17 @@ abrirModal = async function(chave){
         obs.placeholder = "Digite a observação do técnico...";
     }
 
-    const foto = document.getElementById("foto");
-    if(foto) foto.value = "";
+    ["foto","anexoGaleria","anexoAgora","anexoArquivos"].forEach(id => {
+        const input = document.getElementById(id);
+        if(input) input.value = "";
+    });
 
     const info = document.getElementById("arquivoSelecionadoInfo");
-    if(info) info.textContent = "Verificando foto pendente...";
+    if(info) info.textContent = "Verificando anexo pendente...";
 
-    // Se o técnico fechou o modal ou o app, recupera a foto salva.
-    const fotoRestaurada = await restaurarFotoGPSCache(os);
-    if(!fotoRestaurada && info) info.textContent = "Nenhum arquivo selecionado";
+    // Recupera foto, vídeo ou PDF salvo mesmo após fechar modal/app.
+    const anexoRestaurado = await restaurarAnexoCacheOS(os);
+    if(!anexoRestaurado) atualizarAnexoPendenteUI(null);
 
     const modal = document.getElementById("modal");
     const content = modal?.querySelector(".modal-content");
@@ -7455,14 +7512,8 @@ async function enviarAcao(tipo, botao){
             nome: arquivo.name || "sem-nome",
             tipo: arquivo.type || "sem-mime",
             tamanho: arquivo.size || 0,
-            origem: arquivoFotoPreparado ? "camera-nativa/preparado" : "input"
+            origem: arquivoFotoPreparado ? "cache/preparado" : "input"
         } : "sem anexo");
-        if(window.ultimaLocalizacaoMidia){
-            formData.append("midia_latitude", String(window.ultimaLocalizacaoMidia.latitude));
-            formData.append("midia_longitude", String(window.ultimaLocalizacaoMidia.longitude));
-            if(window.ultimaLocalizacaoMidia.precisao != null) formData.append("midia_precisao", String(window.ultimaLocalizacaoMidia.precisao));
-            formData.append("midia_localizacao_em", String(window.ultimaLocalizacaoMidia.dataHora || ""));
-        }
         if(arquivo){
             const nomeArquivo = arquivo.name || `anexo-${Date.now()}`;
 
@@ -7497,7 +7548,7 @@ async function enviarAcao(tipo, botao){
 
         // A foto só sai do cache depois que o servidor confirmou a ação.
         if(["concluir","ausente","inviabilidade"].includes(tipo)){
-            await removerFotoGPSCache(osAtual);
+            await removerAnexoCacheOS(osAtual);
             arquivoFotoPreparado = null;
             window.ultimaLocalizacaoMidia = null;
         }
