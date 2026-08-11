@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>SGOS Técnico - Escala</title><link rel="icon" type="image/png" href="/img/favicon.png"><style>
+<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"><title>SGOS Técnico - Escala</title><link rel="icon" type="image/png" href="/img/favicon.png"><style>
 :root{
     --azul:#2563eb;--azul-dark:#081a31;--fundo:#f5f7fb;--card:#fff;--texto:#0f172a;--muted:#64748b;--borda:#e5e7eb;--verde:#16a34a;--laranja:#f59e0b;--vermelho:#ef4444;--whatsapp:#25D366;
 }
@@ -390,6 +390,86 @@ input[type="date"].input{display:block !important;min-width:0 !important;max-wid
 }
 </style>
 
+
+<style id="sgos-topbar-appmobile-final-20260811">
+/* ===== PADRÃO DO APPMOBILE: SEM ZOOM + TOPBAR STICKY ===== */
+html,body{
+    overscroll-behavior:none !important;
+    touch-action:manipulation !important;
+    -webkit-text-size-adjust:100% !important;
+}
+.mobile-shell{
+    overflow-x:clip !important;
+}
+.mobile-topbar-app{
+    min-height:94px !important;
+    height:auto !important;
+    background:rgba(255,255,255,.96) !important;
+    backdrop-filter:blur(18px) !important;
+    -webkit-backdrop-filter:blur(18px) !important;
+    border-bottom:1px solid rgba(226,232,240,.9) !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:14px !important;
+    padding:calc(env(safe-area-inset-top) + 20px) 16px 14px !important;
+    position:sticky !important;
+    top:0 !important;
+    z-index:1000 !important;
+    box-shadow:0 8px 24px rgba(15,23,42,.05) !important;
+}
+.mobile-topbar-app .menu-btn{
+    width:46px !important;
+    height:46px !important;
+    border-radius:15px !important;
+    flex:0 0 46px !important;
+}
+.topbar-title{
+    min-width:0 !important;
+    flex:1 1 auto !important;
+}
+.topbar-title strong{
+    display:block !important;
+    color:#0f172a !important;
+    font-size:19px !important;
+    line-height:1.15 !important;
+    letter-spacing:-.2px !important;
+    font-weight:900 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+}
+.topbar-title small{
+    display:block !important;
+    color:#64748b !important;
+    font-size:12px !important;
+    margin-top:4px !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+}
+.topbar-brand{
+    width:112px !important;
+    max-width:28vw !important;
+    max-height:52px !important;
+    height:auto !important;
+    object-fit:contain !important;
+    flex:0 0 auto !important;
+}
+@media(max-width:390px){
+    .mobile-topbar-app{
+        gap:10px !important;
+        padding-left:14px !important;
+        padding-right:14px !important;
+    }
+    .topbar-title strong{font-size:17px !important;}
+    .topbar-brand{width:94px !important;max-width:27vw !important;}
+}
+/* Evita zoom automático do iOS ao focar campos */
+@media(max-width:759px){
+    input,select,textarea{font-size:16px !important;}
+}
+</style>
+
 </head><body><script>
 function getApiBase(){
     const salvo = localStorage.getItem("api_base");
@@ -488,7 +568,7 @@ function mobileLayout(title, subtitle, active){return `
         <button class="drawer-logout" onclick="logout()" type="button">Sair</button>
     </div>
 </aside>
-<header class="mobile-topbar"><button class="menu-btn" onclick="abrirMenu()" aria-label="Abrir menu"><span></span></button><img id="topLogo" class="top-logo"><div class="top-title"><strong>${title}</strong><small id="topEmpresa">${subtitle}</small></div><button class="top-user" title="Usuário">👤</button></header>
+<div class="mobile-topbar-app"><button class="menu-btn" onclick="abrirMenu()" type="button" aria-label="Abrir menu"><span></span></button><div class="topbar-title"><strong>${title}</strong><small id="topEmpresa">${subtitle}</small></div><img id="topLogo" class="topbar-brand" src="" alt="Logo da empresa"></div>
 `;}
 function formatarDataHora(v){if(!v)return"-";const d=new Date(v);return isNaN(d)?"-":d.toLocaleString("pt-BR")}
 function formatarData(v){if(!v)return"-";const d=new Date((String(v).split("T")[0]||v)+"T00:00:00");return isNaN(d)?"-":d.toLocaleDateString("pt-BR")}
@@ -499,22 +579,200 @@ function formatarDiaSemana(v){if(!v)return"-";const dataBase=String(v).split("T"
 <div id="listaEscala"></div>
 </main></div><script>
 let usuarioAtual=null;
-function periodoTexto(p){return {MANHA:"Manhã",TARDE:"Tarde",NOITE:"Noite",INTEGRAL:"Integral"}[p]||p||"-"}
-function pertenceAoTecnico(e,u){const tid=String(getTecnicoId(u)||""); const nome=getNomeTecnico(u); return String(e.tecnico_id||e.id_tecnico||"")===tid || String(e.tecnico||e.tecnico_nome||e.nome_tecnico||"").toLowerCase().includes(nome)}
-function dentroPeriodo(e){const ini=document.getElementById("dataInicio").value; const fim=document.getElementById("dataFim").value; const d=(e.data_escala||e.data||"").split("T")[0]; if(ini&&d<ini)return false; if(fim&&d>fim)return false; return true}
-async function carregarEscala(){
- const u=usuarioAtual; const el=document.getElementById("listaEscala"); el.innerHTML='<div class="empty">Carregando escala...</div>';
- try{const r=await apiFetch('/api/escalas',{headers:{'x-usuario-id':u.id}}); const data=await r.json();
- const lista=Array.isArray(data)?data:(data.dados||data.escalas||data.items||data.rows||data.resultados||[]);
- const tipoUsuario=String(u?.tipo||u?.perfil||u?.tipo_usuario||u?.role||u?.nivel||"").trim().toLowerCase();
- const ehAdmin=["admin","administrador","administrator"].includes(tipoUsuario) || u?.admin===true || Number(u?.admin)===1 || u?.is_admin===true || Number(u?.is_admin)===1;
- const vinculadas=lista.filter(e=>pertenceAoTecnico(e,u));
- const baseTecnico=ehAdmin ? lista : vinculadas;
- const minhas=baseTecnico.filter(dentroPeriodo).sort((a,b)=>String(a.data_escala||a.data).localeCompare(String(b.data_escala||b.data)));
- const hoje=new Date().toISOString().slice(0,10); document.getElementById('cardTotal').innerText=minhas.length; document.getElementById('cardHoje').innerText=minhas.filter(e=>String(e.data_escala||e.data).slice(0,10)===hoje).length; const limite=new Date(); limite.setDate(limite.getDate()+7); document.getElementById('cardSemana').innerText=minhas.filter(e=>{const d=new Date(String(e.data_escala||e.data).slice(0,10)+'T00:00:00'); return d>=new Date(hoje+'T00:00:00')&&d<=limite}).length;
- if(!minhas.length){el.innerHTML=`<div class="empty">${ehAdmin?'Nenhuma escala encontrada no período.':'Nenhuma escala encontrada para este técnico.'}</div>`;return}
- el.innerHTML=minhas.map(e=>`<div class="list-card"><h3>${formatarData(e.data_escala||e.data)} <span class="pill blue">${periodoTexto(e.periodo)}</span></h3><p><b>Técnico:</b> ${e.tecnico||e.tecnico_nome||e.nome_tecnico||'-'}</p><p><b>Dia:</b> ${e.dia_semana||e.dia||formatarDiaSemana(e.data_escala||e.data)}</p></div>`).join('');
- }catch(err){console.error(err); el.innerHTML='<div class="empty">Erro ao carregar escala.</div>'}
+
+function periodoTexto(p){
+    return {MANHA:"Manhã",TARDE:"Tarde",NOITE:"Noite",INTEGRAL:"Integral"}[String(p||"").toUpperCase()]||p||"-";
 }
-document.addEventListener('DOMContentLoaded',async()=>{usuarioAtual=await prepararTopo('escala'); if(!usuarioAtual)return; const hoje=new Date(); const ini=new Date(); ini.setDate(hoje.getDate()-7); const fim=new Date(); fim.setDate(hoje.getDate()+15); document.getElementById('dataInicio').value=ini.toISOString().slice(0,10); document.getElementById('dataFim').value=fim.toISOString().slice(0,10); carregarEscala();});
+
+function normalizarTextoEscala(v){
+    return String(v ?? "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g,"")
+        .trim()
+        .toLowerCase();
+}
+
+function usuarioEhAdminEscala(u){
+    const candidatos=[
+        u?.cargo,u?.tipo,u?.perfil,u?.tipo_usuario,u?.role,u?.nivel,
+        u?.cargo_nome,u?.perfil_nome,u?.tipo_nome,u?.funcao
+    ].map(normalizarTextoEscala).filter(Boolean);
+
+    return candidatos.some(v =>
+        v === "admin" ||
+        v === "administrador" ||
+        v === "administrator" ||
+        v.includes("administrador")
+    ) ||
+    u?.admin===true || Number(u?.admin)===1 ||
+    u?.is_admin===true || Number(u?.is_admin)===1 ||
+    u?.administrador===true || Number(u?.administrador)===1;
+}
+
+function pertenceAoTecnico(e,u){
+    const idsUsuario=[
+        u?.tecnico_id,u?.tecnicoId,u?.id_tecnico,u?.idTecnico
+    ].filter(v=>v!==undefined&&v!==null&&String(v)!=="").map(String);
+
+    const idsEscala=[
+        e?.tecnico_id,e?.id_tecnico,e?.tecnicoId,e?.idTecnico
+    ].filter(v=>v!==undefined&&v!==null&&String(v)!=="").map(String);
+
+    if(idsUsuario.some(id=>idsEscala.includes(id))) return true;
+
+    const nome=getNomeTecnico(u);
+    if(!nome) return false;
+
+    const nomeEscala=normalizarTextoEscala(
+        e?.tecnico ?? e?.tecnico_nome ?? e?.nome_tecnico ?? e?.nome ?? ""
+    );
+    return !!nomeEscala && (nomeEscala===normalizarTextoEscala(nome) || nomeEscala.includes(normalizarTextoEscala(nome)));
+}
+
+function dataEscalaISO(e){
+    const bruto=e?.data_escala ?? e?.data ?? e?.dataEscala ?? e?.dia_data ?? "";
+    if(!bruto) return "";
+    const s=String(bruto);
+    const m=s.match(/^(\d{4}-\d{2}-\d{2})/);
+    if(m) return m[1];
+    const d=new Date(bruto);
+    if(Number.isNaN(d.getTime())) return "";
+    const pad=n=>String(n).padStart(2,"0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function dentroPeriodo(e){
+    const ini=document.getElementById("dataInicio")?.value||"";
+    const fim=document.getElementById("dataFim")?.value||"";
+    const d=dataEscalaISO(e);
+    if(!d) return true;
+    if(ini&&d<ini)return false;
+    if(fim&&d>fim)return false;
+    return true;
+}
+
+function extrairListaEscalas(data){
+    if(Array.isArray(data)) return data;
+    if(!data || typeof data!=="object") return [];
+    const candidatos=[
+        data.dados,data.escalas,data.data,data.items,data.rows,data.resultados,
+        data.lista,data.registros,data.resultado,
+        data.data?.escalas,data.dados?.escalas,data.resultado?.escalas
+    ];
+    for(const item of candidatos){
+        if(Array.isArray(item)) return item;
+    }
+    return [];
+}
+
+async function lerJsonSeguroEscala(res){
+    const texto=await res.text();
+    if(!texto) return {};
+    try{return JSON.parse(texto)}catch(_){return {erro:texto};}
+}
+
+async function carregarEscala(){
+    const u=usuarioAtual;
+    const el=document.getElementById("listaEscala");
+    el.innerHTML='<div class="empty">Carregando escala...</div>';
+
+    try{
+        const r=await apiFetch('/api/escalas',{
+            headers:{
+                'x-usuario-id':String(u.id),
+                'x-log-id':String(localStorage.getItem("log_id")||u.log_id||""),
+                'x-empresa-id':String(u.empresa_id||u.empresaId||""),
+                'x-sgos-app':'1',
+                'x-sgos-active':'1'
+            },
+            cache:"no-store"
+        });
+
+        const data=await lerJsonSeguroEscala(r);
+        if(!r.ok) throw new Error(data?.erro||data?.mensagem||`Erro HTTP ${r.status}`);
+
+        const lista=extrairListaEscalas(data);
+        const ehAdmin=usuarioEhAdminEscala(u);
+
+        // A API de escalas já devolve as escalas da empresa.
+        // Administrador vê todas; técnico vê somente as vinculadas a ele.
+        const base=ehAdmin ? lista : lista.filter(e=>pertenceAoTecnico(e,u));
+
+        // Se o administrador não escolheu datas, não existe recorte:
+        // todas as escalas retornadas pela empresa ficam visíveis.
+        const exibidas=base
+            .filter(dentroPeriodo)
+            .sort((a,b)=>dataEscalaISO(a).localeCompare(dataEscalaISO(b)) ||
+                         String(a.tecnico||a.tecnico_nome||"").localeCompare(String(b.tecnico||b.tecnico_nome||""),"pt-BR"));
+
+        const hojeLocal=(()=>{
+            const d=new Date(), pad=n=>String(n).padStart(2,"0");
+            return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+        })();
+        const limite=new Date(hojeLocal+"T00:00:00");
+        limite.setDate(limite.getDate()+7);
+
+        document.getElementById('cardTotal').innerText=exibidas.length;
+        document.getElementById('cardHoje').innerText=exibidas.filter(e=>dataEscalaISO(e)===hojeLocal).length;
+        document.getElementById('cardSemana').innerText=exibidas.filter(e=>{
+            const iso=dataEscalaISO(e);
+            if(!iso) return false;
+            const d=new Date(iso+"T00:00:00");
+            return d>=new Date(hojeLocal+"T00:00:00")&&d<=limite;
+        }).length;
+
+        const titulo=document.querySelector(".section-title");
+        if(titulo) titulo.textContent=ehAdmin?"Escalas da empresa":"Minha escala";
+
+        if(!exibidas.length){
+            el.innerHTML=`<div class="empty">${
+                lista.length===0
+                    ? "Nenhuma escala cadastrada foi retornada pela API."
+                    : ehAdmin
+                        ? "Nenhuma escala encontrada no período selecionado."
+                        : "Nenhuma escala encontrada para este técnico no período."
+            }</div>`;
+            return;
+        }
+
+        el.innerHTML=exibidas.map(e=>{
+            const feriado=Number(e.feriado||0)===1;
+            const tecnico=e.tecnico||e.tecnico_nome||e.nome_tecnico||e.nome||"-";
+            const obsFeriado=e.observacao_feriado||e.observacaoFeriado||"";
+            return `<div class="list-card">
+                <h3>${formatarData(dataEscalaISO(e))} <span class="pill blue">${periodoTexto(e.periodo)}</span></h3>
+                <p><b>Técnico:</b> ${tecnico}</p>
+                <p><b>Dia:</b> ${e.dia_semana||e.dia||formatarDiaSemana(dataEscalaISO(e))}</p>
+                ${feriado?`<p><span class="pill red">Feriado</span>${obsFeriado?` ${obsFeriado}`:""}</p>`:""}
+            </div>`;
+        }).join('');
+    }catch(err){
+        console.error("Erro ao carregar escala:",err);
+        el.innerHTML=`<div class="empty">Erro ao carregar escala.<br><small>${String(err.message||err)}</small></div>`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded',async()=>{
+    usuarioAtual=await prepararTopo('escala');
+    if(!usuarioAtual)return;
+
+    const ehAdmin=usuarioEhAdminEscala(usuarioAtual);
+    const ini=document.getElementById('dataInicio');
+    const fim=document.getElementById('dataFim');
+
+    if(ehAdmin){
+        // Admin abre sem recorte de datas para visualizar qualquer escala cadastrada.
+        if(ini) ini.value="";
+        if(fim) fim.value="";
+    }else{
+        // Técnico mantém um recorte operacional amplo.
+        const hoje=new Date();
+        const inicio=new Date(); inicio.setDate(hoje.getDate()-7);
+        const final=new Date(); final.setDate(hoje.getDate()+60);
+        if(ini) ini.value=inicio.toISOString().slice(0,10);
+        if(fim) fim.value=final.toISOString().slice(0,10);
+    }
+
+    carregarEscala();
+});
 </script></body></html>

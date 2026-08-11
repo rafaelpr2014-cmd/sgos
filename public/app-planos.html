@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>SGOS Técnico - Planos</title><link rel="icon" type="image/png" href="/img/favicon.png"><style>
+<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"><title>SGOS Técnico - Planos</title><link rel="icon" type="image/png" href="/img/favicon.png"><style>
 :root{
     --azul:#2563eb;--azul-dark:#081a31;--fundo:#f5f7fb;--card:#fff;--texto:#0f172a;--muted:#64748b;--borda:#e5e7eb;--verde:#16a34a;--laranja:#f59e0b;--vermelho:#ef4444;--whatsapp:#25D366;
 }
@@ -383,6 +383,86 @@ button.btn:not(.btn-red):not(.btn-green):not(.btn-light):not(.btn-roxo){
 }
 </style>
 
+
+<style id="sgos-topbar-appmobile-final-20260811">
+/* ===== PADRÃO DO APPMOBILE: SEM ZOOM + TOPBAR STICKY ===== */
+html,body{
+    overscroll-behavior:none !important;
+    touch-action:manipulation !important;
+    -webkit-text-size-adjust:100% !important;
+}
+.mobile-shell{
+    overflow-x:clip !important;
+}
+.mobile-topbar-app{
+    min-height:94px !important;
+    height:auto !important;
+    background:rgba(255,255,255,.96) !important;
+    backdrop-filter:blur(18px) !important;
+    -webkit-backdrop-filter:blur(18px) !important;
+    border-bottom:1px solid rgba(226,232,240,.9) !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:14px !important;
+    padding:calc(env(safe-area-inset-top) + 20px) 16px 14px !important;
+    position:sticky !important;
+    top:0 !important;
+    z-index:1000 !important;
+    box-shadow:0 8px 24px rgba(15,23,42,.05) !important;
+}
+.mobile-topbar-app .menu-btn{
+    width:46px !important;
+    height:46px !important;
+    border-radius:15px !important;
+    flex:0 0 46px !important;
+}
+.topbar-title{
+    min-width:0 !important;
+    flex:1 1 auto !important;
+}
+.topbar-title strong{
+    display:block !important;
+    color:#0f172a !important;
+    font-size:19px !important;
+    line-height:1.15 !important;
+    letter-spacing:-.2px !important;
+    font-weight:900 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+}
+.topbar-title small{
+    display:block !important;
+    color:#64748b !important;
+    font-size:12px !important;
+    margin-top:4px !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+}
+.topbar-brand{
+    width:112px !important;
+    max-width:28vw !important;
+    max-height:52px !important;
+    height:auto !important;
+    object-fit:contain !important;
+    flex:0 0 auto !important;
+}
+@media(max-width:390px){
+    .mobile-topbar-app{
+        gap:10px !important;
+        padding-left:14px !important;
+        padding-right:14px !important;
+    }
+    .topbar-title strong{font-size:17px !important;}
+    .topbar-brand{width:94px !important;max-width:27vw !important;}
+}
+/* Evita zoom automático do iOS ao focar campos */
+@media(max-width:759px){
+    input,select,textarea{font-size:16px !important;}
+}
+</style>
+
 </head><body><script>
 function getApiBase(){
     const salvo = localStorage.getItem("api_base");
@@ -509,7 +589,7 @@ function mobileLayout(title, subtitle, active){return `
         <button class="drawer-logout" onclick="logout()" type="button">Sair</button>
     </div>
 </aside>
-<header class="mobile-topbar"><button class="menu-btn" onclick="abrirMenu()" aria-label="Abrir menu"><span></span></button><img id="topLogo" class="top-logo"><div class="top-title"><strong>${title}</strong><small id="topEmpresa">${subtitle}</small></div><button class="top-user" title="Usuário">👤</button></header>
+<div class="mobile-topbar-app"><button class="menu-btn" onclick="abrirMenu()" type="button" aria-label="Abrir menu"><span></span></button><div class="topbar-title"><strong>${title}</strong><small id="topEmpresa">${subtitle}</small></div><img id="topLogo" class="topbar-brand" src="" alt="Logo da empresa"></div>
 `;}
 function formatarDataHora(v){if(!v)return"-";const d=new Date(v);return isNaN(d)?"-":d.toLocaleString("pt-BR")}
 function formatarData(v){if(!v)return"-";const d=new Date((String(v).split("T")[0]||v)+"T00:00:00");return isNaN(d)?"-":d.toLocaleDateString("pt-BR")}
