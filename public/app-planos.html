@@ -610,13 +610,11 @@ function renderPlanos(){
 
     el.innerHTML=lista.map(p=>{
         const nome=textoPlano(p)||'-';
-        const id=p?.id ?? p?.id_plano ?? p?.plano_id ?? '-';
         const velocidade=p?.velocidade ?? p?.velocidade_nome ?? p?.banda ?? '';
         const valor=valorPlano(p);
         const inativo=planoInativo(p);
         return `<div class="list-card">
             <h3>${nome}</h3>
-            <p><b>ID:</b> ${id}</p>
             ${velocidade?`<p><b>Velocidade:</b> ${velocidade}</p>`:''}
             ${valor!==null && valor!==''?`<p><b>Valor:</b> R$ ${valor}</p>`:''}
             <p><span class="pill ${inativo?'red':'green'}">${inativo?'Inativo':'Ativo'}</span></p>

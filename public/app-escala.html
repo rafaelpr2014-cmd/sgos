@@ -506,11 +506,13 @@ async function carregarEscala(){
  const u=usuarioAtual; const el=document.getElementById("listaEscala"); el.innerHTML='<div class="empty">Carregando escala...</div>';
  try{const r=await apiFetch('/api/escalas',{headers:{'x-usuario-id':u.id}}); const data=await r.json();
  const lista=Array.isArray(data)?data:(data.dados||data.escalas||data.items||data.rows||data.resultados||[]);
+ const tipoUsuario=String(u?.tipo||u?.perfil||u?.tipo_usuario||u?.role||u?.nivel||"").trim().toLowerCase();
+ const ehAdmin=["admin","administrador","administrator"].includes(tipoUsuario) || u?.admin===true || Number(u?.admin)===1 || u?.is_admin===true || Number(u?.is_admin)===1;
  const vinculadas=lista.filter(e=>pertenceAoTecnico(e,u));
- const baseTecnico=vinculadas.length?vinculadas:lista;
+ const baseTecnico=ehAdmin ? lista : vinculadas;
  const minhas=baseTecnico.filter(dentroPeriodo).sort((a,b)=>String(a.data_escala||a.data).localeCompare(String(b.data_escala||b.data)));
  const hoje=new Date().toISOString().slice(0,10); document.getElementById('cardTotal').innerText=minhas.length; document.getElementById('cardHoje').innerText=minhas.filter(e=>String(e.data_escala||e.data).slice(0,10)===hoje).length; const limite=new Date(); limite.setDate(limite.getDate()+7); document.getElementById('cardSemana').innerText=minhas.filter(e=>{const d=new Date(String(e.data_escala||e.data).slice(0,10)+'T00:00:00'); return d>=new Date(hoje+'T00:00:00')&&d<=limite}).length;
- if(!minhas.length){el.innerHTML='<div class="empty">Nenhuma escala encontrada para este técnico.</div>';return}
+ if(!minhas.length){el.innerHTML=`<div class="empty">${ehAdmin?'Nenhuma escala encontrada no período.':'Nenhuma escala encontrada para este técnico.'}</div>`;return}
  el.innerHTML=minhas.map(e=>`<div class="list-card"><h3>${formatarData(e.data_escala||e.data)} <span class="pill blue">${periodoTexto(e.periodo)}</span></h3><p><b>Técnico:</b> ${e.tecnico||e.tecnico_nome||e.nome_tecnico||'-'}</p><p><b>Dia:</b> ${e.dia_semana||e.dia||formatarDiaSemana(e.data_escala||e.data)}</p></div>`).join('');
  }catch(err){console.error(err); el.innerHTML='<div class="empty">Erro ao carregar escala.</div>'}
 }
