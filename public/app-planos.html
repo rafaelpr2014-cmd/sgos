@@ -408,8 +408,42 @@ function apiUrl(path){
     return base + (path.startsWith("/") ? path : "/" + path);
 }
 
+function headersSessaoAppPlanos(){
+    const u = getUsuarioLocal();
+    const sessao = (()=>{try{return JSON.parse(localStorage.getItem("sessao_app")||"{}")}catch(e){return {}}})();
+    const logId = localStorage.getItem("log_id") || u.log_id || sessao.log_id || "";
+    const empresaId = u.empresa_id || u.empresaId || sessao.empresa_id || localStorage.getItem("empresa_id") || "";
+    const usuarioId = u.id || localStorage.getItem("usuario_id") || sessao.id || "";
+    const headers = {};
+    if(usuarioId) headers["x-usuario-id"] = String(usuarioId);
+    if(logId) headers["x-log-id"] = String(logId);
+    if(empresaId) headers["x-empresa-id"] = String(empresaId);
+    headers["x-sgos-app"] = "1";
+    headers["x-sgos-active"] = "1";
+    return headers;
+}
+
 function apiFetch(path, options = {}){
-    return fetch(apiUrl(path), options);
+    const urlFinal = apiUrl(path);
+    const opcoes = {...options};
+    const headers = new Headers(opcoes.headers || {});
+    Object.entries(headersSessaoAppPlanos()).forEach(([k,v])=>{
+        if(v !== undefined && v !== null && String(v) !== "" && !headers.has(k)) headers.set(k,String(v));
+    });
+    opcoes.headers = headers;
+
+    try{
+        const destino = new URL(urlFinal, window.location.href);
+        if(destino.origin !== window.location.origin){
+            opcoes.credentials = "omit";
+        }else if(!opcoes.credentials){
+            opcoes.credentials = "same-origin";
+        }
+    }catch(e){
+        if(!opcoes.credentials) opcoes.credentials = "same-origin";
+    }
+
+    return fetch(urlFinal, opcoes);
 }
 
 function resolverUrlArquivo(url){
@@ -484,7 +518,115 @@ function formatarData(v){if(!v)return"-";const d=new Date((String(v).split("T")[
 <div class="card-box"><h2 class="section-title">Consultar planos</h2><input class="input" id="buscaPlano" placeholder="Buscar plano..." oninput="renderPlanos()"></div><div id="listaPlanos"></div>
 </main></div><script>
 let usuarioAtual=null, planos=[];
-async function carregarPlanos(){const el=document.getElementById('listaPlanos'); el.innerHTML='<div class="empty">Carregando planos...</div>'; try{const r=await apiFetch('/api/planos',{headers:{'x-usuario-id':usuarioAtual.id}}); const data=await r.json(); planos=Array.isArray(data)?data:(data.dados||data.planos||[]); renderPlanos();}catch(err){console.error(err); el.innerHTML='<div class="empty">Erro ao carregar planos.</div>'}}
-function renderPlanos(){const busca=(document.getElementById('buscaPlano').value||'').toLowerCase(); const lista=planos.filter(p=>`${p.nome||p.plano||p.descricao||''}`.toLowerCase().includes(busca)); document.getElementById('cardTotal').innerText=planos.length; document.getElementById('cardAtivos').innerText=planos.filter(p=>p.ativo===1||p.ativo===true||String(p.status||'ativo').toLowerCase()==='ativo').length; document.getElementById('cardFiltro').innerText=lista.length; const el=document.getElementById('listaPlanos'); if(!lista.length){el.innerHTML='<div class="empty">Nenhum plano encontrado.</div>';return} el.innerHTML=lista.map(p=>`<div class="list-card"><h3>${p.nome||p.plano||'-'}</h3><p><b>ID:</b> ${p.id||'-'}</p>${p.velocidade?`<p><b>Velocidade:</b> ${p.velocidade}</p>`:''}${p.valor?`<p><b>Valor:</b> R$ ${p.valor}</p>`:''}<p><span class="pill ${(p.ativo===0||String(p.status||'').toLowerCase()==='inativo')?'red':'green'}">${(p.ativo===0||String(p.status||'').toLowerCase()==='inativo')?'Inativo':'Ativo'}</span></p></div>`).join('')}
-document.addEventListener('DOMContentLoaded',async()=>{usuarioAtual=await prepararTopo('planos'); if(!usuarioAtual)return; carregarPlanos();});
+
+async function lerJsonSeguroPlanos(res){
+    const texto = await res.text();
+    if(!texto) return {};
+    try{return JSON.parse(texto)}catch(e){return {erro:texto}}
+}
+
+function extrairListaPlanos(data){
+    if(Array.isArray(data)) return data;
+    if(!data || typeof data !== "object") return [];
+
+    const candidatos = [
+        data.planos,
+        data.dados,
+        data.data,
+        data.resultado,
+        data.resultados,
+        data.items,
+        data.rows,
+        data.registros,
+        data.lista,
+        data.data?.planos,
+        data.dados?.planos,
+        data.resultado?.planos
+    ];
+
+    for(const item of candidatos){
+        if(Array.isArray(item)) return item;
+    }
+    return [];
+}
+
+function textoPlano(p){
+    return String(
+        p?.nome ?? p?.plano ?? p?.plano_nome ?? p?.nome_plano ??
+        p?.descricao ?? p?.titulo ?? ""
+    ).trim();
+}
+
+function valorPlano(p){
+    return p?.valor ?? p?.preco ?? p?.mensalidade ?? p?.valor_plano ?? null;
+}
+
+function planoInativo(p){
+    const ativo = p?.ativo ?? p?.is_ativo ?? p?.active;
+    if(ativo === 0 || ativo === false || String(ativo).toLowerCase() === "false") return true;
+    const status = String(p?.status ?? p?.situacao ?? "").trim().toLowerCase();
+    return ["inativo","desativado","cancelado"].includes(status);
+}
+
+async function carregarPlanos(){
+    const el=document.getElementById('listaPlanos');
+    el.innerHTML='<div class="empty">Carregando planos...</div>';
+    try{
+        const r=await apiFetch('/api/planos',{headers:{'Accept':'application/json'}});
+        const data=await lerJsonSeguroPlanos(r);
+        console.log('📦 Resposta /api/planos:', data);
+
+        if(!r.ok){
+            throw new Error(data?.erro || data?.mensagem || data?.message || `Erro HTTP ${r.status}`);
+        }
+
+        planos=extrairListaPlanos(data);
+        console.log('📋 Planos carregados:', planos.length, planos);
+        renderPlanos();
+    }catch(err){
+        console.error('Erro ao carregar planos:',err);
+        planos=[];
+        renderPlanos();
+        el.innerHTML=`<div class="empty">Não foi possível carregar os planos.<br><small>${String(err.message||err)}</small></div>`;
+    }
+}
+
+function renderPlanos(){
+    const busca=(document.getElementById('buscaPlano').value||'').trim().toLowerCase();
+    const lista=planos.filter(p=>{
+        const texto=[textoPlano(p),p?.descricao,p?.velocidade,p?.id,p?.id_plano].filter(Boolean).join(' ').toLowerCase();
+        return !busca || texto.includes(busca);
+    });
+
+    document.getElementById('cardTotal').innerText=planos.length;
+    document.getElementById('cardAtivos').innerText=planos.filter(p=>!planoInativo(p)).length;
+    document.getElementById('cardFiltro').innerText=lista.length;
+
+    const el=document.getElementById('listaPlanos');
+    if(!lista.length){
+        el.innerHTML='<div class="empty">Nenhum plano encontrado.</div>';
+        return;
+    }
+
+    el.innerHTML=lista.map(p=>{
+        const nome=textoPlano(p)||'-';
+        const id=p?.id ?? p?.id_plano ?? p?.plano_id ?? '-';
+        const velocidade=p?.velocidade ?? p?.velocidade_nome ?? p?.banda ?? '';
+        const valor=valorPlano(p);
+        const inativo=planoInativo(p);
+        return `<div class="list-card">
+            <h3>${nome}</h3>
+            <p><b>ID:</b> ${id}</p>
+            ${velocidade?`<p><b>Velocidade:</b> ${velocidade}</p>`:''}
+            ${valor!==null && valor!==''?`<p><b>Valor:</b> R$ ${valor}</p>`:''}
+            <p><span class="pill ${inativo?'red':'green'}">${inativo?'Inativo':'Ativo'}</span></p>
+        </div>`;
+    }).join('');
+}
+
+document.addEventListener('DOMContentLoaded',async()=>{
+    usuarioAtual=await prepararTopo('planos');
+    if(!usuarioAtual)return;
+    await carregarPlanos();
+});
 </script></body></html>
