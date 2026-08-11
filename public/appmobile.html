@@ -2996,11 +2996,13 @@ body{
         <textarea id="obs" placeholder="Digite a observação correspondente ao status..."></textarea>
         <input type="file" id="foto" accept="image/*,video/*,.pdf,application/pdf" hidden onchange="arquivoSelecionado(this)">
         <input type="file" id="anexoGaleria" accept="image/*,video/*" hidden onchange="arquivoSelecionado(this)">
-        <input type="file" id="anexoAgora" accept="image/*,video/*" capture="environment" hidden onchange="arquivoSelecionado(this)">
+        <!-- Captura separada: evita crash do Android/WebView ao alternar Foto -> Vídeo na câmera -->
+        <input type="file" id="anexoFotoAgora" accept="image/*" capture="environment" hidden onchange="arquivoSelecionado(this)">
+        <input type="file" id="anexoVideoAgora" accept="video/*" capture="environment" hidden onchange="arquivoSelecionado(this)">
         <input type="file" id="anexoArquivos" accept="image/*,video/*,.pdf,application/pdf" hidden onchange="arquivoSelecionado(this)">
 
         <div class="anexo-acoes">
-            <button type="button" class="btn-anexo-escolher" onclick="escolherAnexo()">📎 Anexar foto, vídeo ou PDF</button>
+            <button id="btnEscolherAnexo" type="button" class="btn-anexo-escolher" onclick="escolherAnexo()">📎 Anexar foto, vídeo ou PDF</button>
         </div>
 
         <div id="arquivoSelecionadoInfo" class="arquivo-selecionado-info">Nenhum arquivo selecionado</div>
@@ -3048,6 +3050,26 @@ body{
             <button type="button" onclick="selecionarOrigemAnexo('arquivos')">
                 <strong>📁 Arquivos</strong>
                 <small>Escolher foto, vídeo, PDF ou outro arquivo permitido</small>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Seletor exclusivo para captura imediata. Foto e vídeo usam intents separados no Android. -->
+<div id="seletorCapturaAgoraModal" class="seletor-anexo-modal" aria-hidden="true">
+    <div class="seletor-anexo-card" role="dialog" aria-modal="true" aria-label="Foto ou vídeo de agora">
+        <div class="seletor-anexo-head">
+            <strong>Foto ou vídeo de Agora</strong>
+            <button type="button" class="seletor-anexo-fechar" onclick="fecharSeletorCapturaAgora()" aria-label="Fechar">×</button>
+        </div>
+        <div class="seletor-anexo-opcoes">
+            <button type="button" onclick="abrirCapturaAgora('foto')">
+                <strong>📷 Tirar Foto Agora</strong>
+                <small>Abrir diretamente a câmera no modo foto</small>
+            </button>
+            <button type="button" onclick="abrirCapturaAgora('video')">
+                <strong>🎥 Gravar Vídeo Agora</strong>
+                <small>Abrir diretamente a câmera no modo vídeo</small>
             </button>
         </div>
     </div>
@@ -4411,7 +4433,7 @@ function fecharModal(){
     const modal = document.getElementById("modal");
     if(modal) modal.style.display = "none";
 
-    ["foto","anexoGaleria","anexoAgora","anexoArquivos"].forEach(id => {
+    ["foto","anexoGaleria","anexoFotoAgora","anexoVideoAgora","anexoArquivos"].forEach(id => {
         const input = document.getElementById(id);
         if(input) input.value = "";
     });
@@ -6359,7 +6381,27 @@ function atualizarAnexoPendenteUI(arquivo, recuperado=false){
     if(box) box.classList.add("ativo");
 }
 
+function osTemCheckinParaAnexo(os){
+    return !!(os && os._tipo !== "avulsa" && os.checkin_inicio_em);
+}
+
+function exigirCheckinParaAnexo(){
+    const osAtual = encontrarOS(osSelecionada);
+    if(!osAtual){
+        alert("OS não encontrada.");
+        return null;
+    }
+    if(!osTemCheckinParaAnexo(osAtual)){
+        alert("Faça o check-in da OS antes de tirar foto, gravar vídeo ou anexar arquivos.");
+        return null;
+    }
+    return osAtual;
+}
+
 function escolherAnexo(){
+    // Segurança de fluxo: nenhuma origem de anexo é liberada antes do check-in.
+    if(!exigirCheckinParaAnexo()) return;
+
     // Não limpa o anexo atual ao abrir o menu.
     // Se o técnico cancelar, o arquivo já preparado continua intacto.
     const modal = document.getElementById("seletorAnexoModal");
@@ -6378,11 +6420,24 @@ function fecharSeletorAnexo(){
 }
 
 function selecionarOrigemAnexo(origem){
+    if(!exigirCheckinParaAnexo()) return;
+
     fecharSeletorAnexo();
+
+    // "Agora" abre um segundo seletor para não misturar image/* e video/* no mesmo
+    // capture. No Android/WebView essa mistura pode derrubar a Activity ao trocar
+    // o modo da câmera de foto para vídeo.
+    if(origem === "agora"){
+        const modal = document.getElementById("seletorCapturaAgoraModal");
+        if(modal){
+            modal.classList.add("ativo");
+            modal.setAttribute("aria-hidden","false");
+        }
+        return;
+    }
 
     let input = null;
     if(origem === "galeria") input = document.getElementById("anexoGaleria");
-    if(origem === "agora") input = document.getElementById("anexoAgora");
     if(origem === "arquivos") input = document.getElementById("anexoArquivos");
     if(!input) return;
 
@@ -6391,8 +6446,36 @@ function selecionarOrigemAnexo(origem){
     input.click();
 }
 
+function fecharSeletorCapturaAgora(){
+    const modal = document.getElementById("seletorCapturaAgoraModal");
+    if(modal){
+        modal.classList.remove("ativo");
+        modal.setAttribute("aria-hidden","true");
+    }
+}
+
+function abrirCapturaAgora(tipo){
+    if(!exigirCheckinParaAnexo()) return;
+
+    fecharSeletorCapturaAgora();
+    const input = document.getElementById(tipo === "video" ? "anexoVideoAgora" : "anexoFotoAgora");
+    if(!input) return;
+
+    input.value = "";
+    // Mantém o click diretamente associado ao gesto do usuário.
+    input.click();
+}
+
 async function arquivoSelecionado(input){
     const info = document.getElementById("arquivoSelecionadoInfo");
+
+    // Segunda barreira: mesmo que algum input seja acionado por código, o arquivo
+    // não entra no cache nem é preparado antes de existir check-in confirmado.
+    if(!exigirCheckinParaAnexo()){
+        if(input) input.value = "";
+        return;
+    }
+
     const arquivo = input?.files?.[0];
 
     // Cancelou o seletor: mantém o anexo anterior.
@@ -6459,7 +6542,7 @@ async function removerAnexoPendente(){
     window.ultimaLocalizacaoMidia = null;
     window.modoCapturaGPS = null;
 
-    ["foto","anexoGaleria","anexoAgora","anexoArquivos"].forEach(id => {
+    ["foto","anexoGaleria","anexoFotoAgora","anexoVideoAgora","anexoArquivos"].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.value = "";
     });
@@ -6894,7 +6977,7 @@ async function prepararArquivoParaEnvio(){
     }
 
     // Compatibilidade: caso algum input ainda tenha um arquivo selecionado.
-    const ids = ["foto","anexoGaleria","anexoAgora","anexoArquivos"];
+    const ids = ["foto","anexoGaleria","anexoFotoAgora","anexoVideoAgora","anexoArquivos"];
     for(const id of ids){
         const arquivo = document.getElementById(id)?.files?.[0];
         if(arquivo){
@@ -6956,7 +7039,7 @@ abrirModal = async function(chave){
         obs.placeholder = "Digite a observação do técnico...";
     }
 
-    ["foto","anexoGaleria","anexoAgora","anexoArquivos"].forEach(id => {
+    ["foto","anexoGaleria","anexoFotoAgora","anexoVideoAgora","anexoArquivos"].forEach(id => {
         const input = document.getElementById(id);
         if(input) input.value = "";
     });
@@ -6977,6 +7060,7 @@ abrirModal = async function(chave){
     }
 
     const btnAnexo = document.getElementById("btnVerAnexo");
+    const btnEscolherAnexo = document.getElementById("btnEscolherAnexo");
     const btnVerLoc = document.getElementById("btnVerLocalizacao");
     const btnReagendar = document.getElementById("btnReagendar");
     const btnCheckin = document.getElementById("btnCheckin");
@@ -6990,6 +7074,15 @@ abrirModal = async function(chave){
         btnCheckin.classList.toggle("realizado", feito);
         btnCheckin.disabled = feito || somenteLeitura;
         btnCheckin.style.display = somenteLeitura ? "none" : "block";
+    }
+
+    if(btnEscolherAnexo){
+        const checkinFeito = osTemCheckinParaAnexo(os);
+        btnEscolherAnexo.disabled = somenteLeitura || !checkinFeito;
+        btnEscolherAnexo.style.opacity = (!somenteLeitura && checkinFeito) ? "1" : ".5";
+        btnEscolherAnexo.textContent = checkinFeito
+            ? "📎 Anexar foto, vídeo ou PDF"
+            : "🔒 Faça check-in para anexar";
     }
 
     if(btnAnexo){
@@ -7869,6 +7962,7 @@ async function fazerCheckin(botao){
         osAtual.longitude = coords.longitude;
         osAtual.checkin_inicio_latitude = coords.latitude;
         osAtual.checkin_inicio_longitude = coords.longitude;
+        osAtual.checkin_inicio_em = data?.checkin_inicio_em || data?.checkin_em || new Date().toISOString();
 
         alert("Check-in registrado e localização da OS atualizada.");
         fecharModal();
