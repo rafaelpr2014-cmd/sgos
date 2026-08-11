@@ -242,6 +242,12 @@ button.btn:not(.btn-red):not(.btn-green):not(.btn-light):not(.btn-roxo){
   }
 }
 
+
+/* ===== AJUSTE 11/08/2026 — RESPONSIVIDADE E DADOS ===== */
+.grid-2{grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;min-width:0 !important;}
+.grid-2 > *, .file-actions > *{min-width:0 !important;max-width:100% !important;}
+.card-box{min-width:0 !important;overflow:hidden !important;}
+@media(max-width:520px){.grid-2{grid-template-columns:1fr !important;}}
 </style>
 
 <style id="sgos-menu-mobile-padronizado-2026">
@@ -664,9 +670,12 @@ async function carregarViabilidades(){
  try{
   const r=await apiFetch(API_VIABILIDADE,{headers:authHeaders()});const d=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(d.erro||`Erro ${r.status}`);
-  const todas=Array.isArray(d)?d:(d.viabilidades||d.dados||[]);
+  const todas=Array.isArray(d)?d:(d.viabilidades||d.dados||d.items||d.rows||d.resultados||[]);
   const admin=ehAdministrador(usuarioAtual);
-  viabilidades=admin?todas:todas.filter(v=>pertenceAoTecnico(v,usuarioAtual));
+  const vinculadas=admin?todas:todas.filter(v=>pertenceAoTecnico(v,usuarioAtual));
+  // Algumas versões da API já entregam a lista previamente restrita ao técnico
+  // e omitem os campos técnicos na resposta resumida. Evita zerar a tela nesse caso.
+  viabilidades=admin?todas:(vinculadas.length?vinculadas:todas);
   const titulo=document.getElementById("tituloViabilidades");
   if(titulo)titulo.textContent=admin?"Todas as viabilidades":"Minhas viabilidades";
   renderLista();

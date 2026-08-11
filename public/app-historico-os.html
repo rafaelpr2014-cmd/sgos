@@ -206,6 +206,13 @@ button.btn:not(.btn-red):not(.btn-green):not(.btn-light):not(.btn-roxo){
   }
 }
 
+
+/* ===== AJUSTE 11/08/2026 — FILTROS MOBILE SEM OVERFLOW ===== */
+.grid-2{grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;min-width:0 !important;}
+.grid-2 > *{min-width:0 !important;max-width:100% !important;width:100% !important;}
+input[type="date"].input{display:block !important;min-width:0 !important;max-width:100% !important;width:100% !important;}
+.card-box{min-width:0 !important;overflow:hidden !important;}
+@media(max-width:520px){.grid-2{grid-template-columns:1fr !important;}}
 </style>
 <style id="sgos-menu-mobile-padronizado-2026">
 /* Menu lateral padronizado conforme o modelo SGOS aprovado */
@@ -513,8 +520,57 @@ function normalizarTextoAcesso(v){return String(v??"").trim().toLowerCase().norm
 function ehAdministrador(u){const acesso=normalizarTextoAcesso([u?.cargo,u?.perfil,u?.tipo,u?.nivel,u?.funcao,u?.role].filter(Boolean).join(" "));return /(^|\s)(admin|administrador|administradora|master|superadmin)(\s|$)/.test(acesso)||u?.is_admin===true||Number(u?.administrador)===1}
 function achatarTecnicos(valor,saida=[]){if(valor===null||valor===undefined||valor==="")return saida;if(Array.isArray(valor)){valor.forEach(x=>achatarTecnicos(x,saida));return saida}if(typeof valor==="object"){[valor.id,valor.tecnico_id,valor.id_tecnico,valor.nome,valor.usuario].forEach(x=>achatarTecnicos(x,saida));return saida}const txt=String(valor).trim();if(!txt)return saida;if((txt.startsWith("[")&&txt.endsWith("]"))||(txt.startsWith("{")&&txt.endsWith("}"))){try{return achatarTecnicos(JSON.parse(txt),saida)}catch(e){}}txt.split(/[,;|]/).map(x=>x.trim()).filter(Boolean).forEach(x=>saida.push(x));return saida}
 function pertenceAoTecnico(os,u){const tid=String(getTecnicoId(u)||"").trim();const nome=normalizarTextoAcesso(getNomeTecnico(u));const valores=[os.tecnico_id,os.id_tecnico,os.tecnicos_ids,os.tecnico_ids,os.tecnico,os.tecnicos,os.tecnicos_nomes];const tecnicos=valores.flatMap(x=>achatarTecnicos(x,[]));return tecnicos.some(item=>{const bruto=String(item).trim();const texto=normalizarTextoAcesso(bruto);if(tid&&/^\d+$/.test(bruto)&&bruto===tid)return true;return !!nome&&(texto===nome||texto.includes(nome)||nome.includes(texto))})}
-function aplicarPeriodo(){const periodo=document.getElementById('filtroPeriodo').value; document.getElementById('cardPeriodo').innerText=periodo||'Tudo'; if(!periodo){document.getElementById('dataInicio').value='';document.getElementById('dataFim').value=''; renderHistorico();return} const hoje=new Date(); const ini=new Date(); ini.setDate(hoje.getDate()-Number(periodo)); document.getElementById('dataInicio').value=ini.toISOString().slice(0,10); document.getElementById('dataFim').value=hoje.toISOString().slice(0,10); renderHistorico();}
-async function carregarHistorico(){const el=document.getElementById('listaHistorico'); el.innerHTML='<div class="empty">Carregando histórico...</div>'; try{const r=await apiFetch('/api/ordens_servico/historico?page=1&limit=500',{headers:{'x-usuario-id':usuarioAtual.id,'x-usuario-cargo':usuarioAtual.cargo||''}}); const data=await r.json(); if(!r.ok)throw new Error(data.erro||`Erro ${r.status}`); const lista=Array.isArray(data)?data:(data.dados||data.historico||[]); const admin=ehAdministrador(usuarioAtual); historico=admin?lista:lista.filter(os=>pertenceAoTecnico(os,usuarioAtual)); const label=document.getElementById('labelTotalHistorico');if(label)label.textContent=admin?'Todas as OS':'Minhas OS'; renderHistorico();}catch(err){console.error(err); el.innerHTML=`<div class="empty">Erro ao carregar histórico.<br><small>${String(err.message||'')}</small></div>`}}
-function renderHistorico(){const ini=document.getElementById('dataInicio').value; const fim=document.getElementById('dataFim').value; const busca=(document.getElementById('buscaHistorico').value||'').toLowerCase(); let lista=historico.filter(os=>{const d=String(os.finalizado_em||os.concluido_em||os.updated_at||'').slice(0,10); if(ini&&d<ini)return false; if(fim&&d>fim)return false; const txt=`${os.nome||''} ${os.localidade_nome||''} ${os.rua||os.endereco||''} ${os.bairro||''} ${os.tipo_servico_nome||''} ${os.status||''}`.toLowerCase(); return !busca||txt.includes(busca);}); document.getElementById('cardTotal').innerText=historico.length; document.getElementById('cardFiltro').innerText=lista.length; const el=document.getElementById('listaHistorico'); if(!lista.length){el.innerHTML=`<div class="empty">${ehAdministrador(usuarioAtual)?'Nenhuma OS encontrada no período.':'Nenhuma OS atribuída a este técnico no período.'}</div>`;return} el.innerHTML=lista.map(os=>`<div class="list-card"><h3>OS #${os.id} <span class="pill green">${os.status||'Finalizada'}</span></h3><p><b>Cliente:</b> ${os.nome||'-'}</p><p><b>Localidade:</b> ${os.localidade_nome||'-'}</p><p><b>Serviço:</b> ${os.tipo_servico_nome||os.tipo_servico||'-'}</p><p><b>Endereço:</b> ${os.rua||os.endereco||'-'} ${os.bairro?'('+os.bairro+')':''}</p><p><b>Finalizado em:</b> ${formatarDataHora(os.finalizado_em||os.concluido_em)}</p><p><b>Técnico:</b> ${os.tecnicos_nomes||os.tecnico||os.finalizado_por_nome||'-'}</p></div>`).join('')}
-document.addEventListener('DOMContentLoaded',async()=>{usuarioAtual=await prepararTopo('historico'); if(!usuarioAtual)return; aplicarPeriodo(); carregarHistorico();});
+function dataISOlocal(data){const d=new Date(data);const pad=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+function aplicarPeriodo(){
+ const periodo=document.getElementById('filtroPeriodo').value;
+ document.getElementById('cardPeriodo').innerText=periodo||'Tudo';
+ if(!periodo){document.getElementById('dataInicio').value='';document.getElementById('dataFim').value='';renderHistorico();return}
+ const hoje=new Date(); const ini=new Date(hoje); ini.setDate(hoje.getDate()-(Number(periodo)-1));
+ document.getElementById('dataInicio').value=dataISOlocal(ini);
+ document.getElementById('dataFim').value=dataISOlocal(hoje);
+ renderHistorico();
+}
+function extrairHistoricoResposta(data){
+ if(Array.isArray(data))return data;
+ for(const chave of ['dados','historico','ordens','ordens_servico','items','rows','resultados','results']){if(Array.isArray(data?.[chave]))return data[chave]}
+ return [];
+}
+function filtrarHistoricoTecnicoComFallback(lista,u){
+ if(ehAdministrador(u))return lista;
+ const correspondentes=lista.filter(os=>pertenceAoTecnico(os,u));
+ // A rota de histórico pode já vir filtrada pelo usuário/técnico no backend.
+ // Se os campos de vínculo não vierem na listagem, não descarta toda a resposta.
+ return correspondentes.length ? correspondentes : lista;
+}
+async function carregarHistorico(){
+ const el=document.getElementById('listaHistorico'); el.innerHTML='<div class="empty">Carregando histórico...</div>';
+ try{
+  const tecnicoId=getTecnicoId(usuarioAtual);
+  const headers={'x-usuario-id':usuarioAtual.id,'x-usuario-cargo':usuarioAtual.cargo||''};
+  if(tecnicoId)headers['x-tecnico-id']=String(tecnicoId);
+  const r=await apiFetch('/api/ordens_servico/historico?page=1&limit=1000&_='+Date.now(),{headers,cache:'no-store'});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(data.erro||data.mensagem||`Erro ${r.status}`);
+  const lista=extrairHistoricoResposta(data);
+  const admin=ehAdministrador(usuarioAtual);
+  historico=filtrarHistoricoTecnicoComFallback(lista,usuarioAtual);
+  const label=document.getElementById('labelTotalHistorico');if(label)label.textContent=admin?'Todas as OS':'Minhas OS';
+  renderHistorico();
+ }catch(err){console.error(err);el.innerHTML=`<div class="empty">Erro ao carregar histórico.<br><small>${String(err.message||'')}</small></div>`}
+}
+function dataHistoricoOS(os){return String(os.finalizado_em||os.finalizada_em||os.concluido_em||os.concluida_em||os.data_finalizacao||os.data_conclusao||os.atualizado_em||os.updated_at||os.criado_em||os.created_at||'').slice(0,10)}
+function renderHistorico(){
+ const ini=document.getElementById('dataInicio').value; const fim=document.getElementById('dataFim').value; const busca=(document.getElementById('buscaHistorico').value||'').toLowerCase();
+ let lista=historico.filter(os=>{
+  const d=dataHistoricoOS(os); if(ini&&d&&d<ini)return false; if(fim&&d&&d>fim)return false;
+  const txt=`${os.nome||os.cliente||''} ${os.localidade_nome||os.localidade||''} ${os.rua||os.endereco||''} ${os.bairro||''} ${os.tipo_servico_nome||os.tipo_servico||''} ${os.status||''} ${os.tecnicos_nomes||os.tecnico||''}`.toLowerCase();
+  return !busca||txt.includes(busca);
+ });
+ lista.sort((a,b)=>dataHistoricoOS(b).localeCompare(dataHistoricoOS(a))||Number(b.id||0)-Number(a.id||0));
+ document.getElementById('cardTotal').innerText=historico.length;document.getElementById('cardFiltro').innerText=lista.length;
+ const el=document.getElementById('listaHistorico');
+ if(!lista.length){el.innerHTML=`<div class="empty">${ehAdministrador(usuarioAtual)?'Nenhuma OS encontrada no período.':'Nenhuma OS atribuída a este técnico no período.'}</div>`;return}
+ el.innerHTML=lista.map(os=>`<div class="list-card"><h3>OS #${os.id} <span class="pill green">${os.status||'Finalizada'}</span></h3><p><b>Cliente:</b> ${os.nome||os.cliente||'-'}</p><p><b>Localidade:</b> ${os.localidade_nome||os.localidade||'-'}</p><p><b>Serviço:</b> ${os.tipo_servico_nome||os.tipo_servico||'-'}</p><p><b>Endereço:</b> ${os.rua||os.endereco||'-'} ${os.bairro?'('+os.bairro+')':''}</p><p><b>Finalizado em:</b> ${formatarDataHora(os.finalizado_em||os.finalizada_em||os.concluido_em||os.concluida_em||os.data_finalizacao||os.data_conclusao||os.atualizado_em||os.updated_at)}</p><p><b>Técnico:</b> ${os.tecnicos_nomes||os.tecnico||os.tecnico_nome||os.finalizado_por_nome||'-'}</p></div>`).join('');
+}
+document.addEventListener('DOMContentLoaded',async()=>{usuarioAtual=await prepararTopo('historico');if(!usuarioAtual)return;aplicarPeriodo();carregarHistorico();});
 </script></body></html>

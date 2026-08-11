@@ -3165,7 +3165,7 @@ body{
     <input type="datetime-local" id="novaDataReagendamento">
     <label for="motivoReagendamento">Motivo ou observação</label>
     <textarea id="motivoReagendamento" maxlength="1000" placeholder="Ex.: cliente solicitou alteração de horário..."></textarea>
-    <div class="reagendamento-info">Se a nova data for hoje, a OS continuará no painel inicial. Para outra data, ela ficará na página de Agendamentos.</div>
+    <div class="reagendamento-info">Após reagendar, a OS sairá do painel principal e permanecerá em Agendamentos até ser lançada automaticamente pelo sistema.</div>
     <div class="reagendamento-acoes">
       <button type="button" class="btn-cancelar-reagendamento" onclick="fecharReagendamento()">Cancelar</button>
       <button type="button" id="btnConfirmarReagendamento" class="btn-confirmar-reagendamento" onclick="confirmarReagendamento(this)">Confirmar reagendamento</button>
@@ -3467,6 +3467,15 @@ function normalizarStatusApp(status){
     if(s.includes("agend")) return "agendado";
 
     return s.replace(/\s+/g, "_");
+}
+
+function statusOperacionalSempreVisivel(os){
+    const st=normalizarStatusApp(os?.status);
+    return st === "os_lancada" || st === "em_andamento";
+}
+function osPodeAparecerPainelPrincipal(os){
+    // Reagendada fica fora do painel até a rotina automática efetivamente lançá-la.
+    return normalizarStatusApp(os?.status) !== "reagendado";
 }
 
 function chaveOS(os){
@@ -4006,21 +4015,23 @@ async function load(){
 
     try {
         const urlOrdens = `${API_PATH}?periodo=${encodeURIComponent(periodoSelecionado)}&_=${Date.now()}`;
-        const res = await apiFetch(urlOrdens, {
-            method:"GET",
-            headers: headersSessaoApp(),
-            credentials:"include",
-            cache:"no-store"
-        });
-
+        const res = await apiFetch(urlOrdens, {method:"GET",headers:headersSessaoApp(),credentials:"include",cache:"no-store"});
         const payloadNormal = await res.json().catch(() => null);
+        if(!res.ok){const mensagem=payloadNormal?.erro||payloadNormal?.mensagem||`Erro HTTP ${res.status}`;throw new Error(mensagem);}
+        const listaPeriodo = extrairListaOrdens(payloadNormal);
 
-        if(!res.ok){
-            const mensagem = payloadNormal?.erro || payloadNormal?.mensagem || `Erro HTTP ${res.status}`;
-            throw new Error(mensagem);
-        }
+        // Segunda leitura sem período: mantém OS lançadas/em execução visíveis mesmo
+        // quando foram criadas/iniciadas ontem ou em qualquer data anterior.
+        let listaAtivasForaPeriodo=[];
+        try{
+            const resAtivas=await apiFetch(`${API_PATH}?_=${Date.now()}`,{method:"GET",headers:headersSessaoApp(),credentials:"include",cache:"no-store"});
+            const payloadAtivas=await resAtivas.json().catch(()=>null);
+            if(resAtivas.ok){listaAtivasForaPeriodo=extrairListaOrdens(payloadAtivas).filter(statusOperacionalSempreVisivel);}
+        }catch(eAtivas){console.warn("Não foi possível complementar OS ativas fora do período:",eAtivas);}
 
-        const listaNormal = extrairListaOrdens(payloadNormal);
+        const mapaNormal=new Map();
+        [...listaPeriodo,...listaAtivasForaPeriodo].forEach(item=>{if(item?.id!=null)mapaNormal.set(String(item.id),item)});
+        const listaNormal=[...mapaNormal.values()];
         console.log("📥 OS recebidas da API:", listaNormal.length, payloadNormal);
 
         let listaAvulsas = [];
@@ -4394,7 +4405,7 @@ function garantirBotaoFilaModal(){
 function configurarAcoesModalPorStatus(os){
     const status = normalizarStatusApp(os?.status);
     const lancada = status === "os_lancada";
-    const executando = status === "em_andamento" || status === "reagendado";
+    const executando = status === "em_andamento";
     const btnConcluir = document.getElementById("btnConcluir");
     const btnAusente = document.getElementById("btnAusente");
     const btnInv = document.getElementById("btnInviabilidade");
@@ -5542,31 +5553,19 @@ function fimDoDia(data){
 }
 
 function dentroDoPeriodo(os){
+    if(!osPodeAparecerPainelPrincipal(os)) return false;
+    // OS lançada e em execução são operacionais e independem do filtro de data.
+    if(statusOperacionalSempreVisivel(os)) return true;
+
     const data = dataReferenciaOS(os);
-
-    // Não esconder uma OS válida só porque a API não trouxe a data esperada.
     if(!data) return true;
-
     const agora = new Date();
-    let inicio;
-    let fim = fimDoDia(agora);
-
-    if(periodoSelecionado === "hoje"){
-        inicio = inicioDoDia(agora);
-    }else if(periodoSelecionado === "ontem"){
-        const ontem = new Date(agora);
-        ontem.setDate(ontem.getDate() - 1);
-        inicio = inicioDoDia(ontem);
-        fim = fimDoDia(ontem);
-    }else if(periodoSelecionado === "7dias"){
-        inicio = inicioDoDia(agora);
-        inicio.setDate(inicio.getDate() - 6);
-    }else{
-        inicio = inicioDoDia(agora);
-        inicio.setDate(inicio.getDate() - 29);
-    }
-
-    return data >= inicio && data <= fim;
+    let inicio; let fim = fimDoDia(agora);
+    if(periodoSelecionado === "hoje"){inicio = inicioDoDia(agora);}
+    else if(periodoSelecionado === "ontem"){const ontem=new Date(agora);ontem.setDate(ontem.getDate()-1);inicio=inicioDoDia(ontem);fim=fimDoDia(ontem);}
+    else if(periodoSelecionado === "7dias"){inicio=inicioDoDia(agora);inicio.setDate(inicio.getDate()-6);}
+    else{inicio=inicioDoDia(agora);inicio.setDate(inicio.getDate()-29);}
+    return data>=inicio && data<=fim;
 }
 
 function alterarPeriodo(valor){
@@ -5584,7 +5583,7 @@ function renderizarResumoTiposServico(osPeriodo){
     osPeriodo
          .filter(o => {
             const st = normalizarStatusApp(o.status);
-            return ["os_lancada", "em_andamento", "reagendado"].includes(st);
+            return ["os_lancada", "em_andamento"].includes(st);
         })
         .forEach(o => {
             const nome = String(o.tipo_servico_nome || o.tipo_servico || "Não informado").trim() || "Não informado";
@@ -5888,10 +5887,10 @@ function render(){
         const st = norm(o.status);
         const tipoAtual = String(o.tipo_servico_nome || o.tipo_servico || "Não informado").trim().toLowerCase();
         const matchTipo = !tipoServicoSelecionado || tipoAtual === tipoServicoSelecionado.toLowerCase();
-        return (!busca || texto.includes(busca)) && matchTipo && ((tab === "andamento" && (st.includes("andamento") || st.includes("reagend") || st.includes("os_lancada"))) || (tab === "concluido" && st.includes("concluido")) || (tab === "ausente" && st.includes("ausente"))) && dentroDoPeriodo(o);
+        return (!busca || texto.includes(busca)) && matchTipo && ((tab === "andamento" && (st.includes("andamento") || st.includes("os_lancada"))) || (tab === "concluido" && st.includes("concluido")) || (tab === "ausente" && st.includes("ausente"))) && dentroDoPeriodo(o);
     });
     const osPeriodo = OS.filter(dentroDoPeriodo);
-    document.getElementById("cA").innerText = osPeriodo.filter(o => { const st=norm(o.status); return st.includes("andamento") || st.includes("reagend") || st.includes("os_lancada"); }).length;
+    document.getElementById("cA").innerText = osPeriodo.filter(o => { const st=norm(o.status); return st.includes("andamento") || st.includes("os_lancada"); }).length;
     document.getElementById("cC").innerText = osPeriodo.filter(o => norm(o.status).includes("concluido")).length;
     document.getElementById("cX").innerText = osPeriodo.filter(o => norm(o.status).includes("ausente")).length;
     renderizarResumoTiposServico(osPeriodo);
