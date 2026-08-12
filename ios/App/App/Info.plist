@@ -76,6 +76,8 @@
 	<!-- PERMISSÃO PARA USAR A CÂMERA -->
 	<key>NSCameraUsageDescription</key>
 	<string>O SGOS utiliza a câmera para registrar e anexar fotos às ordens de serviço.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>O SGOS utiliza o microfone para gravar o áudio dos vídeos anexados às ordens de serviço.</string>
 
 	<!-- PERMISSÃO PARA LER FOTOS DA GALERIA -->
 	<key>NSPhotoLibraryUsageDescription</key>
