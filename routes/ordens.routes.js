@@ -2296,8 +2296,10 @@ router.get(
 
 // ===============================
 // 📚 HISTÓRICO DE OS
-// Atendentes e técnicos: exige match simultâneo de localidade E técnico.
 // Administradores: visualizam todas as OS concluídas da empresa.
+// Técnicos/atendentes: visualizam as OS concluídas vinculadas aos técnicos
+// associados ao usuário em usuario_tecnicos.
+// NÃO exige vínculo adicional em usuario_localidades.
 // ===============================
 router.get(
     "/historico",
@@ -2306,7 +2308,6 @@ router.get(
         try {
             const pagina = Math.max(1, parseInt(req.query.page, 10) || 1);
             const limite = 20;
-            const offset = (pagina - 1) * limite;
 
             const cargo = String(req.usuario?.cargo || "").trim().toLowerCase();
             const administrador = cargo === "administrador";
@@ -2317,18 +2318,12 @@ router.get(
             const parametrosBase = [empresaId];
 
             if (!administrador) {
-                // Regra estrita:
-                // 1) a localidade da OS precisa estar em usuario_localidades;
-                // 2) pelo menos um técnico da OS precisa estar em usuario_tecnicos.
-                // O tratamento por FIND_IN_SET suporta os IDs armazenados em JSON/texto.
+                // Mesma origem de vínculo usada no restante do sistema:
+                // usuario -> usuario_tecnicos -> tecnico_id -> os.tecnico
+                //
+                // os.tecnico pode estar salvo como JSON/texto, por exemplo:
+                // [1,2], ["1","2"] ou 1,2.
                 filtroEscopo = `
-                    AND EXISTS (
-                        SELECT 1
-                        FROM usuario_localidades ul
-                        WHERE ul.usuario_id = ?
-                          AND ul.empresa_id = os.empresa_id
-                          AND ul.localidade_id = os.localidade
-                    )
                     AND EXISTS (
                         SELECT 1
                         FROM usuario_tecnicos ut
@@ -2336,16 +2331,17 @@ router.get(
                           AND ut.empresa_id = os.empresa_id
                           AND FIND_IN_SET(
                               CAST(ut.tecnico_id AS CHAR),
-                              REPLACE(REPLACE(REPLACE(REPLACE(
-                                  COALESCE(os.tecnico, ''),
-                                  '[', ''),
-                                  ']', ''),
+                              REPLACE(
+                                  REPLACE(
+                                      REPLACE(
+                                          REPLACE(COALESCE(os.tecnico, ''), '[', ''),
+                                      ']', ''),
                                   '"', ''),
-                                  ' ', '')
+                              ' ', '')
                           ) > 0
                     )
                 `;
-                parametrosBase.push(usuarioId, usuarioId);
+                parametrosBase.push(usuarioId);
             }
 
             const [totalRows] = await db.query(`
@@ -2376,12 +2372,13 @@ router.get(
                         WHERE t.empresa_id = os.empresa_id
                           AND FIND_IN_SET(
                               CAST(t.id AS CHAR),
-                              REPLACE(REPLACE(REPLACE(REPLACE(
-                                  COALESCE(os.tecnico, ''),
-                                  '[', ''),
-                                  ']', ''),
+                              REPLACE(
+                                  REPLACE(
+                                      REPLACE(
+                                          REPLACE(COALESCE(os.tecnico, ''), '[', ''),
+                                      ']', ''),
                                   '"', ''),
-                                  ' ', '')
+                              ' ', '')
                           ) > 0
                     ) AS tecnicos_nomes
                 FROM ordens_servico os
@@ -2409,6 +2406,7 @@ router.get(
                 total,
                 dados
             });
+
         } catch (err) {
             console.error("ERRO HISTÓRICO DE OS:", err);
             return res.status(500).json({ erro: err.message });
