@@ -516,52 +516,10 @@ function formatarData(v){if(!v)return"-";const d=new Date((String(v).split("T")[
 <div class="card-box"><h2 class="section-title">Filtros</h2><select class="select" id="filtroPeriodo" onchange="aplicarPeriodo()"><option value="7" selected>Últimos 7 dias</option><option value="15">Últimos 15 dias</option><option value="30">Últimos 30 dias</option><option value="">Todo período</option></select><div class="grid-2" style="margin-top:10px"><input class="input" type="date" id="dataInicio"><input class="input" type="date" id="dataFim"></div><input class="input" style="margin-top:10px" id="buscaHistorico" placeholder="Buscar cliente, localidade ou serviço..." oninput="renderHistorico()"><button class="btn block" style="margin-top:10px" onclick="carregarHistorico()">Atualizar</button></div><div id="listaHistorico"></div>
 </main></div><script>
 let usuarioAtual=null, historico=[];
-function normalizarTextoAcesso(v){return String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase()}
-
-function ehAdministrador(u){
- const candidatos=[u?.cargo,u?.tipo,u?.perfil,u?.tipo_usuario,u?.role,u?.nivel,u?.cargo_nome,u?.perfil_nome,u?.tipo_nome,u?.funcao]
-  .map(normalizarTextoAcesso).filter(Boolean);
- return candidatos.some(v=>v==="admin"||v==="administrador"||v==="administrator"||v.includes("administrador")) ||
-  u?.admin===true||Number(u?.admin)===1||u?.is_admin===true||Number(u?.is_admin)===1||u?.administrador===true||Number(u?.administrador)===1;
-}
-
-function idsTecnicoUsuario(u){
- return [u?.tecnico_id,u?.tecnicoId,u?.id_tecnico,u?.idTecnico]
-  .filter(v=>v!==undefined&&v!==null&&String(v).trim()!=="").map(v=>String(v).trim());
-}
-
-function nomesTecnicoUsuario(u){
- return [u?.tecnico_nome,u?.nome_tecnico,u?.nome,u?.usuario]
-  .map(normalizarTextoAcesso).filter(Boolean);
-}
-
-function achatarTecnicos(valor,saida=[]){
- if(valor===null||valor===undefined||valor==="")return saida;
- if(Array.isArray(valor)){valor.forEach(x=>achatarTecnicos(x,saida));return saida}
- if(typeof valor==="object"){
-  [valor.id,valor.tecnico_id,valor.id_tecnico,valor.nome,valor.usuario,valor.tecnico].forEach(x=>achatarTecnicos(x,saida));
-  return saida;
- }
- const txt=String(valor).trim(); if(!txt)return saida;
- if((txt.startsWith("[")&&txt.endsWith("]"))||(txt.startsWith("{")&&txt.endsWith("}"))){try{return achatarTecnicos(JSON.parse(txt),saida)}catch(e){}}
- txt.split(/[,;|]/).map(x=>x.trim()).filter(Boolean).forEach(x=>saida.push(x));
- return saida;
-}
-
-function pertenceAoTecnico(os,u){
- const idsU=idsTecnicoUsuario(u);
- const idsOS=[os?.tecnico_id,os?.id_tecnico,os?.tecnicoId,os?.idTecnico,os?.tecnicos_ids,os?.tecnico_ids]
-  .flatMap(v=>achatarTecnicos(v,[])).map(v=>String(v).trim());
- if(idsU.length && idsU.some(id=>idsOS.includes(id))) return true;
-
- const nomesU=nomesTecnicoUsuario(u);
- const nomesOS=[os?.tecnico,os?.tecnicos,os?.tecnicos_nomes,os?.tecnico_nome,os?.nome_tecnico,os?.finalizado_por_nome,os?.concluido_por_nome,os?.finalizado_por,os?.concluido_por]
-  .flatMap(v=>achatarTecnicos(v,[])).map(normalizarTextoAcesso).filter(Boolean);
- if(nomesU.length && nomesOS.some(nos=>nomesU.some(nu=>nos===nu||nos.includes(nu)||nu.includes(nos)))) return true;
-
- return false;
-}
-
+function normalizarTextoAcesso(v){return String(v??"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
+function ehAdministrador(u){const acesso=normalizarTextoAcesso([u?.cargo,u?.perfil,u?.tipo,u?.nivel,u?.funcao,u?.role].filter(Boolean).join(" "));return /(^|\s)(admin|administrador|administradora|master|superadmin)(\s|$)/.test(acesso)||u?.is_admin===true||Number(u?.administrador)===1}
+function achatarTecnicos(valor,saida=[]){if(valor===null||valor===undefined||valor==="")return saida;if(Array.isArray(valor)){valor.forEach(x=>achatarTecnicos(x,saida));return saida}if(typeof valor==="object"){[valor.id,valor.tecnico_id,valor.id_tecnico,valor.nome,valor.usuario].forEach(x=>achatarTecnicos(x,saida));return saida}const txt=String(valor).trim();if(!txt)return saida;if((txt.startsWith("[")&&txt.endsWith("]"))||(txt.startsWith("{")&&txt.endsWith("}"))){try{return achatarTecnicos(JSON.parse(txt),saida)}catch(e){}}txt.split(/[,;|]/).map(x=>x.trim()).filter(Boolean).forEach(x=>saida.push(x));return saida}
+function pertenceAoTecnico(os,u){const tid=String(getTecnicoId(u)||"").trim();const nome=normalizarTextoAcesso(getNomeTecnico(u));const valores=[os.tecnico_id,os.id_tecnico,os.tecnicos_ids,os.tecnico_ids,os.tecnico,os.tecnicos,os.tecnicos_nomes,os.tecnico_nome,os.finalizado_por_nome,os.concluido_por_nome];const tecnicos=valores.flatMap(x=>achatarTecnicos(x,[]));return tecnicos.some(item=>{const bruto=String(item).trim();const texto=normalizarTextoAcesso(bruto);if(tid&&/^\d+$/.test(bruto)&&bruto===tid)return true;return !!nome&&(texto===nome||texto.includes(nome)||nome.includes(texto))})}
 function dataISOlocal(data){const d=new Date(data);const pad=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
 function aplicarPeriodo(){
  const periodo=document.getElementById('filtroPeriodo').value;
@@ -572,116 +530,48 @@ function aplicarPeriodo(){
  document.getElementById('dataFim').value=dataISOlocal(hoje);
  renderHistorico();
 }
-
 function extrairHistoricoResposta(data){
  if(Array.isArray(data))return data;
- if(!data||typeof data!=="object")return [];
- const candidatos=[data.dados,data.historico,data.ordens,data.ordens_servico,data.items,data.rows,data.resultados,data.results,data.lista,data.registros,data.data,data.data?.ordens,data.dados?.ordens];
- for(const item of candidatos){if(Array.isArray(item))return item}
+ for(const chave of ['dados','historico','ordens','ordens_servico','items','rows','resultados','results']){if(Array.isArray(data?.[chave]))return data[chave]}
  return [];
 }
-
-async function lerJsonSeguroHistorico(res){
- const texto=await res.text(); if(!texto)return {};
- try{return JSON.parse(texto)}catch(_){return {erro:texto}}
+function filtrarHistoricoTecnicoComFallback(lista,u){
+ if(ehAdministrador(u))return lista;
+ const correspondentes=lista.filter(os=>pertenceAoTecnico(os,u));
+ // A rota de histórico pode já vir filtrada pelo usuário/técnico no backend.
+ // Se os campos de vínculo não vierem na listagem, não descarta toda a resposta.
+ return correspondentes.length ? correspondentes : lista;
 }
-
-function statusConcluidoHistorico(os){
- const s=normalizarTextoAcesso(os?.status||os?.situacao||os?.estado||"").replace(/\s+/g,"_");
- return s.includes("concluido")||s.includes("finalizado")||s.includes("finalizada")||s==="finalizada"||s==="concluida";
-}
-
-function filtrarComoEscala(lista,u){
- if(ehAdministrador(u)) return lista;
- const vinculadas=lista.filter(os=>pertenceAoTecnico(os,u));
- // Igual à lógica defensiva da escala: se a API já vier filtrada para o usuário
- // e não trouxer campos suficientes de vínculo, preserva a resposta em vez de zerá-la.
- return vinculadas.length ? vinculadas : lista;
-}
-
-async function buscarHistoricoPrincipal(u){
- const r=await apiFetch('/api/ordens_servico/historico?page=1&limit=1000&_='+Date.now(),{
-  headers:{
-   'x-usuario-id':String(u.id),
-   'x-log-id':String(localStorage.getItem('log_id')||u.log_id||''),
-   'x-empresa-id':String(u.empresa_id||u.empresaId||''),
-   'x-sgos-app':'1','x-sgos-active':'1'
-  },cache:'no-store'
- });
- const data=await lerJsonSeguroHistorico(r);
- if(!r.ok) throw new Error(data?.erro||data?.mensagem||`Erro HTTP ${r.status}`);
- return extrairHistoricoResposta(data);
-}
-
-async function buscarHistoricoFallbackAppmobile(u){
- // Mesma origem de dados usada no painel principal do app.
- const periodo=document.getElementById('filtroPeriodo')?.value||'30';
- const url=periodo
-  ? `/api/ordens_servico?periodo=${encodeURIComponent(periodo)}&_=${Date.now()}`
-  : `/api/ordens_servico?_=${Date.now()}`;
- const r=await apiFetch(url,{
-  method:'GET',
-  headers:{
-   'x-usuario-id':String(u.id),
-   'x-log-id':String(localStorage.getItem('log_id')||u.log_id||''),
-   'x-empresa-id':String(u.empresa_id||u.empresaId||''),
-   'x-sgos-app':'1','x-sgos-active':'1'
-  },
-  cache:'no-store'
- });
- const data=await lerJsonSeguroHistorico(r);
- if(!r.ok) throw new Error(data?.erro||data?.mensagem||`Erro HTTP ${r.status}`);
- return extrairHistoricoResposta(data).filter(statusConcluidoHistorico);
-}
-
 async function carregarHistorico(){
- const u=usuarioAtual;
- const el=document.getElementById('listaHistorico');
- el.innerHTML='<div class="empty">Carregando histórico...</div>';
+ const el=document.getElementById('listaHistorico'); el.innerHTML='<div class="empty">Carregando histórico...</div>';
  try{
-  let lista=[];
-  let erroPrincipal=null;
-  try{ lista=await buscarHistoricoPrincipal(u); }catch(e){ erroPrincipal=e; console.warn('Rota de histórico falhou:',e); }
-
-  // Para técnico, se /historico vier vazio ou falhar, usa a mesma rota do appmobile.
-  // Isso evita depender de uma rota que possa ter regra diferente para administrador.
-  if(!ehAdministrador(u) && !lista.length){
-   try{ lista=await buscarHistoricoFallbackAppmobile(u); }
-   catch(eFallback){
-    console.warn('Fallback do appmobile falhou:',eFallback);
-    if(erroPrincipal) throw erroPrincipal;
-    throw eFallback;
-   }
-  }
-
-  historico=filtrarComoEscala(lista,u);
-  const admin=ehAdministrador(u);
+  const tecnicoId=getTecnicoId(usuarioAtual);
+  const headers={'x-usuario-id':String(usuarioAtual.id),'x-usuario-cargo':usuarioAtual.cargo||''};
+  // usuario.id e tecnico.id pertencem a tabelas diferentes. Só envia o ID real do técnico.
+  if(tecnicoId!==null && tecnicoId!==undefined && String(tecnicoId).trim()!=='') headers['x-tecnico-id']=String(tecnicoId);
+  const r=await apiFetch('/api/ordens_servico/historico?page=1&limit=1000&_='+Date.now(),{headers,cache:'no-store'});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(data.erro||data.mensagem||`Erro ${r.status}`);
+  const lista=extrairHistoricoResposta(data);
+  const admin=ehAdministrador(usuarioAtual);
+  historico=lista;
   const label=document.getElementById('labelTotalHistorico');if(label)label.textContent=admin?'Todas as OS':'Minhas OS';
   renderHistorico();
- }catch(err){
-  console.error(err);
-  el.innerHTML=`<div class="empty">Erro ao carregar histórico.<br><small>${String(err.message||err)}</small></div>`;
- }
+ }catch(err){console.error(err);el.innerHTML=`<div class="empty">Erro ao carregar histórico.<br><small>${String(err.message||'')}</small></div>`}
 }
-
 function dataHistoricoOS(os){return String(os.finalizado_em||os.finalizada_em||os.concluido_em||os.concluida_em||os.data_finalizacao||os.data_conclusao||os.atualizado_em||os.updated_at||os.criado_em||os.created_at||'').slice(0,10)}
 function renderHistorico(){
  const ini=document.getElementById('dataInicio').value; const fim=document.getElementById('dataFim').value; const busca=(document.getElementById('buscaHistorico').value||'').toLowerCase();
  let lista=historico.filter(os=>{
   const d=dataHistoricoOS(os); if(ini&&d&&d<ini)return false; if(fim&&d&&d>fim)return false;
-  const txt=`${os.nome||os.cliente||''} ${os.localidade_nome||os.localidade||''} ${os.rua||os.endereco||''} ${os.bairro||''} ${os.tipo_servico_nome||os.tipo_servico||''} ${os.status||''} ${os.tecnicos_nomes||os.tecnico||os.tecnico_nome||''}`.toLowerCase();
+  const txt=`${os.nome||os.cliente||''} ${os.localidade_nome||os.localidade||''} ${os.rua||os.endereco||''} ${os.bairro||''} ${os.tipo_servico_nome||os.tipo_servico||''} ${os.status||''} ${os.tecnicos_nomes||os.tecnico||''}`.toLowerCase();
   return !busca||txt.includes(busca);
  });
  lista.sort((a,b)=>dataHistoricoOS(b).localeCompare(dataHistoricoOS(a))||Number(b.id||0)-Number(a.id||0));
  document.getElementById('cardTotal').innerText=historico.length;document.getElementById('cardFiltro').innerText=lista.length;
  const el=document.getElementById('listaHistorico');
- if(!lista.length){el.innerHTML=`<div class="empty">${ehAdministrador(usuarioAtual)?'Nenhuma OS encontrada no período.':'Nenhuma OS finalizada encontrada para este técnico no período.'}</div>`;return}
- el.innerHTML=lista.map(os=>`<div class="list-card"><h3>OS #${os.id} <span class="pill green">${os.status||'Finalizada'}</span></h3><p><b>Cliente:</b> ${os.nome||os.cliente||'-'}</p><p><b>Localidade:</b> ${os.localidade_nome||os.localidade||'-'}</p><p><b>Serviço:</b> ${os.tipo_servico_nome||os.tipo_servico||'-'}</p><p><b>Endereço:</b> ${os.rua||os.endereco||'-'} ${os.bairro?'('+os.bairro+')':''}</p><p><b>Finalizado em:</b> ${formatarDataHora(os.finalizado_em||os.finalizada_em||os.concluido_em||os.concluida_em||os.data_finalizacao||os.data_conclusao||os.atualizado_em||os.updated_at)}</p><p><b>Técnico:</b> ${os.tecnicos_nomes||os.tecnico||os.tecnico_nome||os.finalizado_por_nome||os.concluido_por_nome||'-'}</p></div>`).join('');
+ if(!lista.length){el.innerHTML=`<div class="empty">${ehAdministrador(usuarioAtual)?'Nenhuma OS encontrada no período.':'Nenhuma OS atribuída a este técnico no período.'}</div>`;return}
+ el.innerHTML=lista.map(os=>`<div class="list-card"><h3>OS #${os.id} <span class="pill green">${os.status||'Finalizada'}</span></h3><p><b>Cliente:</b> ${os.nome||os.cliente||'-'}</p><p><b>Localidade:</b> ${os.localidade_nome||os.localidade||'-'}</p><p><b>Serviço:</b> ${os.tipo_servico_nome||os.tipo_servico||'-'}</p><p><b>Endereço:</b> ${os.rua||os.endereco||'-'} ${os.bairro?'('+os.bairro+')':''}</p><p><b>Finalizado em:</b> ${formatarDataHora(os.finalizado_em||os.finalizada_em||os.concluido_em||os.concluida_em||os.data_finalizacao||os.data_conclusao||os.atualizado_em||os.updated_at)}</p><p><b>Técnico:</b> ${os.tecnicos_nomes||os.tecnico||os.tecnico_nome||os.finalizado_por_nome||'-'}</p></div>`).join('');
 }
-
-document.addEventListener('DOMContentLoaded',async()=>{
- usuarioAtual=await prepararTopo('historico'); if(!usuarioAtual)return;
- aplicarPeriodo();
- carregarHistorico();
-});
+document.addEventListener('DOMContentLoaded',async()=>{usuarioAtual=await prepararTopo('historico');if(!usuarioAtual)return;aplicarPeriodo();carregarHistorico();});
 </script></body></html>
