@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"><title>SGOS Técnico - Histórico</title><link rel="icon" type="image/png" href="/img/favicon.png"><style>
+<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>SGOS Técnico - Histórico</title><link rel="icon" type="image/png" href="/img/favicon.png"><style>
 :root{
     --azul:#2563eb;--azul-dark:#081a31;--fundo:#f5f7fb;--card:#fff;--texto:#0f172a;--muted:#64748b;--borda:#e5e7eb;--verde:#16a34a;--laranja:#f59e0b;--vermelho:#ef4444;--whatsapp:#25D366;
 }
@@ -390,86 +390,6 @@ input[type="date"].input{display:block !important;min-width:0 !important;max-wid
 }
 </style>
 
-
-<style id="sgos-topbar-appmobile-final-20260811">
-/* ===== PADRÃO DO APPMOBILE: SEM ZOOM + TOPBAR STICKY ===== */
-html,body{
-    overscroll-behavior:none !important;
-    touch-action:manipulation !important;
-    -webkit-text-size-adjust:100% !important;
-}
-.mobile-shell{
-    overflow-x:clip !important;
-}
-.mobile-topbar-app{
-    min-height:94px !important;
-    height:auto !important;
-    background:rgba(255,255,255,.96) !important;
-    backdrop-filter:blur(18px) !important;
-    -webkit-backdrop-filter:blur(18px) !important;
-    border-bottom:1px solid rgba(226,232,240,.9) !important;
-    display:flex !important;
-    align-items:center !important;
-    gap:14px !important;
-    padding:calc(env(safe-area-inset-top) + 20px) 16px 14px !important;
-    position:sticky !important;
-    top:0 !important;
-    z-index:1000 !important;
-    box-shadow:0 8px 24px rgba(15,23,42,.05) !important;
-}
-.mobile-topbar-app .menu-btn{
-    width:46px !important;
-    height:46px !important;
-    border-radius:15px !important;
-    flex:0 0 46px !important;
-}
-.topbar-title{
-    min-width:0 !important;
-    flex:1 1 auto !important;
-}
-.topbar-title strong{
-    display:block !important;
-    color:#0f172a !important;
-    font-size:19px !important;
-    line-height:1.15 !important;
-    letter-spacing:-.2px !important;
-    font-weight:900 !important;
-    white-space:nowrap !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-}
-.topbar-title small{
-    display:block !important;
-    color:#64748b !important;
-    font-size:12px !important;
-    margin-top:4px !important;
-    white-space:nowrap !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-}
-.topbar-brand{
-    width:112px !important;
-    max-width:28vw !important;
-    max-height:52px !important;
-    height:auto !important;
-    object-fit:contain !important;
-    flex:0 0 auto !important;
-}
-@media(max-width:390px){
-    .mobile-topbar-app{
-        gap:10px !important;
-        padding-left:14px !important;
-        padding-right:14px !important;
-    }
-    .topbar-title strong{font-size:17px !important;}
-    .topbar-brand{width:94px !important;max-width:27vw !important;}
-}
-/* Evita zoom automático do iOS ao focar campos */
-@media(max-width:759px){
-    input,select,textarea{font-size:16px !important;}
-}
-</style>
-
 </head><body><script>
 function getApiBase(){
     const salvo = localStorage.getItem("api_base");
@@ -531,7 +451,7 @@ function resolverUrlArquivo(url){
 }
 
 function getUsuarioLocal(){try{return JSON.parse(localStorage.getItem("usuario")||"{}")}catch(e){return {}}}
-function getTecnicoId(user){return user.tecnico_id||user.tecnicoId||user.id_tecnico||user.idTecnico||user.id}
+function getTecnicoId(user){return user?.tecnico_id||user?.tecnicoId||user?.id_tecnico||user?.idTecnico||null}
 function getNomeTecnico(user){return (user.tecnico_nome||user.nome||user.usuario||"").toString().toLowerCase()}
 function abrirMenu(){document.getElementById("sideDrawer")?.classList.add("open");document.getElementById("drawerOverlay")?.classList.add("show")}
 function fecharMenu(){document.getElementById("sideDrawer")?.classList.remove("open");document.getElementById("drawerOverlay")?.classList.remove("show")}
@@ -587,7 +507,7 @@ function mobileLayout(title, subtitle, active){return `
         <button class="drawer-logout" onclick="logout()" type="button">Sair</button>
     </div>
 </aside>
-<div class="mobile-topbar-app"><button class="menu-btn" onclick="abrirMenu()" type="button" aria-label="Abrir menu"><span></span></button><div class="topbar-title"><strong>${title}</strong><small id="topEmpresa">${subtitle}</small></div><img id="topLogo" class="topbar-brand" src="" alt="Logo da empresa"></div>
+<header class="mobile-topbar"><button class="menu-btn" onclick="abrirMenu()" aria-label="Abrir menu"><span></span></button><img id="topLogo" class="top-logo"><div class="top-title"><strong>${title}</strong><small id="topEmpresa">${subtitle}</small></div><button class="top-user" title="Usuário">👤</button></header>
 `;}
 function formatarDataHora(v){if(!v)return"-";const d=new Date(v);return isNaN(d)?"-":d.toLocaleString("pt-BR")}
 function formatarData(v){if(!v)return"-";const d=new Date((String(v).split("T")[0]||v)+"T00:00:00");return isNaN(d)?"-":d.toLocaleDateString("pt-BR")}
@@ -599,7 +519,7 @@ let usuarioAtual=null, historico=[];
 function normalizarTextoAcesso(v){return String(v??"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
 function ehAdministrador(u){const acesso=normalizarTextoAcesso([u?.cargo,u?.perfil,u?.tipo,u?.nivel,u?.funcao,u?.role].filter(Boolean).join(" "));return /(^|\s)(admin|administrador|administradora|master|superadmin)(\s|$)/.test(acesso)||u?.is_admin===true||Number(u?.administrador)===1}
 function achatarTecnicos(valor,saida=[]){if(valor===null||valor===undefined||valor==="")return saida;if(Array.isArray(valor)){valor.forEach(x=>achatarTecnicos(x,saida));return saida}if(typeof valor==="object"){[valor.id,valor.tecnico_id,valor.id_tecnico,valor.nome,valor.usuario].forEach(x=>achatarTecnicos(x,saida));return saida}const txt=String(valor).trim();if(!txt)return saida;if((txt.startsWith("[")&&txt.endsWith("]"))||(txt.startsWith("{")&&txt.endsWith("}"))){try{return achatarTecnicos(JSON.parse(txt),saida)}catch(e){}}txt.split(/[,;|]/).map(x=>x.trim()).filter(Boolean).forEach(x=>saida.push(x));return saida}
-function pertenceAoTecnico(os,u){const tid=String(getTecnicoId(u)||"").trim();const nome=normalizarTextoAcesso(getNomeTecnico(u));const valores=[os.tecnico_id,os.id_tecnico,os.tecnicos_ids,os.tecnico_ids,os.tecnico,os.tecnicos,os.tecnicos_nomes];const tecnicos=valores.flatMap(x=>achatarTecnicos(x,[]));return tecnicos.some(item=>{const bruto=String(item).trim();const texto=normalizarTextoAcesso(bruto);if(tid&&/^\d+$/.test(bruto)&&bruto===tid)return true;return !!nome&&(texto===nome||texto.includes(nome)||nome.includes(texto))})}
+function pertenceAoTecnico(os,u){const tid=String(getTecnicoId(u)||"").trim();const nome=normalizarTextoAcesso(getNomeTecnico(u));const valores=[os.tecnico_id,os.id_tecnico,os.tecnicos_ids,os.tecnico_ids,os.tecnico,os.tecnicos,os.tecnicos_nomes,os.tecnico_nome,os.finalizado_por_nome,os.concluido_por_nome];const tecnicos=valores.flatMap(x=>achatarTecnicos(x,[]));return tecnicos.some(item=>{const bruto=String(item).trim();const texto=normalizarTextoAcesso(bruto);if(tid&&/^\d+$/.test(bruto)&&bruto===tid)return true;return !!nome&&(texto===nome||texto.includes(nome)||nome.includes(texto))})}
 function dataISOlocal(data){const d=new Date(data);const pad=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
 function aplicarPeriodo(){
  const periodo=document.getElementById('filtroPeriodo').value;
@@ -626,8 +546,9 @@ async function carregarHistorico(){
  const el=document.getElementById('listaHistorico'); el.innerHTML='<div class="empty">Carregando histórico...</div>';
  try{
   const tecnicoId=getTecnicoId(usuarioAtual);
-  const headers={'x-usuario-id':usuarioAtual.id,'x-usuario-cargo':usuarioAtual.cargo||''};
-  if(tecnicoId)headers['x-tecnico-id']=String(tecnicoId);
+  const headers={'x-usuario-id':String(usuarioAtual.id),'x-usuario-cargo':usuarioAtual.cargo||''};
+  // usuario.id e tecnico.id pertencem a tabelas diferentes. Só envia o ID real do técnico.
+  if(tecnicoId!==null && tecnicoId!==undefined && String(tecnicoId).trim()!=='') headers['x-tecnico-id']=String(tecnicoId);
   const r=await apiFetch('/api/ordens_servico/historico?page=1&limit=1000&_='+Date.now(),{headers,cache:'no-store'});
   const data=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(data.erro||data.mensagem||`Erro ${r.status}`);
