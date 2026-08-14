@@ -4570,7 +4570,7 @@ function abrirModalAnexo(url, osId, mimeHint="", tipoAnexo="principal"){
     const isVideo = mime.startsWith("video/") || /\.(mp4|mov|m4v|webm|avi|mpeg|mpg|3gp)$/.test(urlLimpa);
     const isPdf = mime === "application/pdf" || /\.pdf$/.test(urlLimpa);
     const osMidia = encontrarOS(`normal-${osId}`) || encontrarOS(osId);
-    const rotulo = tipoAnexo === "conclusao" ? "Anexo da conclusão" : tipoAnexo === "inicial" ? "Anexo do lançamento" : "Anexo";
+    const rotulo = tipoAnexo === "conclusao" ? "Anexo da conclusão" : tipoAnexo === "inicial" ? "Anexo de lançamento" : "Anexo";
 
     if(titulo) titulo.innerText = osId ? `📎 ${rotulo} • OS #${osId}` : `📎 ${rotulo}`;
 
@@ -7205,13 +7205,13 @@ abrirModal = async function(chave){
         btnAnexo.disabled = !caminhoPrincipal;
         btnAnexo.style.opacity = caminhoPrincipal ? "1" : ".45";
         btnAnexo.style.display = "block";
-        btnAnexo.textContent = finalizada ? "📎 Anexo do lançamento" : "📎 Ver Anexo";
+        btnAnexo.textContent = finalizada ? "📎 Anexo de lançamento" : "📎 Ver Anexo";
 
         if(btnAnexoConclusao){
             btnAnexoConclusao.style.display = finalizada ? "block" : "none";
             btnAnexoConclusao.disabled = !anexos.conclusao;
             btnAnexoConclusao.style.opacity = anexos.conclusao ? "1" : ".45";
-            btnAnexoConclusao.textContent = anexos.conclusao ? "📎 Anexo da conclusão" : "📎 Sem anexo de conclusão";
+            btnAnexoConclusao.textContent = anexos.conclusao ? "📎 Anexo de conclusão" : "📎 Sem anexo de conclusão";
         }
     }
 
@@ -7915,7 +7915,7 @@ async function verAnexoTipo(tipo="principal"){
     caminho = String(caminho).replace(/\\/g,"/").trim();
     const url = /^https?:\/\//i.test(caminho) ? caminho : apiUrl(caminho.startsWith("/") ? caminho : `/${caminho}`);
     const viewer=document.getElementById("anexoViewer"), modalAnexo=document.getElementById("modalAnexo"), titulo=document.getElementById("tituloAnexo");
-    const rotulo=tipoReal === "conclusao" ? "Anexo da conclusão" : tipoReal === "inicial" ? "Anexo do lançamento" : "Anexo";
+    const rotulo=tipoReal === "conclusao" ? "Anexo da conclusão" : tipoReal === "inicial" ? "Anexo de lançamento" : "Anexo";
     if(titulo) titulo.innerText=`📎 ${rotulo} • OS #${os.id}`;
     if(viewer) viewer.innerHTML=`<div class="anexo-msg">Carregando anexo...</div>`;
     if(modalAnexo) modalAnexo.style.display="flex";
