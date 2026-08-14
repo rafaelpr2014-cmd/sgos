@@ -4499,6 +4499,24 @@ function verAnexo(){
     abrirModalAnexo(url, os.id);
 }
 
+function coordenadaParaDMS(valor, eixo){
+    const numero = Number(String(valor ?? "").replace(",", "."));
+    if(!Number.isFinite(numero)) return "-";
+
+    const absoluto = Math.abs(numero);
+    const graus = Math.floor(absoluto);
+    const minutosFloat = (absoluto - graus) * 60;
+    const minutos = Math.floor(minutosFloat);
+    const segundos = (minutosFloat - minutos) * 60;
+
+    const tipo = String(eixo || "").toLowerCase();
+    const hemisferio = tipo === "lat"
+        ? (numero >= 0 ? "N" : "S")
+        : (numero >= 0 ? "E" : "W");
+
+    return `${graus}°${String(minutos).padStart(2,"0")}'${segundos.toFixed(2)}"${hemisferio}`;
+}
+
 function abrirModalAnexo(url, osId, mimeHint=""){
     const modalAnexo = document.getElementById("modalAnexo");
     const viewer = document.getElementById("anexoViewer");
