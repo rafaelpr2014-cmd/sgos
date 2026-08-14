@@ -4547,7 +4547,7 @@ function abrirModalAnexo(url, osId, mimeHint=""){
         const carimboVideo = coordsMidia ? `
             <div style="position:absolute;left:12px;right:12px;bottom:54px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.68);color:#fff;font:700 12px/1.35 Arial;pointer-events:none;text-align:left;">
                 <div>SGOS${osId ? ` • OS #${valorSeguro(osId)}` : ""}${dataMidia ? ` • ${valorSeguro(format(dataMidia))}` : ""}</div>
-                <div>${valorSeguro(coordenadaParaDMS(coordsMidia.latitude,"lat"))} ${valorSeguro(coordenadaParaDMS(coordsMidia.longitude,"lng"))}</div>
+                <div>Lat: ${Number(coordsMidia.latitude).toFixed(6)} &nbsp; Long: ${Number(coordsMidia.longitude).toFixed(6)}</div>
                 <div id="enderecoMapaVideo-${valorSeguro(osId || "midia")}">Consultando endereço pelas coordenadas...</div>
             </div>` : "";
         viewer.innerHTML = `
@@ -4562,9 +4562,13 @@ function abrirModalAnexo(url, osId, mimeHint=""){
             obterEnderecoMapa(coordsMidia.latitude, coordsMidia.longitude).then(infoMapa => {
                 const alvo = document.getElementById(`enderecoMapaVideo-${osId || "midia"}`);
                 if(alvo){
-                    alvo.textContent = infoMapa?.endereco
-                        ? [infoMapa.endereco, infoMapa.localLinha].filter(Boolean).join(" • ")
-                        : "Endereço do mapa indisponível";
+                    const enderecoPrincipal = String(infoMapa?.endereco || "").trim();
+                    const linhaLocal = String(infoMapa?.localLinha || "").trim();
+                    const enderecoCompleto = String(infoMapa?.enderecoCompleto || "").trim();
+
+                    alvo.textContent = enderecoPrincipal
+                        ? [enderecoPrincipal, linhaLocal].filter(Boolean).join(" • ")
+                        : (enderecoCompleto || "Endereço do mapa indisponível");
                 }
             }).catch(()=>{});
         }
@@ -6630,7 +6634,7 @@ async function obterEnderecoMapa(latitude, longitude){
             estado:String(uf || "").trim(),
             cep:String(cep || "").trim(),
             pais:String(pais || "").trim(),
-            localLinha,
+            localLinha:linhaLocal,
             enderecoCompleto:String(completo || "").trim(),
             fonte,
             google:Boolean(google)
