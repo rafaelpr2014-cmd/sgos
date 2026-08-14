@@ -3014,7 +3014,8 @@ body{
             </div>
         </div>
 
-        <button id="btnVerAnexo" type="button" class="btn-loc" onclick="verAnexo()">📎 Ver Anexo</button>
+        <button id="btnVerAnexo" type="button" class="btn-loc" onclick="verAnexoTipo('principal')">📎 Ver Anexo</button>
+        <button id="btnVerAnexoConclusao" type="button" class="btn-loc" onclick="verAnexoTipo('conclusao')" style="display:none">📎 Anexo da conclusão</button>
         <button id="btnAusente" type="button" class="btn-ausente" onclick="enviarAcao('ausente', this)">Cliente Ausente</button>
         <button id="btnInviabilidade" type="button" class="btn-inv" onclick="enviarAcao('inviabilidade', this)">Inviabilidade</button>
         <button id="btnReagendar" type="button" class="btn-reagendar" onclick="abrirReagendamento()">📅 Reagendar</button>
@@ -4517,65 +4518,84 @@ function coordenadaParaDMS(valor, eixo){
     return `${graus}°${String(minutos).padStart(2,"0")}'${segundos.toFixed(2)}"${hemisferio}`;
 }
 
-function abrirModalAnexo(url, osId, mimeHint=""){
+function montarCarimboVisualAnexo(osMidia, osId, tipoAnexo="principal", posicaoVideo=false){
+    const coords = obterCoordenadasAnexoOS(osMidia, tipoAnexo);
+    if(!coords) return {html:"", id:"", coords:null};
+
+    const sufixo = `${String(osId || "midia").replace(/[^a-zA-Z0-9_-]/g,"-")}-${tipoAnexo}`;
+    const id = `enderecoMapaAnexo-${sufixo}`;
+    const dataMidia = tipoAnexo === "conclusao"
+        ? (osMidia?.finalizado_em || osMidia?.checkin_fim_em || osMidia?.atualizado_em || "")
+        : (osMidia?.criado_em || osMidia?.iniciado_em || osMidia?.checkin_inicio_em || osMidia?.atualizado_em || "");
+    const bottom = posicaoVideo ? "54px" : "12px";
+
+    return {
+        id,
+        coords,
+        html:`<div style="position:absolute;left:12px;right:12px;bottom:${bottom};padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.76);color:#fff;font:700 12px/1.38 Arial;pointer-events:none;text-align:left;z-index:4;box-shadow:0 4px 14px rgba(0,0,0,.28);">
+            <div>SGOS${osId ? ` • OS #${valorSeguro(osId)}` : ""}${dataMidia ? ` • ${valorSeguro(format(dataMidia))}` : ""}</div>
+            <div>Lat: ${Number(coords.latitude).toFixed(6)} &nbsp; Long: ${Number(coords.longitude).toFixed(6)}</div>
+            <div id="${id}">Consultando endereço pelas coordenadas...</div>
+        </div>`
+    };
+}
+
+function preencherEnderecoCarimboAnexo(carimbo){
+    if(!carimbo?.coords || !carimbo?.id) return;
+    obterEnderecoMapa(carimbo.coords.latitude,carimbo.coords.longitude).then(infoMapa=>{
+        const alvo=document.getElementById(carimbo.id);
+        if(!alvo) return;
+        const principal=String(infoMapa?.endereco || "").trim();
+        const local=String(infoMapa?.localLinha || "").trim();
+        const completo=String(infoMapa?.enderecoCompleto || "").trim();
+        alvo.textContent = principal
+            ? [principal,local].filter(Boolean).join(" • ")
+            : (completo || "Endereço do mapa indisponível");
+    }).catch(()=>{
+        const alvo=document.getElementById(carimbo.id);
+        if(alvo) alvo.textContent="Endereço do mapa indisponível";
+    });
+}
+
+function abrirModalAnexo(url, osId, mimeHint="", tipoAnexo="principal"){
     const modalAnexo = document.getElementById("modalAnexo");
     const viewer = document.getElementById("anexoViewer");
     const titulo = document.getElementById("tituloAnexo");
 
-    if(!modalAnexo || !viewer){
-        abrirUrlExterna(url);
-        return;
-    }
+    if(!modalAnexo || !viewer){ abrirUrlExterna(url); return; }
 
     const urlLimpa = String(url || "").split("?")[0].toLowerCase();
     const mime = String(mimeHint || "").toLowerCase();
     const isImagem = mime.startsWith("image/") || /\.(jpg|jpeg|png|gif|webp|bmp|svg|heic|heif)$/.test(urlLimpa);
     const isVideo = mime.startsWith("video/") || /\.(mp4|mov|m4v|webm|avi|mpeg|mpg|3gp)$/.test(urlLimpa);
     const isPdf = mime === "application/pdf" || /\.pdf$/.test(urlLimpa);
+    const osMidia = encontrarOS(`normal-${osId}`) || encontrarOS(osId);
+    const rotulo = tipoAnexo === "conclusao" ? "Anexo da conclusão" : tipoAnexo === "inicial" ? "Anexo do lançamento" : "Anexo";
 
-    if(titulo){
-        titulo.innerText = osId ? `📎 Anexo da OS #${osId}` : "📎 Visualizar Anexo";
-    }
+    if(titulo) titulo.innerText = osId ? `📎 ${rotulo} • OS #${osId}` : `📎 ${rotulo}`;
 
     if(isImagem){
-        viewer.innerHTML = `<img src="${url}" alt="Anexo da OS" onerror="this.outerHTML='<div class=&quot;anexo-msg&quot;>Não foi possível carregar este anexo.</div>'">`;
+        const carimbo=montarCarimboVisualAnexo(osMidia,osId,tipoAnexo,false);
+        viewer.innerHTML=`<div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000;overflow:hidden;">
+            <img src="${url}" alt="Anexo da OS" style="max-width:100%;max-height:100%;object-fit:contain" onerror="this.outerHTML='<div class=&quot;anexo-msg&quot;>Não foi possível carregar este anexo.</div>'">
+            ${carimbo.html}
+        </div>`;
+        preencherEnderecoCarimboAnexo(carimbo);
     }else if(isVideo){
-        const osMidia = encontrarOS(`normal-${osId}`) || encontrarOS(osId);
-        const coordsMidia = obterCoordenadasOS(osMidia);
-        const enderecoMidia = "";
-        const dataMidia = osMidia?.finalizado_em || osMidia?.atualizado_em || osMidia?.checkin_inicio_em || "";
-        const carimboVideo = coordsMidia ? `
-            <div style="position:absolute;left:12px;right:12px;bottom:54px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.68);color:#fff;font:700 12px/1.35 Arial;pointer-events:none;text-align:left;">
-                <div>SGOS${osId ? ` • OS #${valorSeguro(osId)}` : ""}${dataMidia ? ` • ${valorSeguro(format(dataMidia))}` : ""}</div>
-                <div>Lat: ${Number(coordsMidia.latitude).toFixed(6)} &nbsp; Long: ${Number(coordsMidia.longitude).toFixed(6)}</div>
-                <div id="enderecoMapaVideo-${valorSeguro(osId || "midia")}">Consultando endereço pelas coordenadas...</div>
-            </div>` : "";
-        viewer.innerHTML = `
-            <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000;">
-                <video controls playsinline preload="metadata" style="width:100%;height:100%;background:#000;object-fit:contain">
-                    <source src="${url}">
-                    Seu dispositivo não conseguiu reproduzir este vídeo.
-                </video>
-                ${carimboVideo}
-            </div>`;
-        if(coordsMidia){
-            obterEnderecoMapa(coordsMidia.latitude, coordsMidia.longitude).then(infoMapa => {
-                const alvo = document.getElementById(`enderecoMapaVideo-${osId || "midia"}`);
-                if(alvo){
-                    const enderecoPrincipal = String(infoMapa?.endereco || "").trim();
-                    const linhaLocal = String(infoMapa?.localLinha || "").trim();
-                    const enderecoCompleto = String(infoMapa?.enderecoCompleto || "").trim();
-
-                    alvo.textContent = enderecoPrincipal
-                        ? [enderecoPrincipal, linhaLocal].filter(Boolean).join(" • ")
-                        : (enderecoCompleto || "Endereço do mapa indisponível");
-                }
-            }).catch(()=>{});
-        }
-    }else if(isPdf){
-        viewer.innerHTML = `<iframe src="${url}" title="Anexo PDF da OS"></iframe>`;
+        const carimbo=montarCarimboVisualAnexo(osMidia,osId,tipoAnexo,true);
+        viewer.innerHTML=`<div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000;">
+            <video controls playsinline preload="metadata" style="width:100%;height:100%;background:#000;object-fit:contain"><source src="${url}">Seu dispositivo não conseguiu reproduzir este vídeo.</video>
+            ${carimbo.html}
+        </div>`;
+        preencherEnderecoCarimboAnexo(carimbo);
     }else{
-        viewer.innerHTML = `<iframe src="${url}" title="Anexo da OS"></iframe>`;
+        // PDF e demais anexos também exibem o GPS/endereço, sem alterar o arquivo original.
+        const carimbo=montarCarimboVisualAnexo(osMidia,osId,tipoAnexo,false);
+        viewer.innerHTML=`<div style="position:relative;width:100%;height:100%;background:#fff;">
+            <iframe src="${url}" title="${isPdf ? "Anexo PDF" : "Anexo"} da OS" style="width:100%;height:100%;border:0;background:#fff"></iframe>
+            ${carimbo.html}
+        </div>`;
+        preencherEnderecoCarimboAnexo(carimbo);
     }
 
     modalAnexo.style.display = "flex";
@@ -5421,26 +5441,82 @@ function statusRotulo(status){
     if(s === "concluido") return "Finalizada";
     return "Em andamento";
 }
-function obterAnexoOS(os){
-    if(!os) return "";
+function caminhoAnexoValido(valor){
+    if(!valor) return "";
+    if(typeof valor === "object"){
+        return valor.url || valor.path || valor.caminho || valor.arquivo || valor.filename || "";
+    }
+    const texto = String(valor || "").trim();
+    return texto && texto !== "[object Object]" ? texto : "";
+}
 
+function primeiroAnexoOS(os, campos=[]){
+    for(const campo of campos){
+        const valor = caminhoAnexoValido(os?.[campo]);
+        if(valor) return valor;
+    }
+    return "";
+}
+
+function obterAnexosOS(os){
+    if(!os) return {inicial:"", conclusao:"", ausente:""};
+
+    const inicial = primeiroAnexoOS(os,[
+        "anexo_inicial","anexo_inicial_path","anexo_lancado","anexo_lancado_path",
+        "anexo_abertura","anexo_abertura_path","anexo_path","anexo","arquivo_inicial",
+        "foto_inicial","foto_path_inicial"
+    ]);
+
+    let conclusao = primeiroAnexoOS(os,[
+        "anexo_finalizado","anexo_finalizado_path","anexo_conclusao","anexo_conclusao_path",
+        "anexo_final","anexo_final_path","foto_finalizado","foto_finalizado_path",
+        "foto_conclusao","foto_conclusao_path","arquivo_finalizado","arquivo_conclusao"
+    ]);
+
+    const ausente = primeiroAnexoOS(os,[
+        "anexo_ausente","anexo_ausente_path","foto_ausente","foto_ausente_path","arquivo_ausente"
+    ]);
+
+    // Compatibilidade com APIs antigas que retornam o upload mais recente em foto/foto_path.
+    const fotoGenerica = primeiroAnexoOS(os,["foto","foto_path","arquivo"]);
+    if(normalizarStatusApp(os.status) === "concluido" && !conclusao && fotoGenerica && fotoGenerica !== inicial){
+        conclusao = fotoGenerica;
+    }
+
+    return {inicial, conclusao, ausente};
+}
+
+function obterAnexoOS(os, tipo="principal"){
+    if(!os) return "";
+    const anexos = obterAnexosOS(os);
     const status = normalizarStatusApp(os.status);
 
-    // Cada status exibe exclusivamente o anexo correspondente.
-    if(status === "cliente_ausente"){
-        return os.anexo_ausente || os.anexo_ausente_path ||
-               os.anexo_path || os.anexo || os.foto || os.foto_path || os.arquivo || "";
-    }
+    if(tipo === "inicial") return anexos.inicial;
+    if(tipo === "conclusao") return anexos.conclusao;
+    if(tipo === "ausente") return anexos.ausente;
 
-    if(status === "concluido"){
-        return os.anexo_finalizado || os.anexo_finalizado_path ||
-               os.anexo_conclusao || os.anexo_conclusao_path ||
-               os.anexo_path || os.anexo || os.foto || os.foto_path || os.arquivo || "";
-    }
+    if(status === "cliente_ausente") return anexos.ausente || anexos.inicial;
+    if(status === "concluido") return anexos.conclusao || anexos.inicial;
+    return anexos.inicial || primeiroAnexoOS(os,["foto","foto_path","comprovante","comprovante_path","arquivo"]);
+}
 
-    // OS aberta/em andamento: anexo inicial do cadastro.
-    return os.anexo_path || os.anexo || os.foto || os.foto_path ||
-           os.comprovante || os.comprovante_path || os.arquivo || "";
+function obterCoordenadasAnexoOS(os, tipo="principal"){
+    if(!os) return null;
+    const candidatos = tipo === "conclusao" ? [
+        [os.checkin_fim_latitude, os.checkin_fim_longitude],
+        [os.finalizacao_latitude, os.finalizacao_longitude],
+        [os.latitude_tecnico, os.longitude_tecnico]
+    ] : tipo === "inicial" ? [
+        [os.checkin_inicio_latitude, os.checkin_inicio_longitude],
+        [os.checkin_latitude, os.checkin_longitude]
+    ] : [];
+
+    for(const [lat,lng] of candidatos){
+        const latitude=Number(String(lat ?? "").replace(",","."));
+        const longitude=Number(String(lng ?? "").replace(",","."));
+        if(Number.isFinite(latitude) && Number.isFinite(longitude)) return {latitude,longitude};
+    }
+    return obterCoordenadasOS(os);
 }
 
 function detalheStatusOS(os){
@@ -7096,6 +7172,7 @@ abrirModal = async function(chave){
     }
 
     const btnAnexo = document.getElementById("btnVerAnexo");
+    const btnAnexoConclusao = document.getElementById("btnVerAnexoConclusao");
     const btnEscolherAnexo = document.getElementById("btnEscolherAnexo");
     const btnVerLoc = document.getElementById("btnVerLocalizacao");
     const btnReagendar = document.getElementById("btnReagendar");
@@ -7122,10 +7199,20 @@ abrirModal = async function(chave){
     }
 
     if(btnAnexo){
-        const temAnexo = !!obterAnexoOS(os);
-        btnAnexo.disabled = !temAnexo;
-        btnAnexo.style.opacity = temAnexo ? "1" : ".45";
+        const anexos = obterAnexosOS(os);
+        const finalizada = normalizarStatusApp(os.status) === "concluido";
+        const caminhoPrincipal = finalizada ? anexos.inicial : obterAnexoOS(os);
+        btnAnexo.disabled = !caminhoPrincipal;
+        btnAnexo.style.opacity = caminhoPrincipal ? "1" : ".45";
         btnAnexo.style.display = "block";
+        btnAnexo.textContent = finalizada ? "📎 Anexo do lançamento" : "📎 Ver Anexo";
+
+        if(btnAnexoConclusao){
+            btnAnexoConclusao.style.display = finalizada ? "block" : "none";
+            btnAnexoConclusao.disabled = !anexos.conclusao;
+            btnAnexoConclusao.style.opacity = anexos.conclusao ? "1" : ".45";
+            btnAnexoConclusao.textContent = anexos.conclusao ? "📎 Anexo da conclusão" : "📎 Sem anexo de conclusão";
+        }
     }
 
     if(btnVerLoc){
@@ -7815,75 +7902,46 @@ async function abrirUrlExterna(url){
     const nova = window.open(url,"_blank","noopener,noreferrer");
     if(!nova) window.location.href = url;
 }
-async function verAnexo(){
+async function verAnexoTipo(tipo="principal"){
     const os = encontrarOS(osSelecionada);
-    let caminho = obterAnexoOS(os);
+    const status = normalizarStatusApp(os?.status);
+    const tipoReal = tipo === "principal" && status === "concluido" ? "inicial" : tipo;
+    let caminho = obterAnexoOS(os,tipoReal);
 
-    if(!os || !caminho){
-        alert("Nenhum anexo encontrado");
-        return;
-    }
+    if(!os || !caminho){ alert(tipoReal === "conclusao" ? "Nenhum anexo de conclusão encontrado" : "Nenhum anexo encontrado"); return; }
+    caminho = caminhoAnexoValido(caminho);
+    if(!caminho){ alert("O anexo existe, mas o caminho do arquivo não foi informado pela API."); return; }
 
-    // Compatibilidade com APIs que devolvem o anexo como objeto/JSON.
-    if(typeof caminho === "object" && caminho){
-        caminho = caminho.url || caminho.path || caminho.caminho || caminho.arquivo || caminho.filename || "";
-    }
-    caminho = String(caminho || "").trim();
-    if(!caminho || caminho === "[object Object]"){
-        alert("O anexo existe, mas o caminho do arquivo não foi informado pela API.");
-        return;
-    }
-
-    // Corrige caminhos gravados no Windows e garante uma URL válida do tenant atual.
-    caminho = caminho.replace(/\\/g, "/");
+    caminho = String(caminho).replace(/\\/g,"/").trim();
     const url = /^https?:\/\//i.test(caminho) ? caminho : apiUrl(caminho.startsWith("/") ? caminho : `/${caminho}`);
-
-    const viewer = document.getElementById("anexoViewer");
-    const modalAnexo = document.getElementById("modalAnexo");
-    const titulo = document.getElementById("tituloAnexo");
-    if(titulo) titulo.innerText = `📎 Anexo da OS #${os.id}`;
-    if(viewer) viewer.innerHTML = `<div class="anexo-msg">Carregando anexo...</div>`;
-    if(modalAnexo) modalAnexo.style.display = "flex";
+    const viewer=document.getElementById("anexoViewer"), modalAnexo=document.getElementById("modalAnexo"), titulo=document.getElementById("tituloAnexo");
+    const rotulo=tipoReal === "conclusao" ? "Anexo da conclusão" : tipoReal === "inicial" ? "Anexo do lançamento" : "Anexo";
+    if(titulo) titulo.innerText=`📎 ${rotulo} • OS #${os.id}`;
+    if(viewer) viewer.innerHTML=`<div class="anexo-msg">Carregando anexo...</div>`;
+    if(modalAnexo) modalAnexo.style.display="flex";
 
     try{
-        // Não usa <img src="URL"> diretamente: anexos protegidos precisam dos
-        // mesmos cabeçalhos de autenticação usados pelo app.
-        const resposta = await apiFetch(url,{
-            method:"GET",
-            headers:{"Accept":"*/*"},
-            cache:"no-store"
-        });
-
-        if(!resposta.ok){
-            throw new Error(`Não foi possível carregar o anexo (HTTP ${resposta.status}).`);
-        }
-
-        const blob = await resposta.blob();
-        if(!blob || !blob.size){
-            throw new Error("O servidor retornou o anexo vazio.");
-        }
-
+        const resposta=await apiFetch(url,{method:"GET",headers:{"Accept":"*/*"},cache:"no-store"});
+        if(!resposta.ok) throw new Error(`Não foi possível carregar o anexo (HTTP ${resposta.status}).`);
+        const blob=await resposta.blob();
+        if(!blob || !blob.size) throw new Error("O servidor retornou o anexo vazio.");
         limparObjectUrlAnexo();
-        anexoObjectUrlAtual = URL.createObjectURL(blob);
-
-        let mime = String(blob.type || resposta.headers.get("content-type") || "").split(";")[0].trim();
+        anexoObjectUrlAtual=URL.createObjectURL(blob);
+        let mime=String(blob.type || resposta.headers.get("content-type") || "").split(";")[0].trim();
         if(!mime || mime === "application/octet-stream"){
-            const limpa = caminho.split("?")[0].toLowerCase();
-            if(/\.(jpg|jpeg|png|gif|webp|bmp|svg|heic|heif)$/.test(limpa)) mime = "image/*";
-            else if(/\.(mp4|mov|m4v|webm|avi|mpeg|mpg|3gp)$/.test(limpa)) mime = "video/*";
-            else if(/\.pdf$/.test(limpa)) mime = "application/pdf";
+            const limpa=caminho.split("?")[0].toLowerCase();
+            if(/\.(jpg|jpeg|png|gif|webp|bmp|svg|heic|heif)$/.test(limpa)) mime="image/*";
+            else if(/\.(mp4|mov|m4v|webm|avi|mpeg|mpg|3gp)$/.test(limpa)) mime="video/*";
+            else if(/\.pdf$/.test(limpa)) mime="application/pdf";
         }
-
-        abrirModalAnexo(anexoObjectUrlAtual, os.id, mime);
+        abrirModalAnexo(anexoObjectUrlAtual,os.id,mime,tipoReal);
     }catch(err){
-        console.error("Erro ao exibir anexo da OS:", err, {caminho, url});
-        if(viewer){
-            viewer.innerHTML = `<div class="anexo-msg">${escapeHTML(err?.message || "Não foi possível carregar este anexo.")}</div>`;
-        }else{
-            alert(err?.message || "Não foi possível carregar este anexo.");
-        }
+        console.error("Erro ao exibir anexo da OS:",err,{caminho,url,tipo:tipoReal});
+        if(viewer) viewer.innerHTML=`<div class="anexo-msg">${escapeHTML(err?.message || "Não foi possível carregar este anexo.")}</div>`;
+        else alert(err?.message || "Não foi possível carregar este anexo.");
     }
 }
+async function verAnexo(){ return verAnexoTipo("principal"); }
 async function obterPosicaoAtual(){
     const plataforma = getPlataformaApp();
 
