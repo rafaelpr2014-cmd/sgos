@@ -276,7 +276,13 @@ router.patch("/:id/status", async (req, res) => {
             return res.status(400).json({ erro: "ID inválido" });
         }
 
-        const novoStatus = normalizarStatus(req.body.status);
+        const statusRecebido = String(req.body?.status || "").trim();
+        const statusNormalizado = statusRecebido.toLowerCase();
+        let novoStatus;
+        if (statusNormalizado === "pendente") novoStatus = "Pendente";
+        else if (["realizado", "realizada", "concluido", "concluído", "finalizado", "finalizada"].includes(statusNormalizado)) novoStatus = "Realizado";
+        else return res.status(400).json({ erro: "Status inválido. Use Pendente ou Realizado." });
+
         const [result] = await pool.query(`
             UPDATE servicos_pendentes
             SET status=?, atualizado_por=?, atualizado_em=CURRENT_TIMESTAMP
