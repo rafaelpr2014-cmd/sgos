@@ -676,7 +676,7 @@ function abrirMidiaCampo(valor,titulo){const u=escapar(resolverUrlArquivo(valor)
 function fecharMidia(){modalMidia.classList.remove("show");conteudoMidia.innerHTML=""} function fecharResumo(){modalResumo.classList.remove("show")} function fecharModalServico(){modalServico.classList.remove("show")} function fecharComprovacao(){modalComprovacao.classList.remove("show");limparComprovacao()} function fecharModalFundo(e,id){if(e.target.id===id){if(id==="modalResumo")fecharResumo();else if(id==="modalServico")fecharModalServico();else if(id==="modalComprovacao")fecharComprovacao();else fecharMidia()}}
 function abrirMapa(id){const i=servicosTodos.find(x=>Number(x.id)===Number(id));if(!i||!possuiLocalizacao(i))return;window.open(`https://www.google.com/maps?q=${encodeURIComponent(i.latitude)},${encodeURIComponent(i.longitude)}`,"_blank","noopener,noreferrer")}
 function abrirMapaComprovacao(id){const i=servicosTodos.find(x=>Number(x.id)===Number(id));if(!i||!possuiLocalizacaoComprovacao(i))return;window.open(`https://www.google.com/maps?q=${encodeURIComponent(i.comprovacao_latitude)},${encodeURIComponent(i.comprovacao_longitude)}`,"_blank","noopener,noreferrer")}
-function abrirModalEditar(id){const i=servicosTodos.find(x=>Number(x.id)===Number(id));if(!i)return;editId.value=i.id;comprovacaoServicoId.value=i.id;status.value=normalizarTexto(i.status)==="realizado"?"Realizado":"Pendente";modalTitulo.innerText="Alterar status";arquivoComprovacao=null;arquivoComprovacaoSelecionado.innerText=i.comprovacao_anexo?"Já existe uma comprovação anexada. Selecione outro arquivo para substituir/atualizar.":"Nenhum arquivo selecionado.";previewComprovacaoNovo.innerHTML="";comprovacaoLatitude.value=i.comprovacao_latitude??"";comprovacaoLongitude.value=i.comprovacao_longitude??"";atualizarLocalComprovacao();modalServico.classList.add("show")}
+function abrirModalEditar(id){const i=servicosTodos.find(x=>Number(x.id)===Number(id));if(!i)return;editId.value=i.id;comprovacaoServicoId.value=i.id;const jaRealizado=normalizarTexto(i.status)==="realizado";status.value=jaRealizado?"Realizado":"Pendente";status.disabled=jaRealizado;status.title=jaRealizado?"Serviço já realizado. O status não pode voltar para Pendente.":"";modalTitulo.innerText="Alterar status";arquivoComprovacao=null;arquivoComprovacaoSelecionado.innerText=i.comprovacao_anexo?"Já existe uma comprovação anexada. Selecione outro arquivo para substituir/atualizar.":"Nenhum arquivo selecionado.";previewComprovacaoNovo.innerHTML="";comprovacaoLatitude.value=i.comprovacao_latitude??"";comprovacaoLongitude.value=i.comprovacao_longitude??"";atualizarLocalComprovacao();modalServico.classList.add("show")}
 async function salvarStatusServico(){
   const id=Number(document.getElementById("editId").value);
   const i=servicosTodos.find(x=>Number(x.id)===id);
@@ -686,6 +686,11 @@ async function salvarStatusServico(){
   const statusSelecionado=String(selectStatus?.value||"").trim();
   if(!["Pendente","Realizado"].includes(statusSelecionado)){
     return alert("Selecione um status válido.");
+  }
+  if(normalizarTexto(i.status)==="realizado" && statusSelecionado!=="Realizado"){
+    selectStatus.value="Realizado";
+    selectStatus.disabled=true;
+    return alert("Este serviço já foi marcado como Realizado e não pode voltar para Pendente pelo aplicativo.");
   }
 
   const lat=normalizarCoordenada(document.getElementById("comprovacaoLatitude").value);
