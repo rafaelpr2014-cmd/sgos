@@ -21,7 +21,7 @@ async function post(config, endpoint, body = {}) {
             Accept: "application/json",
             "Content-Type": "application/json"
         },
-        timeout: 15000
+        timeout: 10000
     }).then(r => r.data);
 }
 
@@ -128,81 +128,29 @@ function chaveClienteSGP(c) {
 
 async function buscarClientesPorFiltros(config, filtros = {}) {
     const f = {
+        termo: String(filtros.termo || "").trim(),
         localidade: String(filtros.localidade || filtros.cidade || "").trim(),
         rua: String(filtros.rua || "").trim(),
         bairro: String(filtros.bairro || "").trim(),
         referencia: String(filtros.referencia || "").trim()
     };
 
-    if (!Object.values(f).some(Boolean)) {
-        return { clientes: [], total: 0, bruto: null, estrategia: "sem_filtro" };
+    // A API URA do SGP não disponibiliza listagem geral eficiente por endereço.
+    // Sem um termo principal, a antiga varredura por letras gerava muitas requisições e timeout.
+    if (!f.termo) {
+        const err = new Error("No SGP, informe nome, contrato, login ou telefone para a busca principal. Os filtros de endereço apenas refinam o resultado.");
+        err.status = 400;
+        throw err;
     }
 
-    const mapa = new Map();
-    let ultimoErro = null;
-    let requisicoes = 0;
-    let retornadosBrutos = 0;
-
-    const adicionar = (dados) => {
-        const lista = extrairClientesSGP(dados).map(normalizarClienteSGP);
-        retornadosBrutos += lista.length;
-        for (const cliente of lista) {
-            const chave = chaveClienteSGP(cliente);
-            if (chave) mapa.set(chave, cliente);
-        }
-    };
-
-    const consultarNome = async (nome) => {
-        requisicoes++;
-        try {
-            // IMPORTANTE: /api/ura/consultacliente exige pelo menos um filtro
-            // principal suportado (nome, contrato, login, cpf/cnpj, telefone...).
-            // Por isso usamos "nome" somente para obter um conjunto de clientes
-            // e fazemos o filtro de endereço LOCALMENTE no SGOS.
-            const dados = await post(config, "/api/ura/consultacliente/", {
-                nome,
-                servicos_dados: 1
-            });
-            adicionar(dados);
-        } catch (err) {
-            ultimoErro = err;
-        }
-    };
-
-    // 1ª passada: vogais. Em buscas parciais por nome normalmente já cobre
-    // praticamente toda a base com apenas 5 consultas.
-    await Promise.all(["a", "e", "i", "o", "u"].map(consultarNome));
-
-    let clientesFiltrados = [...mapa.values()].filter(c => clientePassaFiltrosEndereco(c, f));
-
-    // 2ª passada: se ainda não achou nada, amplia para o alfabeto completo.
-    // Isso evita 26 requisições em toda pesquisa quando as vogais já resolvem.
-    if (clientesFiltrados.length === 0) {
-        const jaConsultados = new Set(["a", "e", "i", "o", "u"]);
-        const restantes = "abcdefghijklmnopqrstuvwxyz"
-            .split("")
-            .filter(letra => !jaConsultados.has(letra));
-
-        const blocos = [];
-        for (let i = 0; i < restantes.length; i += 5) blocos.push(restantes.slice(i, i + 5));
-        for (const bloco of blocos) {
-            await Promise.all(bloco.map(consultarNome));
-            clientesFiltrados = [...mapa.values()].filter(c => clientePassaFiltrosEndereco(c, f));
-            if (clientesFiltrados.length) break;
-        }
-    }
-
-    if (mapa.size === 0 && ultimoErro) {
-        throw ultimoErro;
-    }
+    const resultado = await buscarClientes(config, f.termo);
+    const clientes = (resultado?.clientes || []).filter(c => clientePassaFiltrosEndereco(c, f));
 
     return {
-        clientes: clientesFiltrados,
-        total: clientesFiltrados.length,
-        estrategia: "varredura_nome_filtro_local",
-        candidatos_consultados: mapa.size,
-        retornados_brutos: retornadosBrutos,
-        requisicoes
+        clientes,
+        total: clientes.length,
+        estrategia: "busca_principal_com_filtro_local",
+        candidatos_consultados: Array.isArray(resultado?.clientes) ? resultado.clientes.length : 0
     };
 }
 
