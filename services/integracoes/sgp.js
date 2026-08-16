@@ -134,90 +134,75 @@ async function buscarClientesPorFiltros(config, filtros = {}) {
         referencia: String(filtros.referencia || "").trim()
     };
 
-    const temFiltro = Object.values(f).some(Boolean);
-    if (!temFiltro) {
-        return { clientes: [], total: 0, bruto: null };
+    if (!Object.values(f).some(Boolean)) {
+        return { clientes: [], total: 0, bruto: null, estrategia: "sem_filtro" };
     }
 
     const mapa = new Map();
-    let ultimoBruto = null;
     let ultimoErro = null;
+    let requisicoes = 0;
+    let retornadosBrutos = 0;
 
-    // Algumas instalações/versões do SGP aceitam filtros adicionais no endpoint URA.
-    // Tentamos os nomes mais comuns. Se não houver retorno, fazemos a consulta ampla
-    // e aplicamos o filtro de endereço no SGOS.
-    const tentativas = [];
+    const adicionar = (dados) => {
+        const lista = extrairClientesSGP(dados).map(normalizarClienteSGP);
+        retornadosBrutos += lista.length;
+        for (const cliente of lista) {
+            const chave = chaveClienteSGP(cliente);
+            if (chave) mapa.set(chave, cliente);
+        }
+    };
 
-    if (f.localidade) {
-        tentativas.push({ cidade: f.localidade });
-        tentativas.push({ endereco_cidade: f.localidade });
-    }
-    if (f.rua) {
-        tentativas.push({ logradouro: f.rua });
-        tentativas.push({ endereco_logradouro: f.rua });
-        tentativas.push({ rua: f.rua });
-    }
-    if (f.bairro) {
-        tentativas.push({ bairro: f.bairro });
-        tentativas.push({ endereco_bairro: f.bairro });
-    }
-    if (f.referencia) {
-        tentativas.push({ referencia: f.referencia });
-        tentativas.push({ endereco_pontoreferencia: f.referencia });
-        tentativas.push({ endereco_complemento: f.referencia });
-        tentativas.push({ complemento: f.referencia });
-    }
-
-    // Se houver mais de um filtro, também tenta o conjunto completo.
-    tentativas.unshift({
-        ...(f.localidade ? { cidade: f.localidade } : {}),
-        ...(f.rua ? { logradouro: f.rua } : {}),
-        ...(f.bairro ? { bairro: f.bairro } : {}),
-        ...(f.referencia ? { referencia: f.referencia } : {})
-    });
-
-    for (const filtro of tentativas) {
+    const consultarNome = async (nome) => {
+        requisicoes++;
         try {
-            const dados = await post(config, "/api/ura/consultacliente/", filtro);
-            ultimoBruto = dados;
-            const clientes = extrairClientesSGP(dados).map(normalizarClienteSGP);
-            for (const cliente of clientes) {
-                if (clientePassaFiltrosEndereco(cliente, f)) {
-                    mapa.set(chaveClienteSGP(cliente), cliente);
-                }
-            }
+            // IMPORTANTE: /api/ura/consultacliente exige pelo menos um filtro
+            // principal suportado (nome, contrato, login, cpf/cnpj, telefone...).
+            // Por isso usamos "nome" somente para obter um conjunto de clientes
+            // e fazemos o filtro de endereço LOCALMENTE no SGOS.
+            const dados = await post(config, "/api/ura/consultacliente/", {
+                nome,
+                servicos_dados: 1
+            });
+            adicionar(dados);
         } catch (err) {
             ultimoErro = err;
         }
-    }
+    };
 
-    // Fallback importante: o teste de conexão desta própria integração já consulta
-    // o endpoint com payload vazio. Em instalações que permitem essa consulta ampla,
-    // aproveitamos o retorno e filtramos localmente por cidade/rua/bairro/referência.
-    if (mapa.size === 0) {
-        try {
-            const dados = await post(config, "/api/ura/consultacliente/", {});
-            ultimoBruto = dados;
-            const clientes = extrairClientesSGP(dados).map(normalizarClienteSGP);
-            for (const cliente of clientes) {
-                if (clientePassaFiltrosEndereco(cliente, f)) {
-                    mapa.set(chaveClienteSGP(cliente), cliente);
-                }
-            }
-        } catch (err) {
-            ultimoErro = err;
+    // 1ª passada: vogais. Em buscas parciais por nome normalmente já cobre
+    // praticamente toda a base com apenas 5 consultas.
+    await Promise.all(["a", "e", "i", "o", "u"].map(consultarNome));
+
+    let clientesFiltrados = [...mapa.values()].filter(c => clientePassaFiltrosEndereco(c, f));
+
+    // 2ª passada: se ainda não achou nada, amplia para o alfabeto completo.
+    // Isso evita 26 requisições em toda pesquisa quando as vogais já resolvem.
+    if (clientesFiltrados.length === 0) {
+        const jaConsultados = new Set(["a", "e", "i", "o", "u"]);
+        const restantes = "abcdefghijklmnopqrstuvwxyz"
+            .split("")
+            .filter(letra => !jaConsultados.has(letra));
+
+        const blocos = [];
+        for (let i = 0; i < restantes.length; i += 5) blocos.push(restantes.slice(i, i + 5));
+        for (const bloco of blocos) {
+            await Promise.all(bloco.map(consultarNome));
+            clientesFiltrados = [...mapa.values()].filter(c => clientePassaFiltrosEndereco(c, f));
+            if (clientesFiltrados.length) break;
         }
     }
 
-    if (mapa.size === 0 && ultimoErro && !ultimoBruto) {
+    if (mapa.size === 0 && ultimoErro) {
         throw ultimoErro;
     }
 
-    const clientes = [...mapa.values()];
     return {
-        clientes,
-        total: clientes.length,
-        bruto: ultimoBruto
+        clientes: clientesFiltrados,
+        total: clientesFiltrados.length,
+        estrategia: "varredura_nome_filtro_local",
+        candidatos_consultados: mapa.size,
+        retornados_brutos: retornadosBrutos,
+        requisicoes
     };
 }
 

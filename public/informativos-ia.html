@@ -715,6 +715,13 @@ async function consultarERPPorEndereco(f){
     if(d.erp)document.getElementById("erpAtivoNome").innerText=`ERP ativo: ${String(d.erp).toUpperCase()}`;
     const lista=Array.isArray(d)?d:(d.clientes||d.resultados||d.data||[]);
     if(!Array.isArray(lista))throw new Error("A integração ERP respondeu em um formato inválido.");
+    // Mantém metadados de diagnóstico da busca SGP sem alterar a lista de clientes.
+    lista.__sgosMeta={
+        estrategia:d.estrategia||"",
+        candidatos_consultados:Number(d.candidatos_consultados||0),
+        retornados_brutos:Number(d.retornados_brutos||0),
+        requisicoes:Number(d.requisicoes||0)
+    };
     return lista;
 }
 
@@ -763,6 +770,10 @@ async function buscarClientesERP(){
 
         document.getElementById("erpTotal").innerText=`${clientesERPEncontrados.length} cliente(s)`;
         renderizarContatosERP();
+
+        if(!clientesERPEncontrados.length && lista?.__sgosMeta?.estrategia){
+            console.info("Diagnóstico busca ERP:",lista.__sgosMeta);
+        }
     }catch(e){
         console.error("Erro na consulta ERP:",e);
         document.getElementById("erpAtivoNome").innerText="ERP ativo: erro na consulta";
