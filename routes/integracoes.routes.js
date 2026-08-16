@@ -262,6 +262,70 @@ router.get("/:tipo_erp/clientes", async (req,res)=>{
     }catch(err){ console.error(err.response?.data || err.message); res.status(500).json({erro:"Erro ao buscar cliente no ERP.", detalhe:err.response?.data || err.message}); }
 });
 
+
+// Busca segmentada por endereço para a página de Informativos.
+// Usa implementação específica do provider quando disponível (ex.: SGP).
+router.get("/clientes-endereco", async (req,res)=>{
+    try{
+        const empresaId = getEmpresaId(req);
+        const filtros = {
+            localidade: String(req.query.localidade || req.query.cidade || "").trim(),
+            rua: String(req.query.rua || "").trim(),
+            bairro: String(req.query.bairro || "").trim(),
+            referencia: String(req.query.referencia || "").trim()
+        };
+
+        if(!Object.values(filtros).some(Boolean)){
+            return res.status(400).json({erro:"Informe ao menos um filtro de endereço."});
+        }
+
+        const config = await getAtiva(empresaId);
+        if(!config) return res.status(404).json({erro:"Nenhuma integração ERP habilitada."});
+
+        const provider = getProvider(config.tipo_erp);
+        let dados;
+
+        if(typeof provider.buscarClientesPorFiltros === "function"){
+            dados = await provider.buscarClientesPorFiltros(config, filtros);
+        }else{
+            // Compatibilidade com ERPs que ainda não possuem busca segmentada própria.
+            const termos = [...new Set(Object.values(filtros).filter(v => v.length >= 2))];
+            const mapa = new Map();
+            const normalizar = v => String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+            const contem = (valor,busca) => !busca || normalizar(valor).includes(normalizar(busca));
+
+            for(const termo of termos){
+                const parcial = await provider.buscarClientes(config, termo);
+                for(const c of (parcial?.clientes || [])){
+                    const chave = String(c.id || c.login || c.telefone || `${c.nome || ""}-${c.rua || ""}-${c.bairro || ""}`);
+                    mapa.set(chave,c);
+                }
+            }
+
+            const clientes = [...mapa.values()].filter(c =>
+                contem(c.cidade || c.localidade, filtros.localidade) &&
+                contem(c.rua || c.logradouro || c.endereco, filtros.rua) &&
+                contem(c.bairro, filtros.bairro) &&
+                contem(c.referencia || c.complemento, filtros.referencia)
+            );
+            dados = {clientes,total:clientes.length};
+        }
+
+        await pool.query(
+            `INSERT INTO integracoes_logs (empresa_id, integracao_id, tipo_erp, acao, endpoint, status, mensagem) VALUES (?, ?, ?, 'buscar_clientes_endereco', ?, 'sucesso', ?)`,
+            [empresaId, config.id, config.tipo_erp, provider.endpointClientes || "-", `Filtros: ${JSON.stringify(filtros)}`]
+        );
+
+        res.json({...dados, erp:config.tipo_erp, filtros});
+    }catch(err){
+        console.error("[INTEGRACOES][CLIENTES-ENDERECO]", err.response?.data || err.message);
+        res.status(err.status && err.status >= 400 && err.status < 600 ? err.status : 500).json({
+            erro:"Erro ao buscar clientes por endereço no ERP.",
+            detalhe:err.response?.data || err.message
+        });
+    }
+});
+
 router.get("/pesquisar", async (req,res)=>{
     try{
         const empresaId = getEmpresaId(req);

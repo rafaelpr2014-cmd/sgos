@@ -92,6 +92,135 @@ async function buscarClientePorId(config, id) {
     return resultado.clientes?.[0] || {};
 }
 
+
+// ===============================
+// BUSCAR CLIENTES POR ENDEREÇO
+// ===============================
+function textoFiltro(v) {
+    return String(v || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+}
+
+function clientePassaFiltrosEndereco(c, filtros = {}) {
+    const contem = (valor, busca) => !busca || textoFiltro(valor).includes(textoFiltro(busca));
+
+    return (
+        contem(c.cidade, filtros.localidade || filtros.cidade) &&
+        contem(c.rua || c.endereco, filtros.rua) &&
+        contem(c.bairro, filtros.bairro) &&
+        contem(c.referencia, filtros.referencia)
+    );
+}
+
+function chaveClienteSGP(c) {
+    return String(
+        c.id ||
+        c.contrato_id ||
+        c.cliente_id_erp ||
+        c.login ||
+        c.telefone ||
+        `${c.nome || ""}-${c.rua || ""}-${c.numero || ""}`
+    );
+}
+
+async function buscarClientesPorFiltros(config, filtros = {}) {
+    const f = {
+        localidade: String(filtros.localidade || filtros.cidade || "").trim(),
+        rua: String(filtros.rua || "").trim(),
+        bairro: String(filtros.bairro || "").trim(),
+        referencia: String(filtros.referencia || "").trim()
+    };
+
+    const temFiltro = Object.values(f).some(Boolean);
+    if (!temFiltro) {
+        return { clientes: [], total: 0, bruto: null };
+    }
+
+    const mapa = new Map();
+    let ultimoBruto = null;
+    let ultimoErro = null;
+
+    // Algumas instalações/versões do SGP aceitam filtros adicionais no endpoint URA.
+    // Tentamos os nomes mais comuns. Se não houver retorno, fazemos a consulta ampla
+    // e aplicamos o filtro de endereço no SGOS.
+    const tentativas = [];
+
+    if (f.localidade) {
+        tentativas.push({ cidade: f.localidade });
+        tentativas.push({ endereco_cidade: f.localidade });
+    }
+    if (f.rua) {
+        tentativas.push({ logradouro: f.rua });
+        tentativas.push({ endereco_logradouro: f.rua });
+        tentativas.push({ rua: f.rua });
+    }
+    if (f.bairro) {
+        tentativas.push({ bairro: f.bairro });
+        tentativas.push({ endereco_bairro: f.bairro });
+    }
+    if (f.referencia) {
+        tentativas.push({ referencia: f.referencia });
+        tentativas.push({ endereco_pontoreferencia: f.referencia });
+        tentativas.push({ endereco_complemento: f.referencia });
+        tentativas.push({ complemento: f.referencia });
+    }
+
+    // Se houver mais de um filtro, também tenta o conjunto completo.
+    tentativas.unshift({
+        ...(f.localidade ? { cidade: f.localidade } : {}),
+        ...(f.rua ? { logradouro: f.rua } : {}),
+        ...(f.bairro ? { bairro: f.bairro } : {}),
+        ...(f.referencia ? { referencia: f.referencia } : {})
+    });
+
+    for (const filtro of tentativas) {
+        try {
+            const dados = await post(config, "/api/ura/consultacliente/", filtro);
+            ultimoBruto = dados;
+            const clientes = extrairClientesSGP(dados).map(normalizarClienteSGP);
+            for (const cliente of clientes) {
+                if (clientePassaFiltrosEndereco(cliente, f)) {
+                    mapa.set(chaveClienteSGP(cliente), cliente);
+                }
+            }
+        } catch (err) {
+            ultimoErro = err;
+        }
+    }
+
+    // Fallback importante: o teste de conexão desta própria integração já consulta
+    // o endpoint com payload vazio. Em instalações que permitem essa consulta ampla,
+    // aproveitamos o retorno e filtramos localmente por cidade/rua/bairro/referência.
+    if (mapa.size === 0) {
+        try {
+            const dados = await post(config, "/api/ura/consultacliente/", {});
+            ultimoBruto = dados;
+            const clientes = extrairClientesSGP(dados).map(normalizarClienteSGP);
+            for (const cliente of clientes) {
+                if (clientePassaFiltrosEndereco(cliente, f)) {
+                    mapa.set(chaveClienteSGP(cliente), cliente);
+                }
+            }
+        } catch (err) {
+            ultimoErro = err;
+        }
+    }
+
+    if (mapa.size === 0 && ultimoErro && !ultimoBruto) {
+        throw ultimoErro;
+    }
+
+    const clientes = [...mapa.values()];
+    return {
+        clientes,
+        total: clientes.length,
+        bruto: ultimoBruto
+    };
+}
+
 // ===============================
 // EXTRAI CLIENTES DO RETORNO SGP
 // ===============================
@@ -328,5 +457,6 @@ module.exports = {
     endpointClientes: "/api/ura/consultacliente/",
     testarConexao,
     buscarClientes,
+    buscarClientesPorFiltros,
     buscarClientePorId
 };

@@ -703,33 +703,71 @@ async function consultarERPPorTermo(termo){
     if(!Array.isArray(lista))throw new Error("A integração ERP respondeu em um formato inválido.");
     return lista;
 }
+
+async function consultarERPPorEndereco(f){
+    const qs=new URLSearchParams();
+    if(f.localidade)qs.set("localidade",f.localidade);
+    if(f.rua)qs.set("rua",f.rua);
+    if(f.bairro)qs.set("bairro",f.bairro);
+    if(f.referencia)qs.set("referencia",f.referencia);
+
+    const d=await apiJson(`/api/integracoes/clientes-endereco?${qs.toString()}`);
+    if(d.erp)document.getElementById("erpAtivoNome").innerText=`ERP ativo: ${String(d.erp).toUpperCase()}`;
+    const lista=Array.isArray(d)?d:(d.clientes||d.resultados||d.data||[]);
+    if(!Array.isArray(lista))throw new Error("A integração ERP respondeu em um formato inválido.");
+    return lista;
+}
+
 async function buscarClientesERP(){
-    const f={localidade:esc(document.getElementById("filtroClienteLocalidade").value),rua:esc(document.getElementById("filtroClienteRua").value),bairro:esc(document.getElementById("filtroClienteBairro").value),referencia:esc(document.getElementById("filtroClienteReferencia").value)};
+    const f={
+        localidade:esc(document.getElementById("filtroClienteLocalidade").value),
+        rua:esc(document.getElementById("filtroClienteRua").value),
+        bairro:esc(document.getElementById("filtroClienteBairro").value),
+        referencia:esc(document.getElementById("filtroClienteReferencia").value)
+    };
     const termos=[f.localidade,f.rua,f.bairro,f.referencia].filter(x=>x.length>=2);
     if(!termos.length){alert("Informe pelo menos um filtro com dois ou mais caracteres.");return}
+
     const box=document.getElementById("listaContatos");
     box.innerHTML='<div class="contato-vazio">Consultando o ERP ativo...</div>';
     contatosSelecionados.clear();
     atualizarContadorContatos();
+
     try{
-        const respostas=await Promise.allSettled([...new Set(termos)].map(consultarERPPorTermo));
-        const sucessos=respostas.filter(r=>r.status==="fulfilled");
-        const falhas=respostas.filter(r=>r.status==="rejected");
-        if(!sucessos.length){
-            const motivo=falhas[0]?.reason;
-            throw motivo instanceof Error?motivo:new Error("Não foi possível consultar o ERP ativo.");
+        let lista=[];
+        try{
+            // Rota própria para cidade/rua/bairro/referência.
+            lista=await consultarERPPorEndereco(f);
+        }catch(e){
+            // Mantém compatibilidade caso o HTML seja publicado antes do backend novo.
+            if(e.status!==404)throw e;
+            console.warn("Rota /clientes-endereco ainda não disponível; usando busca genérica.",e);
+            const respostas=await Promise.allSettled([...new Set(termos)].map(consultarERPPorTermo));
+            const sucessos=respostas.filter(r=>r.status==="fulfilled");
+            if(!sucessos.length){
+                const motivo=respostas.find(r=>r.status==="rejected")?.reason;
+                throw motivo instanceof Error?motivo:new Error("Não foi possível consultar o ERP ativo.");
+            }
+            lista=sucessos.flatMap(r=>r.value||[]);
         }
+
         const mapa=new Map();
-        sucessos.forEach(r=>(r.value||[]).forEach(raw=>{const c=normalizarClienteERP(raw);mapa.set(clienteChave(c),c)}));
-        clientesERPEncontrados=[...mapa.values()].filter(c=>clientePassaFiltros(c,f)).filter(c=>telefoneLimpo(c.telefone).length>=10);
+        (lista||[]).forEach(raw=>{
+            const c=normalizarClienteERP(raw);
+            mapa.set(clienteChave(c),c);
+        });
+
+        clientesERPEncontrados=[...mapa.values()]
+            .filter(c=>clientePassaFiltros(c,f))
+            .filter(c=>telefoneLimpo(c.telefone).length>=10);
+
         document.getElementById("erpTotal").innerText=`${clientesERPEncontrados.length} cliente(s)`;
-        if(falhas.length)console.warn("Alguns termos da consulta ERP falharam:",falhas.map(x=>x.reason));
         renderizarContatosERP();
     }catch(e){
         console.error("Erro na consulta ERP:",e);
         document.getElementById("erpAtivoNome").innerText="ERP ativo: erro na consulta";
         document.getElementById("erpTotal").innerText="0 clientes";
-        box.innerHTML=`<div class="contato-vazio" style="color:#b91c1c;"><strong>Não foi possível consultar o ERP.</strong><br>${escapeHtml(e.message||"Verifique a integração e a rota /api/integracoes/pesquisar.")}</div>`;
+        box.innerHTML=`<div class="contato-vazio" style="color:#b91c1c;"><strong>Não foi possível consultar o ERP.</strong><br>${escapeHtml(e.message||"Verifique a integração e a rota /api/integracoes/clientes-endereco.")}</div>`;
     }
 }
 function renderizarContatosERP(){const box=document.getElementById("listaContatos");if(!clientesERPEncontrados.length){box.innerHTML='<div class="contato-vazio">Nenhum cliente com telefone foi encontrado para os filtros informados.</div>';return}box.innerHTML=clientesERPEncontrados.map(c=>{const key=clienteChave(c);return `<label class="contato-item"><input type="checkbox" onchange="alternarContatoERP('${encodeURIComponent(key)}',this)"><span class="contato-info"><strong>${escapeHtml(c.nome)}</strong><small>${escapeHtml([c.rua,c.numero,c.bairro,c.cidade].filter(Boolean).join(", "))}${c.referencia?`<br>Referência: ${escapeHtml(c.referencia)}`:""}</small></span><span class="contato-fone">${escapeHtml(c.telefone)}</span></label>`}).join("")}
