@@ -264,6 +264,43 @@ router.put("/:id", upload.single("anexo"), async (req, res) => {
 });
 
 // =====================================================
+// ALTERAÇÃO DE STATUS PELO APP
+// Atualiza somente o status, sem sobrescrever os demais dados do serviço.
+// =====================================================
+router.patch("/:id/status", async (req, res) => {
+    try {
+        await garantirSchema();
+        const usuario = await getUsuario(req);
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({ erro: "ID inválido" });
+        }
+
+        const novoStatus = normalizarStatus(req.body.status);
+        const [result] = await pool.query(`
+            UPDATE servicos_pendentes
+            SET status=?, atualizado_por=?, atualizado_em=CURRENT_TIMESTAMP
+            WHERE id=? AND empresa_id=?
+        `, [novoStatus, usuario.usuario || "Usuário", id, usuario.empresa_id]);
+
+        if (!result.affectedRows) {
+            return res.status(404).json({ erro: "Serviço não encontrado" });
+        }
+
+        const [atualizado] = await pool.query(`
+            SELECT id, status, atualizado_por,
+                   DATE_FORMAT(atualizado_em, '%Y-%m-%d %H:%i:%s') AS atualizado_em
+            FROM servicos_pendentes
+            WHERE id=? AND empresa_id=? LIMIT 1
+        `, [id, usuario.empresa_id]);
+
+        res.json({ sucesso: true, servico: atualizado[0] || { id, status: novoStatus } });
+    } catch (err) {
+        responderErro(res, err, "Erro ao alterar status do serviço");
+    }
+});
+
+// =====================================================
 // COMPROVAÇÃO DE EXECUÇÃO
 // Mantém anexo/localização originais do serviço separados.
 // Campo multipart: comprovacao
