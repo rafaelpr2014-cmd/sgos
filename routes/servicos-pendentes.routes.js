@@ -47,6 +47,11 @@ function garantirSchema() {
             "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS longitude DECIMAL(10,7) NULL AFTER latitude",
             "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS altitude DECIMAL(10,2) NULL AFTER longitude",
             "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS localizacao_atualizada_em DATETIME NULL AFTER altitude",
+            "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS comprovacao_anexo VARCHAR(500) NULL AFTER localizacao_atualizada_em",
+            "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS comprovacao_latitude DECIMAL(10,7) NULL AFTER comprovacao_anexo",
+            "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS comprovacao_longitude DECIMAL(10,7) NULL AFTER comprovacao_latitude",
+            "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS comprovacao_por VARCHAR(150) NULL AFTER comprovacao_longitude",
+            "ALTER TABLE servicos_pendentes ADD COLUMN IF NOT EXISTS comprovacao_em DATETIME NULL AFTER comprovacao_por",
             "ALTER TABLE servicos_pendentes MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'Pendente'"
         ];
         for (const sql of comandos) await pool.query(sql);
@@ -117,7 +122,9 @@ function parsearLinha(row) {
         tecnicos_nomes: parseArray(row.tecnicos_nomes),
         latitude: row.latitude === null ? null : Number(row.latitude),
         longitude: row.longitude === null ? null : Number(row.longitude),
-        altitude: row.altitude === null ? null : Number(row.altitude)
+        altitude: row.altitude === null ? null : Number(row.altitude),
+        comprovacao_latitude: row.comprovacao_latitude === null ? null : Number(row.comprovacao_latitude),
+        comprovacao_longitude: row.comprovacao_longitude === null ? null : Number(row.comprovacao_longitude)
     };
 }
 function removerArquivo(caminhoPublico) {
@@ -163,6 +170,8 @@ router.get("/", async (req, res) => {
                    nova_viabilidade,
                    tecnicos_ids, tecnicos_nomes, descricao, prioridade, enviado_por,
                    anexo, status, criado_por, atualizado_por, latitude, longitude, altitude,
+                   comprovacao_anexo, comprovacao_latitude, comprovacao_longitude, comprovacao_por,
+                   DATE_FORMAT(comprovacao_em, '%Y-%m-%d %H:%i:%s') AS comprovacao_em,
                    DATE_FORMAT(criado_em, '%Y-%m-%d %H:%i:%s') AS criado_em,
                    DATE_FORMAT(atualizado_em, '%Y-%m-%d %H:%i:%s') AS atualizado_em,
                    DATE_FORMAT(localizacao_atualizada_em, '%Y-%m-%d %H:%i:%s') AS localizacao_atualizada_em
@@ -254,6 +263,83 @@ router.put("/:id", upload.single("anexo"), async (req, res) => {
     }
 });
 
+// =====================================================
+// COMPROVAÇÃO DE EXECUÇÃO
+// Mantém anexo/localização originais do serviço separados.
+// Campo multipart: comprovacao
+// =====================================================
+router.post("/:id/comprovacao", upload.single("comprovacao"), async (req, res) => {
+    try {
+        await garantirSchema();
+        const usuario = await getUsuario(req);
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+            if (req.file) removerArquivo(`/uploads/servicos-pendentes/${req.file.filename}`);
+            return res.status(400).json({ erro: "ID inválido" });
+        }
+
+        const latitude = numeroOuNull(req.body.latitude, -90, 90);
+        const longitude = numeroOuNull(req.body.longitude, -180, 180);
+        if (latitude === null || longitude === null) {
+            if (req.file) removerArquivo(`/uploads/servicos-pendentes/${req.file.filename}`);
+            return res.status(400).json({ erro: "Latitude e longitude da comprovação são obrigatórias" });
+        }
+
+        const [existente] = await pool.query(
+            "SELECT comprovacao_anexo FROM servicos_pendentes WHERE id=? AND empresa_id=? LIMIT 1",
+            [id, usuario.empresa_id]
+        );
+        if (!existente.length) {
+            if (req.file) removerArquivo(`/uploads/servicos-pendentes/${req.file.filename}`);
+            return res.status(404).json({ erro: "Serviço não encontrado" });
+        }
+
+        const anexoAntigo = existente[0].comprovacao_anexo;
+        const caminhoComprovacao = req.file
+            ? `/uploads/servicos-pendentes/${req.file.filename}`
+            : anexoAntigo;
+
+        if (!caminhoComprovacao) {
+            return res.status(400).json({ erro: "Anexe uma foto ou vídeo de comprovação" });
+        }
+
+        const [result] = await pool.query(`
+            UPDATE servicos_pendentes
+            SET comprovacao_anexo=?, comprovacao_latitude=?, comprovacao_longitude=?,
+                comprovacao_por=?, comprovacao_em=CURRENT_TIMESTAMP,
+                atualizado_por=?, atualizado_em=CURRENT_TIMESTAMP
+            WHERE id=? AND empresa_id=?
+        `, [
+            caminhoComprovacao, latitude, longitude,
+            usuario.usuario || "Usuário",
+            usuario.usuario || "Usuário",
+            id, usuario.empresa_id
+        ]);
+
+        if (!result.affectedRows) {
+            if (req.file) removerArquivo(caminhoComprovacao);
+            return res.status(404).json({ erro: "Serviço não encontrado" });
+        }
+
+        if (req.file && anexoAntigo && anexoAntigo !== caminhoComprovacao) {
+            removerArquivo(anexoAntigo);
+        }
+
+        const [atualizado] = await pool.query(`
+            SELECT id, comprovacao_anexo, comprovacao_latitude, comprovacao_longitude,
+                   comprovacao_por,
+                   DATE_FORMAT(comprovacao_em, '%Y-%m-%d %H:%i:%s') AS comprovacao_em
+            FROM servicos_pendentes
+            WHERE id=? AND empresa_id=? LIMIT 1
+        `, [id, usuario.empresa_id]);
+
+        res.json({ sucesso: true, comprovacao: atualizado[0] || null });
+    } catch (err) {
+        if (req.file) removerArquivo(`/uploads/servicos-pendentes/${req.file.filename}`);
+        responderErro(res, err, "Erro ao salvar comprovação do serviço");
+    }
+});
+
 router.patch("/:id/localizacao", async (req, res) => {
     try {
         await garantirSchema();
@@ -294,11 +380,12 @@ router.delete("/:id", async (req, res) => {
         await garantirSchema();
         const usuario = await getUsuario(req);
         const id = Number(req.params.id);
-        const [rows] = await pool.query("SELECT anexo FROM servicos_pendentes WHERE id=? AND empresa_id=? LIMIT 1", [id, usuario.empresa_id]);
+        const [rows] = await pool.query("SELECT anexo, comprovacao_anexo FROM servicos_pendentes WHERE id=? AND empresa_id=? LIMIT 1", [id, usuario.empresa_id]);
         if (!rows.length) return res.status(404).json({ erro: "Serviço não encontrado" });
         const [result] = await pool.query("DELETE FROM servicos_pendentes WHERE id=? AND empresa_id=?", [id, usuario.empresa_id]);
         if (!result.affectedRows) return res.status(404).json({ erro: "Serviço não encontrado" });
         removerArquivo(rows[0].anexo);
+        removerArquivo(rows[0].comprovacao_anexo);
         res.json({ sucesso: true });
     } catch (err) { responderErro(res, err, "Erro ao excluir serviço"); }
 });
