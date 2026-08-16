@@ -264,20 +264,19 @@ router.get("/:tipo_erp/clientes", async (req,res)=>{
 
 
 // Busca segmentada por endereço para a página de Informativos.
-// Para SGP, não faz varredura por alfabeto: exige um termo principal suportado pela API.
+// Usa implementação específica do provider quando disponível (ex.: SGP).
 router.get("/clientes-endereco", async (req,res)=>{
     try{
         const empresaId = getEmpresaId(req);
         const filtros = {
-            termo: String(req.query.termo || "").trim(),
             localidade: String(req.query.localidade || req.query.cidade || "").trim(),
             rua: String(req.query.rua || "").trim(),
             bairro: String(req.query.bairro || "").trim(),
             referencia: String(req.query.referencia || "").trim()
         };
 
-        if(!filtros.termo && ![filtros.localidade,filtros.rua,filtros.bairro,filtros.referencia].some(Boolean)){
-            return res.status(400).json({erro:"Informe um termo ou ao menos um filtro de endereço."});
+        if(!Object.values(filtros).some(Boolean)){
+            return res.status(400).json({erro:"Informe ao menos um filtro de endereço."});
         }
 
         const config = await getAtiva(empresaId);
@@ -289,11 +288,21 @@ router.get("/clientes-endereco", async (req,res)=>{
         if(typeof provider.buscarClientesPorFiltros === "function"){
             dados = await provider.buscarClientesPorFiltros(config, filtros);
         }else{
-            const termoBusca = filtros.termo || filtros.localidade || filtros.rua || filtros.bairro || filtros.referencia;
-            const parcial = await provider.buscarClientes(config, termoBusca);
+            // Compatibilidade com ERPs que ainda não possuem busca segmentada própria.
+            const termos = [...new Set(Object.values(filtros).filter(v => v.length >= 2))];
+            const mapa = new Map();
             const normalizar = v => String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
             const contem = (valor,busca) => !busca || normalizar(valor).includes(normalizar(busca));
-            const clientes = (parcial?.clientes || []).filter(c =>
+
+            for(const termo of termos){
+                const parcial = await provider.buscarClientes(config, termo);
+                for(const c of (parcial?.clientes || [])){
+                    const chave = String(c.id || c.login || c.telefone || `${c.nome || ""}-${c.rua || ""}-${c.bairro || ""}`);
+                    mapa.set(chave,c);
+                }
+            }
+
+            const clientes = [...mapa.values()].filter(c =>
                 contem(c.cidade || c.localidade, filtros.localidade) &&
                 contem(c.rua || c.logradouro || c.endereco, filtros.rua) &&
                 contem(c.bairro, filtros.bairro) &&

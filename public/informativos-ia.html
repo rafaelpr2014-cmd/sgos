@@ -401,7 +401,6 @@ input,select,textarea{width:100%;padding:11px 12px;border-radius:10px;border:1px
                 <p class="card-subtitle">Preencha um ou mais filtros. A localidade pode ser selecionada ou digitada.</p>
                 <div class="erp-status"><span id="erpAtivoNome">ERP ativo: verificando...</span><span id="erpTotal">0 clientes</span></div>
                 <div class="filtros-clientes">
-                    <div class="campo full" id="campoBuscaPrincipalERP"><label for="filtroClienteTermo">Nome, contrato, login ou telefone</label><input id="filtroClienteTermo" placeholder="No SGP, informe um termo principal para localizar o cliente"><small id="ajudaBuscaERP">No SGP este campo é necessário; os filtros de endereço refinam o resultado.</small></div>
                     <div class="campo"><label for="filtroClienteLocalidade">Localidade</label><input id="filtroClienteLocalidade" list="listaLocalidades" placeholder="Selecione ou digite"></div>
                     <div class="campo"><label for="filtroClienteRua">Rua</label><input id="filtroClienteRua" placeholder="Ex.: Rua São José"></div>
                     <div class="campo"><label for="filtroClienteBairro">Bairro</label><input id="filtroClienteBairro" placeholder="Ex.: Centro"></div>
@@ -697,93 +696,89 @@ async function apiJson(url,opts={}){
     }
     return d;
 }
-let erpAtivoConsulta="";
+async function consultarERPPorTermo(termo){
+    const d=await apiJson(`/api/integracoes/pesquisar?termo=${encodeURIComponent(termo)}`);
+    if(d.erp)document.getElementById("erpAtivoNome").innerText=`ERP ativo: ${String(d.erp).toUpperCase()}`;
+    const lista=Array.isArray(d)?d:(d.clientes||d.resultados||d.data||[]);
+    if(!Array.isArray(lista))throw new Error("A integração ERP respondeu em um formato inválido.");
+    return lista;
+}
 
-async function carregarERPAtivoConsulta(){
+
+async function carregarERPAtivoInformativos(){
     const el=document.getElementById("erpAtivoNome");
+    if(!el)return;
     try{
         const d=await apiJson("/api/integracoes/status");
         const atual=d?.atual||null;
-        erpAtivoConsulta=String(atual?.tipo_erp||"").toLowerCase();
-        if(erpAtivoConsulta){
-            el.innerText=`ERP ativo: ${erpAtivoConsulta.toUpperCase()}`;
-        }else{
-            el.innerText="ERP ativo: nenhum ERP habilitado";
+        if(atual?.tipo_erp){
+            el.innerText=`ERP ativo: ${String(atual.tipo_erp).toUpperCase()}`;
+            return;
         }
-        const ajuda=document.getElementById("ajudaBuscaERP");
-        if(ajuda){
-            ajuda.innerText=erpAtivoConsulta==="sgp"
-                ? "SGP: informe nome, contrato, login ou telefone. Localidade/rua/bairro/referência serão usados para refinar o retorno."
-                : "O termo principal é opcional para ERPs com busca por endereço disponível.";
+        const ativo=(Array.isArray(d?.lista)?d.lista:[]).find(x=>Number(x?.ativo)===1);
+        if(ativo?.tipo_erp){
+            el.innerText=`ERP ativo: ${String(ativo.tipo_erp).toUpperCase()}`;
+            return;
         }
+        el.innerText="ERP ativo: não identificado";
     }catch(e){
-        console.warn("Não foi possível identificar o ERP ativo:",e);
+        console.warn("Falha ao identificar ERP ativo:",e);
         el.innerText="ERP ativo: não identificado";
     }
 }
 
-async function consultarERPPorTermo(termo){
-    const d=await apiJson(`/api/integracoes/pesquisar?termo=${encodeURIComponent(termo)}`);
-    if(d.erp){
-        erpAtivoConsulta=String(d.erp).toLowerCase();
-        document.getElementById("erpAtivoNome").innerText=`ERP ativo: ${String(d.erp).toUpperCase()}`;
-    }
-    const lista=Array.isArray(d)?d:(d.clientes||d.resultados||d.data||[]);
-    if(!Array.isArray(lista))throw new Error("A integração ERP respondeu em um formato inválido.");
-    return lista;
-}
-
-async function consultarERPPorEndereco(f, termo=""){
+async function consultarERPPorEndereco(f){
     const qs=new URLSearchParams();
-    if(termo)qs.set("termo",termo);
     if(f.localidade)qs.set("localidade",f.localidade);
     if(f.rua)qs.set("rua",f.rua);
     if(f.bairro)qs.set("bairro",f.bairro);
     if(f.referencia)qs.set("referencia",f.referencia);
+
     const d=await apiJson(`/api/integracoes/clientes-endereco?${qs.toString()}`);
-    if(d.erp){
-        erpAtivoConsulta=String(d.erp).toLowerCase();
-        document.getElementById("erpAtivoNome").innerText=`ERP ativo: ${String(d.erp).toUpperCase()}`;
-    }
+    if(d.erp)document.getElementById("erpAtivoNome").innerText=`ERP ativo: ${String(d.erp).toUpperCase()}`;
     const lista=Array.isArray(d)?d:(d.clientes||d.resultados||d.data||[]);
     if(!Array.isArray(lista))throw new Error("A integração ERP respondeu em um formato inválido.");
+    // Mantém metadados de diagnóstico da busca SGP sem alterar a lista de clientes.
+    lista.__sgosMeta={
+        estrategia:d.estrategia||"",
+        candidatos_consultados:Number(d.candidatos_consultados||0),
+        retornados_brutos:Number(d.retornados_brutos||0),
+        requisicoes:Number(d.requisicoes||0)
+    };
     return lista;
 }
 
 async function buscarClientesERP(){
-    const termo=esc(document.getElementById("filtroClienteTermo")?.value||"");
     const f={
         localidade:esc(document.getElementById("filtroClienteLocalidade").value),
         rua:esc(document.getElementById("filtroClienteRua").value),
         bairro:esc(document.getElementById("filtroClienteBairro").value),
         referencia:esc(document.getElementById("filtroClienteReferencia").value)
     };
-    if(!termo && !Object.values(f).some(x=>x.length>=2)){
-        alert("Informe um termo de busca ou pelo menos um filtro de endereço com dois ou mais caracteres.");return;
-    }
-    if(!erpAtivoConsulta) await carregarERPAtivoConsulta();
+    const termos=[f.localidade,f.rua,f.bairro,f.referencia].filter(x=>x.length>=2);
+    if(!termos.length){alert("Informe pelo menos um filtro com dois ou mais caracteres.");return}
 
     const box=document.getElementById("listaContatos");
+    box.innerHTML='<div class="contato-vazio">Consultando o ERP ativo...</div>';
     contatosSelecionados.clear();
     atualizarContadorContatos();
 
-    // O endpoint URA do SGP não oferece listagem direta por rua/bairro/localidade.
-    // Evita a antiga varredura por alfabeto, que causava dezenas de chamadas e timeout.
-    if(erpAtivoConsulta==="sgp" && !termo){
-        box.innerHTML='<div class="contato-vazio" style="color:#b45309;"><strong>SGP exige uma busca principal.</strong><br>Informe nome, contrato, login ou telefone. Os campos Localidade/Rua/Bairro/Referência serão usados para refinar os clientes retornados, sem varredura lenta.</div>';
-        document.getElementById("erpTotal").innerText="0 clientes";
-        return;
-    }
-
-    box.innerHTML='<div class="contato-vazio">Consultando o ERP ativo...</div>';
     try{
         let lista=[];
-        if(erpAtivoConsulta==="sgp"){
-            lista=await consultarERPPorTermo(termo);
-        }else if(termo){
-            lista=await consultarERPPorTermo(termo);
-        }else{
-            lista=await consultarERPPorEndereco(f, termo);
+        try{
+            // Rota própria para cidade/rua/bairro/referência.
+            lista=await consultarERPPorEndereco(f);
+        }catch(e){
+            // Mantém compatibilidade caso o HTML seja publicado antes do backend novo.
+            if(e.status!==404)throw e;
+            console.warn("Rota /clientes-endereco ainda não disponível; usando busca genérica.",e);
+            const respostas=await Promise.allSettled([...new Set(termos)].map(consultarERPPorTermo));
+            const sucessos=respostas.filter(r=>r.status==="fulfilled");
+            if(!sucessos.length){
+                const motivo=respostas.find(r=>r.status==="rejected")?.reason;
+                throw motivo instanceof Error?motivo:new Error("Não foi possível consultar o ERP ativo.");
+            }
+            lista=sucessos.flatMap(r=>r.value||[]);
         }
 
         const mapa=new Map();
@@ -791,22 +786,28 @@ async function buscarClientesERP(){
             const c=normalizarClienteERP(raw);
             mapa.set(clienteChave(c),c);
         });
+
         clientesERPEncontrados=[...mapa.values()]
             .filter(c=>clientePassaFiltros(c,f))
             .filter(c=>telefoneLimpo(c.telefone).length>=10);
+
         document.getElementById("erpTotal").innerText=`${clientesERPEncontrados.length} cliente(s)`;
         renderizarContatosERP();
+
+        if(!clientesERPEncontrados.length && lista?.__sgosMeta?.estrategia){
+            console.info("Diagnóstico busca ERP:",lista.__sgosMeta);
+        }
     }catch(e){
         console.error("Erro na consulta ERP:",e);
+        document.getElementById("erpAtivoNome").innerText="ERP ativo: erro na consulta";
         document.getElementById("erpTotal").innerText="0 clientes";
-        box.innerHTML=`<div class="contato-vazio" style="color:#b91c1c;"><strong>Não foi possível consultar o ERP.</strong><br>${escapeHtml(e.message||"Verifique a integração ERP.")}</div>`;
+        box.innerHTML=`<div class="contato-vazio" style="color:#b91c1c;"><strong>Não foi possível consultar o ERP.</strong><br>${escapeHtml(e.message||"Verifique a integração e a rota /api/integracoes/clientes-endereco.")}</div>`;
     }
 }
-
 function renderizarContatosERP(){const box=document.getElementById("listaContatos");if(!clientesERPEncontrados.length){box.innerHTML='<div class="contato-vazio">Nenhum cliente com telefone foi encontrado para os filtros informados.</div>';return}box.innerHTML=clientesERPEncontrados.map(c=>{const key=clienteChave(c);return `<label class="contato-item"><input type="checkbox" onchange="alternarContatoERP('${encodeURIComponent(key)}',this)"><span class="contato-info"><strong>${escapeHtml(c.nome)}</strong><small>${escapeHtml([c.rua,c.numero,c.bairro,c.cidade].filter(Boolean).join(", "))}${c.referencia?`<br>Referência: ${escapeHtml(c.referencia)}`:""}</small></span><span class="contato-fone">${escapeHtml(c.telefone)}</span></label>`}).join("")}
 function alternarContatoERP(encodedKey,checkbox){const marcado=checkbox.checked;const key=decodeURIComponent(encodedKey);const c=clientesERPEncontrados.find(x=>clienteChave(x)===key);if(!c)return;if(marcado&&contatosSelecionados.size>=10){checkbox.checked=false;alert("É permitido selecionar no máximo 10 contatos por envio.");return}if(marcado)contatosSelecionados.set(key,c);else contatosSelecionados.delete(key);atualizarContadorContatos()}
 function atualizarContadorContatos(){document.getElementById("contadorSelecionados").innerText=`${contatosSelecionados.size} de 10 selecionados`}
-function limparBuscaClientes(){["filtroClienteTermo","filtroClienteLocalidade","filtroClienteRua","filtroClienteBairro","filtroClienteReferencia"].forEach(id=>document.getElementById(id).value="");clientesERPEncontrados=[];contatosSelecionados.clear();document.getElementById("erpTotal").innerText="0 clientes";document.getElementById("listaContatos").innerHTML='<div class="contato-vazio">Use os filtros acima para consultar os clientes do ERP ativo.</div>';atualizarContadorContatos()}
+function limparBuscaClientes(){["filtroClienteLocalidade","filtroClienteRua","filtroClienteBairro","filtroClienteReferencia"].forEach(id=>document.getElementById(id).value="");clientesERPEncontrados=[];contatosSelecionados.clear();document.getElementById("erpTotal").innerText="0 clientes";document.getElementById("listaContatos").innerHTML='<div class="contato-vazio">Use os filtros acima para consultar os clientes do ERP ativo.</div>';atualizarContadorContatos()}
 async function conectarWhatsApp(){const empresaId=empresaIdAtual();if(!empresaId){alert("Empresa do usuário não identificada.");return}const qrBox=document.getElementById("waQr");qrBox.innerHTML="Gerando QR Code...";try{const d=await apiJson(`/api/whatsapp/qr/${empresaId}`);if(!d.qr)throw new Error(d.erro||"QR Code ainda não foi gerado. Tente novamente em alguns segundos.");qrBox.innerHTML="";QRCode.toCanvas(d.qr,{width:240,margin:1},(err,canvas)=>{if(err){qrBox.innerText="Erro ao desenhar QR Code.";return}qrBox.appendChild(canvas)});verificarStatusWhatsApp()}catch(e){qrBox.innerHTML=`<div style="color:#b91c1c;">${escapeHtml(e.message)}</div>`}}
 let rotaStatusWhatsAppDisponivel=true;
 async function verificarStatusWhatsApp(){
@@ -833,7 +834,7 @@ async function verificarStatusWhatsApp(){
 async function enviarInformativoSelecionados(){const contatos=[...contatosSelecionados.values()];const mensagem=esc(document.getElementById("textoEditavel").value);if(!mensagem){alert("Gere ou escreva o texto do informativo antes do envio.");return}if(!contatos.length){alert("Selecione pelo menos um contato.");return}if(contatos.length>10){alert("Selecione no máximo 10 contatos.");return}const empresaId=empresaIdAtual();if(!empresaId){alert("Empresa não identificada.");return}if(!confirm(`Confirma o envio para ${contatos.length} contato(s)? O intervalo será de 45 segundos entre os envios.`))return;const btn=document.getElementById("btnEnviarLote");btn.disabled=true;try{const d=await apiJson("/api/whatsapp/enviar-lote",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({empresaId,mensagem,intervaloSegundos:45,contatos:contatos.map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}))})});jobEnvioAtual=d.jobId;document.getElementById("resumoEnvio").innerText=`Fila iniciada com ${contatos.length} contato(s).`;acompanharJobEnvio()}catch(e){btn.disabled=false;alert(e.message||"Erro ao iniciar envio.")}}
 async function acompanharJobEnvio(){clearTimeout(timerJobEnvio);if(!jobEnvioAtual)return;try{const d=await apiJson(`/api/whatsapp/envios/${encodeURIComponent(jobEnvioAtual)}`);const total=d.total||1,processados=d.processados||0;document.getElementById("barraEnvio").style.width=`${Math.min(100,(processados/total)*100)}%`;document.getElementById("resumoEnvio").innerText=`${processados} de ${total} processados • ${d.enviados||0} enviados • ${d.falhas||0} falhas${d.proximoEnvioEm?` • próximo em ${d.proximoEnvioEm}s`:""}`;document.getElementById("logEnvios").innerHTML=(d.resultados||[]).slice().reverse().map(x=>`<div class="log-linha">${x.ok?"✅":"❌"} ${escapeHtml(x.nome||x.telefone)} — ${x.ok?"enviado":escapeHtml(x.erro||"falha")}</div>`).join("");if(d.status==="concluido"||d.status==="cancelado"){document.getElementById("btnEnviarLote").disabled=false;jobEnvioAtual=null;mostrarToast("Fila de WhatsApp concluída.");return}}catch(e){console.warn(e)}timerJobEnvio=setTimeout(acompanharJobEnvio,3000)}
 
-document.addEventListener("DOMContentLoaded",()=>{const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");if(localStorage.getItem("sidebar_recolhida")==="1"){s.classList.add("recolhida");l.src=l.dataset.logoFechada}carregarUsuarioTopo();carregarEmpresa();carregarLocalidades();carregarUsuariosOnlineTopo();carregarERPAtivoConsulta();setTimeout(verificarStatusWhatsApp,1200);const agora=new Date();agora.setMinutes(agora.getMinutes()-agora.getTimezoneOffset());document.getElementById("inicio").value=agora.toISOString().slice(0,16);aplicarPosicaoPredefinidaLogo();atualizarLogoArte();ativarArrasteLogo();agendarAjustePreview();setTimeout(agendarAjustePreview,250);if(window.ResizeObserver)new ResizeObserver(agendarAjustePreview).observe(document.getElementById("artePreviewWrap"))});window.addEventListener("resize",agendarAjustePreview);setInterval(carregarUsuariosOnlineTopo,300000);setInterval(verificarStatusWhatsApp,10000);
+document.addEventListener("DOMContentLoaded",()=>{const s=document.querySelector(".sidebar"),l=document.getElementById("logoSidebar");if(localStorage.getItem("sidebar_recolhida")==="1"){s.classList.add("recolhida");l.src=l.dataset.logoFechada}carregarUsuarioTopo();carregarEmpresa();carregarLocalidades();carregarERPAtivoInformativos();carregarUsuariosOnlineTopo();setTimeout(verificarStatusWhatsApp,1200);const agora=new Date();agora.setMinutes(agora.getMinutes()-agora.getTimezoneOffset());document.getElementById("inicio").value=agora.toISOString().slice(0,16);aplicarPosicaoPredefinidaLogo();atualizarLogoArte();ativarArrasteLogo();agendarAjustePreview();setTimeout(agendarAjustePreview,250);if(window.ResizeObserver)new ResizeObserver(agendarAjustePreview).observe(document.getElementById("artePreviewWrap"))});window.addEventListener("resize",agendarAjustePreview);setInterval(carregarUsuariosOnlineTopo,300000);setInterval(verificarStatusWhatsApp,10000);
 </script>
 
 <script id="sgos-sidebar-completa-v2-js">

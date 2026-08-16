@@ -21,7 +21,7 @@ async function post(config, endpoint, body = {}) {
             Accept: "application/json",
             "Content-Type": "application/json"
         },
-        timeout: 10000
+        timeout: 15000
     }).then(r => r.data);
 }
 
@@ -128,29 +128,60 @@ function chaveClienteSGP(c) {
 
 async function buscarClientesPorFiltros(config, filtros = {}) {
     const f = {
-        termo: String(filtros.termo || "").trim(),
         localidade: String(filtros.localidade || filtros.cidade || "").trim(),
         rua: String(filtros.rua || "").trim(),
         bairro: String(filtros.bairro || "").trim(),
         referencia: String(filtros.referencia || "").trim()
     };
 
-    // A API URA do SGP não disponibiliza listagem geral eficiente por endereço.
-    // Sem um termo principal, a antiga varredura por letras gerava muitas requisições e timeout.
-    if (!f.termo) {
-        const err = new Error("No SGP, informe nome, contrato, login ou telefone para a busca principal. Os filtros de endereço apenas refinam o resultado.");
-        err.status = 400;
+    if (!Object.values(f).some(Boolean)) {
+        return { clientes: [], total: 0, estrategia: "sem_filtro" };
+    }
+
+    // Busca direta por endereço: UMA única requisição ao SGP.
+    // Evita a varredura por letras que causava dezenas de chamadas e timeout.
+    const payload = {
+        servicos_dados: 1,
+        ...(f.localidade ? { cidade: f.localidade, endereco_cidade: f.localidade } : {}),
+        ...(f.rua ? { rua: f.rua, logradouro: f.rua, endereco_logradouro: f.rua } : {}),
+        ...(f.bairro ? { bairro: f.bairro, endereco_bairro: f.bairro } : {}),
+        ...(f.referencia ? {
+            referencia: f.referencia,
+            complemento: f.referencia,
+            endereco_complemento: f.referencia,
+            endereco_pontoreferencia: f.referencia
+        } : {})
+    };
+
+    let dados;
+    try {
+        const baseUrl = limparBaseUrl(config.base_url);
+        dados = await axios.post(`${baseUrl}/api/ura/consultacliente/`, montarPayload(config, payload), {
+            headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json"
+            },
+            timeout: 7000
+        }).then(r => r.data);
+    } catch (err) {
+        // Timeout não dispara nova varredura. Retorna erro claro e rápido.
+        if (err.code === "ECONNABORTED") {
+            const e = new Error("O SGP não respondeu à consulta por endereço em até 7 segundos.");
+            e.status = 504;
+            throw e;
+        }
         throw err;
     }
 
-    const resultado = await buscarClientes(config, f.termo);
-    const clientes = (resultado?.clientes || []).filter(c => clientePassaFiltrosEndereco(c, f));
+    const candidatos = extrairClientesSGP(dados).map(normalizarClienteSGP);
+    const clientes = candidatos.filter(c => clientePassaFiltrosEndereco(c, f));
 
     return {
         clientes,
         total: clientes.length,
-        estrategia: "busca_principal_com_filtro_local",
-        candidatos_consultados: Array.isArray(resultado?.clientes) ? resultado.clientes.length : 0
+        estrategia: "consulta_direta_endereco_sgp",
+        candidatos_consultados: candidatos.length,
+        requisicoes: 1
     };
 }
 
