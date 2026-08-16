@@ -299,10 +299,6 @@ router.post("/:id/comprovacao", upload.single("comprovacao"), async (req, res) =
             ? `/uploads/servicos-pendentes/${req.file.filename}`
             : anexoAntigo;
 
-        if (!caminhoComprovacao) {
-            return res.status(400).json({ erro: "Anexe uma foto ou vídeo de comprovação" });
-        }
-
         const [result] = await pool.query(`
             UPDATE servicos_pendentes
             SET comprovacao_anexo=?, comprovacao_latitude=?, comprovacao_longitude=?,
