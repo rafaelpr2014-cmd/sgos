@@ -2031,10 +2031,24 @@ router.post(
             if(!rows.length){ const erro=new Error('OS não encontrada.');erro.statusCode=404;throw erro; }
             const os=rows[0];
             const possuiCheckin=!!os.checkin_inicio_em;
+
+            // Finalização feita pelo painel web pode encerrar a OS sem exigir GPS final.
+            // No app, a localização final continua obrigatória quando houve check-in.
+            const origemPainel =
+                String(req.headers["x-sgos-origem"] || "").trim().toLowerCase() === "painel" ||
+                String(req.body?.origem_finalizacao || "").trim().toLowerCase() === "painel";
+
+            const ignorarCheckinFinal =
+                origemPainel ||
+                String(req.headers["x-sgos-ignorar-checkin"] || "").trim() === "1" ||
+                req.body?.ignorar_checkin === true ||
+                String(req.body?.ignorar_checkin || "").trim().toLowerCase() === "true";
+
             let latitudeFim=null;
             let longitudeFim=null;
             let precisaoFim=null;
-            if(possuiCheckin){
+
+            if(possuiCheckin && !ignorarCheckinFinal){
                 latitudeFim=Number(req.body.checkin_fim_latitude ?? req.body.latitude_final);
                 longitudeFim=Number(req.body.checkin_fim_longitude ?? req.body.longitude_final);
                 precisaoFim=Number(req.body.checkin_fim_precisao ?? req.body.precisao_final);
