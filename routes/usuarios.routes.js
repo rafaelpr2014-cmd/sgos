@@ -4,6 +4,28 @@ module.exports = (db, verificarAutenticacao) => {
   const bcrypt = require("bcryptjs");
   const SALT_ROUNDS = 10;
 
+  async function garantirCampoNomeUsuario() {
+    const [rows] = await db.query(`
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'usuarios'
+        AND COLUMN_NAME = 'nome_usuario'
+      LIMIT 1
+    `);
+
+    if (!rows.length) {
+      await db.query(`
+        ALTER TABLE usuarios
+        ADD COLUMN nome_usuario VARCHAR(120) NULL AFTER usuario
+      `);
+    }
+  }
+
+  garantirCampoNomeUsuario().catch(err => {
+    console.error("ERRO AO GARANTIR CAMPO nome_usuario:", err);
+  });
+
   function isAdmin(usuario) {
     return String(usuario?.cargo || "").trim().toLowerCase() === "administrador";
   }
@@ -102,7 +124,7 @@ module.exports = (db, verificarAutenticacao) => {
 
       const [usuarios] = await db.query(
         `SELECT
-           u.id, u.usuario, u.cargo, u.telefone, u.email, u.ativo,
+           u.id, u.usuario, u.nome_usuario, u.cargo, u.telefone, u.email, u.ativo,
            COALESCE((
              SELECT JSON_ARRAYAGG(ul.localidade_id)
              FROM usuario_localidades ul
@@ -187,7 +209,7 @@ module.exports = (db, verificarAutenticacao) => {
   router.post("/", verificarAutenticacao, async (req, res) => {
     if (!isAdmin(req.usuario)) return res.status(403).json({ erro: "Acesso negado" });
 
-    const { usuario, senha, cargo, telefone, email, localidades = [], tecnicos = [] } = req.body;
+    const { usuario, nome_usuario, senha, cargo, telefone, email, localidades = [], tecnicos = [] } = req.body;
     if (!usuario || !senha) return res.status(400).json({ erro: "Usuário e senha obrigatórios" });
 
     const conn = await db.getConnection();
@@ -197,9 +219,9 @@ module.exports = (db, verificarAutenticacao) => {
 
       const [result] = await conn.query(
         `INSERT INTO usuarios
-          (usuario, senha, cargo, telefone, email, ativo, empresa_id)
-         VALUES (?, ?, ?, ?, ?, 1, ?)`,
-        [String(usuario).trim(), hashSenha, cargo, telefone || null, email || null, req.usuario.empresa_id]
+          (usuario, nome_usuario, senha, cargo, telefone, email, ativo, empresa_id)
+         VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
+        [String(usuario).trim(), String(nome_usuario || '').trim() || null, hashSenha, cargo, telefone || null, email || null, req.usuario.empresa_id]
       );
 
       await salvarVinculos(
@@ -225,7 +247,7 @@ module.exports = (db, verificarAutenticacao) => {
     if (!isAdmin(req.usuario)) return res.status(403).json({ erro: "Acesso negado" });
 
     const id = Number(req.params.id);
-    const { usuario, senha, cargo, telefone, email, localidades = [], tecnicos = [] } = req.body;
+    const { usuario, nome_usuario, senha, cargo, telefone, email, localidades = [], tecnicos = [] } = req.body;
     if (!id || !usuario) return res.status(400).json({ erro: "Dados do usuário inválidos" });
 
     const conn = await db.getConnection();
@@ -246,16 +268,16 @@ module.exports = (db, verificarAutenticacao) => {
         const hashSenha = await bcrypt.hash(String(senha), SALT_ROUNDS);
         await conn.query(
           `UPDATE usuarios
-           SET usuario = ?, senha = ?, cargo = ?, telefone = ?, email = ?
+           SET usuario = ?, nome_usuario = ?, senha = ?, cargo = ?, telefone = ?, email = ?
            WHERE id = ? AND empresa_id = ?`,
-          [String(usuario).trim(), hashSenha, cargo, telefone || null, email || null, id, req.usuario.empresa_id]
+          [String(usuario).trim(), String(nome_usuario || '').trim() || null, hashSenha, cargo, telefone || null, email || null, id, req.usuario.empresa_id]
         );
       } else {
         await conn.query(
           `UPDATE usuarios
-           SET usuario = ?, cargo = ?, telefone = ?, email = ?
+           SET usuario = ?, nome_usuario = ?, cargo = ?, telefone = ?, email = ?
            WHERE id = ? AND empresa_id = ?`,
-          [String(usuario).trim(), cargo, telefone || null, email || null, id, req.usuario.empresa_id]
+          [String(usuario).trim(), String(nome_usuario || '').trim() || null, cargo, telefone || null, email || null, id, req.usuario.empresa_id]
         );
       }
 

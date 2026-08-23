@@ -1033,6 +1033,11 @@ tr:hover{ background:#f8fbff; }
                     </div>
 
                     <div class="campo">
+                        <label>Nome do usuário</label>
+                        <input type="text" id="nomeUsuario" maxlength="120" placeholder="Nome ou apelido para exibição">
+                    </div>
+
+                    <div class="campo">
                         <label>Senha</label>
                         <input type="password" id="senha" placeholder="Ao editar, deixe vazio para manter a senha atual">
                     </div>
@@ -1087,6 +1092,7 @@ tr:hover{ background:#f8fbff; }
                         <thead>
                             <tr>
                                 <th>Usuário</th>
+                                <th>Nome do usuário</th>
                                 <th>Cargo</th>
                                 <th>Telefone</th>
                                 <th>Email</th>
@@ -1328,7 +1334,7 @@ function renderUsuarios(data){
     tabela.innerHTML = "";
 
     if(!data || data.length === 0){
-        tabela.innerHTML = `<tr><td colspan="6">Nenhum usuário encontrado</td></tr>`;
+        tabela.innerHTML = `<tr><td colspan="7">Nenhum usuário encontrado</td></tr>`;
         return;
     }
 
@@ -1350,6 +1356,7 @@ function renderUsuarios(data){
         tabela.innerHTML += `
         <tr>
             <td><strong>${u.usuario || "-"}</strong></td>
+            <td>${u.nome_usuario || "-"}</td>
             <td>${u.cargo || "-"}</td>
             <td>${u.telefone || "-"}</td>
             <td>${u.email || "-"}</td>
@@ -1366,6 +1373,7 @@ window.filtrarUsuarios = function(){
     const termo = document.getElementById("busca").value.toLowerCase();
     const filtrado = usuariosCache.filter(u => 
         (u.usuario || "").toLowerCase().includes(termo) ||
+        (u.nome_usuario || "").toLowerCase().includes(termo) ||
         (u.email || "").toLowerCase().includes(termo) ||
         (u.cargo || "").toLowerCase().includes(termo)
     );
@@ -1378,6 +1386,7 @@ window.filtrarUsuarios = function(){
 window.salvarUsuario = function() {
     const id = document.getElementById("idUsuario").value;
     const usuario = document.getElementById("usuario").value.trim();
+    const nome_usuario = document.getElementById("nomeUsuario").value.trim();
     const senha = document.getElementById("senha").value;
     const cargo = document.getElementById("cargo").value;
     const telefone = document.getElementById("telefone").value.trim();
@@ -1392,7 +1401,8 @@ window.salvarUsuario = function() {
     const metodo = id ? "PUT" : "POST";
 
     const body = { 
-        usuario, 
+        usuario,
+        nome_usuario,
         cargo, 
         telefone, 
         email, 
@@ -1420,6 +1430,7 @@ window.salvarUsuario = function() {
 window.editarUsuario = function(u){
     document.getElementById("idUsuario").value = u.id;
     document.getElementById("usuario").value = u.usuario;
+    document.getElementById("nomeUsuario").value = u.nome_usuario || "";
     document.getElementById("senha").value = "";
     document.getElementById("telefone").value = u.telefone || "";
     document.getElementById("email").value = u.email || "";
@@ -1483,6 +1494,7 @@ window.excluirUsuario = function(id){
 window.limparFormulario = function(){
     document.getElementById("idUsuario").value = "";
     document.getElementById("usuario").value = "";
+    document.getElementById("nomeUsuario").value = "";
     document.getElementById("senha").value = "";
     document.getElementById("telefone").value = "";
     document.getElementById("email").value = "";
