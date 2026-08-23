@@ -1493,7 +1493,7 @@ async function carregarPessoasEscala(){
         atendentes = usuarios.filter(u => normalizarCargo(u.cargo) === "atendente" && (u.ativo == 1 || u.ativo === true || u.ativo === "1"));
         pessoasEscala = [
             ...tecnicos.filter(t => t.ativo == 1 || t.ativo === true || t.ativo === "1").map(t => ({tipo:"TECNICO", id:Number(t.id), nome:t.nome || t.usuario || "Técnico"})),
-            ...atendentes.map(u => ({tipo:"ATENDENTE", id:Number(u.id), nome:u.nome || u.usuario || "Atendente"}))
+            ...atendentes.map(u => ({tipo:"ATENDENTE", id:Number(u.id), nome:u.nome_usuario || u.nome || u.usuario || "Atendente"}))
         ].sort((a,b) => a.nome.localeCompare(b.nome,"pt-BR"));
         preencherSelectPessoas("pessoaEscala", true);
         preencherSelectPessoas("filtroPessoasSelecionadas", false);
