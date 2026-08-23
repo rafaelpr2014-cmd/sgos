@@ -3577,7 +3577,7 @@ function modoTV() {
 
 
 
-<script id="sgos-finalizar-sem-checkin" type="application/json">
+<script id="sgos-finalizar-sem-checkin">
 (function(){
     /*
      * A finalização pelo painel não deve depender da existência de check-in.
@@ -3585,6 +3585,32 @@ function modoTV() {
      * futuras, mantendo as demais confirmações do fluxo de conclusão.
      */
     window.SGOS_PERMITIR_FINALIZAR_SEM_CHECKIN = true;
+    // No painel WEB, a conclusão não exige GPS/localização final.
+    window.SGOS_PERMITIR_FINALIZAR_SEM_LOCALIZACAO = true;
+
+    let finalizarSemLocalizacaoAte = 0;
+    let obterPosicaoOriginal = null;
+
+    function instalarBypassLocalizacaoFinal(){
+        // O painel.js expõe obterPosicaoAtual no escopo global. Mantemos a
+        // função original para todos os outros usos (mapa, localização etc.)
+        // e devolvemos null somente durante o fluxo de FINALIZAR OS no web.
+        if(typeof window.obterPosicaoAtual !== "function") return;
+        if(window.obterPosicaoAtual.__sgosSemLocalizacaoFinal) return;
+
+        obterPosicaoOriginal = window.obterPosicaoAtual;
+        const wrapper = async function(){
+            if(
+                window.SGOS_PERMITIR_FINALIZAR_SEM_LOCALIZACAO === true &&
+                Date.now() < finalizarSemLocalizacaoAte
+            ){
+                return null;
+            }
+            return obterPosicaoOriginal.apply(this, arguments);
+        };
+        wrapper.__sgosSemLocalizacaoFinal = true;
+        window.obterPosicaoAtual = wrapper;
+    }
 
     const nomesValidacao = [
         "validarCheckinFinalizacao",
@@ -3654,11 +3680,20 @@ function modoTV() {
         const linha = botao.closest("tr[data-id], tr[onclick]");
         osEmFinalizacao = linha?.dataset?.id || (String(linha?.getAttribute("onclick") || "").match(/\b(\d+)\b/)?.[1]) || null;
         liberarAte = Date.now() + 10000;
+        finalizarSemLocalizacaoAte = Date.now() + 15000;
+        instalarBypassLocalizacaoFinal();
         liberarValidadoresConhecidos();
     }, true);
 
-    document.addEventListener("DOMContentLoaded", liberarValidadoresConhecidos);
-    setInterval(liberarValidadoresConhecidos, 1000);
+    document.addEventListener("DOMContentLoaded", function(){
+        liberarValidadoresConhecidos();
+        instalarBypassLocalizacaoFinal();
+    });
+    window.addEventListener("load", instalarBypassLocalizacaoFinal);
+    setInterval(function(){
+        liberarValidadoresConhecidos();
+        instalarBypassLocalizacaoFinal();
+    }, 1000);
 })();
 </script>
 
