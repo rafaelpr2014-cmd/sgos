@@ -27,7 +27,11 @@ async function garantirEstruturaEscala(){
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME = 'escalas'
-          AND COLUMN_NAME IN ('tecnico_id','usuario_id','pessoa_tipo')
+          AND COLUMN_NAME IN (
+              'tecnico_id','usuario_id','pessoa_tipo',
+              'horario_entrada_1','horario_saida_1',
+              'horario_entrada_2','horario_saida_2'
+          )
     `);
 
     const mapa = new Map(colunas.map(c => [c.COLUMN_NAME, c]));
@@ -55,23 +59,112 @@ async function garantirEstruturaEscala(){
     if(tecnico.IS_NULLABLE === "NO"){
         await db.query(`ALTER TABLE escalas MODIFY tecnico_id ${tipoId} NULL`);
     }
+
+    if(!mapa.has("horario_entrada_1")){
+        await db.query(`ALTER TABLE escalas ADD COLUMN horario_entrada_1 TIME NULL AFTER periodo`);
+    }
+    if(!mapa.has("horario_saida_1")){
+        await db.query(`ALTER TABLE escalas ADD COLUMN horario_saida_1 TIME NULL AFTER horario_entrada_1`);
+    }
+    if(!mapa.has("horario_entrada_2")){
+        await db.query(`ALTER TABLE escalas ADD COLUMN horario_entrada_2 TIME NULL AFTER horario_saida_1`);
+    }
+    if(!mapa.has("horario_saida_2")){
+        await db.query(`ALTER TABLE escalas ADD COLUMN horario_saida_2 TIME NULL AFTER horario_entrada_2`);
+    }
+}
+
+
+function normalizarHorario(valor){
+    const texto = String(valor || "").trim();
+    if(!texto) return null;
+
+    const match = texto.match(/^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/);
+    return match ? `${match[1]}:${match[2]}` : "";
+}
+
+function minutosHorario(valor){
+    const [h,m] = String(valor || "").split(":").map(Number);
+    return h * 60 + m;
+}
+
+function inferirPeriodo(entrada1, saida1, entrada2, saida2){
+    if(entrada2 && saida2) return "INTEGRAL";
+
+    const inicio = minutosHorario(entrada1);
+    const fim = minutosHorario(saida1);
+
+    if(inicio < 12 * 60 && fim <= 13 * 60) return "MANHA";
+    if(inicio >= 12 * 60 && inicio < 18 * 60) return "TARDE";
+    if(inicio >= 18 * 60) return "NOITE";
+
+    return "INTEGRAL";
 }
 
 function montarDadosEscala(body){
     const pessoaTipo = normalizarTipoPessoa(body?.pessoa_tipo || body?.tipo_pessoa || "TECNICO");
     const pessoaId = Number(body?.pessoa_id || (pessoaTipo === "ATENDENTE" ? body?.usuario_id : body?.tecnico_id));
     const dataEscala = validarDataIso(body?.data_escala);
-    const periodo = normalizarPeriodo(body?.periodo);
     const feriado = normalizarFeriado(body?.feriado);
     const observacaoFeriado = feriado ? String(body?.observacao_feriado || "").trim() : "";
+
+    const horarioEntrada1 = normalizarHorario(body?.horario_entrada_1);
+    const horarioSaida1 = normalizarHorario(body?.horario_saida_1);
+    const horarioEntrada2 = normalizarHorario(body?.horario_entrada_2);
+    const horarioSaida2 = normalizarHorario(body?.horario_saida_2);
 
     if(!pessoaTipo) return { erro:"Tipo de pessoa inválido" };
     if(!Number.isInteger(pessoaId) || pessoaId <= 0) return { erro:"Pessoa inválida" };
     if(!dataEscala) return { erro:"Data inválida" };
-    if(!["MANHA","TARDE","NOITE","INTEGRAL"].includes(periodo)) return { erro:"Período inválido" };
+
+    if(horarioEntrada1 === "" || horarioSaida1 === "" || horarioEntrada2 === "" || horarioSaida2 === ""){
+        return { erro:"Horário inválido. Use o formato HH:MM." };
+    }
+
+    if(!horarioEntrada1 || !horarioSaida1){
+        return { erro:"Informe a primeira entrada e a primeira saída." };
+    }
+
+    if(minutosHorario(horarioEntrada1) >= minutosHorario(horarioSaida1)){
+        return { erro:"A primeira saída deve ser posterior à primeira entrada." };
+    }
+
+    const possuiSegundoParcial = !!horarioEntrada2 !== !!horarioSaida2;
+    if(possuiSegundoParcial){
+        return { erro:"Para o segundo expediente, informe entrada e saída." };
+    }
+
+    if(horarioEntrada2 && horarioSaida2){
+        if(minutosHorario(horarioEntrada2) >= minutosHorario(horarioSaida2)){
+            return { erro:"A segunda saída deve ser posterior à segunda entrada." };
+        }
+
+        if(minutosHorario(horarioEntrada2) < minutosHorario(horarioSaida1)){
+            return { erro:"A segunda entrada não pode ocorrer antes da primeira saída." };
+        }
+    }
+
     if(feriado && !observacaoFeriado) return { erro:"Informe a observação do feriado" };
 
-    return { pessoaTipo, pessoaId, dataEscala, periodo, feriado, observacaoFeriado: observacaoFeriado || null };
+    const periodo = inferirPeriodo(
+        horarioEntrada1,
+        horarioSaida1,
+        horarioEntrada2,
+        horarioSaida2
+    );
+
+    return {
+        pessoaTipo,
+        pessoaId,
+        dataEscala,
+        periodo,
+        horarioEntrada1,
+        horarioSaida1,
+        horarioEntrada2,
+        horarioSaida2,
+        feriado,
+        observacaoFeriado: observacaoFeriado || null
+    };
 }
 
 async function validarPessoa(dados, empresaId){
@@ -111,10 +204,31 @@ router.get("/", async (req, res) => {
         const [rows] = await db.query(`
             SELECT e.id, e.tecnico_id, e.usuario_id,
                    COALESCE(e.pessoa_tipo, 'TECNICO') AS pessoa_tipo,
-                   COALESCE(t.nome, u.usuario) AS pessoa_nome,
+                   COALESCE(
+                       NULLIF(TRIM(u.nome_usuario), ''),
+                       NULLIF((
+                           SELECT u2.nome_usuario
+                           FROM usuario_tecnicos ut2
+                           INNER JOIN usuarios u2
+                             ON u2.id = ut2.usuario_id
+                            AND u2.empresa_id = ut2.empresa_id
+                           WHERE ut2.tecnico_id = e.tecnico_id
+                             AND ut2.empresa_id = e.empresa_id
+                             AND u2.ativo = 1
+                             AND NULLIF(TRIM(u2.nome_usuario), '') IS NOT NULL
+                           ORDER BY u2.id
+                           LIMIT 1
+                       ), ''),
+                       t.nome,
+                       u.usuario
+                   ) AS pessoa_nome,
                    t.nome AS tecnico,
-                   u.usuario AS atendente,
+                   COALESCE(NULLIF(TRIM(u.nome_usuario), ''), u.usuario) AS atendente,
                    e.data_escala, e.periodo,
+                   TIME_FORMAT(e.horario_entrada_1, '%H:%i') AS horario_entrada_1,
+                   TIME_FORMAT(e.horario_saida_1, '%H:%i') AS horario_saida_1,
+                   TIME_FORMAT(e.horario_entrada_2, '%H:%i') AS horario_entrada_2,
+                   TIME_FORMAT(e.horario_saida_2, '%H:%i') AS horario_saida_2,
                    COALESCE(e.feriado, 0) AS feriado,
                    e.observacao_feriado, e.empresa_id
             FROM escalas e
@@ -123,7 +237,7 @@ router.get("/", async (req, res) => {
             LEFT JOIN usuarios u
               ON u.id = e.usuario_id AND u.empresa_id = e.empresa_id
             WHERE e.empresa_id = ?
-            ORDER BY e.data_escala ASC, pessoa_nome ASC, e.periodo ASC
+            ORDER BY e.data_escala ASC, pessoa_nome ASC, e.horario_entrada_1 ASC, e.periodo ASC
         `, [empresaId]);
         res.json(rows);
     }catch(err){
@@ -143,9 +257,17 @@ router.post("/", async (req, res) => {
         const usuarioId = dados.pessoaTipo === "ATENDENTE" ? dados.pessoaId : null;
         const [resultado] = await db.query(`
             INSERT INTO escalas
-                (tecnico_id, usuario_id, pessoa_tipo, data_escala, periodo, feriado, observacao_feriado, empresa_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `, [tecnicoId, usuarioId, dados.pessoaTipo, dados.dataEscala, dados.periodo, dados.feriado, dados.observacaoFeriado, empresaId]);
+                (
+                    tecnico_id, usuario_id, pessoa_tipo, data_escala, periodo,
+                    horario_entrada_1, horario_saida_1, horario_entrada_2, horario_saida_2,
+                    feriado, observacao_feriado, empresa_id
+                )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+            tecnicoId, usuarioId, dados.pessoaTipo, dados.dataEscala, dados.periodo,
+            dados.horarioEntrada1, dados.horarioSaida1, dados.horarioEntrada2, dados.horarioSaida2,
+            dados.feriado, dados.observacaoFeriado, empresaId
+        ]);
         res.status(201).json({ success:true, id:resultado.insertId });
     }catch(err){
         console.error("Erro ao adicionar escala:", err);
@@ -165,10 +287,16 @@ router.put("/:id", async (req, res) => {
         const tecnicoId = dados.pessoaTipo === "TECNICO" ? dados.pessoaId : null;
         const usuarioId = dados.pessoaTipo === "ATENDENTE" ? dados.pessoaId : null;
         const [resultado] = await db.query(`
-            UPDATE escalas SET tecnico_id=?, usuario_id=?, pessoa_tipo=?, data_escala=?, periodo=?,
+            UPDATE escalas SET
+                tecnico_id=?, usuario_id=?, pessoa_tipo=?, data_escala=?, periodo=?,
+                horario_entrada_1=?, horario_saida_1=?, horario_entrada_2=?, horario_saida_2=?,
                 feriado=?, observacao_feriado=?
             WHERE id=? AND empresa_id=?
-        `, [tecnicoId, usuarioId, dados.pessoaTipo, dados.dataEscala, dados.periodo, dados.feriado, dados.observacaoFeriado, id, empresaId]);
+        `, [
+            tecnicoId, usuarioId, dados.pessoaTipo, dados.dataEscala, dados.periodo,
+            dados.horarioEntrada1, dados.horarioSaida1, dados.horarioEntrada2, dados.horarioSaida2,
+            dados.feriado, dados.observacaoFeriado, id, empresaId
+        ]);
         if(!resultado.affectedRows) return res.status(404).json({ erro:"Escala não encontrada" });
         res.json({ success:true, id });
     }catch(err){

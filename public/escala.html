@@ -563,6 +563,76 @@ select:focus{
 .periodo.NOITE{ background:#ede9fe; color:#6d28d9; }
 .periodo.INTEGRAL{ background:#dcfce7; color:#15803d; }
 
+.horarios-resumo{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    margin-top:5px;
+}
+.horario-linha{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    width:max-content;
+    max-width:100%;
+    padding:4px 7px;
+    border-radius:8px;
+    background:#dbeafe;
+    color:#1d4ed8;
+    font-size:11px;
+    font-weight:900;
+}
+.horario-linha.segundo{
+    background:#dcfce7;
+    color:#15803d;
+}
+.horarios-programacao{
+    grid-column:1 / -1;
+    border:1px solid #dbeafe;
+    background:#f8fbff;
+    border-radius:12px;
+    padding:14px;
+}
+.horarios-programacao > label{
+    display:block;
+    font-size:13px;
+    font-weight:900;
+    color:#1e3a8a;
+    margin-bottom:10px;
+}
+.horarios-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+}
+.turno-box{
+    border:1px solid #e2e8f0;
+    background:#fff;
+    border-radius:10px;
+    padding:12px;
+}
+.turno-box.opcional{background:#f8fafc}
+.turno-titulo{
+    font-size:12px;
+    font-weight:900;
+    color:#334155;
+    margin-bottom:9px;
+}
+.turno-campos{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+}
+.turno-campos label{
+    display:block;
+    font-size:11px;
+    color:#64748b;
+    margin-bottom:5px;
+}
+@media(max-width:900px){
+    .horarios-grid,.turno-campos{grid-template-columns:1fr}
+}
+
 .excluir-item{
     margin-top:6px;
     cursor:pointer;
@@ -614,7 +684,7 @@ select:focus{
 /* ===== CADASTRO EM LOTE / FERIADO / AÇÕES ===== */
 .form-grid-lote{
     display:grid;
-    grid-template-columns:1.35fr 1.2fr .8fr .8fr 1.35fr;
+    grid-template-columns:1.35fr 1.2fr .7fr 1.35fr;
     gap:14px;
     align-items:start;
 }
@@ -758,7 +828,7 @@ select:focus{
 }
 @media(min-width:1301px){
     .form-grid-lote{
-        grid-template-columns:minmax(240px,1.35fr) minmax(260px,1.2fr) minmax(150px,.8fr) minmax(130px,.8fr) minmax(240px,1.35fr);
+        grid-template-columns:minmax(240px,1.35fr) minmax(260px,1.2fr) minmax(130px,.7fr) minmax(240px,1.35fr);
     }
 }
 
@@ -1152,15 +1222,40 @@ select:focus{
                 <div class="ajuda-campo">Adicione um ou mais dias antes de salvar.</div>
             </div>
 
-            <div class="campo">
-                <label>Período</label>
-                <select id="periodoEscala">
-                    <option value="">Selecione</option>
-                    <option value="MANHA">Manhã</option>
-                    <option value="TARDE">Tarde</option>
-                    <option value="NOITE">Noite</option>
-                    <option value="INTEGRAL">Integral</option>
-                </select>
+            <div class="horarios-programacao">
+                <label>Horários do expediente</label>
+                <div class="horarios-grid">
+                    <div class="turno-box">
+                        <div class="turno-titulo">1º expediente</div>
+                        <div class="turno-campos">
+                            <div>
+                                <label>Entrada</label>
+                                <input type="time" id="horarioEntrada1" step="60">
+                            </div>
+                            <div>
+                                <label>Saída</label>
+                                <input type="time" id="horarioSaida1" step="60">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="turno-box opcional">
+                        <div class="turno-titulo">2º expediente <span style="font-weight:600;color:#64748b">(opcional)</span></div>
+                        <div class="turno-campos">
+                            <div>
+                                <label>Entrada</label>
+                                <input type="time" id="horarioEntrada2" step="60">
+                            </div>
+                            <div>
+                                <label>Saída</label>
+                                <input type="time" id="horarioSaida2" step="60">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ajuda-campo" style="margin-top:9px">
+                    Exemplo: 08:00 às 12:00 e 14:00 às 18:00. O segundo expediente é opcional.
+                </div>
             </div>
 
             <div class="campo">
@@ -1577,7 +1672,10 @@ function limparFormularioEscala(){
     datasSelecionadasEscala = [];
     renderizarDatasSelecionadas();
     document.getElementById("dataEscala").value = "";
-    document.getElementById("periodoEscala").value = "";
+    document.getElementById("horarioEntrada1").value = "";
+    document.getElementById("horarioSaida1").value = "";
+    document.getElementById("horarioEntrada2").value = "";
+    document.getElementById("horarioSaida2").value = "";
     document.getElementById("feriadoEscala").value = "NAO";
     document.getElementById("observacaoFeriado").value = "";
     alternarObservacaoFeriado();
@@ -1593,12 +1691,16 @@ function cancelarEdicaoEscala(){
 
 async function salvarEscalas(){
     const pessoasSelecionadas = pessoasSelecionadasCadastro();
-    const periodo = document.getElementById("periodoEscala").value;
+    const horario_entrada_1 = document.getElementById("horarioEntrada1").value;
+    const horario_saida_1 = document.getElementById("horarioSaida1").value;
+    const horario_entrada_2 = document.getElementById("horarioEntrada2").value;
+    const horario_saida_2 = document.getElementById("horarioSaida2").value;
     const feriado = document.getElementById("feriadoEscala").value === "SIM";
     const observacao_feriado = document.getElementById("observacaoFeriado").value.trim();
     const idEdicao = document.getElementById("escalaEdicaoId").value;
 
     if(!usuarioAdministrador){ alert("Apenas administradores podem alterar a escala."); return; }
+
     if(!pessoasSelecionadas.length){
         alert("Selecione pelo menos um técnico ou atendente.");
         return;
@@ -1609,9 +1711,31 @@ async function salvarEscalas(){
         return;
     }
 
-    if(!periodo){
-        alert("Selecione o período.");
+    if(!horario_entrada_1 || !horario_saida_1){
+        alert("Informe a primeira entrada e a primeira saída.");
         return;
+    }
+
+    if(horario_entrada_1 >= horario_saida_1){
+        alert("A primeira saída deve ser posterior à primeira entrada.");
+        return;
+    }
+
+    if((horario_entrada_2 && !horario_saida_2) || (!horario_entrada_2 && horario_saida_2)){
+        alert("Para o segundo expediente, informe entrada e saída.");
+        return;
+    }
+
+    if(horario_entrada_2 && horario_saida_2){
+        if(horario_entrada_2 >= horario_saida_2){
+            alert("A segunda saída deve ser posterior à segunda entrada.");
+            return;
+        }
+
+        if(horario_entrada_2 < horario_saida_1){
+            alert("A segunda entrada não pode ocorrer antes da primeira saída.");
+            return;
+        }
     }
 
     if(feriado && !observacao_feriado){
@@ -1629,16 +1753,21 @@ async function salvarEscalas(){
     botao.disabled = true;
     document.getElementById("textoBtnSalvarEscala").textContent = idEdicao ? "Salvando..." : "Cadastrando...";
 
+    const montarPayload = (pessoa, data_escala) => ({
+        pessoa_tipo: pessoa.tipo,
+        pessoa_id: pessoa.id,
+        data_escala,
+        horario_entrada_1,
+        horario_saida_1,
+        horario_entrada_2: horario_entrada_2 || null,
+        horario_saida_2: horario_saida_2 || null,
+        feriado: feriado ? 1 : 0,
+        observacao_feriado: feriado ? observacao_feriado : null
+    });
+
     try{
         if(idEdicao){
-            const payload = {
-                pessoa_tipo: pessoasSelecionadas[0].tipo,
-                pessoa_id: pessoasSelecionadas[0].id,
-                data_escala: datasSelecionadasEscala[0],
-                periodo,
-                feriado: feriado ? 1 : 0,
-                observacao_feriado: feriado ? observacao_feriado : null
-            };
+            const payload = montarPayload(pessoasSelecionadas[0], datasSelecionadasEscala[0]);
 
             const res = await fetch(`/api/escalas/${idEdicao}`, {
                 method:"PUT",
@@ -1657,16 +1786,10 @@ async function salvarEscalas(){
             alert("Escala atualizada com sucesso.");
         }else{
             const combinacoes = [];
+
             pessoasSelecionadas.forEach(pessoa => {
                 datasSelecionadasEscala.forEach(data_escala => {
-                    combinacoes.push({
-                        pessoa_tipo: pessoa.tipo,
-                        pessoa_id: pessoa.id,
-                        data_escala,
-                        periodo,
-                        feriado: feriado ? 1 : 0,
-                        observacao_feriado: feriado ? observacao_feriado : null
-                    });
+                    combinacoes.push(montarPayload(pessoa, data_escala));
                 });
             });
 
@@ -1728,7 +1851,10 @@ function editarEscala(id){
     datasSelecionadasEscala = [normalizarDataEscala(escala.data_escala)];
     renderizarDatasSelecionadas();
 
-    document.getElementById("periodoEscala").value = escala.periodo || "";
+    document.getElementById("horarioEntrada1").value = normalizarHorarioTela(escala.horario_entrada_1);
+    document.getElementById("horarioSaida1").value = normalizarHorarioTela(escala.horario_saida_1);
+    document.getElementById("horarioEntrada2").value = normalizarHorarioTela(escala.horario_entrada_2);
+    document.getElementById("horarioSaida2").value = normalizarHorarioTela(escala.horario_saida_2);
     const ehFeriado = escala.feriado == 1 || escala.feriado === true || String(escala.feriado).toUpperCase() === "SIM";
     document.getElementById("feriadoEscala").value = ehFeriado ? "SIM" : "NAO";
     document.getElementById("observacaoFeriado").value =
@@ -1786,6 +1912,38 @@ function getDiaSemana(valor){
     const data = valor?.split("T")[0] || valor;
     const d = new Date(data + "T00:00:00");
     return diasSemana[d.getDay()];
+}
+
+
+function normalizarHorarioTela(valor){
+    const texto = String(valor || "").trim();
+    if(!texto) return "";
+    return texto.slice(0,5);
+}
+
+function horariosEscala(escala){
+    const entrada1 = normalizarHorarioTela(escala?.horario_entrada_1);
+    const saida1 = normalizarHorarioTela(escala?.horario_saida_1);
+    const entrada2 = normalizarHorarioTela(escala?.horario_entrada_2);
+    const saida2 = normalizarHorarioTela(escala?.horario_saida_2);
+
+    const blocos = [];
+    if(entrada1 && saida1) blocos.push({entrada:entrada1,saida:saida1});
+    if(entrada2 && saida2) blocos.push({entrada:entrada2,saida:saida2});
+
+    return blocos;
+}
+
+function textoHorariosEscala(escala){
+    const blocos = horariosEscala(escala);
+
+    if(!blocos.length){
+        return periodoTexto(escala?.periodo || "");
+    }
+
+    return blocos
+        .map(item => `${item.entrada} às ${item.saida}`)
+        .join(" / ");
 }
 
 function periodoTexto(periodo){
@@ -1876,9 +2034,12 @@ function renderizarCalendario(lista){
             return `
                 <div class="escala-item">
                     <strong>${escaparHtml(nomeTecnicoEscala(e))}<span class="perfil-badge">${tipoPessoaEscala(e)==="ATENDENTE"?"ATENDENTE":"TÉCNICO"}</span></strong>
-                    <span class="periodo ${escaparHtml(e.periodo || "")}">
-                        ${escaparHtml(periodoTexto(e.periodo))}
-                    </span>
+                    <div class="horarios-resumo">
+                        ${horariosEscala(e).length
+                            ? horariosEscala(e).map((h,i) => `<span class="horario-linha ${i ? "segundo" : ""}">${escaparHtml(h.entrada)} às ${escaparHtml(h.saida)}</span>`).join("")
+                            : `<span class="periodo ${escaparHtml(e.periodo || "")}">${escaparHtml(periodoTexto(e.periodo))}</span>`
+                        }
+                    </div>
                     ${feriado ? '<span class="feriado-badge">FERIADO</span>' : ''}
                     ${feriado && observacaoFeriado ? `<div class="feriado-observacao">${escaparHtml(observacaoFeriado)}</div>` : ''}
                     ${usuarioAdministrador ? `<div class="acoes-item"><button type="button" class="acao-editar" onclick="editarEscala(${Number(e.id)})">Editar</button><button type="button" class="acao-excluir" onclick="excluirEscala(${Number(e.id)})">Excluir</button></div>` : ""}
@@ -1911,6 +2072,7 @@ function listaAtualParaImpressao(){
 
     return escalas.filter(e =>
         nomeTecnicoEscala(e).toLowerCase().includes(termo) ||
+        textoHorariosEscala(e).toLowerCase().includes(termo) ||
         String(e.periodo || "").toLowerCase().includes(termo) ||
         String(formatarData(e.data_escala)).includes(termo)
     );
@@ -1944,8 +2106,9 @@ function dadosMesParaImpressao(ano, mes, fonte = escalas){
         const itens = listaMes
             .filter(e => normalizarDataEscala(e.data_escala) === dataChave)
             .sort((a,b) => {
-                const ordem = {MANHA:1, INTEGRAL:2, TARDE:3, NOITE:4};
-                return (ordem[a.periodo] || 99) - (ordem[b.periodo] || 99) ||
+                const horaA = normalizarHorarioTela(a.horario_entrada_1) || "99:99";
+                const horaB = normalizarHorarioTela(b.horario_entrada_1) || "99:99";
+                return horaA.localeCompare(horaB) ||
                        nomeTecnicoEscala(a).localeCompare(nomeTecnicoEscala(b), "pt-BR");
             });
 
@@ -1962,7 +2125,7 @@ function dadosMesParaImpressao(ano, mes, fonte = escalas){
             return `
                 <div class="item-escala ${feriado ? "item-feriado" : ""}">
                     <strong>${escaparHtml(nomeTecnicoEscala(e))}</strong>
-                    <span class="periodo-print ${escaparHtml(e.periodo || "")}">${escaparHtml(periodoTexto(e.periodo))}</span>
+                    <span class="periodo-print ${escaparHtml(e.periodo || "")}">${escaparHtml(textoHorariosEscala(e))}</span>
                     ${feriado ? '<span class="feriado-print">FERIADO</span>' : ''}
                     ${feriado && obs ? `<div class="feriado-obs-print">${escaparHtml(obs)}</div>` : ''}
                 </div>
@@ -2148,10 +2311,13 @@ function imprimirEscalaCalendario(){
     }
     .periodo-print{
         display:inline-block;
-        border-radius:999px;
-        padding:1px 3px;
-        font-size:6.5px;
+        border-radius:4px;
+        padding:2px 3px;
+        font-size:7px;
         font-weight:900;
+        line-height:1.15;
+        background:#e0f2fe;
+        color:#075985;
     }
     .periodo-print.MANHA{background:#dbeafe;color:#1d4ed8}
     .periodo-print.TARDE{background:#ffedd5;color:#c2410c}
