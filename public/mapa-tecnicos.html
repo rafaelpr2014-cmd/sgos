@@ -94,9 +94,9 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);col
 .dia-head h3{margin:0;font-size:18px}
 .badges{display:flex;flex-wrap:wrap;gap:8px}
 .badge{padding:6px 10px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:800}
-.dia-layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;min-height:520px}
-.mapa{min-height:520px;width:100%}
-.timeline{border-left:1px solid var(--borda);background:#fff;padding:18px;overflow:auto;max-height:520px}
+.dia-layout{display:grid;grid-template-columns:minmax(0,1fr) 380px;min-height:720px}
+.mapa{min-height:720px;width:100%}
+.timeline{border-left:1px solid var(--borda);background:#fff;padding:18px;overflow:auto;max-height:720px}
 .timeline h4{margin:0 0 14px;font-size:15px}
 .tecnico-grupo{margin-bottom:18px}
 .tecnico-titulo{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
@@ -115,7 +115,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fundo);col
   color:white;font-weight:800;font-size:12px;border:2px solid white;box-shadow:0 3px 10px rgba(0,0,0,.25)
 }
 @media(max-width:1450px){.cards-kpi{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:1200px){.filtros{grid-template-columns:1fr 1fr 1fr}.dia-layout{grid-template-columns:1fr}.timeline{border-left:0;border-top:1px solid var(--borda);max-height:none}.mapa{min-height:460px}}
+@media(max-width:1200px){.filtros{grid-template-columns:1fr 1fr 1fr}.dia-layout{grid-template-columns:1fr}.timeline{border-left:0;border-top:1px solid var(--borda);max-height:none}.mapa{min-height:600px}}
 @media(max-width:900px){.sidebar{display:none}.main{margin-left:0}.header{height:auto;flex-direction:column;align-items:flex-start;gap:14px;padding:20px}.content{padding:20px}.filtros,.cards-kpi{grid-template-columns:1fr}}
 </style>
 </head>
@@ -326,6 +326,42 @@ function haversine(a,b){const R=6371,rad=x=>x*Math.PI/180,dLat=rad(b.latitude-a.
 function markerIcon(numero,cor){return L.divIcon({className:"",html:`<div class="marker-num" style="background:${cor}">${numero}</div>`,iconSize:[28,28],iconAnchor:[14,14]})}
 function limparMapas(){while(mapasAtivos.length){try{mapasAtivos.pop().remove()}catch{}}}
 
+const cacheEnderecosGPS = new Map();
+
+async function obterEnderecoGPS(latitude, longitude){
+  const lat = Number(latitude), lng = Number(longitude);
+  if(!Number.isFinite(lat) || !Number.isFinite(lng)) return "Endereço GPS indisponível";
+
+  const chave = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+  if(cacheEnderecosGPS.has(chave)) return cacheEnderecosGPS.get(chave);
+
+  try{
+    const p = new URLSearchParams({lat:String(lat), lon:String(lng)});
+    const r = await fetch(`/api/mapa-tecnicos/endereco?${p}`, {
+      headers: headersAuth(),
+      cache: "no-store"
+    });
+    const d = await r.json();
+    const endereco = r.ok && d?.endereco ? d.endereco : `GPS: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    cacheEnderecosGPS.set(chave,endereco);
+    return endereco;
+  }catch(_){
+    const fallback = `GPS: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    cacheEnderecosGPS.set(chave,fallback);
+    return fallback;
+  }
+}
+
+async function preencherEnderecosGPS(container){
+  const itens = [...container.querySelectorAll("[data-gps-lat][data-gps-lng]")];
+  for(const el of itens){
+    if(el.dataset.gpsCarregado === "1") continue;
+    el.dataset.gpsCarregado = "1";
+    const endereco = await obterEnderecoGPS(el.dataset.gpsLat, el.dataset.gpsLng);
+    el.textContent = endereco;
+  }
+}
+
 function agrupar(pontos){
   const dias={};
   pontos.forEach(p=>{
@@ -386,12 +422,13 @@ function render(data){
                 <div class="evento" style="--cor:${cores[gi%cores.length]}">
                   <strong>${horaBR(p.momento)} · ${p.tipo_ponto==="checkin_inicio"?"Chegada":"Conclusão"}</strong>
                   <small>OS #${esc(p.os_id)} · ${esc(p.cliente||"-")}</small>
-                  <small>${esc(p.localidade_nome||"-")} · ${esc(p.endereco||"-")}</small>
+                  <small>${esc(p.localidade_nome||"-")}</small><small data-gps-lat="${esc(p.latitude)}" data-gps-lng="${esc(p.longitude)}">Buscando endereço real do GPS...</small>
                 </div>`).join("")}
             </div>`).join("")}
         </aside>
       </div>`;
     container.appendChild(card);
+    preencherEnderecosGPS(card);
 
     const mapa=L.map(mapaId);
     mapasAtivos.push(mapa);
@@ -437,9 +474,14 @@ function render(data){
           <strong>${esc(g.usuario_nome)}</strong><br>
           ${p.tipo_ponto==="checkin_inicio"?"Chegada / check-in":"Conclusão / check-out"}<br>
           OS #${esc(p.os_id)} — ${esc(p.cliente||"-")}<br>
-          ${horaBR(p.momento)}<br>${esc(p.endereco||p.localidade_nome||"-")}`);
+          ${horaBR(p.momento)}<br><span data-gps-lat="${esc(p.latitude)}" data-gps-lng="${esc(p.longitude)}">Buscando endereço real do GPS...</span>`);
       });
       if(latlngs.length>1)L.polyline(latlngs,{color:cor,weight:4,opacity:.8}).addTo(mapa);
+    });
+
+    mapa.on("popupopen", e=>{
+      const no = e.popup?.getElement?.();
+      if(no) preencherEnderecosGPS(no);
     });
 
     if(bounds.length===1)mapa.setView(bounds[0],16);

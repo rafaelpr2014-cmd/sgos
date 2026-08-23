@@ -4,6 +4,77 @@ module.exports = (pool, verificarAutenticacao) => {
 
     const dataValida = valor => /^\d{4}-\d{2}-\d{2}$/.test(String(valor || ""));
 
+
+    const cacheEnderecos = new Map();
+
+    const coordenadaValida = (lat, lon) => {
+        const latitude = Number(lat);
+        const longitude = Number(lon);
+        return Number.isFinite(latitude) && Number.isFinite(longitude)
+            && latitude >= -90 && latitude <= 90
+            && longitude >= -180 && longitude <= 180;
+    };
+
+    async function reverseGeocode(latitude, longitude){
+        const chave = `${Number(latitude).toFixed(6)},${Number(longitude).toFixed(6)}`;
+        const cache = cacheEnderecos.get(chave);
+        if(cache && (Date.now() - cache.em) < 24 * 60 * 60 * 1000){
+            return cache.endereco;
+        }
+
+        const url = new URL("https://nominatim.openstreetmap.org/reverse");
+        url.searchParams.set("format","jsonv2");
+        url.searchParams.set("lat",String(latitude));
+        url.searchParams.set("lon",String(longitude));
+        url.searchParams.set("zoom","18");
+        url.searchParams.set("addressdetails","1");
+
+        const resposta = await fetch(url, {
+            headers: {
+                "User-Agent": "SGOS/1.0 mapa-tecnicos",
+                "Accept-Language": "pt-BR,pt;q=0.9"
+            },
+            signal: AbortSignal.timeout(7000)
+        });
+
+        if(!resposta.ok){
+            throw new Error(`Geocodificação HTTP ${resposta.status}`);
+        }
+
+        const dados = await resposta.json();
+        const endereco = String(dados?.display_name || "").trim();
+        if(!endereco) throw new Error("Endereço não encontrado para as coordenadas.");
+
+        cacheEnderecos.set(chave,{endereco,em:Date.now()});
+
+        if(cacheEnderecos.size > 1000){
+            const primeira = cacheEnderecos.keys().next().value;
+            if(primeira) cacheEnderecos.delete(primeira);
+        }
+
+        return endereco;
+    }
+
+    router.get("/endereco", verificarAutenticacao, async (req,res) => {
+        try{
+            const lat = Number(req.query.lat);
+            const lon = Number(req.query.lon);
+
+            if(!coordenadaValida(lat,lon)){
+                return res.status(400).json({erro:"Coordenadas GPS inválidas."});
+            }
+
+            const endereco = await reverseGeocode(lat,lon);
+            res.json({ok:true,endereco,latitude:lat,longitude:lon});
+        }catch(err){
+            console.error("MAPA TÉCNICOS / ENDEREÇO GPS:",err);
+            res.status(502).json({
+                erro:"Não foi possível consultar o endereço real do GPS.",
+                detalhe:err.message
+            });
+        }
+    });
+
     router.get("/usuarios", verificarAutenticacao, async (req,res) => {
         try{
             const empresaId = Number(req.usuario.empresa_id);
