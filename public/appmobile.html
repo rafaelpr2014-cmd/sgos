@@ -6622,9 +6622,24 @@ async function arquivoSelecionado(input){
         return;
     }
 
-    // O arquivo selecionado passa a ser o anexo pendente desta OS.
-    // Não há mais processamento/carimbo GPS automático.
-    arquivoFotoPreparado = arquivo;
+    // iOS/WKWebView: arquivos vindos da Camera/Fotos podem ser referências temporárias.
+    // Copia os bytes imediatamente para um Blob próprio, evitando "Load failed"
+    // quando o FormData for enviado alguns awaits depois.
+    try{
+        const buffer = await arquivo.arrayBuffer();
+        const mimeSeguro = String(arquivo.type || (ehVideo ? "video/quicktime" : ehPdf ? "application/pdf" : "image/jpeg"));
+        const blobSeguro = new Blob([buffer], { type:mimeSeguro });
+        Object.defineProperty(blobSeguro, "name", {
+            value: arquivo.name || `anexo-${Date.now()}${ehVideo ? ".mov" : ehPdf ? ".pdf" : ".jpg"}`,
+            configurable:true
+        });
+        arquivoFotoPreparado = blobSeguro;
+    }catch(erroCopia){
+        console.error("Falha ao copiar mídia selecionada:", erroCopia);
+        alert("Não foi possível carregar a foto/vídeo selecionado. Se estiver no iCloud, aguarde o download e tente novamente.");
+        input.value = "";
+        return;
+    }
     window.arquivoVideoPreparado = null;
     window.modoCapturaGPS = null;
     window.ultimaLocalizacaoMidia = null;
@@ -7734,10 +7749,21 @@ async function enviarAcao(tipo, botao){
         if(arquivo){
             const nomeArquivo = arquivo.name || `anexo-${Date.now()}`;
 
+            // iOS/WKWebView: recria o Blob antes do multipart para não enviar
+            // uma referência temporária da Camera/Fotos/IndexedDB.
+            let arquivoEnvio = arquivo;
+            try{
+                const bytes = await arquivo.arrayBuffer();
+                arquivoEnvio = new Blob([bytes], {
+                    type: arquivo.type || "application/octet-stream"
+                });
+            }catch(erroBlob){
+                console.error("Falha ao materializar anexo para envio:", erroBlob);
+                throw new Error("Não foi possível carregar o anexo para envio. Selecione a foto ou vídeo novamente.");
+            }
+
             // As três rotas usam Multer com upload.single("foto").
-            // Enviar o mesmo arquivo também como anexo_ausente ou
-            // anexo_finalizado gera MulterError: Unexpected field.
-            formData.append("foto", arquivo, nomeArquivo);
+            formData.append("foto", arquivoEnvio, nomeArquivo);
         }
         const controller = new AbortController();
         const timer = setTimeout(()=>controller.abort(), 60000);
