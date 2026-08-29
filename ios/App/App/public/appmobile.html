@@ -416,6 +416,23 @@ body{
 .modal{align-items:flex-end}
 .modal-anexo{align-items:center;z-index:10000}
 
+/* iOS/WKWebView: mantém o resumo e os controles tocáveis após retorno de câmera/GPS. */
+.modal[style*="display: flex"],
+.modal-content{
+    pointer-events:auto;
+}
+.modal-content{
+    -webkit-overflow-scrolling:touch;
+    touch-action:manipulation;
+}
+.modal-content button,
+.modal-content textarea,
+.modal-content input,
+.seletor-anexo-modal button{
+    pointer-events:auto;
+    touch-action:manipulation;
+}
+
 .modal-content{
     background:#fff;
     padding:22px;
@@ -978,6 +995,118 @@ button{touch-action:manipulation}
     word-break:break-word;
 }
 
+
+.anexo-acoes{
+    grid-template-columns:1fr !important;
+}
+.anexo-pendente-box{
+    display:none;
+    margin:8px 0 12px;
+    padding:12px;
+    border:1px solid #bfdbfe;
+    border-radius:14px;
+    background:#eff6ff;
+}
+.anexo-pendente-box.ativo{display:block}
+.anexo-pendente-topo{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+}
+.anexo-pendente-info{
+    min-width:0;
+    color:#1e3a8a;
+    font-size:12px;
+    font-weight:800;
+    line-height:1.45;
+    word-break:break-word;
+}
+.anexo-pendente-info strong{
+    display:block;
+    color:#0f172a;
+    font-size:13px;
+    margin-bottom:3px;
+}
+.btn-remover-anexo-pendente{
+    width:auto !important;
+    min-width:42px;
+    margin:0 !important;
+    padding:8px 10px !important;
+    border-radius:10px !important;
+    background:#fee2e2 !important;
+    color:#b91c1c !important;
+    border:1px solid #fecaca !important;
+    font-size:12px !important;
+    flex:0 0 auto;
+}
+.seletor-anexo-modal{
+    position:fixed;
+    inset:0;
+    z-index:14000;
+    display:none;
+    align-items:flex-end;
+    justify-content:center;
+    background:rgba(6,20,38,.64);
+    padding:16px;
+}
+.seletor-anexo-modal.ativo{display:flex}
+.seletor-anexo-card{
+    width:min(460px,100%);
+    background:#fff;
+    border-radius:24px;
+    padding:18px;
+    box-shadow:0 28px 70px rgba(0,0,0,.32);
+}
+.seletor-anexo-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+}
+.seletor-anexo-head strong{
+    color:#0f172a;
+    font-size:18px;
+}
+.seletor-anexo-fechar{
+    width:38px !important;
+    height:38px;
+    margin:0 !important;
+    padding:0 !important;
+    border-radius:12px !important;
+    background:#eef2f7 !important;
+    color:#334155 !important;
+    font-size:22px !important;
+}
+.seletor-anexo-opcoes{
+    display:grid;
+    gap:10px;
+}
+.seletor-anexo-opcoes button{
+    width:100%;
+    min-height:56px;
+    margin:0 !important;
+    border-radius:15px !important;
+    background:#f8fafc !important;
+    color:#0f172a !important;
+    border:1px solid #dbe3ef !important;
+    text-align:left;
+    padding:13px 15px !important;
+    font-size:15px !important;
+}
+.seletor-anexo-opcoes button strong{
+    display:block;
+    font-size:15px;
+}
+.seletor-anexo-opcoes button small{
+    display:block;
+    margin-top:3px;
+    color:#64748b;
+    font-size:11px;
+    font-weight:700;
+}
+
 .checkin-os-box{margin-top:12px;padding:13px;border:1px solid #bfdbfe;border-radius:14px;background:#eff6ff;color:#1e3a8a;line-height:1.55}
 .checkin-os-box.checkin-concluido{border-color:#bbf7d0;background:#f0fdf4;color:#166534}
 .checkin-os-box b{color:inherit}
@@ -987,6 +1116,7 @@ button{touch-action:manipulation}
 
 .modal-modo-leitura .anexo-acoes,
 .modal-modo-leitura #arquivoSelecionadoInfo,
+.modal-modo-leitura #anexoPendenteBox,
 .modal-modo-leitura #obs,
 .modal-modo-leitura #btnAusente,
 .modal-modo-leitura #btnInviabilidade,
@@ -2237,6 +2367,8 @@ body{
     }
 }
 
+
+.os-proxima-fila{border:2px solid #f59e0b!important;box-shadow:0 0 0 4px rgba(245,158,11,.12),var(--shadow-soft)!important}.badge-proxima-app,.badge-lancada-app{display:inline-block;margin:6px 5px 0 0;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:900}.badge-proxima-app{background:#fef3c7;color:#92400e}.badge-lancada-app{background:#dbeafe;color:#1d4ed8}.modal-proxima-app{position:fixed;inset:0;background:rgba(2,6,23,.68);z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:16px}.caixa-proxima-app{background:#fff;width:min(620px,100%);max-height:82vh;overflow:auto;border-radius:24px;padding:20px}.caixa-proxima-app h3{margin:0 0 6px}.caixa-proxima-app p{color:#64748b}.lista-proxima-app{display:grid;gap:9px}.lista-proxima-app button{display:flex;flex-direction:column;text-align:left;padding:14px;border:1px solid #dbeafe;background:#f8fbff;border-radius:14px}.lista-proxima-app small{margin-top:5px;color:#64748b}.sair-proxima-app{width:100%;margin-top:14px;padding:13px;border:0;border-radius:14px;background:#e2e8f0;font-weight:900}
 </style>
 
 
@@ -2649,6 +2781,90 @@ body{
 
 </style>
 
+<style id="sgos-app-fila-acoes-fix">
+.btn-fila-app{background:#7c3aed!important;color:#fff!important}
+#btnConcluir{background:#16a34a!important;color:#fff!important}
+#btnCheckin{background:#075cf6!important;color:#fff!important}
+</style>
+
+<style id="sgos-ajustes-proxima-checkin-20260807">
+.lista-proxima-app button{
+    cursor:pointer;
+    position:relative;
+    transition:border-color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.lista-proxima-app button.selecionada{
+    border:2px solid #1769ff !important;
+    background:#eaf2ff !important;
+    box-shadow:0 0 0 4px rgba(23,105,255,.12);
+    transform:translateY(-1px);
+}
+.lista-proxima-app button.selecionada::after{
+    content:"✓";
+    position:absolute;
+    right:12px;
+    top:12px;
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:#1769ff;
+    color:#fff;
+    font-weight:900;
+}
+.acoes-proxima-app{
+    display:grid;
+    grid-template-columns:1fr 1.35fr;
+    gap:10px;
+    margin-top:14px;
+}
+.confirmar-proxima-app,
+.sair-proxima-app{
+    width:100%;
+    margin:0 !important;
+    padding:13px;
+    border:0;
+    border-radius:14px;
+    font-weight:900;
+}
+.confirmar-proxima-app{background:#1769ff;color:#fff}
+.confirmar-proxima-app:disabled{opacity:.45;cursor:not-allowed}
+.sair-proxima-app{background:#e2e8f0;color:#334155}
+
+.os.os-checkin-execucao{
+    background:#ecfdf5 !important;
+    border:2px solid #10b981 !important;
+    box-shadow:0 8px 22px rgba(16,185,129,.16) !important;
+}
+.os.os-checkin-execucao .os-cliente-nome,
+.os.os-checkin-execucao .os-localidade,
+.os.os-checkin-execucao .os-endereco,
+.os.os-checkin-execucao .os-meta-item span{
+    color:#064e3b !important;
+}
+.badge-checkin-execucao{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    margin:6px 5px 0 0;
+    padding:5px 9px;
+    border-radius:999px;
+    background:#10b981;
+    color:#fff;
+    font-size:10px;
+    font-weight:900;
+}
+</style>
+
+
+<style id="sgos-fix-popup-anexo-video-20260808">
+.os.os-destaque-push{
+    outline:3px solid rgba(255,255,255,.95) !important;
+    box-shadow:0 0 0 6px rgba(7,92,246,.24),0 12px 28px rgba(2,37,109,.22) !important;
+}
+</style>
+
 </head>
 
 <body>
@@ -2668,7 +2884,8 @@ body{
     <nav class="drawer-nav">
         <a data-page="os" href="appmobile.html" class="active"><span class="ico">▤</span><span>Ordens de Serviço</span></a>
         <a data-page="escala" href="app-escala.html"><span class="ico">□</span><span>Escala</span></a>
-        <a data-page="viabilidades" href="app-viabilidades.html"><span class="ico">⌖</span><span>Viabilidades</span></a>
+                <a data-page="servicos" href="app-servicos.html"><span class="ico">⚒</span><span>Serviços</span></a>
+<a data-page="viabilidades" href="app-viabilidades.html"><span class="ico">⌖</span><span>Viabilidades</span></a>
         <a data-page="planos" href="app-planos.html"><span class="ico">▣</span><span>Planos</span></a>
         <a data-page="historico" href="app-historico-os.html"><span class="ico">◷</span><span>Histórico de OS</span></a>
     </nav>
@@ -2727,8 +2944,8 @@ body{
     <div class="card andamento" onclick="setTab('andamento')" role="button" tabindex="0">
         <div class="card-conteudo">
             <span id="cA">0</span>
-            <small>Em andamento</small>
-            <div class="card-subtitle">OS ativas agora</div>
+            <small>Atendimentos</small>
+            <div class="card-subtitle">Lançadas e em execução</div>
         </div>
 
         <div class="card-icon" aria-hidden="true">
@@ -2773,14 +2990,14 @@ body{
 </div>
 
 <section class="resumo-tipos-servico" id="resumoTiposServico" aria-live="polite">
-    <div class="resumo-tipos-titulo">Tipos de serviços em execução</div>
+    <div class="resumo-tipos-titulo">Tipos de serviços lançados e em execução</div>
     <div class="resumo-tipos-lista" id="listaTiposServico">
-        <div class="resumo-tipos-vazio">Nenhum serviço em execução no período</div>
+        <div class="resumo-tipos-vazio">Nenhum serviço lançado ou em execução no período</div>
     </div>
 </section>
 
 <div class="lista-cabecalho">
-    <strong id="tituloLista">Ordens em andamento</strong>
+    <strong id="tituloLista">Ordens lançadas e em execução</strong>
     <button type="button" onclick="mostrarTodas()">Ver todas</button>
 </div>
 <div class="container" id="lista"></div>
@@ -2796,17 +3013,31 @@ body{
 
         <textarea id="obs" placeholder="Digite a observação correspondente ao status..."></textarea>
         <input type="file" id="foto" accept="image/*,video/*,.pdf,application/pdf" hidden onchange="arquivoSelecionado(this)">
+        <input type="file" id="anexoGaleria" accept="image/*,video/*" hidden onchange="arquivoSelecionado(this)">
+        <!-- Captura separada: evita crash do Android/WebView ao alternar Foto -> Vídeo na câmera -->
+        <input type="file" id="anexoFotoAgora" accept="image/*" capture="environment" hidden onchange="arquivoSelecionado(this)">
+        <input type="file" id="anexoVideoAgora" accept="video/*" capture="environment" hidden onchange="arquivoSelecionado(this)">
+        <input type="file" id="anexoArquivos" accept="image/*,video/*,.pdf,application/pdf" hidden onchange="arquivoSelecionado(this)">
+
         <div class="anexo-acoes">
-            <button type="button" class="btn-anexo-escolher" onclick="escolherAnexo()">📎 Anexar foto, vídeo ou PDF</button>
-            <button type="button" class="btn-camera" onclick="tirarFotoAgora()">📷 Tirar Foto</button>
+            <button id="btnEscolherAnexo" type="button" class="btn-anexo-escolher" onclick="escolherAnexo()">📎 Anexar foto, vídeo ou PDF</button>
         </div>
+
         <div id="arquivoSelecionadoInfo" class="arquivo-selecionado-info">Nenhum arquivo selecionado</div>
 
-        <button id="btnVerAnexo" type="button" class="btn-loc" onclick="verAnexo()">📎 Ver Anexo</button>
+        <div id="anexoPendenteBox" class="anexo-pendente-box">
+            <div class="anexo-pendente-topo">
+                <div id="anexoPendenteInfo" class="anexo-pendente-info"></div>
+                <button type="button" class="btn-remover-anexo-pendente" onclick="removerAnexoPendente()">🗑 Remover</button>
+            </div>
+        </div>
+
+        <button id="btnVerAnexo" type="button" class="btn-loc" onclick="verAnexoTipo('principal')">📎 Ver Anexo</button>
+        <button id="btnVerAnexoConclusao" type="button" class="btn-loc" onclick="verAnexoTipo('conclusao')" style="display:none">📎 Anexo da conclusão</button>
         <button id="btnAusente" type="button" class="btn-ausente" onclick="enviarAcao('ausente', this)">Cliente Ausente</button>
         <button id="btnInviabilidade" type="button" class="btn-inv" onclick="enviarAcao('inviabilidade', this)">Inviabilidade</button>
         <button id="btnReagendar" type="button" class="btn-reagendar" onclick="abrirReagendamento()">📅 Reagendar</button>
-        <button id="btnCheckin" type="button" class="btn-checkin" onclick="fazerCheckin(this)">📍 Registrar check-in</button>
+        <button id="btnCheckin" type="button" class="btn-checkin" onclick="fazerCheckin(this)">📍 Fazer check-in e iniciar</button>
         <button id="btnConcluir" type="button" class="btn-ok" onclick="enviarAcao('concluir', this)">Concluir</button>
 
         <button id="btnEnviarLocalizacao" type="button" class="btn-loc" onclick="pegarLocalizacao(this)">📍 Enviar Localização</button>
@@ -2818,6 +3049,50 @@ body{
 
 
 
+
+
+<div id="seletorAnexoModal" class="seletor-anexo-modal" aria-hidden="true">
+    <div class="seletor-anexo-card" role="dialog" aria-modal="true" aria-label="Selecionar anexo">
+        <div class="seletor-anexo-head">
+            <strong>Selecionar anexo</strong>
+            <button type="button" class="seletor-anexo-fechar" onclick="fecharSeletorAnexo()" aria-label="Fechar">×</button>
+        </div>
+        <div class="seletor-anexo-opcoes">
+            <button type="button" onclick="selecionarOrigemAnexo('galeria')">
+                <strong>🖼️ Galeria</strong>
+                <small>Escolher foto ou vídeo já salvo no aparelho</small>
+            </button>
+            <button type="button" onclick="selecionarOrigemAnexo('agora')">
+                <strong>📷 Foto ou vídeo de Agora</strong>
+                <small>Abrir a câmera do aparelho para uma nova captura</small>
+            </button>
+            <button type="button" onclick="selecionarOrigemAnexo('arquivos')">
+                <strong>📁 Arquivos</strong>
+                <small>Escolher foto, vídeo, PDF ou outro arquivo permitido</small>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Seletor exclusivo para captura imediata. Foto e vídeo usam intents separados no Android. -->
+<div id="seletorCapturaAgoraModal" class="seletor-anexo-modal" aria-hidden="true">
+    <div class="seletor-anexo-card" role="dialog" aria-modal="true" aria-label="Foto ou vídeo de agora">
+        <div class="seletor-anexo-head">
+            <strong>Foto ou vídeo de Agora</strong>
+            <button type="button" class="seletor-anexo-fechar" onclick="fecharSeletorCapturaAgora()" aria-label="Fechar">×</button>
+        </div>
+        <div class="seletor-anexo-opcoes">
+            <button type="button" onclick="abrirCapturaAgora('foto')">
+                <strong>📷 Tirar Foto Agora</strong>
+                <small>Abrir diretamente a câmera no modo foto</small>
+            </button>
+            <button type="button" onclick="abrirCapturaAgora('video')">
+                <strong>🎥 Gravar Vídeo Agora</strong>
+                <small>Abrir diretamente a câmera no modo vídeo</small>
+            </button>
+        </div>
+    </div>
+</div>
 
 <div class="modal-confirmacao-equipamento" id="modalConfirmacaoEquipamento" aria-hidden="true" inert>
   <div class="confirmacao-equipamento-card" role="dialog" aria-modal="true" aria-labelledby="tituloConfirmacaoEquipamento">
@@ -2852,7 +3127,7 @@ body{
     </div>
 
     <div class="confirmacao-pagamento-anexo" id="blocoComprovantePagamentoApp">
-      <label>Comprovante do pagamento (opcional)</label>
+      <label>Comprovante do pagamento <span style="color:#dc2626">*</span></label>
 
       <div class="confirmacao-pagamento-anexo-acoes">
         <button type="button" class="btn-pagamento-arquivo" onclick="document.getElementById('arquivoPagamentoApp').click()">
@@ -2909,7 +3184,7 @@ body{
     <input type="datetime-local" id="novaDataReagendamento">
     <label for="motivoReagendamento">Motivo ou observação</label>
     <textarea id="motivoReagendamento" maxlength="1000" placeholder="Ex.: cliente solicitou alteração de horário..."></textarea>
-    <div class="reagendamento-info">Se a nova data for hoje, a OS continuará no painel inicial. Para outra data, ela ficará na página de Agendamentos.</div>
+    <div class="reagendamento-info">Após reagendar, a OS sairá do painel principal e permanecerá em Agendamentos até ser lançada automaticamente pelo sistema.</div>
     <div class="reagendamento-acoes">
       <button type="button" class="btn-cancelar-reagendamento" onclick="fecharReagendamento()">Cancelar</button>
       <button type="button" id="btnConfirmarReagendamento" class="btn-confirmar-reagendamento" onclick="confirmarReagendamento(this)">Confirmar reagendamento</button>
@@ -3211,6 +3486,15 @@ function normalizarStatusApp(status){
     if(s.includes("agend")) return "agendado";
 
     return s.replace(/\s+/g, "_");
+}
+
+function statusOperacionalSempreVisivel(os){
+    const st=normalizarStatusApp(os?.status);
+    return st === "os_lancada" || st === "em_andamento";
+}
+function osPodeAparecerPainelPrincipal(os){
+    // Reagendada fica fora do painel até a rotina automática efetivamente lançá-la.
+    return normalizarStatusApp(os?.status) !== "reagendado";
 }
 
 function chaveOS(os){
@@ -3750,21 +4034,23 @@ async function load(){
 
     try {
         const urlOrdens = `${API_PATH}?periodo=${encodeURIComponent(periodoSelecionado)}&_=${Date.now()}`;
-        const res = await apiFetch(urlOrdens, {
-            method:"GET",
-            headers: headersSessaoApp(),
-            credentials:"include",
-            cache:"no-store"
-        });
-
+        const res = await apiFetch(urlOrdens, {method:"GET",headers:headersSessaoApp(),credentials:"include",cache:"no-store"});
         const payloadNormal = await res.json().catch(() => null);
+        if(!res.ok){const mensagem=payloadNormal?.erro||payloadNormal?.mensagem||`Erro HTTP ${res.status}`;throw new Error(mensagem);}
+        const listaPeriodo = extrairListaOrdens(payloadNormal);
 
-        if(!res.ok){
-            const mensagem = payloadNormal?.erro || payloadNormal?.mensagem || `Erro HTTP ${res.status}`;
-            throw new Error(mensagem);
-        }
+        // Segunda leitura sem período: mantém OS lançadas/em execução visíveis mesmo
+        // quando foram criadas/iniciadas ontem ou em qualquer data anterior.
+        let listaAtivasForaPeriodo=[];
+        try{
+            const resAtivas=await apiFetch(`${API_PATH}?_=${Date.now()}`,{method:"GET",headers:headersSessaoApp(),credentials:"include",cache:"no-store"});
+            const payloadAtivas=await resAtivas.json().catch(()=>null);
+            if(resAtivas.ok){listaAtivasForaPeriodo=extrairListaOrdens(payloadAtivas).filter(statusOperacionalSempreVisivel);}
+        }catch(eAtivas){console.warn("Não foi possível complementar OS ativas fora do período:",eAtivas);}
 
-        const listaNormal = extrairListaOrdens(payloadNormal);
+        const mapaNormal=new Map();
+        [...listaPeriodo,...listaAtivasForaPeriodo].forEach(item=>{if(item?.id!=null)mapaNormal.set(String(item.id),item)});
+        const listaNormal=[...mapaNormal.values()];
         console.log("📥 OS recebidas da API:", listaNormal.length, payloadNormal);
 
         let listaAvulsas = [];
@@ -3868,7 +4154,7 @@ function render(){
             norm(o.nome).includes(busca);
 
         const matchStatus =
-            (tab === "andamento" && norm(o.status).includes("andamento")) ||
+            (tab === "andamento" && (norm(o.status).includes("andamento") || norm(o.status).includes("os_lancada"))) ||
             (tab === "concluido" && norm(o.status).includes("concluido")) ||
             (tab === "ausente" && norm(o.status).includes("ausente"));
 
@@ -3887,7 +4173,7 @@ function render(){
     const osPeriodo = OS.filter(dentroDoPeriodo);
 
     document.getElementById("cA").innerText =
-        osPeriodo.filter(o => norm(o.status).includes("andamento")).length;
+        osPeriodo.filter(o => norm(o.status).includes("andamento") || norm(o.status).includes("os_lancada")).length;
 
     document.getElementById("cC").innerText =
         osPeriodo.filter(o => norm(o.status).includes("concluido")).length;
@@ -3942,10 +4228,10 @@ function render(){
         }
 
         return `
-        <div class="os" onclick="abrirModal('${chaveOS(o)}')">
+        <div class="os ${o.proxima_os ? "os-proxima-fila" : ""}" onclick="abrirModal('${chaveOS(o)}')">
             <div class="data-right">${dataTopo}</div>
 
-            <b>${o._tipo === "avulsa" ? "OS AVULSA" : "OS"} #${o.id}</b>${o._tipo === "avulsa" ? '<span class="badge-avulsa">Avulsa</span>' : ""}<br><br>
+            <b>${o._tipo === "avulsa" ? "OS AVULSA" : "OS"} #${o.id}</b>${o.proxima_os ? `<div class="badge-proxima-app">⭐ PRÓXIMO ATENDIMENTO</div>` : ""}${o.status === "os_lancada" ? `<div class="badge-lancada-app">🚀 OS LANÇADA</div>` : ""}${o._tipo === "avulsa" ? '<span class="badge-avulsa">Avulsa</span>' : ""}<br><br>
 
             ${o._tipo === "avulsa" ? `
                 <b>Localidade:</b> ${o.localidade_nome || '-'}<br>
@@ -4096,12 +4382,11 @@ function abrirModal(chave){
 
     const modalConteudo = document.querySelector("#modal .modal-content");
     const statusAtualModal = normalizarStatusApp(os.status);
+    const permiteAcao = ["em_andamento", "reagendado", "os_lancada"].includes(statusAtualModal);
     if(modalConteudo){
-        modalConteudo.classList.toggle(
-            "modal-modo-leitura",
-            statusAtualModal !== "em_andamento" && statusAtualModal !== "reagendado"
-        );
+        modalConteudo.classList.toggle("modal-modo-leitura", !permiteAcao);
     }
+    configurarAcoesModalPorStatus(os);
 
     const resumo = document.getElementById("resumoModalOS");
     if(resumo){
@@ -4121,12 +4406,67 @@ function abrirModal(chave){
     if(modal) modal.style.display = "flex";
 }
 
+
+function garantirBotaoFilaModal(){
+    let btn = document.getElementById("btnProximaFilaApp");
+    if(btn) return btn;
+    const btnCheckin = document.getElementById("btnCheckin");
+    const alvo = btnCheckin?.parentElement || document.querySelector("#modal .modal-content");
+    if(!alvo) return null;
+    btn = document.createElement("button");
+    btn.id = "btnProximaFilaApp";
+    btn.type = "button";
+    btn.className = "btn-fila-app";
+    btn.onclick = () => alternarProximaFilaApp(btn);
+    if(btnCheckin) btnCheckin.insertAdjacentElement("afterend", btn); else alvo.appendChild(btn);
+    return btn;
+}
+function configurarAcoesModalPorStatus(os){
+    const status = normalizarStatusApp(os?.status);
+    const lancada = status === "os_lancada";
+    const executando = status === "em_andamento";
+    const btnConcluir = document.getElementById("btnConcluir");
+    const btnAusente = document.getElementById("btnAusente");
+    const btnInv = document.getElementById("btnInviabilidade");
+    const btnReagendar = document.getElementById("btnReagendar");
+    const btnCheckin = document.getElementById("btnCheckin");
+    const btnFila = garantirBotaoFilaModal();
+    [btnConcluir,btnAusente,btnInv,btnReagendar].forEach(btn=>{ if(btn) btn.style.display = executando ? "block" : "none"; });
+    if(btnConcluir){ btnConcluir.textContent = "✅ Finalizar OS"; btnConcluir.disabled = !executando; }
+    if(btnCheckin){ btnCheckin.style.display = lancada ? "block" : "none"; btnCheckin.disabled = !lancada || Boolean(os?.checkin_inicio_em); btnCheckin.textContent = os?.checkin_inicio_em ? "✓ Check-in realizado" : "📍 Fazer check-in e iniciar"; }
+    if(btnFila){ const marcada = Number(os?.proxima_os || 0) === 1; btnFila.style.display = lancada ? "block" : "none"; btnFila.dataset.marcada = marcada ? "1" : "0"; btnFila.textContent = marcada ? "✖ Remover da próxima fila" : "⭐ Marcar como próxima da fila"; }
+}
+async function alternarProximaFilaApp(botao){
+    const osAtual = encontrarOS(osSelecionada);
+    if(!osAtual || normalizarStatusApp(osAtual.status) !== "os_lancada") return;
+    const marcada = Number(osAtual.proxima_os || 0) === 1 || botao?.dataset?.marcada === "1";
+    bloquearBotao(botao,true,marcada?"Removendo...":"Marcando...");
+    try{
+        const rota = marcada ? "remover-proxima-fila" : "proxima-fila";
+        const res = await apiFetch(`/api/ordens_servico/${rota}/${osAtual.id}`,{method:"POST",headers:{"Accept":"application/json"},cache:"no-store"});
+        const dados = await lerRespostaSegura(res);
+        if(!res.ok) throw new Error(dados.erro || dados.mensagem || `Erro HTTP ${res.status}`);
+        await load();
+        const atualizado = encontrarOS(`normal-${osAtual.id}`) || encontrarOS(osAtual.id);
+        if(atualizado){ osSelecionada=chaveOS(atualizado); configurarAcoesModalPorStatus(atualizado); const resumo=document.getElementById("resumoModalOS"); if(resumo) resumo.innerHTML=resumoModalHTML(atualizado); }
+        alert(marcada ? "OS removida da próxima fila." : "OS marcada como próxima da fila.");
+    }catch(err){ alert(err.message || "Não foi possível atualizar a fila."); }
+    finally{ bloquearBotao(botao,false); }
+}
+
 function fecharModal(){
+    // O anexo pendente NÃO é apagado aqui.
+    // Check-in, fechar modal e fechar/reabrir o app preservam o IndexedDB.
+    window.arquivoVideoPreparado = null;
+    window.modoCapturaGPS = null;
+
     const modal = document.getElementById("modal");
     if(modal) modal.style.display = "none";
-    arquivoFotoPreparado = null;
-    const foto = document.getElementById("foto");
-    if(foto) foto.value = "";
+
+    ["foto","anexoGaleria","anexoFotoAgora","anexoVideoAgora","anexoArquivos"].forEach(id => {
+        const input = document.getElementById(id);
+        if(input) input.value = "";
+    });
 }
 
 /* ================= UTIL ================= */
@@ -4163,53 +4503,134 @@ async function compartilharNativo(e,id){
 function verAnexo(){
 
     const os = encontrarOS(osSelecionada);
+    const anexo = obterAnexoOS(os);
 
-    if(!os || !os.anexo_path){
+    if(!os || !anexo){
         alert("Nenhum anexo encontrado");
         return;
     }
 
-    const url = os.anexo_path.startsWith("http")
-        ? os.anexo_path
-        : getApiBase() + os.anexo_path;
+    const caminho = String(anexo);
+    const url = caminho.startsWith("http")
+        ? caminho
+        : getApiBase() + (caminho.startsWith("/") ? caminho : `/${caminho}`);
 
     abrirModalAnexo(url, os.id);
 }
 
-function abrirModalAnexo(url, osId){
+function coordenadaParaDMS(valor, eixo){
+    const numero = Number(String(valor ?? "").replace(",", "."));
+    if(!Number.isFinite(numero)) return "-";
+
+    const absoluto = Math.abs(numero);
+    const graus = Math.floor(absoluto);
+    const minutosFloat = (absoluto - graus) * 60;
+    const minutos = Math.floor(minutosFloat);
+    const segundos = (minutosFloat - minutos) * 60;
+
+    const tipo = String(eixo || "").toLowerCase();
+    const hemisferio = tipo === "lat"
+        ? (numero >= 0 ? "N" : "S")
+        : (numero >= 0 ? "E" : "W");
+
+    return `${graus}°${String(minutos).padStart(2,"0")}'${segundos.toFixed(2)}"${hemisferio}`;
+}
+
+function montarCarimboVisualAnexo(osMidia, osId, tipoAnexo="principal", posicaoVideo=false){
+    const coords = obterCoordenadasAnexoOS(osMidia, tipoAnexo);
+    if(!coords) return {html:"", id:"", coords:null};
+
+    const sufixo = `${String(osId || "midia").replace(/[^a-zA-Z0-9_-]/g,"-")}-${tipoAnexo}`;
+    const id = `enderecoMapaAnexo-${sufixo}`;
+    const dataMidia = tipoAnexo === "conclusao"
+        ? (osMidia?.finalizado_em || osMidia?.checkin_fim_em || osMidia?.atualizado_em || "")
+        : (osMidia?.criado_em || osMidia?.iniciado_em || osMidia?.checkin_inicio_em || osMidia?.atualizado_em || "");
+    const bottom = posicaoVideo ? "54px" : "12px";
+
+    return {
+        id,
+        coords,
+        html:`<div style="position:absolute;left:12px;right:12px;bottom:${bottom};padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.76);color:#fff;font:700 12px/1.38 Arial;pointer-events:none;text-align:left;z-index:4;box-shadow:0 4px 14px rgba(0,0,0,.28);">
+            <div>SGOS${osId ? ` • OS #${valorSeguro(osId)}` : ""}${dataMidia ? ` • ${valorSeguro(format(dataMidia))}` : ""}</div>
+            <div>Lat: ${Number(coords.latitude).toFixed(6)} &nbsp; Long: ${Number(coords.longitude).toFixed(6)}</div>
+            <div id="${id}">Consultando endereço pelas coordenadas...</div>
+        </div>`
+    };
+}
+
+function preencherEnderecoCarimboAnexo(carimbo){
+    if(!carimbo?.coords || !carimbo?.id) return;
+    obterEnderecoMapa(carimbo.coords.latitude,carimbo.coords.longitude).then(infoMapa=>{
+        const alvo=document.getElementById(carimbo.id);
+        if(!alvo) return;
+        const principal=String(infoMapa?.endereco || "").trim();
+        const local=String(infoMapa?.localLinha || "").trim();
+        const completo=String(infoMapa?.enderecoCompleto || "").trim();
+        alvo.textContent = principal
+            ? [principal,local].filter(Boolean).join(" • ")
+            : (completo || "Endereço do mapa indisponível");
+    }).catch(()=>{
+        const alvo=document.getElementById(carimbo.id);
+        if(alvo) alvo.textContent="Endereço do mapa indisponível";
+    });
+}
+
+function abrirModalAnexo(url, osId, mimeHint="", tipoAnexo="principal"){
     const modalAnexo = document.getElementById("modalAnexo");
     const viewer = document.getElementById("anexoViewer");
     const titulo = document.getElementById("tituloAnexo");
 
-    if(!modalAnexo || !viewer){
-        abrirUrlExterna(url);
-        return;
-    }
+    if(!modalAnexo || !viewer){ abrirUrlExterna(url); return; }
 
-    const urlLimpa = url.split("?")[0].toLowerCase();
-    const isImagem = /\.(jpg|jpeg|png|gif|webp|bmp|svg|heic|heif)$/.test(urlLimpa);
-    const isVideo = /\.(mp4|mov|m4v|webm|avi|mpeg|mpg|3gp)$/.test(urlLimpa);
+    const urlLimpa = String(url || "").split("?")[0].toLowerCase();
+    const mime = String(mimeHint || "").toLowerCase();
+    const isImagem = mime.startsWith("image/") || /\.(jpg|jpeg|png|gif|webp|bmp|svg|heic|heif)$/.test(urlLimpa);
+    const isVideo = mime.startsWith("video/") || /\.(mp4|mov|m4v|webm|avi|mpeg|mpg|3gp)$/.test(urlLimpa);
+    const isPdf = mime === "application/pdf" || /\.pdf$/.test(urlLimpa);
+    const osMidia = encontrarOS(`normal-${osId}`) || encontrarOS(osId);
+    const rotulo = tipoAnexo === "conclusao" ? "Anexo da conclusão" : tipoAnexo === "inicial" ? "Anexo de lançamento" : "Anexo";
 
-    if(titulo){
-        titulo.innerText = osId ? `📎 Anexo da OS #${osId}` : "📎 Visualizar Anexo";
-    }
+    if(titulo) titulo.innerText = osId ? `📎 ${rotulo} • OS #${osId}` : `📎 ${rotulo}`;
 
     if(isImagem){
-        viewer.innerHTML = `<img src="${url}" alt="Anexo da OS" onerror="this.outerHTML='<div class=&quot;anexo-msg&quot;>Não foi possível carregar este anexo.</div>'">`;
+        const carimbo=montarCarimboVisualAnexo(osMidia,osId,tipoAnexo,false);
+        viewer.innerHTML=`<div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000;overflow:hidden;">
+            <img src="${url}" alt="Anexo da OS" style="max-width:100%;max-height:100%;object-fit:contain" onerror="this.outerHTML='<div class=&quot;anexo-msg&quot;>Não foi possível carregar este anexo.</div>'">
+            ${carimbo.html}
+        </div>`;
+        preencherEnderecoCarimboAnexo(carimbo);
     }else if(isVideo){
-        viewer.innerHTML = `
-            <video controls playsinline preload="metadata" style="width:100%;height:100%;background:#000">
-                <source src="${url}">
-                Seu dispositivo não conseguiu reproduzir este vídeo.
-            </video>`;
+        const carimbo=montarCarimboVisualAnexo(osMidia,osId,tipoAnexo,true);
+        viewer.innerHTML=`<div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000;">
+            <video controls playsinline preload="metadata" style="width:100%;height:100%;background:#000;object-fit:contain"><source src="${url}">Seu dispositivo não conseguiu reproduzir este vídeo.</video>
+            ${carimbo.html}
+        </div>`;
+        preencherEnderecoCarimboAnexo(carimbo);
     }else{
-        viewer.innerHTML = `<iframe src="${url}" title="Anexo da OS"></iframe>`;
+        // PDF e demais anexos também exibem o GPS/endereço, sem alterar o arquivo original.
+        const carimbo=montarCarimboVisualAnexo(osMidia,osId,tipoAnexo,false);
+        viewer.innerHTML=`<div style="position:relative;width:100%;height:100%;background:#fff;">
+            <iframe src="${url}" title="${isPdf ? "Anexo PDF" : "Anexo"} da OS" style="width:100%;height:100%;border:0;background:#fff"></iframe>
+            ${carimbo.html}
+        </div>`;
+        preencherEnderecoCarimboAnexo(carimbo);
     }
 
     modalAnexo.style.display = "flex";
 }
 
+let anexoObjectUrlAtual = "";
+
+function limparObjectUrlAnexo(){
+    if(anexoObjectUrlAtual){
+        try{ URL.revokeObjectURL(anexoObjectUrlAtual); }catch(_){ }
+        anexoObjectUrlAtual = "";
+    }
+}
+
 function fecharModalAnexo(){
+
+    limparObjectUrlAnexo();
 
     const modalAnexo = document.getElementById("modalAnexo");
     const viewer = document.getElementById("anexoViewer");
@@ -4302,6 +4723,58 @@ function visualizarLocalizacao(){
 /* ================= LOGOUT ================= */
 let logoutAppEmAndamento = false;
 
+async function desativarPushNoLogout(usuarioAtual){
+    const tokenPush = String(localStorage.getItem("push_token_fcm") || "").trim();
+    const deviceId = String(localStorage.getItem("device_id") || "").trim();
+    const plataforma = String(localStorage.getItem("push_plataforma") || getPlataformaApp() || "").trim();
+
+    // Revoga primeiro no SGOS. Isso é o que realmente impede que o backend
+    // continue enviando notificações para o técnico que acabou de sair.
+    if((tokenPush || deviceId) && usuarioAtual?.id){
+        try{
+            const respostaPush = await apiFetch("/api/push/token/logout", {
+                method:"POST",
+                keepalive:true,
+                cache:"no-store",
+                headers:{
+                    "Content-Type":"application/json",
+                    "Accept":"application/json",
+                    "x-usuario-id":String(usuarioAtual.id),
+                    "x-empresa-id":String(usuarioAtual?.empresa_id || "")
+                },
+                body:JSON.stringify({
+                    token_fcm: tokenPush || null,
+                    device_id: deviceId || null,
+                    plataforma: plataforma || null
+                })
+            });
+
+            if(!respostaPush.ok){
+                let detalhe = "";
+                try{ detalhe = await respostaPush.text(); }catch(e){}
+                console.error("Falha ao desativar token push no logout:", respostaPush.status, detalhe);
+            }else{
+                console.log("✅ Token/dispositivo push desativado no logout");
+            }
+        }catch(err){
+            console.error("Erro ao revogar push no backend:", err);
+        }
+    }
+
+    // Também cancela o registro nativo quando o plugin oferece unregister().
+    // No próximo login o app registra novamente e associa o token ao usuário correto.
+    try{
+        const PushNotifications = getPushPlugin();
+        if(PushNotifications && typeof PushNotifications.unregister === "function"){
+            await PushNotifications.unregister();
+            pushRegistrado = false;
+            console.log("✅ Push nativo removido do dispositivo");
+        }
+    }catch(err){
+        console.warn("Não foi possível executar unregister do push nativo:", err);
+    }
+}
+
 async function logout(){
     if(logoutAppEmAndamento) return;
     logoutAppEmAndamento = true;
@@ -4313,17 +4786,17 @@ async function logout(){
         usuarioAtual = JSON.parse(localStorage.getItem("usuario") || "{}");
     }catch(e){}
 
-    // Marca antes da chamada para bloquear restauração de URL antiga.
+    // Marca antes das chamadas para bloquear restauração de URL antiga.
     try{
         localStorage.setItem("sgos_logout_bloqueado", "1");
     }catch(e){}
 
     try{
+        // IMPORTANTE: precisa acontecer antes do localStorage.clear() e antes
+        // de encerrar a sessão, pois a rota de push exige usuário autenticado.
+        await desativarPushNoLogout(usuarioAtual);
+
         if(logId){
-            // No Android/iOS a página roda em uma origem local (WebView/Capacitor).
-            // Usar fetch("/api/logout") enviava a chamada para a origem do aplicativo,
-            // e não para o servidor SGOS. apiFetch resolve a API remota e envia os
-            // cabeçalhos da sessão corretamente.
             const resposta = await apiFetch("/api/logout", {
                 method:"POST",
                 keepalive:true,
@@ -4377,12 +4850,16 @@ async function logout(){
         try{
             const provedor = localStorage.getItem("provedor") || "";
             const apiBase = localStorage.getItem("api_base") || "";
+            // device_id identifica o aparelho, não o usuário. Mantê-lo após o logout
+            // permite que o próximo login também desative vínculos antigos do mesmo aparelho.
+            const deviceIdPersistente = localStorage.getItem("device_id") || "";
 
             localStorage.clear();
             localStorage.setItem("sgos_logout_bloqueado", "1");
 
             if(provedor) localStorage.setItem("provedor", provedor);
             if(apiBase) localStorage.setItem("api_base", apiBase);
+            if(deviceIdPersistente) localStorage.setItem("device_id", deviceIdPersistente);
         }catch(e){}
 
         try{
@@ -4406,7 +4883,6 @@ async function logout(){
             console.warn("Não foi possível limpar sessão nativa", e);
         }
 
-        // Remove qualquer token antigo da URL antes de voltar ao login local.
         try{
             window.history.replaceState(
                 {},
@@ -4870,24 +5346,53 @@ async function silenciarNotificacoesManual(){
 }
 
 function abrirOSDaNotificacaoSeExistir(){
-    const idNotificacao = osPushId || localStorage.getItem("abrir_os_push");
+    // REGRA SGOS: push/notificação nunca abre o resumo automaticamente.
+    // O resumo só pode abrir após toque/clique explícito do usuário no card.
+    if(abrirOSDaNotificacaoSeExistir._processado) return;
 
+    const idNotificacao = osPushId || localStorage.getItem("abrir_os_push");
     if(!idNotificacao || !OS.length) return;
 
-    const os = OS.find(o => o._tipo === 'normal' && String(o.id) === String(idNotificacao));
+    const os = OS.find(o =>
+        o._tipo === "normal" &&
+        String(o.id) === String(idNotificacao)
+    );
 
     if(!os) return;
 
+    abrirOSDaNotificacaoSeExistir._processado = true;
     localStorage.removeItem("abrir_os_push");
+
+    // Limpa parâmetros para impedir reprocessamento a cada load/socket.
+    try{
+        const url = new URL(window.location.href);
+        ["os_id","os","id_os"].forEach(p => url.searchParams.delete(p));
+        window.history.replaceState(
+            {},
+            document.title,
+            url.pathname + (url.search ? url.search : "")
+        );
+    }catch(_){}
 
     tab = "andamento";
     render();
 
     setTimeout(() => {
-        abrirModal(chaveOS(os));
-        const card = null;
-        if(card) card.scrollIntoView({ behavior:"smooth", block:"center" });
-    }, 300);
+        try{
+            const chave = String(chaveOS(os));
+            const cards = [...document.querySelectorAll(".os[data-os-chave], .os")];
+            const card = cards.find(el =>
+                String(el.getAttribute("data-os-chave") || "") === chave ||
+                String(el.getAttribute("onclick") || "").includes(`'${chave}'`)
+            );
+
+            if(card){
+                card.classList.add("os-destaque-push");
+                card.scrollIntoView({behavior:"smooth",block:"center"});
+                setTimeout(()=>card.classList.remove("os-destaque-push"),2200);
+            }
+        }catch(_){}
+    },250);
 }
 
 
@@ -4922,7 +5427,7 @@ function valorSeguro(v, fallback="-"){
 }
 function tituloStatusAtual(){
     return tab === "concluido" ? "Ordens finalizadas" :
-           tab === "ausente" ? "Clientes ausentes" : "Ordens em andamento";
+           tab === "ausente" ? "Clientes ausentes" : "Atendimentos lançados e em execução";
 }
 const setTabOriginal = setTab;
 setTab = function(novaTab){
@@ -4954,23 +5459,82 @@ function statusRotulo(status){
     if(s === "concluido") return "Finalizada";
     return "Em andamento";
 }
-function obterAnexoOS(os){
-    if(!os) return "";
+function caminhoAnexoValido(valor){
+    if(!valor) return "";
+    if(typeof valor === "object"){
+        return valor.url || valor.path || valor.caminho || valor.arquivo || valor.filename || "";
+    }
+    const texto = String(valor || "").trim();
+    return texto && texto !== "[object Object]" ? texto : "";
+}
 
+function primeiroAnexoOS(os, campos=[]){
+    for(const campo of campos){
+        const valor = caminhoAnexoValido(os?.[campo]);
+        if(valor) return valor;
+    }
+    return "";
+}
+
+function obterAnexosOS(os){
+    if(!os) return {inicial:"", conclusao:"", ausente:""};
+
+    const inicial = primeiroAnexoOS(os,[
+        "anexo_inicial","anexo_inicial_path","anexo_lancado","anexo_lancado_path",
+        "anexo_abertura","anexo_abertura_path","anexo_path","anexo","arquivo_inicial",
+        "foto_inicial","foto_path_inicial"
+    ]);
+
+    let conclusao = primeiroAnexoOS(os,[
+        "anexo_finalizado","anexo_finalizado_path","anexo_conclusao","anexo_conclusao_path",
+        "anexo_final","anexo_final_path","foto_finalizado","foto_finalizado_path",
+        "foto_conclusao","foto_conclusao_path","arquivo_finalizado","arquivo_conclusao"
+    ]);
+
+    const ausente = primeiroAnexoOS(os,[
+        "anexo_ausente","anexo_ausente_path","foto_ausente","foto_ausente_path","arquivo_ausente"
+    ]);
+
+    // Compatibilidade com APIs antigas que retornam o upload mais recente em foto/foto_path.
+    const fotoGenerica = primeiroAnexoOS(os,["foto","foto_path","arquivo"]);
+    if(normalizarStatusApp(os.status) === "concluido" && !conclusao && fotoGenerica && fotoGenerica !== inicial){
+        conclusao = fotoGenerica;
+    }
+
+    return {inicial, conclusao, ausente};
+}
+
+function obterAnexoOS(os, tipo="principal"){
+    if(!os) return "";
+    const anexos = obterAnexosOS(os);
     const status = normalizarStatusApp(os.status);
 
-    // Cada status exibe exclusivamente o anexo correspondente.
-    if(status === "cliente_ausente"){
-        return os.anexo_ausente || os.anexo_ausente_path || "";
-    }
+    if(tipo === "inicial") return anexos.inicial;
+    if(tipo === "conclusao") return anexos.conclusao;
+    if(tipo === "ausente") return anexos.ausente;
 
-    if(status === "concluido"){
-        return os.anexo_finalizado || os.anexo_finalizado_path || "";
-    }
+    if(status === "cliente_ausente") return anexos.ausente || anexos.inicial;
+    if(status === "concluido") return anexos.conclusao || anexos.inicial;
+    return anexos.inicial || primeiroAnexoOS(os,["foto","foto_path","comprovante","comprovante_path","arquivo"]);
+}
 
-    // OS aberta/em andamento: anexo inicial do cadastro.
-    return os.anexo_path || os.anexo || os.foto || os.foto_path ||
-           os.comprovante || os.comprovante_path || os.arquivo || "";
+function obterCoordenadasAnexoOS(os, tipo="principal"){
+    if(!os) return null;
+    const candidatos = tipo === "conclusao" ? [
+        [os.checkin_fim_latitude, os.checkin_fim_longitude],
+        [os.finalizacao_latitude, os.finalizacao_longitude],
+        [os.latitude_tecnico, os.longitude_tecnico]
+    ] : tipo === "inicial" ? [
+        [os.checkin_inicio_latitude, os.checkin_inicio_longitude],
+        [os.checkin_latitude, os.checkin_longitude]
+    ] : [];
+
+    for(const [lat,lng] of candidatos){
+        const latitude=Number(String(lat ?? "").replace(",","."));
+        const longitude=Number(String(lng ?? "").replace(",","."));
+        if(Number.isFinite(latitude) && Number.isFinite(longitude)) return {latitude,longitude};
+    }
+    return obterCoordenadasOS(os);
 }
 
 function detalheStatusOS(os){
@@ -4999,12 +5563,28 @@ function detalheStatusOS(os){
 }
 function obterCoordenadasOS(os){
     if(!os) return null;
-    const lat = os.latitude ?? os.lat ?? os.latitude_tecnico;
-    const lng = os.longitude ?? os.lng ?? os.lon ?? os.longitude_tecnico;
-    const latitude = Number(String(lat ?? "").replace(",", "."));
-    const longitude = Number(String(lng ?? "").replace(",", "."));
-    return Number.isFinite(latitude) && Number.isFinite(longitude)
-        ? {latitude, longitude} : null;
+
+    // Ordem de prioridade: localização explícita/mais nova da OS; depois GPS do
+    // check-in. Assim uma nova localização substitui o fallback herdado do
+    // check-in, mas OS antigas/recicladas continuam tendo um ponto útil.
+    const candidatos = [
+        [os.latitude, os.longitude],
+        [os.lat, os.lng ?? os.lon],
+        [os.latitude_tecnico, os.longitude_tecnico],
+        [os.localizacao_latitude, os.localizacao_longitude],
+        [os.checkin_inicio_latitude, os.checkin_inicio_longitude],
+        [os.checkin_latitude, os.checkin_longitude]
+    ];
+
+    for(const [lat, lng] of candidatos){
+        const latitude = Number(String(lat ?? "").replace(",", "."));
+        const longitude = Number(String(lng ?? "").replace(",", "."));
+        if(Number.isFinite(latitude) && Number.isFinite(longitude)){
+            return {latitude, longitude};
+        }
+    }
+
+    return null;
 }
 
 
@@ -5104,31 +5684,19 @@ function fimDoDia(data){
 }
 
 function dentroDoPeriodo(os){
+    if(!osPodeAparecerPainelPrincipal(os)) return false;
+    // OS lançada e em execução são operacionais e independem do filtro de data.
+    if(statusOperacionalSempreVisivel(os)) return true;
+
     const data = dataReferenciaOS(os);
-
-    // Não esconder uma OS válida só porque a API não trouxe a data esperada.
     if(!data) return true;
-
     const agora = new Date();
-    let inicio;
-    let fim = fimDoDia(agora);
-
-    if(periodoSelecionado === "hoje"){
-        inicio = inicioDoDia(agora);
-    }else if(periodoSelecionado === "ontem"){
-        const ontem = new Date(agora);
-        ontem.setDate(ontem.getDate() - 1);
-        inicio = inicioDoDia(ontem);
-        fim = fimDoDia(ontem);
-    }else if(periodoSelecionado === "7dias"){
-        inicio = inicioDoDia(agora);
-        inicio.setDate(inicio.getDate() - 6);
-    }else{
-        inicio = inicioDoDia(agora);
-        inicio.setDate(inicio.getDate() - 29);
-    }
-
-    return data >= inicio && data <= fim;
+    let inicio; let fim = fimDoDia(agora);
+    if(periodoSelecionado === "hoje"){inicio = inicioDoDia(agora);}
+    else if(periodoSelecionado === "ontem"){const ontem=new Date(agora);ontem.setDate(ontem.getDate()-1);inicio=inicioDoDia(ontem);fim=fimDoDia(ontem);}
+    else if(periodoSelecionado === "7dias"){inicio=inicioDoDia(agora);inicio.setDate(inicio.getDate()-6);}
+    else{inicio=inicioDoDia(agora);inicio.setDate(inicio.getDate()-29);}
+    return data>=inicio && data<=fim;
 }
 
 function alterarPeriodo(valor){
@@ -5144,7 +5712,10 @@ function renderizarResumoTiposServico(osPeriodo){
     const grupos = new Map();
 
     osPeriodo
-        .filter(o => String(o.status || "").toLowerCase().includes("andamento"))
+         .filter(o => {
+            const st = normalizarStatusApp(o.status);
+            return ["os_lancada", "em_andamento"].includes(st);
+        })
         .forEach(o => {
             const nome = String(o.tipo_servico_nome || o.tipo_servico || "Não informado").trim() || "Não informado";
             grupos.set(nome, (grupos.get(nome) || 0) + 1);
@@ -5153,7 +5724,7 @@ function renderizarResumoTiposServico(osPeriodo){
     const itens = [...grupos.entries()].sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-BR"));
 
     if(!itens.length){
-        lista.innerHTML = '<div class="resumo-tipos-vazio">Nenhum serviço em execução no período</div>';
+        lista.innerHTML = '<div class="resumo-tipos-vazio">Nenhum serviço lançado ou em execução no período</div>';
         return;
     }
 
@@ -5447,10 +6018,10 @@ function render(){
         const st = norm(o.status);
         const tipoAtual = String(o.tipo_servico_nome || o.tipo_servico || "Não informado").trim().toLowerCase();
         const matchTipo = !tipoServicoSelecionado || tipoAtual === tipoServicoSelecionado.toLowerCase();
-        return (!busca || texto.includes(busca)) && matchTipo && ((tab === "andamento" && (st.includes("andamento") || st.includes("reagend"))) || (tab === "concluido" && st.includes("concluido")) || (tab === "ausente" && st.includes("ausente"))) && dentroDoPeriodo(o);
+        return (!busca || texto.includes(busca)) && matchTipo && ((tab === "andamento" && (st.includes("andamento") || st.includes("os_lancada"))) || (tab === "concluido" && st.includes("concluido")) || (tab === "ausente" && st.includes("ausente"))) && dentroDoPeriodo(o);
     });
     const osPeriodo = OS.filter(dentroDoPeriodo);
-    document.getElementById("cA").innerText = osPeriodo.filter(o => { const st=norm(o.status); return st.includes("andamento") || st.includes("reagend"); }).length;
+    document.getElementById("cA").innerText = osPeriodo.filter(o => { const st=norm(o.status); return st.includes("andamento") || st.includes("os_lancada"); }).length;
     document.getElementById("cC").innerText = osPeriodo.filter(o => norm(o.status).includes("concluido")).length;
     document.getElementById("cX").innerText = osPeriodo.filter(o => norm(o.status).includes("ausente")).length;
     renderizarResumoTiposServico(osPeriodo);
@@ -5471,8 +6042,12 @@ function render(){
         const tel = formatarTelefoneApp(o.telefone);
         const href = telefoneHref(o.telefone);
         const tecnico = o.tecnicos_nomes || o.tecnico_nome || o.tecnico || "-";
-        return `<article class="os${alta ? " prioridade-alta-card" : ""}" data-os-chave="${chave}" role="button" tabindex="0" onclick="window.abrirModal('${chave}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.abrirModal('${chave}')}">
+        const checkinEmExecucao = !!o.checkin_inicio_em && !o.checkin_fim_em && normalizarStatusApp(o.status) === "em_andamento";
+        return `<article class="os${alta ? " prioridade-alta-card" : ""}${checkinEmExecucao ? " os-checkin-execucao" : ""}" data-os-chave="${chave}" role="button" tabindex="0" onclick="window.abrirModal('${chave}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.abrirModal('${chave}')}">
           <div class="os-main">
+            ${normalizarStatusApp(o.status) === "os_lancada" ? `<div class="badge-lancada-app">🚀 OS LANÇADA</div>` : ""}
+            ${checkinEmExecucao ? `<div class="badge-checkin-execucao">✓ EM EXECUÇÃO · CHECK-IN</div>` : ""}
+            ${Number(o.proxima_os || 0) === 1 ? `<div class="badge-proxima-app">⭐ PRÓXIMO ATENDIMENTO</div>` : ""}
             <div class="os-top-badges">${o._tipo === "avulsa" ? "" : badgePrioridadeApp(o.prioridade)}<span class="os-tipo-servico">${valorSeguro(o.tipo_servico_nome || o.tipo_servico || "OS Avulsa")}</span></div>
             <div class="os-cliente-linha"><strong class="os-cliente-nome">${valorSeguro(o._tipo === "avulsa" ? (o.localidade_nome || "OS Avulsa") : nomeClienteOS(o))}</strong></div>
             <div class="os-localidade">${valorSeguro(o.localidade_nome || o.localidade || "Localidade não informada")}</div>
@@ -5533,7 +6108,19 @@ function equipamentosHTMLApp(os){
             Valor unitário: ${moedaApp(item.valor_unitario)}<br>
             Valor total: ${moedaApp(item.valor_total ?? (Number(item.valor_unitario||0)*Number(item.quantidade||1)))}
         </div>`).join("");
-    return `<div class="equipamentos-os-app"><div class="equipamentos-os-app-title">Equipamentos vinculados</div>${itens}<div class="equipamento-os-app-item"><b>Tipo de pagamento:</b> ${valorSeguro(formaPagamentoApp(os.forma_pagamento_equipamento))}<br><b>Total:</b> ${moedaApp(os.total_equipamentos)}</div></div>`;
+    const statusPagamento = normalizarStatusPagamentoApp(os);
+    const statusRotulo = statusPagamento === "pago" ? "Pago" : statusPagamento === "pendente" ? "Pendente" : "Não informado";
+    const statusClasse = statusPagamento === "pago" ? "pagamento-pago" : "pagamento-pendente";
+
+    return `<div class="equipamentos-os-app">
+        <div class="equipamentos-os-app-title">Equipamentos vinculados</div>
+        ${itens}
+        <div class="equipamento-os-app-item">
+            <b>Tipo de pagamento:</b> ${valorSeguro(formaPagamentoApp(os.forma_pagamento_equipamento))}<br>
+            <b>Status do pagamento:</b> <span class="${statusClasse}">${statusRotulo}</span><br>
+            <b>Total:</b> ${moedaApp(os.total_equipamentos)}
+        </div>
+    </div>`;
 }
 function formatarDuracaoAtendimento(segundos){
     const total = Math.max(0, Number(segundos || 0));
@@ -5705,6 +6292,7 @@ function resumoModalHTML(os){
             <b>VLAN:</b> ${valorSeguro(os.vlan)}<br>
             <b>Técnicos:</b> ${valorSeguro(os.tecnicos_nomes)}<br>
             <b>Criada em:</b> ${valorSeguro(format(os.criado_em))}<br>
+            ${Number(os.proxima_os || 0) === 1 ? `<div class="checkin-os-box"><b>⭐ Próximo atendimento</b><br><b>Tipo de serviço:</b> ${valorSeguro(os.tipo_servico_nome || os.tipo_servico)}<br><b>Cliente:</b> ${valorSeguro(nomeClienteOS(os))}<br><b>Endereço:</b> ${valorSeguro(enderecoNormal(os))}</div>` : ""}
             ${finalizada
                 ? blocoFinalizacao
                 : normalizarStatusApp(os.status) === "cliente_ausente"
@@ -5726,99 +6314,935 @@ function resumoModalHTML(os){
         </div>`;
 }
 
+
 let arquivoFotoPreparado = null;
 
+/* =========================================================
+   CACHE PERSISTENTE DO ANEXO DA OS
+   - foto, vídeo ou PDF
+   - fica salvo mesmo fechando modal/app
+   - check-in e outras ações não apagam
+   - só é removido após conclusão/ausente/inviabilidade
+     confirmada pelo servidor ou por remoção manual
+   ========================================================= */
+const SGOS_MIDIA_DB_NOME = "sgos_midia_pendente";
+const SGOS_MIDIA_DB_VERSAO = 1;
+const SGOS_MIDIA_STORE = "fotos_gps";
+
+function chaveCacheFotoOS(osOuId){
+    const os = (typeof osOuId === "object" && osOuId) ? osOuId : encontrarOS(osOuId);
+    const osId = String(os?.id ?? osOuId ?? "").trim();
+    const empresaId = String(
+        user?.empresa_id ??
+        user?.empresaId ??
+        localStorage.getItem("empresa_id") ??
+        "0"
+    ).trim();
+    return `${empresaId}:${osId}`;
+}
+
+function abrirBancoMidiaSGOS(){
+    return new Promise((resolve, reject) => {
+        if(!window.indexedDB){
+            reject(new Error("IndexedDB não disponível neste aparelho."));
+            return;
+        }
+
+        const req = indexedDB.open(SGOS_MIDIA_DB_NOME, SGOS_MIDIA_DB_VERSAO);
+
+        req.onupgradeneeded = () => {
+            const db = req.result;
+            if(!db.objectStoreNames.contains(SGOS_MIDIA_STORE)){
+                db.createObjectStore(SGOS_MIDIA_STORE, { keyPath:"chave" });
+            }
+        };
+
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error || new Error("Falha ao abrir cache de mídia."));
+    });
+}
+
+async function salvarAnexoCacheOS(os, arquivo, localizacao=null){
+    if(!os?.id || !arquivo) return;
+
+    try{
+        const db = await abrirBancoMidiaSGOS();
+        const chave = chaveCacheFotoOS(os);
+
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(SGOS_MIDIA_STORE, "readwrite");
+            const store = tx.objectStore(SGOS_MIDIA_STORE);
+
+            store.put({
+                chave,
+                osId: String(os.id),
+                empresaId: String(user?.empresa_id ?? localStorage.getItem("empresa_id") ?? "0"),
+                nome: arquivo.name || `foto-os-${os.id}.jpg`,
+                tipo: arquivo.type || "image/jpeg",
+                blob: arquivo,
+                localizacao: localizacao || window.ultimaLocalizacaoMidia || null,
+                salvoEm: new Date().toISOString()
+            });
+
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error("Falha ao salvar foto no cache."));
+            tx.onabort = () => reject(tx.error || new Error("Cache da foto foi interrompido."));
+        });
+
+        db.close();
+        console.log("📎 Anexo salvo no cache da OS", os.id);
+    }catch(err){
+        console.warn("Não foi possível persistir o anexo no cache:", err);
+    }
+}
+
+async function lerAnexoCacheOS(os){
+    if(!os?.id) return null;
+
+    try{
+        const db = await abrirBancoMidiaSGOS();
+        const chave = chaveCacheFotoOS(os);
+
+        const registro = await new Promise((resolve, reject) => {
+            const tx = db.transaction(SGOS_MIDIA_STORE, "readonly");
+            const req = tx.objectStore(SGOS_MIDIA_STORE).get(chave);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => reject(req.error || new Error("Falha ao recuperar foto do cache."));
+        });
+
+        db.close();
+        return registro;
+    }catch(err){
+        console.warn("Não foi possível recuperar foto do cache:", err);
+        return null;
+    }
+}
+
+async function removerAnexoCacheOS(osOuId){
+    const os = (typeof osOuId === "object" && osOuId) ? osOuId : encontrarOS(osOuId);
+    const osId = String(os?.id ?? osOuId ?? "").trim();
+    if(!osId) return;
+
+    try{
+        const db = await abrirBancoMidiaSGOS();
+        const chave = chaveCacheFotoOS(os || osId);
+
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(SGOS_MIDIA_STORE, "readwrite");
+            tx.objectStore(SGOS_MIDIA_STORE).delete(chave);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error("Falha ao excluir cache."));
+        });
+
+        db.close();
+    }catch(err){
+        console.warn("Não foi possível remover foto do cache:", err);
+    }
+}
+
+async function restaurarAnexoCacheOS(os){
+    if(!os?.id) return false;
+
+    const registro = await lerAnexoCacheOS(os);
+    if(!registro?.blob) return false;
+
+    const tipo = registro.tipo || registro.blob.type || "image/jpeg";
+    const nome = registro.nome || `foto-os-${os.id}.jpg`;
+
+    try{
+        arquivoFotoPreparado = new File([registro.blob], nome, {
+            type: tipo,
+            lastModified: Date.now()
+        });
+    }catch(_){
+        arquivoFotoPreparado = registro.blob;
+        try{
+            Object.defineProperty(arquivoFotoPreparado, "name", { value:nome });
+        }catch(__){}
+    }
+
+    if(registro.localizacao){
+        window.ultimaLocalizacaoMidia = registro.localizacao;
+    }
+
+    atualizarAnexoPendenteUI(arquivoFotoPreparado, true);
+    console.log("📎 Anexo restaurado do cache da OS", os.id);
+    return true;
+}
+
+
+function tipoAnexoRotulo(arquivo){
+    const tipo = String(arquivo?.type || "").toLowerCase();
+    if(tipo.startsWith("image/")) return "Foto";
+    if(tipo.startsWith("video/")) return "Vídeo";
+    if(tipo === "application/pdf" || String(arquivo?.name || "").toLowerCase().endsWith(".pdf")) return "PDF";
+    return "Arquivo";
+}
+
+function atualizarAnexoPendenteUI(arquivo, recuperado=false){
+    const info = document.getElementById("arquivoSelecionadoInfo");
+    const box = document.getElementById("anexoPendenteBox");
+    const detalhe = document.getElementById("anexoPendenteInfo");
+
+    if(!arquivo){
+        if(info) info.textContent = "Nenhum arquivo selecionado";
+        if(box) box.classList.remove("ativo");
+        if(detalhe) detalhe.innerHTML = "";
+        return;
+    }
+
+    const mb = Number(arquivo.size || 0) / 1024 / 1024;
+    const tipo = tipoAnexoRotulo(arquivo);
+    const nome = String(arquivo.name || `anexo-${Date.now()}`);
+
+    if(info){
+        info.textContent = recuperado
+            ? "Anexo recuperado e preparado para envio"
+            : "Anexo preparado para envio";
+    }
+
+    if(detalhe){
+        detalhe.innerHTML = `
+            <strong>📎 ${tipo} preparado para envio</strong>
+            ${escapeHtml(nome)} • ${mb.toFixed(1)} MB
+            <br><span style="color:#64748b;font-weight:700">Ficará salvo nesta OS até a ação final.</span>
+        `;
+    }
+    if(box) box.classList.add("ativo");
+}
+
+function osTemCheckinParaAnexo(os){
+    return !!(os && os._tipo !== "avulsa" && os.checkin_inicio_em);
+}
+
+function exigirCheckinParaAnexo(){
+    const osAtual = encontrarOS(osSelecionada);
+    if(!osAtual){
+        alert("OS não encontrada.");
+        return null;
+    }
+    if(!osTemCheckinParaAnexo(osAtual)){
+        alert("Faça o check-in da OS antes de tirar foto, gravar vídeo ou anexar arquivos.");
+        return null;
+    }
+    return osAtual;
+}
+
 function escolherAnexo(){
-    arquivoFotoPreparado = null;
-    const input = document.getElementById("foto");
+    // Segurança de fluxo: nenhuma origem de anexo é liberada antes do check-in.
+    if(!exigirCheckinParaAnexo()) return;
+
+    // Não limpa o anexo atual ao abrir o menu.
+    // Se o técnico cancelar, o arquivo já preparado continua intacto.
+    const modal = document.getElementById("seletorAnexoModal");
+    if(modal){
+        modal.classList.add("ativo");
+        modal.setAttribute("aria-hidden","false");
+    }
+}
+
+function fecharSeletorAnexo(){
+    const modal = document.getElementById("seletorAnexoModal");
+    if(modal){
+        modal.classList.remove("ativo");
+        modal.setAttribute("aria-hidden","true");
+    }
+}
+
+function selecionarOrigemAnexo(origem){
+    if(!exigirCheckinParaAnexo()) return;
+
+    fecharSeletorAnexo();
+
+    // "Agora" abre um segundo seletor para não misturar image/* e video/* no mesmo
+    // capture. No Android/WebView essa mistura pode derrubar a Activity ao trocar
+    // o modo da câmera de foto para vídeo.
+    if(origem === "agora"){
+        const modal = document.getElementById("seletorCapturaAgoraModal");
+        if(modal){
+            modal.classList.add("ativo");
+            modal.setAttribute("aria-hidden","false");
+        }
+        return;
+    }
+
+    let input = null;
+    if(origem === "galeria") input = document.getElementById("anexoGaleria");
+    if(origem === "arquivos") input = document.getElementById("anexoArquivos");
     if(!input) return;
-    input.removeAttribute("capture");
-    input.accept = "image/*,video/*,.pdf,application/pdf";
+
+    // Limpa apenas o input que será aberto, não o anexo pendente já salvo.
     input.value = "";
     input.click();
 }
 
-function lerArquivoComoArrayBufferIOS(arquivo){
-    return new Promise((resolve, reject) => {
-        const leitor = new FileReader();
-        leitor.onload = () => resolve(leitor.result);
-        leitor.onerror = () => reject(leitor.error || new Error("Falha ao ler arquivo capturado no iPhone."));
-        leitor.onabort = () => reject(new Error("Leitura do arquivo capturado foi cancelada."));
-        leitor.readAsArrayBuffer(arquivo);
+function fecharSeletorCapturaAgora(){
+    const modal = document.getElementById("seletorCapturaAgoraModal");
+    if(modal){
+        modal.classList.remove("ativo");
+        modal.setAttribute("aria-hidden","true");
+    }
+}
+
+async function lerArquivoArrayBufferIOS(arquivo){
+    if(!arquivo) throw new Error("Arquivo não informado.");
+
+    // No WKWebView, FileReader é mais estável para arquivos recém-criados pela câmera
+    // do que manter a referência temporária entregue pelo <input capture>.
+    return await new Promise((resolve, reject) => {
+        try{
+            const reader = new FileReader();
+            reader.onload = () => {
+                if(reader.result instanceof ArrayBuffer){
+                    resolve(reader.result);
+                    return;
+                }
+                reject(new Error("A câmera não retornou os bytes da mídia."));
+            };
+            reader.onerror = () => reject(reader.error || new Error("Falha ao ler a mídia capturada."));
+            reader.onabort = () => reject(new Error("Leitura da mídia capturada foi cancelada."));
+            reader.readAsArrayBuffer(arquivo);
+        }catch(err){
+            // Fallback para navegadores que tenham FileReader incompleto.
+            if(typeof arquivo.arrayBuffer === "function"){
+                arquivo.arrayBuffer().then(resolve).catch(reject);
+            }else{
+                reject(err);
+            }
+        }
     });
 }
 
-async function materializarArquivoIOS(arquivo){
-    if(!arquivo) return null;
+function arquivoDeDataURL(dataUrl, nome="foto-camera.jpg"){
+    const valor = String(dataUrl || "");
+    const match = valor.match(/^data:([^;,]+)?(?:;charset=[^;,]+)?;base64,(.*)$/i);
+    if(!match) throw new Error("A câmera não retornou a foto em um formato válido.");
 
-    /*
-      IMPORTANTE NO iOS/WKWebView:
-      arquivos produzidos pela câmera podem existir somente como uma referência
-      temporária do UIImagePicker/Photos. O input continua mostrando o File,
-      mas o fetch(FormData) pode perder acesso a essa referência e retornar
-      simplesmente "Load failed".
+    const mime = match[1] || "image/jpeg";
+    const binario = atob(match[2]);
+    const bytes = new Uint8Array(binario.length);
+    for(let i=0;i<binario.length;i++) bytes[i] = binario.charCodeAt(i);
 
-      FileReader força a leitura completa enquanto o arquivo ainda está válido
-      e cria um novo File 100% residente no WebView. Isso é especialmente
-      importante para foto/vídeo capturados NA HORA. Arquivos da galeria já
-      funcionavam, mas também são seguros com esta cópia.
-    */
-    const bytes = await lerArquivoComoArrayBufferIOS(arquivo);
-    return new File([bytes], arquivo.name || `captura-${Date.now()}`, {
-        type: arquivo.type || "application/octet-stream",
-        lastModified: Date.now()
-    });
+    try{
+        return new File([bytes], nome, {type:mime,lastModified:Date.now()});
+    }catch(_){
+        const blob = new Blob([bytes], {type:mime});
+        try{ Object.defineProperty(blob,"name",{value:nome,configurable:true}); }catch(__){}
+        return blob;
+    }
+}
+
+async function capturarFotoNativaIOS(){
+    const Camera = window.Capacitor?.Plugins?.Camera;
+    if(!Camera || typeof Camera.getPhoto !== "function") return null;
+
+    try{
+        if(typeof Camera.requestPermissions === "function"){
+            const perm = await Camera.requestPermissions({permissions:["camera"]});
+            const cameraStatus = perm?.camera;
+            if(cameraStatus && !["granted","limited"].includes(String(cameraStatus))){
+                throw new Error("Permita o acesso à câmera em Ajustes > SGOS > Câmera.");
+            }
+        }
+
+        // DataUrl é intencional: não dependemos de file://, webPath ou URI temporária
+        // do iOS. Os bytes já voltam para o JavaScript e permanecem válidos no WKWebView.
+        const foto = await Camera.getPhoto({
+            quality:82,
+            allowEditing:false,
+            resultType:"dataUrl",
+            source:"camera",
+            correctOrientation:true,
+            saveToGallery:false
+        });
+
+        if(!foto?.dataUrl) throw new Error("A câmera não retornou os dados da foto.");
+        return arquivoDeDataURL(foto.dataUrl, `foto-os-${Date.now()}.jpg`);
+    }catch(err){
+        const msg = String(err?.message || err || "");
+        // Usuário fechou/cancelou a câmera: não transforma em erro.
+        if(/cancel|cancelled|canceled|user cancelled/i.test(msg)) return null;
+        throw err;
+    }
+}
+
+async function prepararAnexoCapturado(arquivo, input){
+    const tipo = String(arquivo?.type || "").toLowerCase();
+    const nomeOriginal = String(arquivo?.name || "");
+    const ehVideo = tipo.startsWith("video/");
+    const ehImagem = tipo.startsWith("image/");
+
+    // Dá ao WKWebView um pequeno ciclo para finalizar a entrega do arquivo da câmera.
+    // Isso é importante principalmente após gravação de vídeo.
+    if(getPlataformaApp() === "ios"){
+        await new Promise(resolve => setTimeout(resolve, 180));
+    }
+
+    const buffer = await lerArquivoArrayBufferIOS(arquivo);
+    const mimeSeguro = String(
+        arquivo.type ||
+        (ehVideo ? "video/quicktime" : ehImagem ? "image/jpeg" : "application/octet-stream")
+    );
+
+    let extensao = "";
+    if(/\.[a-z0-9]{2,5}$/i.test(nomeOriginal)){
+        extensao = nomeOriginal.match(/(\.[a-z0-9]{2,5})$/i)?.[1] || "";
+    }
+    if(!extensao){
+        if(ehVideo) extensao = mimeSeguro.includes("mp4") ? ".mp4" : ".mov";
+        else if(ehImagem) extensao = ".jpg";
+    }
+
+    const nomeSeguro = nomeOriginal || `anexo-camera-${Date.now()}${extensao}`;
+    try{
+        return new File([buffer], nomeSeguro, {
+            type:mimeSeguro,
+            lastModified:Date.now()
+        });
+    }catch(_){
+        const blob = new Blob([buffer], {type:mimeSeguro});
+        try{ Object.defineProperty(blob,"name",{value:nomeSeguro,configurable:true}); }catch(__){}
+        return blob;
+    }
+}
+
+async function abrirCapturaAgora(tipo){
+    if(!exigirCheckinParaAnexo()) return;
+
+    fecharSeletorCapturaAgora();
+
+    // FOTO NO iOS: usa o plugin nativo do Capacitor que já está presente no projeto.
+    // Isso elimina o caminho problemático do <input capture> / URI temporária.
+    if(tipo === "foto" && getPlataformaApp() === "ios"){
+        try{
+            const osAtual = encontrarOS(osSelecionada);
+            const fotoNativa = await capturarFotoNativaIOS();
+
+            // Se o plugin não existir, cai no input capture abaixo.
+            if(fotoNativa){
+                arquivoFotoPreparado = fotoNativa;
+                window.arquivoVideoPreparado = null;
+                window.modoCapturaGPS = null;
+                window.ultimaLocalizacaoMidia = null;
+
+                if(osAtual){
+                    await salvarAnexoCacheOS(osAtual, arquivoFotoPreparado, null);
+                }
+                atualizarAnexoPendenteUI(arquivoFotoPreparado);
+                return;
+            }
+
+            // null com plugin disponível normalmente significa cancelamento.
+            const Camera = window.Capacitor?.Plugins?.Camera;
+            if(Camera && typeof Camera.getPhoto === "function") return;
+        }catch(err){
+            console.error("Falha na câmera nativa do iOS:", err);
+            alert(err.message || "Não foi possível tirar a foto.");
+            return;
+        }
+    }
+
+    const input = document.getElementById(tipo === "video" ? "anexoVideoAgora" : "anexoFotoAgora");
+    if(!input) return;
+
+    window.sgosCapturaAgoraTipo = tipo;
+    input.value = "";
+
+    // Mantém o click diretamente associado ao gesto do usuário.
+    input.click();
 }
 
 async function arquivoSelecionado(input){
-    arquivoFotoPreparado = null;
-
     const info = document.getElementById("arquivoSelecionadoInfo");
+
+    if(!exigirCheckinParaAnexo()){
+        if(input) input.value = "";
+        return;
+    }
+
     const arquivo = input?.files?.[0];
 
     if(!arquivo){
-        if(info) info.textContent = "Nenhum arquivo selecionado";
+        if(arquivoFotoPreparado){
+            atualizarAnexoPendenteUI(arquivoFotoPreparado);
+        }else if(info){
+            info.textContent = "Nenhum arquivo selecionado";
+        }
         return;
     }
 
     const tipo = String(arquivo.type || "").toLowerCase();
+    const nome = String(arquivo.name || "").toLowerCase();
+    const ehImagem = tipo.startsWith("image/");
     const ehVideo = tipo.startsWith("video/");
-    const limite = ehVideo ? 30 * 1024 * 1024 : 20 * 1024 * 1024;
-    const limiteMb = ehVideo ? 30 : 20;
+    const ehPdf = tipo === "application/pdf" || nome.endsWith(".pdf");
 
-    if(arquivo.size > limite){
+    if(!ehImagem && !ehVideo && !ehPdf){
+        alert("Selecione uma foto, vídeo ou arquivo PDF.");
         input.value = "";
-        if(info) info.textContent = "Nenhum arquivo selecionado";
-        alert(`O ${ehVideo ? "vídeo" : "arquivo"} deve ter no máximo ${limiteMb} MB.`);
         return;
     }
 
-    const tamanhoMb = arquivo.size / (1024 * 1024);
-    const rotulo = ehVideo ? "Vídeo" : (tipo.startsWith("image/") ? "Foto" : "Arquivo");
+    const limite = ehVideo ? 30 * 1024 * 1024 : 20 * 1024 * 1024;
+    const limiteMb = ehVideo ? 30 : 20;
 
-    if(info){
-        info.textContent = `${rotulo}: preparando ${arquivo.name || "arquivo"}...`;
+    if(Number(arquivo.size || 0) > limite){
+        alert(`O ${ehVideo ? "vídeo" : "anexo"} deve ter no máximo ${limiteMb} MB.`);
+        input.value = "";
+        return;
     }
+
+    const veioDaCamera =
+        input?.id === "anexoFotoAgora" ||
+        input?.id === "anexoVideoAgora";
 
     try{
-        const copia = await materializarArquivoIOS(arquivo);
-        arquivoFotoPreparado = tipo.startsWith("image/")
-            ? await blobParaJpeg(copia, copia.name || `foto-${Date.now()}.jpg`)
-            : copia;
+        if(info) info.textContent = veioDaCamera ? "Processando mídia da câmera..." : "Carregando anexo...";
 
-        if(info){
-            info.textContent = `${rotulo}: ${arquivoFotoPreparado.name || arquivo.name || "sem nome"} • ${tamanhoMb.toFixed(1)} MB`;
+        // Para captura imediata materializa o arquivo com FileReader. Para galeria/arquivos
+        // também criamos uma cópia independente, sem alterar o fluxo visual já funcional.
+        if(veioDaCamera){
+            arquivoFotoPreparado = await prepararAnexoCapturado(arquivo, input);
+        }else{
+            const buffer = await lerArquivoArrayBufferIOS(arquivo);
+            const mimeSeguro = String(
+                arquivo.type ||
+                (ehVideo ? "video/quicktime" : ehPdf ? "application/pdf" : "image/jpeg")
+            );
+            const nomeSeguro = arquivo.name || `anexo-${Date.now()}${ehVideo ? ".mov" : ehPdf ? ".pdf" : ".jpg"}`;
+            try{
+                arquivoFotoPreparado = new File([buffer], nomeSeguro, {
+                    type:mimeSeguro,
+                    lastModified:Date.now()
+                });
+            }catch(_){
+                const blobSeguro = new Blob([buffer], {type:mimeSeguro});
+                try{ Object.defineProperty(blobSeguro,"name",{value:nomeSeguro,configurable:true}); }catch(__){}
+                arquivoFotoPreparado = blobSeguro;
+            }
         }
-    }catch(err){
-        console.error("Falha ao preparar anexo no iOS:", err);
-        arquivoFotoPreparado = null;
+    }catch(erroCopia){
+        console.error("Falha ao materializar mídia selecionada:", erroCopia);
+        alert(
+            veioDaCamera
+                ? "O iPhone não conseguiu finalizar a mídia capturada. Tente novamente."
+                : "Não foi possível carregar a foto/vídeo selecionado."
+        );
         input.value = "";
         if(info) info.textContent = "Nenhum arquivo selecionado";
-        alert("Não foi possível preparar este arquivo no iPhone. Selecione-o novamente e tente enviar logo em seguida.");
+        return;
+    }finally{
+        window.sgosCapturaAgoraTipo = null;
     }
+
+    window.arquivoVideoPreparado = null;
+    window.modoCapturaGPS = null;
+    window.ultimaLocalizacaoMidia = null;
+
+    const osAtual = encontrarOS(osSelecionada);
+    if(osAtual){
+        await salvarAnexoCacheOS(osAtual, arquivoFotoPreparado, null);
+    }
+
+    atualizarAnexoPendenteUI(arquivoFotoPreparado);
 }
 
-async function blobParaJpeg(blob, nomeBase="foto"){
+async function removerAnexoPendente(){
+    const osAtual = encontrarOS(osSelecionada);
+    if(!arquivoFotoPreparado){
+        if(osAtual) await removerAnexoCacheOS(osAtual);
+        atualizarAnexoPendenteUI(null);
+        return;
+    }
+
+    const confirmar = window.confirm("Remover o anexo preparado desta OS?");
+    if(!confirmar) return;
+
+    if(osAtual) await removerAnexoCacheOS(osAtual);
+
+    arquivoFotoPreparado = null;
+    window.arquivoVideoPreparado = null;
+    window.ultimaLocalizacaoMidia = null;
+    window.modoCapturaGPS = null;
+
+    ["foto","anexoGaleria","anexoFotoAgora","anexoVideoAgora","anexoArquivos"].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.value = "";
+    });
+
+    atualizarAnexoPendenteUI(null);
+}
+
+
+function dadosIdentificacaoMidia(){
+    const os = encontrarOS(osSelecionada) || {};
+    const empresaEl = document.getElementById("nomeEmpresa");
+    const empresa = String(
+        user?.empresa_nome || user?.empresa || empresaEl?.textContent || "SGOS"
+    ).trim() || "SGOS";
+
+    // IMPORTANTE: endereço/localidade NÃO vêm mais do cadastro da OS.
+    // Esses dados serão obtidos por geocodificação reversa das coordenadas GPS.
+    return { empresa, osId: os.id || "" };
+}
+
+async function obterEnderecoMapa(latitude, longitude){
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+    const normalizarUF = (valor) => {
+        const v = String(valor || "").trim();
+        if(!v) return "";
+        const mapa = {
+            "Bahia":"BA","São Paulo":"SP","Rio de Janeiro":"RJ","Minas Gerais":"MG",
+            "Espírito Santo":"ES","Paraná":"PR","Santa Catarina":"SC",
+            "Rio Grande do Sul":"RS","Goiás":"GO","Distrito Federal":"DF",
+            "Mato Grosso":"MT","Mato Grosso do Sul":"MS","Pernambuco":"PE",
+            "Ceará":"CE","Paraíba":"PB","Rio Grande do Norte":"RN","Alagoas":"AL",
+            "Sergipe":"SE","Maranhão":"MA","Piauí":"PI","Pará":"PA","Amazonas":"AM",
+            "Acre":"AC","Amapá":"AP","Rondônia":"RO","Roraima":"RR","Tocantins":"TO"
+        };
+        return mapa[v] || (v.length <= 3 ? v.toUpperCase() : v);
+    };
+
+    const montar = ({numero="", rua="", bairro="", cidade="", estado="", cep="", pais="", fonte="", google=false, completo=""}) => {
+        const uf = normalizarUF(estado);
+        const linhaEndereco = [numero, rua].filter(Boolean).join(", ");
+        const cidadeUf = cidade && uf ? `${cidade} - ${uf}` : (cidade || uf);
+        const linhaLocal = [bairro, cidadeUf, cep].filter(Boolean).join(", ");
+
+        return {
+            numero:String(numero || "").trim(),
+            rua:String(rua || "").trim(),
+            endereco:String(linhaEndereco || "").trim(),
+            bairro:String(bairro || "").trim(),
+            localidade:String(cidade || "").trim(),
+            estado:String(uf || "").trim(),
+            cep:String(cep || "").trim(),
+            pais:String(pais || "").trim(),
+            localLinha:linhaLocal,
+            enderecoCompleto:String(completo || "").trim(),
+            fonte,
+            google:Boolean(google)
+        };
+    };
+
+    // 1) GOOGLE MAPS GEOCODING — quando houver chave configurada.
+    const chaveGoogle = String(
+        window.SGOS_GOOGLE_MAPS_API_KEY ||
+        window.GOOGLE_MAPS_API_KEY ||
+        localStorage.getItem("google_maps_api_key") ||
+        document.querySelector('meta[name="google-maps-api-key"]')?.content ||
+        ""
+    ).trim();
+
+    if(chaveGoogle){
+        try{
+            const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+            url.searchParams.set("latlng", `${lat},${lng}`);
+            url.searchParams.set("language", "pt-BR");
+            url.searchParams.set("region", "br");
+            url.searchParams.set("key", chaveGoogle);
+
+            const resp = await fetch(url.toString(), { cache:"no-store" });
+            if(resp.ok){
+                const dados = await resp.json();
+                const resultados = Array.isArray(dados?.results) ? dados.results : [];
+                const resultado =
+                    resultados.find(r => r.types?.includes("street_address")) ||
+                    resultados.find(r => r.types?.includes("premise")) ||
+                    resultados[0];
+
+                if(resultado){
+                    const cs = resultado.address_components || [];
+                    const pegar = (tipo, curto=false) => {
+                        const c = cs.find(x => x.types?.includes(tipo));
+                        return c ? (curto ? (c.short_name || c.long_name) : c.long_name) : "";
+                    };
+
+                    const r = montar({
+                        numero:pegar("street_number"),
+                        rua:pegar("route"),
+                        bairro:pegar("sublocality_level_1") || pegar("neighborhood"),
+                        cidade:pegar("locality") || pegar("administrative_area_level_2"),
+                        estado:pegar("administrative_area_level_1", true),
+                        cep:pegar("postal_code"),
+                        pais:pegar("country"),
+                        fonte:"Google Maps",
+                        google:true,
+                        completo:resultado.formatted_address || ""
+                    });
+
+                    if(r.rua || r.numero || r.enderecoCompleto) return r;
+                }
+            }
+        }catch(err){
+            console.warn("Google reverse geocoding falhou:", err);
+        }
+    }
+
+    // 2) PHOTON / KOMOOT — ótimo fallback para rua, número e CEP.
+    try{
+        const url = new URL("https://photon.komoot.io/reverse");
+        url.searchParams.set("lat", String(lat));
+        url.searchParams.set("lon", String(lng));
+        url.searchParams.set("lang", "pt");
+
+        const resp = await fetch(url.toString(), {
+            headers:{"Accept":"application/json"},
+            cache:"no-store"
+        });
+
+        if(resp.ok){
+            const dados = await resp.json();
+            const p = dados?.features?.[0]?.properties || {};
+
+            const r = montar({
+                numero:p.housenumber || "",
+                rua:p.street || p.name || "",
+                bairro:p.district || p.locality || "",
+                cidade:p.city || p.county || "",
+                estado:p.state || "",
+                cep:p.postcode || "",
+                pais:p.country || "",
+                fonte:"GPS",
+                google:false,
+                completo:[
+                    p.housenumber, p.street || p.name, p.district,
+                    p.city || p.county, p.state, p.postcode
+                ].filter(Boolean).join(", ")
+            });
+
+            if(r.rua || r.numero || r.enderecoCompleto) return r;
+        }
+    }catch(err){
+        console.warn("Photon reverse geocoding falhou:", err);
+    }
+
+    // 3) NOMINATIM — último fallback, ainda usando SOMENTE o GPS da foto.
+    try{
+        const url = new URL("https://nominatim.openstreetmap.org/reverse");
+        url.searchParams.set("format", "jsonv2");
+        url.searchParams.set("lat", String(lat));
+        url.searchParams.set("lon", String(lng));
+        url.searchParams.set("zoom", "18");
+        url.searchParams.set("addressdetails", "1");
+        url.searchParams.set("accept-language", "pt-BR");
+
+        const resp = await fetch(url.toString(), {
+            headers:{"Accept":"application/json"},
+            cache:"no-store"
+        });
+
+        if(resp.ok){
+            const dados = await resp.json();
+            const a = dados?.address || {};
+
+            const r = montar({
+                numero:a.house_number || "",
+                rua:a.road || a.pedestrian || a.residential || a.path || "",
+                bairro:a.suburb || a.neighbourhood || a.quarter || a.city_district || "",
+                cidade:a.city || a.town || a.village || a.municipality || "",
+                estado:a["ISO3166-2-lvl4"] ? String(a["ISO3166-2-lvl4"]).split("-").pop() : (a.state || ""),
+                cep:a.postcode || "",
+                pais:a.country || "",
+                fonte:"GPS",
+                google:false,
+                completo:dados?.display_name || ""
+            });
+
+            if(r.rua || r.numero || r.enderecoCompleto) return r;
+        }
+    }catch(err){
+        console.warn("Nominatim reverse geocoding falhou:", err);
+    }
+
+    // Nunca substitui pelo endereço cadastrado na OS.
+    return montar({
+        fonte:"GPS",
+        completo:`${lat.toFixed(6)}, ${lng.toFixed(6)}`
+    });
+}
+async function obterCarimboLocalizacao(){
+    const pos = await obterPosicaoAtual();
+    const agora = new Date();
+    const identificacao = dadosIdentificacaoMidia();
+    const enderecoMapa = await obterEnderecoMapa(pos.latitude, pos.longitude);
+
+    return {
+        ...pos,
+        ...identificacao,
+        numeroMapa: enderecoMapa?.numero || "",
+        ruaMapa: enderecoMapa?.rua || "",
+        endereco: enderecoMapa?.endereco || "",
+        bairro: enderecoMapa?.bairro || "",
+        localidade: enderecoMapa?.localidade || "",
+        estado: enderecoMapa?.estado || "",
+        cep: enderecoMapa?.cep || "",
+        paisMapa: enderecoMapa?.pais || "",
+        enderecoGoogle: Boolean(enderecoMapa?.google),
+        fonteMapa: enderecoMapa?.fonte || "GPS",
+        localLinha: enderecoMapa?.localLinha || "",
+        enderecoCompletoMapa: enderecoMapa?.enderecoCompleto || "",
+        dataHora: agora.toLocaleString("pt-BR", {hour12:false}),
+        dataHoraISO: agora.toISOString(),
+        latitudeDMS: coordenadaParaDMS(pos.latitude, "lat"),
+        longitudeDMS: coordenadaParaDMS(pos.longitude, "lng"),
+        texto: `GPS: ${pos.latitude.toFixed(6)}, ${pos.longitude.toFixed(6)} • Precisão: ${Math.round(pos.precisao || 0)} m`
+    };
+}
+
+function quebrarTextoCanvas(ctx, texto, larguraMax){
+    const palavras = String(texto || "").split(/\s+/).filter(Boolean);
+    const linhas = [];
+    let atual = "";
+    for(const palavra of palavras){
+        const teste = atual ? `${atual} ${palavra}` : palavra;
+        if(atual && ctx.measureText(teste).width > larguraMax){
+            linhas.push(atual);
+            atual = palavra;
+        }else{
+            atual = teste;
+        }
+    }
+    if(atual) linhas.push(atual);
+    return linhas;
+}
+
+function desenharCarimboGPS(ctx, largura, altura, carimbo){
+    // Faixa compacta, SEM mini mapa.
+    const margem = Math.max(7, Math.round(largura * .007));
+    const boxW = largura - margem * 2;
+    const boxH = Math.max(92, Math.min(150, Math.round(altura * .085)));
+    const x = margem;
+    const y = altura - boxH - margem;
+    const padX = Math.max(12, Math.round(largura * .012));
+    const padY = Math.max(10, Math.round(boxH * .11));
+
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,.76)";
+    ctx.fillRect(x, y, boxW, boxH);
+
+    const amarelo = "#FFD400";
+    const branco = "#FFFFFF";
+    const cinza = "#E5E7EB";
+
+    // Fontes maiores para leitura real no anexo.
+    const fonteEndereco = Math.max(18, Math.round(largura * .020));
+    const fonteLocal = Math.max(15, Math.round(largura * .016));
+    const fonteInfo = Math.max(13, Math.round(largura * .014));
+
+    const gap = Math.max(16, Math.round(largura * .014));
+    const conteudoW = boxW - padX * 2;
+    const leftW = Math.round((conteudoW - gap) * .61);
+    const rightW = conteudoW - gap - leftW;
+    const leftX = x + padX;
+    const rightX = leftX + leftW + gap;
+
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+
+    // Pin minúsculo; não há mapa.
+    const pinR = Math.max(6, Math.round(fonteEndereco * .34));
+    const pinX = leftX + pinR;
+    const pinY = y + padY + pinR;
+
+    ctx.strokeStyle = amarelo;
+    ctx.fillStyle = amarelo;
+    ctx.lineWidth = Math.max(2, largura * .0015);
+    ctx.beginPath();
+    ctx.arc(pinX, pinY - pinR * .18, pinR * .50, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pinX - pinR * .30, pinY + pinR * .10);
+    ctx.lineTo(pinX, pinY + pinR * .66);
+    ctx.lineTo(pinX + pinR * .30, pinY + pinR * .10);
+    ctx.stroke();
+
+    const tx = leftX + pinR * 2 + Math.max(9, Math.round(fonteEndereco * .40));
+    const tw = Math.max(100, leftW - (tx - leftX));
+
+    const numero = String(carimbo.numeroMapa || "").trim();
+    const rua = String(carimbo.ruaMapa || "").trim();
+    const bairro = String(carimbo.bairro || "").trim();
+    const cidade = String(carimbo.localidade || "").trim();
+    const uf = String(carimbo.estado || "").trim();
+    const cep = String(carimbo.cep || "").trim();
+
+    let linha1 = [numero, rua].filter(Boolean).join(", ");
+
+    // Se o provedor de reverse geocoding trouxe somente formatted/display name,
+    // usa esse texto do MAPA/GPS — nunca endereço cadastrado na OS.
+    if(!linha1){
+        const completo = String(carimbo.enderecoCompletoMapa || "").trim();
+        if(completo && !/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(completo)){
+            linha1 = completo.split(",").slice(0,2).join(", ").trim();
+        }
+    }
+    if(!linha1) linha1 = "Localização GPS";
+
+    const cidadeUf = cidade && uf ? `${cidade} - ${uf}` : (cidade || uf);
+    const linha2 = [bairro, cidadeUf, cep].filter(Boolean).join(" • ");
+
+    ctx.fillStyle = amarelo;
+    ctx.font = `800 ${fonteEndereco}px Arial`;
+    const l1 = quebrarTextoCanvas(ctx, linha1, tw).slice(0,2);
+    let ly = y + padY;
+    l1.forEach(linha => {
+        ctx.fillText(linha, tx, ly);
+        ly += Math.round(fonteEndereco * 1.08);
+    });
+
+    if(linha2 && ly < y + boxH - padY - fonteInfo * 1.5){
+        ctx.font = `700 ${fonteLocal}px Arial`;
+        const l2 = quebrarTextoCanvas(ctx, linha2, tw).slice(0,1);
+        ctx.fillText(l2[0] || linha2, tx, ly);
+    }
+
+    // divisor
+    const divX = rightX - Math.round(gap / 2);
+    ctx.strokeStyle = "rgba(255,255,255,.24)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(divX, y + padY);
+    ctx.lineTo(divX, y + boxH - padY);
+    ctx.stroke();
+
+    let dataTxt = "";
+    let horaTxt = "";
+    try{
+        const d = carimbo.dataHoraISO ? new Date(carimbo.dataHoraISO) : new Date();
+        dataTxt = d.toLocaleDateString("pt-BR");
+        horaTxt = d.toLocaleTimeString("pt-BR", {
+            hour:"2-digit", minute:"2-digit", second:"2-digit"
+        });
+    }catch(_){}
+
+    ctx.fillStyle = branco;
+    ctx.font = `700 ${fonteInfo}px Arial`;
+    let ry = y + padY;
+    ctx.fillText(`${dataTxt}  ${horaTxt}`, rightX, ry);
+    ry += Math.round(fonteInfo * 1.30);
+
+    ctx.fillStyle = cinza;
+    ctx.font = `600 ${fonteInfo}px Arial`;
+    const coord = `${carimbo.latitudeDMS || "-"}  ${carimbo.longitudeDMS || "-"}`;
+    const cl = quebrarTextoCanvas(ctx, coord, rightW).slice(0,2);
+    cl.forEach(linha => {
+        ctx.fillText(linha, rightX, ry);
+        ry += Math.round(fonteInfo * 1.18);
+    });
+
+    const empresa = String(carimbo.empresa || "SGOS").toUpperCase();
+    const osTxt = `${empresa}${carimbo.osId ? ` • OS #${carimbo.osId}` : ""}`;
+    ctx.fillStyle = branco;
+    ctx.font = `800 ${fonteInfo}px Arial`;
+    ctx.fillText(osTxt, rightX, y + boxH - padY - fonteInfo);
+
+    ctx.restore();
+}
+async function blobParaJpeg(blob, nomeBase="foto", carimbo=null){
     if(!blob || !String(blob.type || "").startsWith("image/")){
         return new File([blob], nomeBase, {type: blob?.type || "application/octet-stream"});
     }
@@ -5840,87 +7264,56 @@ async function blobParaJpeg(blob, nomeBase="foto"){
         canvas.height = altura;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(bitmap, 0, 0, largura, altura);
+        if(carimbo) desenharCarimboGPS(ctx, largura, altura, carimbo);
 
         const jpegBlob = await new Promise((resolve, reject) => {
             canvas.toBlob(
                 b => b ? resolve(b) : reject(new Error("Falha ao preparar imagem")),
                 "image/jpeg",
-                0.78
+                0.82
             );
         });
 
-        return new File([jpegBlob], `${nomeBase.replace(/\.[^.]+$/, "")}.jpg`, {
+        return new File([jpegBlob], `${nomeBase.replace(/\.[^.]+$/, "")}-gps.jpg`, {
             type:"image/jpeg",
             lastModified:Date.now()
         });
     }catch(err){
-        console.warn("Não foi possível converter a imagem; enviando original.", err);
-        return new File([blob], nomeBase, {type:blob.type || "application/octet-stream"});
+        console.warn("Não foi possível preparar a imagem com GPS.", err);
+        throw new Error("Não foi possível inserir a localização na foto.");
     }
 }
 
-async function tirarFotoAgora(){
-    arquivoFotoPreparado = null;
 
-    const input = document.getElementById("foto");
-    const info = document.getElementById("arquivoSelecionadoInfo");
-
-    if(!input){
-        alert("Campo de câmera não encontrado.");
-        return;
-    }
-
-    /*
-      Captura direta somente de FOTO. Abrir gravação de vídeo por input
-      capture dentro do WebView pode encerrar o processo no Android/iOS.
-      Vídeos continuam disponíveis pelo botão “Anexar foto, vídeo ou PDF”.
-    */
-    input.value = "";
-    input.accept = "image/*";
-    input.setAttribute("capture", "environment");
-
-    if(info){
-        info.textContent = "Abra a câmera para tirar uma foto. Para vídeo, use o botão Anexar.";
-    }
-
-    input.click();
-}
 
 async function prepararArquivoParaEnvio(){
     if(arquivoFotoPreparado){
         return arquivoFotoPreparado;
     }
 
-    const arquivo = document.getElementById("foto")?.files?.[0];
-    if(!arquivo) return null;
-
-    const tipo = String(arquivo.type || "").toLowerCase();
-    const ehVideo = tipo.startsWith("video/");
-    const limite = ehVideo ? 30 * 1024 * 1024 : 20 * 1024 * 1024;
-
-    if(arquivo.size > limite){
-        throw new Error(
-            ehVideo
-                ? "O vídeo deve ter no máximo 30 MB."
-                : "O anexo deve ter no máximo 20 MB."
-        );
+    const osAtual = encontrarOS(osSelecionada);
+    if(osAtual){
+        const restaurado = await restaurarAnexoCacheOS(osAtual);
+        if(restaurado && arquivoFotoPreparado){
+            return arquivoFotoPreparado;
+        }
     }
 
-    // Mesmo quando o onchange ainda não terminou de materializar, nunca
-    // envie diretamente o File temporário do picker no iOS.
-    const copia = getPlataformaApp() === "ios"
-        ? await materializarArquivoIOS(arquivo)
-        : arquivo;
-
-    if(tipo.startsWith("image/")){
-        return await blobParaJpeg(
-            copia,
-            copia.name || `foto-${Date.now()}.jpg`
-        );
+    // Compatibilidade: caso algum input ainda tenha um arquivo selecionado.
+    const ids = ["foto","anexoGaleria","anexoFotoAgora","anexoVideoAgora","anexoArquivos"];
+    for(const id of ids){
+        const arquivo = document.getElementById(id)?.files?.[0];
+        if(arquivo){
+            arquivoFotoPreparado = arquivo;
+            if(osAtual) await salvarAnexoCacheOS(osAtual, arquivo, null);
+            atualizarAnexoPendenteUI(arquivo);
+            return arquivo;
+        }
     }
 
-    return copia;
+    return null;
 }
+
 
 const abrirModalBase = abrirModal;
 abrirModal = async function(chave){
@@ -5956,6 +7349,8 @@ abrirModal = async function(chave){
     }
 
     osSelecionada = chaveOS(os);
+
+    // Não zera a foto: tenta recuperar a evidência pendente desta OS.
     arquivoFotoPreparado = null;
 
     const resumo = document.getElementById("resumoModalOS");
@@ -5967,11 +7362,17 @@ abrirModal = async function(chave){
         obs.placeholder = "Digite a observação do técnico...";
     }
 
-    const foto = document.getElementById("foto");
-    if(foto) foto.value = "";
+    ["foto","anexoGaleria","anexoFotoAgora","anexoVideoAgora","anexoArquivos"].forEach(id => {
+        const input = document.getElementById(id);
+        if(input) input.value = "";
+    });
 
     const info = document.getElementById("arquivoSelecionadoInfo");
-    if(info) info.textContent = "Nenhum arquivo selecionado";
+    if(info) info.textContent = "Verificando anexo pendente...";
+
+    // Recupera foto, vídeo ou PDF salvo mesmo após fechar modal/app.
+    const anexoRestaurado = await restaurarAnexoCacheOS(os);
+    if(!anexoRestaurado) atualizarAnexoPendenteUI(null);
 
     const modal = document.getElementById("modal");
     const content = modal?.querySelector(".modal-content");
@@ -5982,6 +7383,8 @@ abrirModal = async function(chave){
     }
 
     const btnAnexo = document.getElementById("btnVerAnexo");
+    const btnAnexoConclusao = document.getElementById("btnVerAnexoConclusao");
+    const btnEscolherAnexo = document.getElementById("btnEscolherAnexo");
     const btnVerLoc = document.getElementById("btnVerLocalizacao");
     const btnReagendar = document.getElementById("btnReagendar");
     const btnCheckin = document.getElementById("btnCheckin");
@@ -5997,11 +7400,30 @@ abrirModal = async function(chave){
         btnCheckin.style.display = somenteLeitura ? "none" : "block";
     }
 
+    if(btnEscolherAnexo){
+        const checkinFeito = osTemCheckinParaAnexo(os);
+        btnEscolherAnexo.disabled = somenteLeitura || !checkinFeito;
+        btnEscolherAnexo.style.opacity = (!somenteLeitura && checkinFeito) ? "1" : ".5";
+        btnEscolherAnexo.textContent = checkinFeito
+            ? "📎 Anexar foto, vídeo ou PDF"
+            : "📎 Faça check-in para anexar";
+    }
+
     if(btnAnexo){
-        const temAnexo = !!obterAnexoOS(os);
-        btnAnexo.disabled = !temAnexo;
-        btnAnexo.style.opacity = temAnexo ? "1" : ".45";
+        const anexos = obterAnexosOS(os);
+        const finalizada = normalizarStatusApp(os.status) === "concluido";
+        const caminhoPrincipal = finalizada ? anexos.inicial : obterAnexoOS(os);
+        btnAnexo.disabled = !caminhoPrincipal;
+        btnAnexo.style.opacity = caminhoPrincipal ? "1" : ".45";
         btnAnexo.style.display = "block";
+        btnAnexo.textContent = finalizada ? "📎 Anexo de lançamento" : "📎 Ver Anexo";
+
+        if(btnAnexoConclusao){
+            btnAnexoConclusao.style.display = finalizada ? "block" : "none";
+            btnAnexoConclusao.disabled = !anexos.conclusao;
+            btnAnexoConclusao.style.opacity = anexos.conclusao ? "1" : ".45";
+            btnAnexoConclusao.textContent = anexos.conclusao ? "📎 Anexo de conclusão" : "📎 Sem anexo de conclusão";
+        }
     }
 
     if(btnVerLoc){
@@ -6011,7 +7433,18 @@ abrirModal = async function(chave){
         btnVerLoc.style.display = "block";
     }
 
-    if(modal) modal.style.display = "flex";
+    // O override assíncrono precisa reaplicar as regras de estado.
+    // Sem isso, depois do check-in os botões podem conservar o estado anterior.
+    configurarAcoesModalPorStatus(os);
+
+    if(modal){
+        modal.style.pointerEvents = "auto";
+        modal.removeAttribute("inert");
+        modal.style.display = "flex";
+    }
+    if(content){
+        content.style.pointerEvents = "auto";
+    }
 };
 window.abrirModal = abrirModal;
 function bloquearBotao(btn, bloqueado, textoTemporario="Enviando..."){
@@ -6152,7 +7585,14 @@ function selecionarStatusPagamentoApp(status){
     statusPagamentoSelecionadoApp = status === "pago" ? "pago" : "pendente";
 
     const bloco = document.getElementById("blocoComprovantePagamentoApp");
-    bloco?.classList.toggle("ativo", statusPagamentoSelecionadoApp === "pago");
+    bloco?.classList.add("ativo");
+
+    const label = bloco?.querySelector("label");
+    if(label){
+        label.innerHTML = statusPagamentoSelecionadoApp === "pago"
+            ? 'Comprovante do pagamento <span style="color:#dc2626">*</span>'
+            : 'Comprovante do pagamento <span style="color:#64748b">(opcional enquanto pendente)</span>';
+    }
 
     document.querySelectorAll("#modalConfirmacaoPagamento .confirmacao-pagamento-opcoes button")
         .forEach(botao => botao.classList.remove("selecionado"));
@@ -6163,9 +7603,6 @@ function selecionarStatusPagamentoApp(status){
     const confirmar = document.getElementById("btnConfirmarPagamentoApp");
     if(confirmar) confirmar.disabled = false;
 
-    if(statusPagamentoSelecionadoApp !== "pago"){
-        limparComprovantePagamentoApp();
-    }
 }
 
 function selecionarComprovantePagamentoApp(input){
@@ -6220,7 +7657,12 @@ function abrirConfirmacaoPagamento(){
     statusPagamentoSelecionadoApp = "";
     limparComprovantePagamentoApp();
 
-    document.getElementById("blocoComprovantePagamentoApp")?.classList.remove("ativo");
+    const blocoComprovante = document.getElementById("blocoComprovantePagamentoApp");
+    blocoComprovante?.classList.add("ativo");
+    const labelComprovante = blocoComprovante?.querySelector("label");
+    if(labelComprovante){
+        labelComprovante.innerHTML = 'Comprovante do pagamento <span style="color:#64748b">(se confirmar como pago, o anexo será obrigatório)</span>';
+    }
     document.querySelectorAll("#modalConfirmacaoPagamento .confirmacao-pagamento-opcoes button")
         .forEach(botao => botao.classList.remove("selecionado"));
 
@@ -6246,9 +7688,12 @@ async function confirmarStatusPagamentoApp(){
     }
 
     try{
-        const arquivo = statusPagamentoSelecionadoApp === "pago"
-            ? comprovantePagamentoApp
-            : null;
+        const arquivo = comprovantePagamentoApp;
+
+        if(statusPagamentoSelecionadoApp === "pago" && !arquivo){
+            alert("Anexe ou tire uma foto do comprovante para confirmar o pagamento.");
+            return;
+        }
 
         const base64 = await arquivoParaBase64PagamentoApp(arquivo);
 
@@ -6305,6 +7750,11 @@ function abrirReagendamento(){
     const osAtual = encontrarOS(osSelecionada);
     if(!osAtual){ alert("OS não encontrada"); return; }
     if(osAtual._tipo === "avulsa"){ alert("Reagendamento disponível somente para OS de clientes."); return; }
+
+    // Fecha somente o resumo principal; osSelecionada continua disponível
+    // para o modal de reagendamento.
+    const modalResumo = document.getElementById("modal");
+    if(modalResumo) modalResumo.style.display = "none";
     const campoData = document.getElementById("novaDataReagendamento");
     const agora = new Date();
     agora.setMinutes(agora.getMinutes() + 30);
@@ -6399,6 +7849,14 @@ async function enviarAcao(tipo, botao){
     };
     if(!rotas[tipo]) return;
 
+    // Guarda os dados do resumo ANTES de fechá-lo.
+    // fecharModal() limpa input e arquivoFotoPreparado, então nunca podemos
+    // depender do DOM depois deste ponto.
+    const observacaoDigitadaSnapshot =
+        String(document.getElementById("obs")?.value || "");
+
+    let arquivoAnexoSnapshot = null;
+
     let equipamentoUtilizado = "";
     let observacaoEquipamento = "";
     let statusPagamentoConfirmado = "";
@@ -6421,6 +7879,19 @@ async function enviarAcao(tipo, botao){
         bloquearBotao(botao, false);
     }
 
+    // Prepara/copia o arquivo ANTES de fechar o resumo.
+    // Para foto, isso gera o JPEG com carimbo GPS.
+    try{
+        arquivoAnexoSnapshot = await prepararArquivoParaEnvio();
+    }catch(err){
+        alert(err.message || "Não foi possível preparar o anexo.");
+        return;
+    }
+
+    // O resumo deve desaparecer assim que a ação válida foi iniciada,
+    // sem perder o arquivo já copiado para arquivoAnexoSnapshot.
+    fecharModal();
+
     if(tipo === "concluir" && materiaisOSApp(osAtual).length){
         const confirmacaoEquipamento = await abrirConfirmacaoEquipamento();
         if(!confirmacaoEquipamento) return;
@@ -6437,7 +7908,7 @@ async function enviarAcao(tipo, botao){
     bloquearBotao(botao,true);
     try{
         const formData = new FormData();
-        const observacaoDigitada = document.getElementById("obs").value || "";
+        const observacaoDigitada = observacaoDigitadaSnapshot;
 
         // Mantém compatibilidade com a rota antiga e envia também o campo
         // específico da coluna correta conforme a ação executada.
@@ -6462,6 +7933,9 @@ async function enviarAcao(tipo, botao){
                 formData.append("anexo_pagamento_base64", comprovantePagamentoConfirmado.base64);
                 formData.append("anexo_pagamento_nome", comprovantePagamentoConfirmado.nome || "comprovante-pagamento");
                 formData.append("anexo_pagamento_mime", comprovantePagamentoConfirmado.mime || "application/octet-stream");
+                formData.append("anexos_comprovantes_base64", comprovantePagamentoConfirmado.base64);
+                formData.append("anexos_comprovantes_nome", comprovantePagamentoConfirmado.nome || "comprovante-pagamento");
+                formData.append("anexos_comprovantes_mime", comprovantePagamentoConfirmado.mime || "application/octet-stream");
             }
 
             if(checkinFinal){
@@ -6471,13 +7945,19 @@ async function enviarAcao(tipo, botao){
             }
         }
 
-        const arquivo = await prepararArquivoParaEnvio();
+        const arquivo = arquivoAnexoSnapshot;
+        console.log("📎 SGOS anexo preparado:", arquivo ? {
+            nome: arquivo.name || "sem-nome",
+            tipo: arquivo.type || "sem-mime",
+            tamanho: arquivo.size || 0,
+            origem: arquivoFotoPreparado ? "cache/preparado" : "input"
+        } : "sem anexo");
         if(arquivo){
             const nomeArquivo = arquivo.name || `anexo-${Date.now()}`;
 
-            // As três rotas usam Multer com upload.single("foto").
-            // Enviar o mesmo arquivo também como anexo_ausente ou
-            // anexo_finalizado gera MulterError: Unexpected field.
+            // arquivoSelecionado()/Camera nativa já materializam os bytes em um
+            // File/Blob independente. Não leia novamente aqui no WKWebView:
+            // a segunda leitura era um ponto extra de falha no iOS.
             formData.append("foto", arquivo, nomeArquivo);
         }
         const controller = new AbortController();
@@ -6504,13 +7984,135 @@ async function enviarAcao(tipo, botao){
             );
         }
 
+        // A foto só sai do cache depois que o servidor confirmou a ação.
+        if(["concluir","ausente","inviabilidade"].includes(tipo)){
+            await removerAnexoCacheOS(osAtual);
+            arquivoFotoPreparado = null;
+            window.ultimaLocalizacaoMidia = null;
+        }
+
         alert("OS atualizada com sucesso");
         fecharModal(); await load();
+        if(tipo === "concluir") await oferecerProximaOSApp();
     }catch(err){
         console.error("Falha na ação da OS:",err);
         alert(err.name === "AbortError" ? "A operação demorou demais. Tente novamente." : (err.message || "Erro ao executar ação"));
     }finally{bloquearBotao(botao,false)}
 }
+
+function tecnicosDaOSApp(valor){
+    if(Array.isArray(valor)) return valor.map(String);
+    try{ const p=JSON.parse(valor||'[]'); if(Array.isArray(p)) return p.map(String); }catch(_){ }
+    return String(valor||'').split(',').map(v=>v.trim()).filter(Boolean);
+}
+async function oferecerProximaOSApp(){
+    document.querySelectorAll(".modal-proxima-app").forEach(el => el.remove());
+
+    const lancadas = (Array.isArray(OS) ? OS : []).filter(o =>
+        o &&
+        o._tipo !== "avulsa" &&
+        normalizarStatusApp(o.status) === "os_lancada"
+    );
+
+    if(!lancadas.length || lancadas.some(o => Number(o.proxima_os || 0) === 1)) return;
+
+    let osProximaSelecionadaId = null;
+
+    const camada = document.createElement("div");
+    camada.className = "modal-proxima-app";
+    camada.innerHTML = `
+        <div class="caixa-proxima-app">
+            <h3>Qual será o próximo atendimento?</h3>
+            <p>Toque na OS desejada para selecioná-la. Confira os dados e depois clique em <b>Confirmar atendimento</b>.</p>
+
+            <div class="lista-proxima-app">
+                ${lancadas.map(o => `
+                    <button type="button" class="opcao-proxima-app" data-id="${o.id}">
+                        <b>${valorSeguro(o.tipo_servico_nome || o.tipo_servico || "Serviço não informado")}</b>
+                        <small><strong>OS:</strong> #${valorSeguro(o.id)}</small>
+                        <small><strong>Cliente:</strong> ${valorSeguro(nomeClienteOS(o))}</small>
+                        <small><strong>Endereço:</strong> ${valorSeguro(enderecoNormal(o))}</small>
+                    </button>
+                `).join("")}
+            </div>
+
+            <div class="acoes-proxima-app">
+                <button type="button" class="sair-proxima-app">Sair</button>
+                <button type="button" class="confirmar-proxima-app" disabled>Confirmar atendimento</button>
+            </div>
+        </div>`;
+
+    document.body.appendChild(camada);
+
+    const btnConfirmar = camada.querySelector(".confirmar-proxima-app");
+    const btnSair = camada.querySelector(".sair-proxima-app");
+    const opcoes = [...camada.querySelectorAll(".opcao-proxima-app")];
+
+    btnSair.onclick = () => camada.remove();
+
+    opcoes.forEach(btn => {
+        btn.onclick = () => {
+            osProximaSelecionadaId = String(btn.dataset.id || "");
+
+            opcoes.forEach(item => {
+                item.classList.toggle(
+                    "selecionada",
+                    String(item.dataset.id || "") === osProximaSelecionadaId
+                );
+            });
+
+            btnConfirmar.disabled = !osProximaSelecionadaId;
+        };
+    });
+
+    btnConfirmar.onclick = async () => {
+        if(!osProximaSelecionadaId){
+            alert("Selecione uma OS antes de confirmar.");
+            return;
+        }
+
+        const osEscolhida = lancadas.find(o => String(o.id) === String(osProximaSelecionadaId));
+        if(!osEscolhida){
+            alert("A OS selecionada não está mais disponível.");
+            return;
+        }
+
+        btnConfirmar.disabled = true;
+        btnSair.disabled = true;
+        opcoes.forEach(item => item.disabled = true);
+
+        const textoOriginal = btnConfirmar.textContent;
+        btnConfirmar.textContent = "Confirmando...";
+
+        try{
+            const r = await apiFetch(`/api/ordens_servico/proxima-fila/${encodeURIComponent(osProximaSelecionadaId)}`, {
+                method:"POST",
+                headers:{
+                    "Accept":"application/json",
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({}),
+                cache:"no-store"
+            });
+
+            const d = await lerRespostaSegura(r);
+            if(!r.ok) throw new Error(d.erro || d.mensagem || "Erro ao definir próxima OS.");
+
+            camada.remove();
+            await load();
+
+            alert(`Próximo atendimento confirmado:\nOS #${osEscolhida.id} - ${nomeClienteOS(osEscolhida)}`);
+        }catch(e){
+            console.error("Erro ao definir próxima OS:", e);
+            btnConfirmar.disabled = false;
+            btnSair.disabled = false;
+            opcoes.forEach(item => item.disabled = false);
+            btnConfirmar.textContent = textoOriginal;
+            alert(e.message || "Erro ao definir próxima OS.");
+        }
+    };
+}
+
 async function abrirUrlExterna(url){
     try{
         const Browser = window.Capacitor?.Plugins?.Browser;
@@ -6522,27 +8124,46 @@ async function abrirUrlExterna(url){
     const nova = window.open(url,"_blank","noopener,noreferrer");
     if(!nova) window.location.href = url;
 }
-function verAnexo(){
+async function verAnexoTipo(tipo="principal"){
     const os = encontrarOS(osSelecionada);
-    const caminho = obterAnexoOS(os);
+    const status = normalizarStatusApp(os?.status);
+    const tipoReal = tipo === "principal" && status === "concluido" ? "inicial" : tipo;
+    let caminho = obterAnexoOS(os,tipoReal);
 
-    if(!os || !caminho){
-        alert("Nenhum anexo encontrado");
-        return;
+    if(!os || !caminho){ alert(tipoReal === "conclusao" ? "Nenhum anexo de conclusão encontrado" : "Nenhum anexo encontrado"); return; }
+    caminho = caminhoAnexoValido(caminho);
+    if(!caminho){ alert("O anexo existe, mas o caminho do arquivo não foi informado pela API."); return; }
+
+    caminho = String(caminho).replace(/\\/g,"/").trim();
+    const url = /^https?:\/\//i.test(caminho) ? caminho : apiUrl(caminho.startsWith("/") ? caminho : `/${caminho}`);
+    const viewer=document.getElementById("anexoViewer"), modalAnexo=document.getElementById("modalAnexo"), titulo=document.getElementById("tituloAnexo");
+    const rotulo=tipoReal === "conclusao" ? "Anexo da conclusão" : tipoReal === "inicial" ? "Anexo de lançamento" : "Anexo";
+    if(titulo) titulo.innerText=`📎 ${rotulo} • OS #${os.id}`;
+    if(viewer) viewer.innerHTML=`<div class="anexo-msg">Carregando anexo...</div>`;
+    if(modalAnexo) modalAnexo.style.display="flex";
+
+    try{
+        const resposta=await apiFetch(url,{method:"GET",headers:{"Accept":"*/*"},cache:"no-store"});
+        if(!resposta.ok) throw new Error(`Não foi possível carregar o anexo (HTTP ${resposta.status}).`);
+        const blob=await resposta.blob();
+        if(!blob || !blob.size) throw new Error("O servidor retornou o anexo vazio.");
+        limparObjectUrlAnexo();
+        anexoObjectUrlAtual=URL.createObjectURL(blob);
+        let mime=String(blob.type || resposta.headers.get("content-type") || "").split(";")[0].trim();
+        if(!mime || mime === "application/octet-stream"){
+            const limpa=caminho.split("?")[0].toLowerCase();
+            if(/\.(jpg|jpeg|png|gif|webp|bmp|svg|heic|heif)$/.test(limpa)) mime="image/*";
+            else if(/\.(mp4|mov|m4v|webm|avi|mpeg|mpg|3gp)$/.test(limpa)) mime="video/*";
+            else if(/\.pdf$/.test(limpa)) mime="application/pdf";
+        }
+        abrirModalAnexo(anexoObjectUrlAtual,os.id,mime,tipoReal);
+    }catch(err){
+        console.error("Erro ao exibir anexo da OS:",err,{caminho,url,tipo:tipoReal});
+        if(viewer) viewer.innerHTML=`<div class="anexo-msg">${escapeHTML(err?.message || "Não foi possível carregar este anexo.")}</div>`;
+        else alert(err?.message || "Não foi possível carregar este anexo.");
     }
-
-    const url = /^https?:\/\//i.test(caminho) ? caminho : apiUrl(caminho);
-    const limpa = url.split("?")[0].toLowerCase();
-    const imagem = /\.(jpg|jpeg|png|gif|webp|bmp|svg|heic|heif)$/.test(limpa);
-    const video = /\.(mp4|mov|m4v|webm|avi|mpeg|mpg|3gp)$/.test(limpa);
-
-    if(getPlataformaApp() === "ios" && !imagem && !video){
-        abrirUrlExterna(url);
-        return;
-    }
-
-    abrirModalAnexo(url, os.id);
 }
+async function verAnexo(){ return verAnexoTipo("principal"); }
 async function obterPosicaoAtual(){
     const plataforma = getPlataformaApp();
 
@@ -6659,6 +8280,7 @@ async function obterPosicaoAtual(){
 }
 async function fazerCheckin(botao){
     if(!osSelecionada){ alert("Nenhuma OS selecionada"); return; }
+    const chaveAntes = String(osSelecionada);
     const osAtual = encontrarOS(osSelecionada);
     if(!osAtual || osAtual._tipo === "avulsa"){ alert("Check-in disponível somente para OS de clientes."); return; }
     if(osAtual.checkin_inicio_em){ alert(`Check-in já registrado em ${format(osAtual.checkin_inicio_em)}.`); return; }
@@ -6667,6 +8289,7 @@ async function fazerCheckin(botao){
     try{
         const coords = await obterPosicaoAtual();
         bloquearBotao(botao, true, "Registrando check-in...");
+
         const res = await apiFetch(`/api/ordens_servico/checkin/${osAtual.id}`, {
             method:"POST",
             headers:{"Content-Type":"application/json","Accept":"application/json"},
@@ -6679,44 +8302,104 @@ async function fazerCheckin(botao){
         });
         const data = await lerRespostaSegura(res);
         if(!res.ok) throw new Error(data.erro || data.mensagem || `Erro HTTP ${res.status}`);
-        alert("Check-in registrado com horário e localização.");
 
-        // Recarrega a lista e reconstrói o modal. No WKWebView do iOS,
-        // manter o modal antigo aberto durante o render pode deixá-lo visível,
-        // porém sem responder corretamente aos toques.
-        fecharModal();
-        await load();
-        const atualizado = encontrarOS(`normal-${osAtual.id}`) || encontrarOS(osAtual.id);
-        if(atualizado){
-            osSelecionada = chaveOS(atualizado);
-            await abrirModal(chaveOS(atualizado));
-
-            const modal = document.getElementById("modal");
-            const content = modal?.querySelector(".modal-content");
-            if(modal){
-                modal.style.display = "flex";
-                modal.style.pointerEvents = "auto";
-                modal.removeAttribute("inert");
-            }
-            if(content){
-                content.style.pointerEvents = "auto";
-                content.querySelectorAll("button,textarea,input,a").forEach(el => {
-                    el.style.pointerEvents = "auto";
-                });
-            }
-
-            const btn = document.getElementById("btnCheckin");
-            if(btn){
-                btn.textContent = "✓ Check-in realizado";
-                btn.classList.add("realizado");
-                btn.disabled = true;
-            }
+        const resLocalizacao = await apiFetch(`/api/ordens_servico/localizacao/${osAtual.id}`, {
+            method:"POST",
+            headers:{"Content-Type":"application/json","Accept":"application/json"},
+            body:JSON.stringify({
+                latitude:coords.latitude,
+                longitude:coords.longitude,
+                lat:coords.latitude,
+                lng:coords.longitude,
+                origem:"checkin"
+            }),
+            cache:"no-store"
+        });
+        const dadosLocalizacao = await lerRespostaSegura(resLocalizacao);
+        if(!resLocalizacao.ok){
+            throw new Error(
+                dadosLocalizacao.erro ||
+                dadosLocalizacao.mensagem ||
+                `Check-in salvo, mas não foi possível atualizar a localização da OS (HTTP ${resLocalizacao.status}).`
+            );
         }
+
+        osAtual.latitude = coords.latitude;
+        osAtual.longitude = coords.longitude;
+        osAtual.checkin_inicio_latitude = coords.latitude;
+        osAtual.checkin_inicio_longitude = coords.longitude;
+        osAtual.checkin_inicio_em = data?.checkin_inicio_em || data?.checkin_em || new Date().toISOString();
+
+        // O check-in inicia a execução. Atualizamos imediatamente o estado local para
+        // não depender do reload antes de liberar os botões no iOS.
+        osAtual.status = data?.status || data?.os?.status || "em_andamento";
+        osSelecionada = chaveOS(osAtual);
+
+        const resumo = document.getElementById("resumoModalOS");
+        if(resumo) resumo.innerHTML = resumoModalHTML(osAtual);
+
+        configurarAcoesModalPorStatus(osAtual);
+
+        const btnEscolherAnexo = document.getElementById("btnEscolherAnexo");
+        if(btnEscolherAnexo){
+            btnEscolherAnexo.disabled = false;
+            btnEscolherAnexo.style.opacity = "1";
+            btnEscolherAnexo.textContent = "📎 Anexar foto, vídeo ou PDF";
+        }
+
+        const modal = document.getElementById("modal");
+        const content = modal?.querySelector(".modal-content");
+        if(modal){
+            modal.removeAttribute("inert");
+            modal.style.pointerEvents = "auto";
+            modal.style.display = "flex";
+        }
+        if(content){
+            content.removeAttribute("inert");
+            content.style.pointerEvents = "auto";
+        }
+
+        // Primeiro libera o botão antigo; ele pode ser ocultado logo abaixo pelas
+        // regras de status, mas não fica com .botao-carregando preso no DOM.
+        bloquearBotao(botao, false);
+
+        // Sincroniza a lista com o servidor sem fechar o resumo.
+        await load();
+
+        const atualizado =
+            encontrarOS(`normal-${osAtual.id}`) ||
+            encontrarOS(osAtual.id) ||
+            osAtual;
+
+        osSelecionada = chaveOS(atualizado);
+        atualizado.checkin_inicio_em = atualizado.checkin_inicio_em || osAtual.checkin_inicio_em;
+        atualizado.status = normalizarStatusApp(atualizado.status) === "os_lancada"
+            ? "em_andamento"
+            : atualizado.status;
+
+        if(resumo) resumo.innerHTML = resumoModalHTML(atualizado);
+        configurarAcoesModalPorStatus(atualizado);
+
+        const btnEscolherAposLoad = document.getElementById("btnEscolherAnexo");
+        if(btnEscolherAposLoad){
+            btnEscolherAposLoad.disabled = false;
+            btnEscolherAposLoad.style.opacity = "1";
+            btnEscolherAposLoad.textContent = "📎 Anexar foto, vídeo ou PDF";
+        }
+
+        if(modal){
+            modal.style.display = "flex";
+            modal.style.pointerEvents = "auto";
+        }
+        if(content) content.style.pointerEvents = "auto";
+
+        console.log("✅ Check-in registrado; resumo mantido interativo.", {osId:osAtual.id});
     }catch(err){
         console.error("Erro no check-in:", err);
         alert(err.message || "Não foi possível registrar o check-in.");
     }finally{
-        bloquearBotao(botao, false);
+        // Só desbloqueia se o botão ainda existir/estiver conectado.
+        if(botao?.isConnected) bloquearBotao(botao, false);
     }
 }
 
@@ -6841,4 +8524,4 @@ document.addEventListener("touchend",function(e){
 
 </body>
 </html>
-<!-- force deploy appmobile 20260630005136 -->
+<!-- force deploy appmobile 20260806-fluxo-checkin-final -->
