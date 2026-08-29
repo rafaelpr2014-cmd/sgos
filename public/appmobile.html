@@ -416,6 +416,23 @@ body{
 .modal{align-items:flex-end}
 .modal-anexo{align-items:center;z-index:10000}
 
+/* iOS/WKWebView: mantém o resumo e os controles tocáveis após retorno de câmera/GPS. */
+.modal[style*="display: flex"],
+.modal-content{
+    pointer-events:auto;
+}
+.modal-content{
+    -webkit-overflow-scrolling:touch;
+    touch-action:manipulation;
+}
+.modal-content button,
+.modal-content textarea,
+.modal-content input,
+.seletor-anexo-modal button{
+    pointer-events:auto;
+    touch-action:manipulation;
+}
+
 .modal-content{
     background:#fff;
     padding:22px;
@@ -6567,14 +6584,170 @@ function fecharSeletorCapturaAgora(){
     }
 }
 
-function abrirCapturaAgora(tipo){
+async function lerArquivoArrayBufferIOS(arquivo){
+    if(!arquivo) throw new Error("Arquivo não informado.");
+
+    // No WKWebView, FileReader é mais estável para arquivos recém-criados pela câmera
+    // do que manter a referência temporária entregue pelo <input capture>.
+    return await new Promise((resolve, reject) => {
+        try{
+            const reader = new FileReader();
+            reader.onload = () => {
+                if(reader.result instanceof ArrayBuffer){
+                    resolve(reader.result);
+                    return;
+                }
+                reject(new Error("A câmera não retornou os bytes da mídia."));
+            };
+            reader.onerror = () => reject(reader.error || new Error("Falha ao ler a mídia capturada."));
+            reader.onabort = () => reject(new Error("Leitura da mídia capturada foi cancelada."));
+            reader.readAsArrayBuffer(arquivo);
+        }catch(err){
+            // Fallback para navegadores que tenham FileReader incompleto.
+            if(typeof arquivo.arrayBuffer === "function"){
+                arquivo.arrayBuffer().then(resolve).catch(reject);
+            }else{
+                reject(err);
+            }
+        }
+    });
+}
+
+function arquivoDeDataURL(dataUrl, nome="foto-camera.jpg"){
+    const valor = String(dataUrl || "");
+    const match = valor.match(/^data:([^;,]+)?(?:;charset=[^;,]+)?;base64,(.*)$/i);
+    if(!match) throw new Error("A câmera não retornou a foto em um formato válido.");
+
+    const mime = match[1] || "image/jpeg";
+    const binario = atob(match[2]);
+    const bytes = new Uint8Array(binario.length);
+    for(let i=0;i<binario.length;i++) bytes[i] = binario.charCodeAt(i);
+
+    try{
+        return new File([bytes], nome, {type:mime,lastModified:Date.now()});
+    }catch(_){
+        const blob = new Blob([bytes], {type:mime});
+        try{ Object.defineProperty(blob,"name",{value:nome,configurable:true}); }catch(__){}
+        return blob;
+    }
+}
+
+async function capturarFotoNativaIOS(){
+    const Camera = window.Capacitor?.Plugins?.Camera;
+    if(!Camera || typeof Camera.getPhoto !== "function") return null;
+
+    try{
+        if(typeof Camera.requestPermissions === "function"){
+            const perm = await Camera.requestPermissions({permissions:["camera"]});
+            const cameraStatus = perm?.camera;
+            if(cameraStatus && !["granted","limited"].includes(String(cameraStatus))){
+                throw new Error("Permita o acesso à câmera em Ajustes > SGOS > Câmera.");
+            }
+        }
+
+        // DataUrl é intencional: não dependemos de file://, webPath ou URI temporária
+        // do iOS. Os bytes já voltam para o JavaScript e permanecem válidos no WKWebView.
+        const foto = await Camera.getPhoto({
+            quality:82,
+            allowEditing:false,
+            resultType:"dataUrl",
+            source:"camera",
+            correctOrientation:true,
+            saveToGallery:false
+        });
+
+        if(!foto?.dataUrl) throw new Error("A câmera não retornou os dados da foto.");
+        return arquivoDeDataURL(foto.dataUrl, `foto-os-${Date.now()}.jpg`);
+    }catch(err){
+        const msg = String(err?.message || err || "");
+        // Usuário fechou/cancelou a câmera: não transforma em erro.
+        if(/cancel|cancelled|canceled|user cancelled/i.test(msg)) return null;
+        throw err;
+    }
+}
+
+async function prepararAnexoCapturado(arquivo, input){
+    const tipo = String(arquivo?.type || "").toLowerCase();
+    const nomeOriginal = String(arquivo?.name || "");
+    const ehVideo = tipo.startsWith("video/");
+    const ehImagem = tipo.startsWith("image/");
+
+    // Dá ao WKWebView um pequeno ciclo para finalizar a entrega do arquivo da câmera.
+    // Isso é importante principalmente após gravação de vídeo.
+    if(getPlataformaApp() === "ios"){
+        await new Promise(resolve => setTimeout(resolve, 180));
+    }
+
+    const buffer = await lerArquivoArrayBufferIOS(arquivo);
+    const mimeSeguro = String(
+        arquivo.type ||
+        (ehVideo ? "video/quicktime" : ehImagem ? "image/jpeg" : "application/octet-stream")
+    );
+
+    let extensao = "";
+    if(/\.[a-z0-9]{2,5}$/i.test(nomeOriginal)){
+        extensao = nomeOriginal.match(/(\.[a-z0-9]{2,5})$/i)?.[1] || "";
+    }
+    if(!extensao){
+        if(ehVideo) extensao = mimeSeguro.includes("mp4") ? ".mp4" : ".mov";
+        else if(ehImagem) extensao = ".jpg";
+    }
+
+    const nomeSeguro = nomeOriginal || `anexo-camera-${Date.now()}${extensao}`;
+    try{
+        return new File([buffer], nomeSeguro, {
+            type:mimeSeguro,
+            lastModified:Date.now()
+        });
+    }catch(_){
+        const blob = new Blob([buffer], {type:mimeSeguro});
+        try{ Object.defineProperty(blob,"name",{value:nomeSeguro,configurable:true}); }catch(__){}
+        return blob;
+    }
+}
+
+async function abrirCapturaAgora(tipo){
     if(!exigirCheckinParaAnexo()) return;
 
     fecharSeletorCapturaAgora();
+
+    // FOTO NO iOS: usa o plugin nativo do Capacitor que já está presente no projeto.
+    // Isso elimina o caminho problemático do <input capture> / URI temporária.
+    if(tipo === "foto" && getPlataformaApp() === "ios"){
+        try{
+            const osAtual = encontrarOS(osSelecionada);
+            const fotoNativa = await capturarFotoNativaIOS();
+
+            // Se o plugin não existir, cai no input capture abaixo.
+            if(fotoNativa){
+                arquivoFotoPreparado = fotoNativa;
+                window.arquivoVideoPreparado = null;
+                window.modoCapturaGPS = null;
+                window.ultimaLocalizacaoMidia = null;
+
+                if(osAtual){
+                    await salvarAnexoCacheOS(osAtual, arquivoFotoPreparado, null);
+                }
+                atualizarAnexoPendenteUI(arquivoFotoPreparado);
+                return;
+            }
+
+            // null com plugin disponível normalmente significa cancelamento.
+            const Camera = window.Capacitor?.Plugins?.Camera;
+            if(Camera && typeof Camera.getPhoto === "function") return;
+        }catch(err){
+            console.error("Falha na câmera nativa do iOS:", err);
+            alert(err.message || "Não foi possível tirar a foto.");
+            return;
+        }
+    }
+
     const input = document.getElementById(tipo === "video" ? "anexoVideoAgora" : "anexoFotoAgora");
     if(!input) return;
 
+    window.sgosCapturaAgoraTipo = tipo;
     input.value = "";
+
     // Mantém o click diretamente associado ao gesto do usuário.
     input.click();
 }
@@ -6582,8 +6755,6 @@ function abrirCapturaAgora(tipo){
 async function arquivoSelecionado(input){
     const info = document.getElementById("arquivoSelecionadoInfo");
 
-    // Segunda barreira: mesmo que algum input seja acionado por código, o arquivo
-    // não entra no cache nem é preparado antes de existir check-in confirmado.
     if(!exigirCheckinParaAnexo()){
         if(input) input.value = "";
         return;
@@ -6591,7 +6762,6 @@ async function arquivoSelecionado(input){
 
     const arquivo = input?.files?.[0];
 
-    // Cancelou o seletor: mantém o anexo anterior.
     if(!arquivo){
         if(arquivoFotoPreparado){
             atualizarAnexoPendenteUI(arquivoFotoPreparado);
@@ -6622,24 +6792,49 @@ async function arquivoSelecionado(input){
         return;
     }
 
-    // iOS/WKWebView: arquivos vindos da Camera/Fotos podem ser referências temporárias.
-    // Copia os bytes imediatamente para um Blob próprio, evitando "Load failed"
-    // quando o FormData for enviado alguns awaits depois.
+    const veioDaCamera =
+        input?.id === "anexoFotoAgora" ||
+        input?.id === "anexoVideoAgora";
+
     try{
-        const buffer = await arquivo.arrayBuffer();
-        const mimeSeguro = String(arquivo.type || (ehVideo ? "video/quicktime" : ehPdf ? "application/pdf" : "image/jpeg"));
-        const blobSeguro = new Blob([buffer], { type:mimeSeguro });
-        Object.defineProperty(blobSeguro, "name", {
-            value: arquivo.name || `anexo-${Date.now()}${ehVideo ? ".mov" : ehPdf ? ".pdf" : ".jpg"}`,
-            configurable:true
-        });
-        arquivoFotoPreparado = blobSeguro;
+        if(info) info.textContent = veioDaCamera ? "Processando mídia da câmera..." : "Carregando anexo...";
+
+        // Para captura imediata materializa o arquivo com FileReader. Para galeria/arquivos
+        // também criamos uma cópia independente, sem alterar o fluxo visual já funcional.
+        if(veioDaCamera){
+            arquivoFotoPreparado = await prepararAnexoCapturado(arquivo, input);
+        }else{
+            const buffer = await lerArquivoArrayBufferIOS(arquivo);
+            const mimeSeguro = String(
+                arquivo.type ||
+                (ehVideo ? "video/quicktime" : ehPdf ? "application/pdf" : "image/jpeg")
+            );
+            const nomeSeguro = arquivo.name || `anexo-${Date.now()}${ehVideo ? ".mov" : ehPdf ? ".pdf" : ".jpg"}`;
+            try{
+                arquivoFotoPreparado = new File([buffer], nomeSeguro, {
+                    type:mimeSeguro,
+                    lastModified:Date.now()
+                });
+            }catch(_){
+                const blobSeguro = new Blob([buffer], {type:mimeSeguro});
+                try{ Object.defineProperty(blobSeguro,"name",{value:nomeSeguro,configurable:true}); }catch(__){}
+                arquivoFotoPreparado = blobSeguro;
+            }
+        }
     }catch(erroCopia){
-        console.error("Falha ao copiar mídia selecionada:", erroCopia);
-        alert("Não foi possível carregar a foto/vídeo selecionado. Se estiver no iCloud, aguarde o download e tente novamente.");
+        console.error("Falha ao materializar mídia selecionada:", erroCopia);
+        alert(
+            veioDaCamera
+                ? "O iPhone não conseguiu finalizar a mídia capturada. Tente novamente."
+                : "Não foi possível carregar a foto/vídeo selecionado."
+        );
         input.value = "";
+        if(info) info.textContent = "Nenhum arquivo selecionado";
         return;
+    }finally{
+        window.sgosCapturaAgoraTipo = null;
     }
+
     window.arquivoVideoPreparado = null;
     window.modoCapturaGPS = null;
     window.ultimaLocalizacaoMidia = null;
@@ -7238,7 +7433,18 @@ abrirModal = async function(chave){
         btnVerLoc.style.display = "block";
     }
 
-    if(modal) modal.style.display = "flex";
+    // O override assíncrono precisa reaplicar as regras de estado.
+    // Sem isso, depois do check-in os botões podem conservar o estado anterior.
+    configurarAcoesModalPorStatus(os);
+
+    if(modal){
+        modal.style.pointerEvents = "auto";
+        modal.removeAttribute("inert");
+        modal.style.display = "flex";
+    }
+    if(content){
+        content.style.pointerEvents = "auto";
+    }
 };
 window.abrirModal = abrirModal;
 function bloquearBotao(btn, bloqueado, textoTemporario="Enviando..."){
@@ -7749,21 +7955,10 @@ async function enviarAcao(tipo, botao){
         if(arquivo){
             const nomeArquivo = arquivo.name || `anexo-${Date.now()}`;
 
-            // iOS/WKWebView: recria o Blob antes do multipart para não enviar
-            // uma referência temporária da Camera/Fotos/IndexedDB.
-            let arquivoEnvio = arquivo;
-            try{
-                const bytes = await arquivo.arrayBuffer();
-                arquivoEnvio = new Blob([bytes], {
-                    type: arquivo.type || "application/octet-stream"
-                });
-            }catch(erroBlob){
-                console.error("Falha ao materializar anexo para envio:", erroBlob);
-                throw new Error("Não foi possível carregar o anexo para envio. Selecione a foto ou vídeo novamente.");
-            }
-
-            // As três rotas usam Multer com upload.single("foto").
-            formData.append("foto", arquivoEnvio, nomeArquivo);
+            // arquivoSelecionado()/Camera nativa já materializam os bytes em um
+            // File/Blob independente. Não leia novamente aqui no WKWebView:
+            // a segunda leitura era um ponto extra de falha no iOS.
+            formData.append("foto", arquivo, nomeArquivo);
         }
         const controller = new AbortController();
         const timer = setTimeout(()=>controller.abort(), 60000);
@@ -8085,6 +8280,7 @@ async function obterPosicaoAtual(){
 }
 async function fazerCheckin(botao){
     if(!osSelecionada){ alert("Nenhuma OS selecionada"); return; }
+    const chaveAntes = String(osSelecionada);
     const osAtual = encontrarOS(osSelecionada);
     if(!osAtual || osAtual._tipo === "avulsa"){ alert("Check-in disponível somente para OS de clientes."); return; }
     if(osAtual.checkin_inicio_em){ alert(`Check-in já registrado em ${format(osAtual.checkin_inicio_em)}.`); return; }
@@ -8093,6 +8289,7 @@ async function fazerCheckin(botao){
     try{
         const coords = await obterPosicaoAtual();
         bloquearBotao(botao, true, "Registrando check-in...");
+
         const res = await apiFetch(`/api/ordens_servico/checkin/${osAtual.id}`, {
             method:"POST",
             headers:{"Content-Type":"application/json","Accept":"application/json"},
@@ -8106,10 +8303,6 @@ async function fazerCheckin(botao){
         const data = await lerRespostaSegura(res);
         if(!res.ok) throw new Error(data.erro || data.mensagem || `Erro HTTP ${res.status}`);
 
-        // O check-in também passa a ser a localização principal da OS.
-        // Isso garante que app, painel, mapa e futuras reciclagens recebam
-        // imediatamente a posição de chegada. Um novo check-in/localização
-        // sobrescreve os valores anteriores.
         const resLocalizacao = await apiFetch(`/api/ordens_servico/localizacao/${osAtual.id}`, {
             method:"POST",
             headers:{"Content-Type":"application/json","Accept":"application/json"},
@@ -8124,7 +8317,11 @@ async function fazerCheckin(botao){
         });
         const dadosLocalizacao = await lerRespostaSegura(resLocalizacao);
         if(!resLocalizacao.ok){
-            throw new Error(dadosLocalizacao.erro || dadosLocalizacao.mensagem || `Check-in salvo, mas não foi possível atualizar a localização da OS (HTTP ${resLocalizacao.status}).`);
+            throw new Error(
+                dadosLocalizacao.erro ||
+                dadosLocalizacao.mensagem ||
+                `Check-in salvo, mas não foi possível atualizar a localização da OS (HTTP ${resLocalizacao.status}).`
+            );
         }
 
         osAtual.latitude = coords.latitude;
@@ -8133,14 +8330,76 @@ async function fazerCheckin(botao){
         osAtual.checkin_inicio_longitude = coords.longitude;
         osAtual.checkin_inicio_em = data?.checkin_inicio_em || data?.checkin_em || new Date().toISOString();
 
-        alert("Check-in registrado e localização da OS atualizada.");
-        fecharModal();
+        // O check-in inicia a execução. Atualizamos imediatamente o estado local para
+        // não depender do reload antes de liberar os botões no iOS.
+        osAtual.status = data?.status || data?.os?.status || "em_andamento";
+        osSelecionada = chaveOS(osAtual);
+
+        const resumo = document.getElementById("resumoModalOS");
+        if(resumo) resumo.innerHTML = resumoModalHTML(osAtual);
+
+        configurarAcoesModalPorStatus(osAtual);
+
+        const btnEscolherAnexo = document.getElementById("btnEscolherAnexo");
+        if(btnEscolherAnexo){
+            btnEscolherAnexo.disabled = false;
+            btnEscolherAnexo.style.opacity = "1";
+            btnEscolherAnexo.textContent = "📎 Anexar foto, vídeo ou PDF";
+        }
+
+        const modal = document.getElementById("modal");
+        const content = modal?.querySelector(".modal-content");
+        if(modal){
+            modal.removeAttribute("inert");
+            modal.style.pointerEvents = "auto";
+            modal.style.display = "flex";
+        }
+        if(content){
+            content.removeAttribute("inert");
+            content.style.pointerEvents = "auto";
+        }
+
+        // Primeiro libera o botão antigo; ele pode ser ocultado logo abaixo pelas
+        // regras de status, mas não fica com .botao-carregando preso no DOM.
+        bloquearBotao(botao, false);
+
+        // Sincroniza a lista com o servidor sem fechar o resumo.
         await load();
+
+        const atualizado =
+            encontrarOS(`normal-${osAtual.id}`) ||
+            encontrarOS(osAtual.id) ||
+            osAtual;
+
+        osSelecionada = chaveOS(atualizado);
+        atualizado.checkin_inicio_em = atualizado.checkin_inicio_em || osAtual.checkin_inicio_em;
+        atualizado.status = normalizarStatusApp(atualizado.status) === "os_lancada"
+            ? "em_andamento"
+            : atualizado.status;
+
+        if(resumo) resumo.innerHTML = resumoModalHTML(atualizado);
+        configurarAcoesModalPorStatus(atualizado);
+
+        const btnEscolherAposLoad = document.getElementById("btnEscolherAnexo");
+        if(btnEscolherAposLoad){
+            btnEscolherAposLoad.disabled = false;
+            btnEscolherAposLoad.style.opacity = "1";
+            btnEscolherAposLoad.textContent = "📎 Anexar foto, vídeo ou PDF";
+        }
+
+        if(modal){
+            modal.style.display = "flex";
+            modal.style.pointerEvents = "auto";
+        }
+        if(content) content.style.pointerEvents = "auto";
+
+        console.log("✅ Check-in registrado; resumo mantido interativo.", {osId:osAtual.id});
     }catch(err){
         console.error("Erro no check-in:", err);
         alert(err.message || "Não foi possível registrar o check-in.");
     }finally{
-        bloquearBotao(botao, false);
+        // Só desbloqueia se o botão ainda existir/estiver conectado.
+        if(botao?.isConnected) bloquearBotao(botao, false);
     }
 }
 
